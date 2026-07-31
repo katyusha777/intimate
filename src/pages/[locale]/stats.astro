@@ -1,0 +1,97 @@
+---
+/**
+ * The unique-data asset (SEO.md §5): live per-city statistics, per locale —
+ * built to be the citable source for rates/counts in NL. Regenerates on every
+ * request from the data layer (daily cache later).
+ */
+import * as m from '@/paraglide/messages';
+import { profilesApi } from '@/app/api/profiles';
+import { isLocale, samePathAlternates } from '@/lib/i18n';
+import { breadcrumbJsonLd } from '@/lib/seo';
+import { CITIES } from '@/lib/taxonomy';
+import Section from '@/components/molecules/Section.astro';
+import Layout from '@/layouts/Layout.astro';
+
+const locale = Astro.params.locale;
+if (!isLocale(locale)) return new Response(null, { status: 404 });
+
+const { items: profiles, total } = await profilesApi.list({ limit: 60 });
+
+const rows = CITIES.map((c) => {
+  const inCity = profiles.filter((p) => p.city === c.slug);
+  return {
+    city: c.name,
+    slug: c.slug,
+    count: inCity.length,
+    min: inCity.length ? Math.min(...inCity.map((p) => p.priceFrom)) : 0,
+    avg: inCity.length
+      ? Math.round(inCity.reduce((s, p) => s + p.priceFrom, 0) / inCity.length)
+      : 0,
+    online: inCity.filter((p) => p.online).length,
+  };
+}).filter((r) => r.count > 0);
+
+const online = profiles.filter((p) => p.online).length;
+const minPrice = profiles.length ? Math.min(...profiles.map((p) => p.priceFrom)) : 0;
+const updated = profiles.reduce((max, p) => (p.createdAt > max ? p.createdAt : max), '');
+
+const intro = m.stats_intro({ count: total, cities: rows.length, online, min: minPrice });
+const canonical = new URL(`/${locale}/stats/`, Astro.url.origin).href;
+---
+
+<Layout
+  title={`${m.stats_title()} — ${m.app_name()}`}
+  description={intro}
+  {canonical}
+  alternates={samePathAlternates(Astro.url.origin, '/stats/')}
+  jsonLd={[
+    breadcrumbJsonLd([
+      { name: 'Intimate', url: `${Astro.url.origin}/${locale}/` },
+      { name: m.stats_title(), url: canonical },
+    ]),
+  ]}
+>
+  <div class="mx-auto max-w-7xl px-4 py-8 md:px-6 md:py-10">
+    <h1 class="display text-3xl md:text-4xl">{m.stats_title()}</h1>
+    <p class="mt-2 max-w-2xl text-sm text-muted-foreground">{intro}</p>
+    {updated && <p class="eyebrow mt-1.5">{m.updated_label({ date: updated.slice(0, 10) })}</p>}
+
+    <Section>
+      <div class="overflow-x-auto rounded-2xl bg-card shadow-soft dark:ring-1 dark:ring-border">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b text-left">
+              <th class="eyebrow px-5 py-3.5 font-medium">{m.stats_city()}</th>
+              <th class="eyebrow px-5 py-3.5 font-medium">{m.stats_count()}</th>
+              <th class="eyebrow px-5 py-3.5 font-medium">{m.stats_min()}</th>
+              <th class="eyebrow px-5 py-3.5 font-medium">{m.stats_avg()}</th>
+              <th class="eyebrow px-5 py-3.5 font-medium">{m.stats_online()}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {
+              rows.map((r) => (
+                <tr class="border-b last:border-0">
+                  <td class="px-5 py-3">
+                    <a href={`/${locale}/${r.slug}/`} class="font-medium hover:text-primary">
+                      {r.city}
+                    </a>
+                  </td>
+                  <td class="px-5 py-3">{r.count}</td>
+                  <td class="px-5 py-3">€{r.min}</td>
+                  <td class="px-5 py-3">€{r.avg}</td>
+                  <td class="px-5 py-3">
+                    <span class="flex items-center gap-1.5">
+                      {r.online > 0 && <span class="size-1.5 rounded-full bg-online" />}
+                      {r.online}
+                    </span>
+                  </td>
+                </tr>
+              ))
+            }
+          </tbody>
+        </table>
+      </div>
+    </Section>
+  </div>
+</Layout>

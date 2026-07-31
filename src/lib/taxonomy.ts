@@ -155,7 +155,26 @@ export const POLICY_MIN_AGE = 18;
 // Meetings, rates, amenities, availability
 // ---------------------------------------------------------------------------
 
+/**
+ * THE THREE ORTHOGONAL DIMENSIONS of how clients meet professionals — the
+ * foundation the data model builds on. Never conflate them:
+ *
+ *  1. MEETING_TYPES — *in-person* meeting modes: incall ("private visit",
+ *     client comes to her) / outcall ("escort", she comes to the client).
+ *     A profile may offer both. Only meaningful for in-person delivery.
+ *  2. DELIVERY_METHODS — in_person vs virtual. "Virtual sex" is a delivery
+ *     method, not a meeting type and not a single service. A profile's
+ *     virtual availability is DERIVED: it offers services from the `virtual`
+ *     service category (single source of truth — no separate boolean).
+ *  3. SERVICES / SERVICE_CATEGORIES — what is offered. BDSM is a service
+ *     category with subcategories, massage likewise.
+ *
+ * Listing tabs (LISTING_CATEGORIES) are saved filter presets ACROSS these
+ * dimensions over one profile pool — never partitions a profile "belongs" to.
+ */
 export const MEETING_TYPES = ['incall', 'outcall'] as const; // profiles may offer both
+
+export const DELIVERY_METHODS = ['in_person', 'virtual'] as const;
 
 export const INCALL_LOCATIONS = ['private_apartment', 'private_house', 'hotel', 'club'] as const;
 
@@ -375,6 +394,50 @@ export const PROVINCES = [
 // UI / query vocab
 // ---------------------------------------------------------------------------
 
+/**
+ * Top-level listing categories (main nav + /service/{slug}/{city} pages).
+ * Presets over one pool — `kind` names WHICH dimension each tab addresses
+ * (see the dimensions doc above); `filter` is the primitive query it applies.
+ * Labels via i18n keys `cat_*`.
+ */
+export const LISTING_CATEGORIES = [
+  {
+    slug: 'private-visit',
+    kind: 'meeting_type',
+    icon: 'house',
+    filter: { meetingType: 'incall' },
+    slugs: { nl: 'prive-ontvangst', en: 'private-visit', de: 'privatempfang' },
+  },
+  {
+    slug: 'escort',
+    kind: 'meeting_type',
+    icon: 'car-side',
+    filter: { meetingType: 'outcall' },
+    slugs: { nl: 'escort', en: 'escort', de: 'escort' },
+  },
+  {
+    slug: 'erotic-massage',
+    kind: 'service_category',
+    icon: 'spa',
+    filter: { serviceCategory: 'massage' },
+    slugs: { nl: 'erotische-massage', en: 'erotic-massage', de: 'erotische-massage' },
+  },
+  {
+    slug: 'virtual-sex',
+    kind: 'delivery',
+    icon: 'camera-web',
+    filter: { serviceCategory: 'virtual' },
+    slugs: { nl: 'virtuele-seks', en: 'virtual-sex', de: 'virtueller-sex' },
+  },
+  {
+    slug: 'bdsm',
+    kind: 'service_category',
+    icon: 'handcuffs',
+    filter: { serviceCategory: 'fetish_bdsm' },
+    slugs: { nl: 'bdsm', en: 'bdsm', de: 'bdsm' },
+  },
+] as const;
+
 export const SORT_OPTIONS = [
   'newest',
   'recently_online',
@@ -412,6 +475,7 @@ export type PubicHair = (typeof PUBIC_HAIR)[number];
 export type Appearance = (typeof APPEARANCES)[number];
 export type Language = (typeof LANGUAGES)[number];
 export type MeetingType = (typeof MEETING_TYPES)[number];
+export type DeliveryMethod = (typeof DELIVERY_METHODS)[number];
 export type IncallLocation = (typeof INCALL_LOCATIONS)[number];
 export type Amenity = (typeof AMENITIES)[number];
 export type RateDuration = (typeof RATE_DURATIONS)[number];
@@ -423,6 +487,8 @@ export type Service = (typeof SERVICES)[ServiceCategory][number];
 export type CitySlug = (typeof CITIES)[number]['slug'];
 export type Province = (typeof PROVINCES)[number];
 export type SortOption = (typeof SORT_OPTIONS)[number];
+export type ListingCategory = (typeof LISTING_CATEGORIES)[number];
+export type ListingCategorySlug = ListingCategory['slug'];
 export type Locale = (typeof LOCALES)[number];
 export type Theme = (typeof THEMES)[number];
 

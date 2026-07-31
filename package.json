@@ -11,8 +11,10 @@
     "check": "astro check",
     "deploy:staging": "CLOUDFLARE_ENV=staging astro build && wrangler deploy --env staging",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
-    "cf-typegen": "wrangler types"
+    "cf-typegen": "wrangler types",
+    "db:migrate:local": "DATABASE_URL='postgresql://postgres:postgres@127.0.0.1:54322/postgres' drizzle-kit migrate",
+    "db:migrate:staging": "drizzle-kit migrate",
+    "db:migrate:prod": "echo 'prod database does not exist yet \u2014 see docs/INFRASTRUCTURE.md \u00a77' && exit 1"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^14.1.7",

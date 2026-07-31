@@ -1,0 +1,56 @@
+---
+/**
+ * Handles TWO indexable page types (SEO.md §2), disambiguated by the first
+ * segment: a localized category slug → category(-×-city) listing; a city
+ * slug → city hub. These pages ARE the tabs, wearing their SEO hat.
+ */
+import { buildListing } from '@/pages/_listing';
+import { isLocale } from '@/lib/i18n';
+import { CITIES, LISTING_CATEGORIES } from '@/lib/taxonomy';
+import SearchListing from '@/components/organisms/search/SearchListing.astro';
+import Layout from '@/layouts/Layout.astro';
+
+const locale = Astro.params.locale;
+if (!isLocale(locale)) return new Response(null, { status: 404 });
+
+const seg = Astro.params.category!;
+const rest = Astro.params.city;
+
+const category = LISTING_CATEGORIES.find((c) => c.slugs[locale] === seg);
+const hubCity = !category && !rest && CITIES.some((c) => c.slug === seg) ? seg : undefined;
+if (!category && !hubCity) return new Response(null, { status: 404 });
+
+const citySlug = category ? rest : hubCity;
+if (category && rest && !CITIES.some((c) => c.slug === rest)) {
+  return new Response(null, { status: 404 });
+}
+
+const listing = await buildListing({ url: Astro.url, locale, category, citySlug });
+
+const visitMode =
+  category?.kind === 'meeting_type' ? ('navigate' as const) : ('query' as const);
+const openCategory =
+  category && 'serviceCategory' in category.filter ? category.filter.serviceCategory : undefined;
+---
+
+<Layout
+  title={listing.title}
+  description={listing.intro}
+  canonical={listing.canonical}
+  alternates={listing.alternates}
+  jsonLd={listing.jsonLd}
+>
+  <div class="mx-auto max-w-7xl px-4 py-8 md:px-6 md:py-10">
+    <SearchListing
+      title={listing.heading}
+      intro={listing.intro}
+      updated={listing.updated}
+      params={listing.params}
+      result={listing.result}
+      tabPath={listing.tabPath}
+      currentUrl={Astro.url}
+      {visitMode}
+      {openCategory}
+    />
+  </div>
+</Layout>

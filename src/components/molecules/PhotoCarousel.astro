@@ -1,6 +1,6 @@
 ---
 /** Scroll-snap photo carousel with dots + hover arrows (featured card, gallery). */
-import ProfileImage from './ProfileImage.astro';
+import SafeImage from '@/components/atoms/SafeImage.astro';
 
 interface Props {
   photos: string[];
@@ -20,7 +20,7 @@ const { photos, keyBase, alt, class: className, loading = 'lazy' } = Astro.props
   >
     {
       photos.map((p, i) => (
-        <ProfileImage
+        <SafeImage
           imageKey={`${keyBase}-${i}`}
           src={p}
           alt={`${alt} — photo ${i + 1}`}

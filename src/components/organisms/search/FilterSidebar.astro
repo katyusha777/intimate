@@ -1,0 +1,147 @@
+---
+/**
+ * Listing filters — grouped cards. Pure GET form controls; the wrapping
+ * <form> lives in SearchListing. THE SIDEBAR NEVER CHANGES SHAPE: every page
+ * shows the same groups, and route presets show up as selected state (on
+ * /service/escort/ the visit-type radio arrives checked). On meeting-type
+ * tabs the visit radios NAVIGATE to the sibling tab (visitMode="navigate"),
+ * keeping tab and filter as one dimension.
+ */
+import * as m from '@/paraglide/messages';
+import { serviceCategoryLabel, serviceLabel } from '@/lib/labels';
+import { SERVICES, SERVICE_CATEGORIES } from '@/lib/taxonomy';
+import type { ProfileListParams } from '@/app/models/profile';
+import Icon from '@/components/atoms/Icon.astro';
+import Input from '@/components/atoms/Input.astro';
+
+interface Props {
+  params: ProfileListParams;
+  /** Base path for Reset (route keeps its own category). */
+  resetHref: string;
+  /** 'navigate' on meeting-type tabs: visit radios switch tabs instead of adding a query param. */
+  visitMode?: 'query' | 'navigate';
+  /** Service category preset by the route → its group starts open. */
+  openCategory?: string;
+}
+
+const { params, resetHref, visitMode = 'query', openCategory } = Astro.props;
+const visitNav = visitMode === 'navigate';
+const selectedServices = new Set(params.services ?? []);
+
+const card = 'space-y-4 rounded-2xl bg-card p-5 shadow-soft dark:ring-1 dark:ring-border';
+const checkbox = 'size-4 flex-none cursor-pointer accent-primary';
+const row = 'flex cursor-pointer items-center gap-2.5 text-sm';
+---
+
+<aside class="space-y-4">
+  <div class="flex items-center justify-between px-1">
+    <h2 class="text-xl font-semibold tracking-tight">{m.filter_title()}</h2>
+    <a
+      href={resetHref}
+      class="rounded-full bg-muted px-3.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+    >
+      {m.filter_reset()}
+    </a>
+  </div>
+
+  <!-- Services (grouped, collapsible, multi-select) -->
+  <div class={card}>
+    <h3 class="font-semibold">{m.filter_services()}</h3>
+    <div class="space-y-1">
+      {
+        SERVICE_CATEGORIES.map((cat) => {
+          const services = SERVICES[cat];
+          const checkedCount = services.filter((s) => selectedServices.has(s)).length;
+          return (
+            <details
+              class="group/cat rounded-lg"
+              open={cat === openCategory || checkedCount > 0 || undefined}
+            >
+              <summary class="flex cursor-pointer list-none items-center justify-between gap-2 rounded-lg px-2 py-2 text-sm font-medium transition-colors hover:bg-muted/60 [&::-webkit-details-marker]:hidden">
+                <span class="flex items-center gap-2">
+                  {serviceCategoryLabel(cat)}
+                  {checkedCount > 0 && (
+                    <span class="grid size-5 place-items-center rounded-full bg-primary text-2xs font-semibold text-primary-foreground">
+                      {checkedCount}
+                    </span>
+                  )}
+                </span>
+                <Icon
+                  name="chevron-down"
+                  class="text-xs text-muted-foreground transition-transform group-open/cat:rotate-180"
+                />
+              </summary>
+              <div class="space-y-2 px-2 pb-2 pt-1">
+                {services.map((s) => (
+                  <label class={row}>
+                    <input
+                      type="checkbox"
+                      name="services"
+                      value={s}
+                      checked={selectedServices.has(s)}
+                      class={checkbox}
+                    />
+                    {serviceLabel(s)}
+                  </label>
+                ))}
+              </div>
+            </details>
+          );
+        })
+      }
+    </div>
+  </div>
+
+  <!-- Visit type (always present; preset pages arrive with their radio checked) -->
+  <div class={card}>
+    <h3 class="font-semibold">{m.filter_visit()}</h3>
+    <div class="space-y-2">
+      <label class={row}>
+        <input type="radio" name={visitNav ? undefined : 'visit'} data-visit-nav={visitNav || undefined} value="" checked={!params.meetingType} class={checkbox} />
+        {m.filter_any()}
+      </label>
+      <label class={row}>
+        <input type="radio" name={visitNav ? undefined : 'visit'} data-visit-nav={visitNav || undefined} value="incall" checked={params.meetingType === 'incall'} class={checkbox} />
+        {m.cat_private()}
+      </label>
+      <label class={row}>
+        <input type="radio" name={visitNav ? undefined : 'visit'} data-visit-nav={visitNav || undefined} value="outcall" checked={params.meetingType === 'outcall'} class={checkbox} />
+        {m.cat_escort()}
+      </label>
+    </div>
+  </div>
+
+  <!-- Price -->
+  <div class={card}>
+    <h3 class="font-semibold">{m.filter_price()}</h3>
+    <div class="flex items-center gap-3">
+      <Input
+        type="number"
+        name="priceMin"
+        min="0"
+        step="10"
+        placeholder={m.filter_min()}
+        value={params.priceMin ?? ''}
+        aria-label={m.filter_min()}
+      />
+      <span class="text-muted-foreground" aria-hidden="true">–</span>
+      <Input
+        type="number"
+        name="priceMax"
+        min="0"
+        step="10"
+        placeholder={m.filter_max()}
+        value={params.priceMax ?? ''}
+        aria-label={m.filter_max()}
+      />
+    </div>
+  </div>
+
+  <!-- Toggles -->
+  <div class={card}>
+    <label class={row}>
+      <input type="checkbox" name="verified" checked={params.verifiedOnly} class={checkbox} />
+      {m.filter_verified()}
+    </label>
+  </div>
+</aside>

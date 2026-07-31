@@ -1,0 +1,60 @@
+---
+import * as m from '@/paraglide/messages';
+import { localizePath } from '@/lib/i18n';
+
+const path = Astro.url.pathname;
+
+const tabs = [
+  {
+    href: localizePath('/search/'),
+    label: m.nav_search(),
+    active: path.startsWith(localizePath('/search')),
+    icon: '<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>',
+  },
+  {
+    href: localizePath('/favorites/'),
+    label: m.nav_favorites(),
+    active: path.startsWith(localizePath('/favorites')),
+    icon: '<path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7Z"/>',
+  },
+  {
+    href: localizePath('/account/'),
+    label: m.nav_account(),
+    active: path.startsWith(localizePath('/account')),
+    icon: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/>',
+  },
+];
+---
+
+<nav
+  class="glass-thin fixed inset-x-0 bottom-0 z-40 border-t pb-[env(safe-area-inset-bottom)] md:hidden"
+  aria-label={m.nav_search()}
+>
+  <div class="grid grid-cols-3">
+    {
+      tabs.map((t) => (
+        <a
+          href={t.href}
+          class:list={[
+            'flex min-h-14 flex-col items-center justify-center gap-0.5 text-2xs font-medium transition-colors',
+            t.active ? 'text-primary' : 'text-muted-foreground',
+          ]}
+          aria-current={t.active ? 'page' : undefined}
+        >
+          <svg
+            class="size-5"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+            set:html={t.icon}
+          />
+          {t.label}
+        </a>
+      ))
+    }
+  </div>
+</nav>

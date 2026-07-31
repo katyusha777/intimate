@@ -1,0 +1,255 @@
+---
+/**
+ * Listing page body. Architecture (docs/API.md): tabs are presets over ONE
+ * profile pool, never partitions; tab + city live in the URL PATH (indexable),
+ * everything else is querystring; gender/city/online-now are persistent quick
+ * chips; the rest lives in the filter panel (sidebar on lg, behind a Filters
+ * button on mobile). One GET <form> + SSR = zero client state.
+ */
+import * as m from '@/paraglide/messages';
+import { genderLabel, sortLabel } from '@/lib/labels';
+import { CITIES, GENDERS, SORT_OPTIONS } from '@/lib/taxonomy';
+import { LISTING_CATEGORIES, type Locale } from '@/lib/taxonomy';
+import { getLocale } from '@/paraglide/runtime';
+import { PAGE_SIZE, type ProfileList, type ProfileListParams } from '@/app/models/profile';
+import Icon from '@/components/atoms/Icon.astro';
+import FilterSidebar from '@/components/organisms/search/FilterSidebar.astro';
+import ProfileCard from '@/components/organisms/profile/ProfileCard.astro';
+
+interface Props {
+  title: string;
+  /** Answer-first stat sentence (SEO.md §3). */
+  intro?: string;
+  /** Visible freshness stamp. */
+  updated?: string;
+  params: ProfileListParams;
+  result: ProfileList;
+  /** Path for this tab WITHOUT the city segment, e.g. `/search/` or `/service/escort/`. */
+  tabPath: string;
+  currentUrl: URL;
+  /** 'navigate' on meeting-type tabs — visit radios switch tabs (see FilterSidebar). */
+  visitMode?: 'query' | 'navigate';
+  openCategory?: string;
+}
+
+const { title, intro, updated, params, result, tabPath, currentUrl, visitMode = 'query', openCategory } =
+  Astro.props;
+
+const locale = getLocale() as Locale;
+
+// Tab paths for visit-type navigation, derived from taxonomy (never hardcoded).
+const incallSlug = LISTING_CATEGORIES.find(
+  (c) => 'meetingType' in c.filter && c.filter.meetingType === 'incall',
+)!.slugs[locale];
+const outcallSlug = LISTING_CATEGORIES.find(
+  (c) => 'meetingType' in c.filter && c.filter.meetingType === 'outcall',
+)!.slugs[locale];
+
+/** City lives in the path: `${tabPath}${city}/`. */
+const basePath = params.city ? `${tabPath}${params.city}/` : tabPath;
+
+const selectedGenders = new Set(params.genders ?? []);
+const page = Math.floor((params.offset ?? 0) / PAGE_SIZE) + 1;
+const pageCount = Math.max(1, Math.ceil(result.total / PAGE_SIZE));
+
+function pageHref(p: number): string {
+  const sp = new URLSearchParams(currentUrl.searchParams);
+  if (p <= 1) sp.delete('page');
+  else sp.set('page', String(p));
+  const qs = sp.toString();
+  return qs ? `${basePath}?${qs}` : basePath;
+}
+
+const chip =
+  'flex h-9 cursor-pointer items-center gap-2 rounded-full bg-card px-4 text-sm font-medium shadow-soft transition-colors dark:ring-1 dark:ring-border';
+---
+
+<form
+  method="get"
+  action={basePath}
+  data-listing-form
+  data-tab-path={tabPath}
+  data-city={params.city ?? ''}
+  data-visit-any-path={`/${locale}/search/`}
+  data-visit-incall-path={`/${locale}/${incallSlug}/`}
+  data-visit-outcall-path={`/${locale}/${outcallSlug}/`}
+>
+  {params.q && <input type="hidden" name="q" value={params.q} />}
+
+  <div class="mb-5 flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <h1 class="display text-3xl md:text-4xl">{title}</h1>
+      <p class="mt-1.5 max-w-2xl text-sm text-muted-foreground">
+        {intro ?? m.results_count({ count: result.total })}
+      </p>
+      {updated && <p class="eyebrow mt-1.5">{updated}</p>}
+    </div>
+    <label class="flex items-center gap-2.5 text-sm">
+      <span class="text-muted-foreground">{m.sort_by()}</span>
+      <span class="relative inline-flex items-center">
+        <select
+          name="sort"
+          class="cursor-pointer appearance-none bg-transparent pr-6 text-sm font-medium outline-none"
+        >
+          {
+            SORT_OPTIONS.map((s) => (
+              <option value={s} selected={(params.sort ?? 'newest') === s}>
+                {sortLabel(s)}
+              </option>
+            ))
+          }
+        </select>
+        <Icon name="chevron-down" class="pointer-events-none absolute right-0 text-xs text-muted-foreground" />
+      </span>
+    </label>
+  </div>
+
+  <!-- Quick chips: city (path navigation) · gender multi · online now · Filters (mobile) -->
+  <div class="mb-6 flex flex-wrap items-center gap-2">
+    <span class="relative inline-flex items-center">
+      <select data-city-nav aria-label={m.filter_city()} class:list={[chip, 'appearance-none pr-9']}>
+        <option value="">{m.filter_city()}: {m.filter_any()}</option>
+        {
+          CITIES.map((c) => (
+            <option value={c.slug} selected={params.city === c.slug}>
+              {c.name}
+            </option>
+          ))
+        }
+      </select>
+      <Icon name="chevron-down" class="pointer-events-none absolute right-3.5 text-xs text-muted-foreground" />
+    </span>
+
+    {
+      GENDERS.map((g) => (
+        <label>
+          <input
+            type="checkbox"
+            name="genders"
+            value={g}
+            checked={selectedGenders.has(g)}
+            class="peer sr-only"
+          />
+          <span class:list={[chip, 'peer-checked:bg-primary peer-checked:text-primary-foreground peer-checked:shadow-none']}>
+            {genderLabel(g)}
+          </span>
+        </label>
+      ))
+    }
+
+    <label>
+      <input type="checkbox" name="online" checked={params.onlineOnly} class="peer sr-only" />
+      <span class:list={[chip, 'peer-checked:bg-primary peer-checked:text-primary-foreground peer-checked:shadow-none']}>
+        <span class="size-1.5 rounded-full bg-online"></span>
+        {m.filter_online()}
+      </span>
+    </label>
+  </div>
+
+  <div class="grid items-start gap-6 lg:grid-cols-[17rem_1fr]">
+    <details data-filter-panel class="min-w-0">
+      <summary
+        class:list={[chip, 'w-fit select-none list-none lg:hidden [&::-webkit-details-marker]:hidden']}
+      >
+        <Icon name="sliders" class="text-muted-foreground" />
+        {m.filter_title()}
+      </summary>
+      <div class="pt-4 lg:pt-0">
+        <FilterSidebar params={params} resetHref={basePath} {visitMode} {openCategory} />
+      </div>
+    </details>
+
+    <div>
+      {
+        result.items.length > 0 ? (
+          <div class="grid grid-cols-2 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {result.items.map((p, i) => (
+              <ProfileCard profile={p} loading={i < 6 ? 'eager' : 'lazy'} />
+            ))}
+          </div>
+        ) : (
+          <div class="grid place-items-center rounded-2xl bg-card py-24 text-center shadow-soft dark:ring-1 dark:ring-border">
+            <div class="space-y-2">
+              <Icon name="face-monocle" class="text-3xl text-muted-foreground" />
+              <p class="font-semibold">{m.results_count({ count: 0 })}</p>
+              <a href={basePath} class="text-sm text-primary underline-offset-2 hover:underline">
+                {m.filter_reset()}
+              </a>
+            </div>
+          </div>
+        )
+      }
+
+      {
+        pageCount > 1 && (
+          <nav class="mt-8 flex items-center justify-center gap-2" aria-label="Pagination">
+            {page > 1 && (
+              <a href={pageHref(page - 1)} class="flex h-10 items-center gap-2 rounded-full px-4 text-sm font-medium ring-1 ring-border transition-colors hover:bg-muted">
+                <Icon name="chevron-left" class="text-xs" />
+                {m.pagination_prev()}
+              </a>
+            )}
+            <span class="px-3 text-sm text-muted-foreground">
+              {page} / {pageCount}
+            </span>
+            {page < pageCount && (
+              <a href={pageHref(page + 1)} class="flex h-10 items-center gap-2 rounded-full px-4 text-sm font-medium ring-1 ring-border transition-colors hover:bg-muted">
+                {m.pagination_next()}
+                <Icon name="chevron-right" class="text-xs" />
+              </a>
+            )}
+          </nav>
+        )
+      }
+    </div>
+  </div>
+</form>
+
+<script>
+  // Auto-submit on change (SSR filters, zero client state). City navigates the
+  // PATH (`${tabPath}${city}/`) keeping the remaining querystring. The filter
+  // panel is a <details> that stays forced-open on desktop.
+  function initListingForm() {
+    document.querySelectorAll<HTMLFormElement>('form[data-listing-form]').forEach((form) => {
+      if (form.dataset.init) return;
+      form.dataset.init = '1';
+
+      form.addEventListener('change', (e) => {
+        const t = e.target as HTMLElement;
+        const citySeg = () => (form.dataset.city ? `${form.dataset.city}/` : '');
+
+        const cityNav = t.closest('[data-city-nav]') as HTMLSelectElement | null;
+        if (cityNav) {
+          form.dataset.city = cityNav.value;
+          form.action = form.dataset.tabPath! + citySeg();
+        }
+
+        const visitNav = t.closest('[data-visit-nav]') as HTMLInputElement | null;
+        if (visitNav) {
+          const tab =
+            visitNav.value === 'incall'
+              ? form.dataset.visitIncallPath!
+              : visitNav.value === 'outcall'
+                ? form.dataset.visitOutcallPath!
+                : form.dataset.visitAnyPath!;
+          form.action = tab + citySeg();
+        }
+
+        form.requestSubmit();
+      });
+    });
+
+    const mq = matchMedia('(min-width: 64rem)');
+    const sync = () =>
+      document.querySelectorAll<HTMLDetailsElement>('[data-filter-panel]').forEach((d) => {
+        if (mq.matches) d.open = true;
+      });
+    if (!(window as any).__filterPanelMq) {
+      (window as any).__filterPanelMq = true;
+      mq.addEventListener('change', sync);
+    }
+    sync();
+  }
+  initListingForm();
+  document.addEventListener('astro:page-load', initListingForm);
+</script>

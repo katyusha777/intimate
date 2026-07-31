@@ -5,23 +5,25 @@
  * compact: horizontal row for favorites/suggestions/similar.
  */
 import * as m from '@/paraglide/messages';
-import type { FixtureProfile } from '@/lib/fixtures';
+import { localizedDescription, type Profile } from '@/app/models/profile';
+import { localizePath } from '@/lib/i18n';
 import { genderLabel, serviceLabel } from '@/lib/labels';
 import { CITIES } from '@/lib/taxonomy';
-import ProfileImage from './ProfileImage.astro';
-import PhotoCarousel from './PhotoCarousel.astro';
-import VerifiedBadge from './VerifiedBadge.astro';
-import { Badge } from '@/components/ui/badge';
+import Chip from '@/components/atoms/Chip.astro';
+import SafeImage from '@/components/atoms/SafeImage.astro';
+import PhotoCarousel from '@/components/molecules/PhotoCarousel.astro';
+import VerifiedBadge from '@/components/atoms/VerifiedBadge.astro';
+import Badge from '@/components/atoms/Badge.astro';
 
 interface Props {
-  profile: FixtureProfile;
+  profile: Profile;
   variant?: 'grid' | 'featured' | 'compact';
   loading?: 'lazy' | 'eager';
 }
 
 const { profile: p, variant = 'grid', loading = 'lazy' } = Astro.props;
 const cityName = CITIES.find((c) => c.slug === p.city)?.name ?? p.city;
-const href = `/profile/${p.slug}/`;
+const href = localizePath(`/profile/${p.slug}/`);
 ---
 
 {
@@ -58,16 +60,9 @@ const href = `/profile/${p.slug}/`;
           <p class="flex-none pt-0.5 text-base font-semibold">€{p.priceFrom}</p>
         </div>
         <div class="mt-2.5 flex h-6 gap-1.5 overflow-hidden">
-          <span class="flex-none rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium leading-none text-muted-foreground">
-            {genderLabel(p.gender)}
-          </span>
-          {
-            p.services.slice(0, 2).map((s) => (
-              <span class="flex-none rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium leading-none text-muted-foreground">
-                {serviceLabel(s)}
-              </span>
-            ))
-          }
+          <Chip class="flex-none">{genderLabel(p.gender)}</Chip>
+          {p.services[0] && <Chip class="min-w-0 truncate">{serviceLabel(p.services[0])}</Chip>}
+          {p.services.length > 1 && <Chip class="flex-none">+{p.services.length - 1}</Chip>}
         </div>
       </div>
     </a>
@@ -94,7 +89,7 @@ const href = `/profile/${p.slug}/`;
             )}
           </h3>
           <p class="text-sm text-muted-foreground">{cityName}</p>
-          <p class="text-sm leading-relaxed">{p.tagline}</p>
+          <p class="text-sm leading-relaxed">{localizedDescription(p)}</p>
         </div>
         <p class="text-sm">
           <span class="text-muted-foreground">{m.price_from()}</span>
@@ -111,7 +106,7 @@ const href = `/profile/${p.slug}/`;
       href={href}
       class="group flex items-center gap-3 rounded-lg p-2 transition-colors hover:bg-muted"
     >
-      <ProfileImage imageKey={p.id} src={p.photos[0]} alt={p.name} class="size-14 flex-none rounded-lg" {loading} />
+      <SafeImage imageKey={p.id} src={p.photos[0]} alt={p.name} class="size-14 flex-none rounded-lg" {loading} />
       <div class="min-w-0 flex-1">
         <p class="flex items-center gap-1 truncate text-sm font-semibold">
           {p.name}, {p.age}

@@ -1,0 +1,17 @@
+---
+/** Small tag pill (gender/service tags on cards, filter chips). */
+interface Props {
+  class?: string;
+}
+
+const { class: className } = Astro.props;
+---
+
+<span
+  class:list={[
+    'rounded-full bg-muted px-2.5 py-1 text-2xs font-medium leading-none text-muted-foreground',
+    className,
+  ]}
+>
+  <slot />
+</span>

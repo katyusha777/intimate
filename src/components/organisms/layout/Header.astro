@@ -1,0 +1,135 @@
+---
+import * as m from '@/paraglide/messages';
+import { getLocale } from '@/paraglide/runtime';
+import { listingCategoryLabel } from '@/lib/labels';
+import { localizePath } from '@/lib/i18n';
+import { LISTING_CATEGORIES, type Locale } from '@/lib/taxonomy';
+
+const locale = getLocale() as Locale;
+const path = Astro.url.pathname;
+const searchPath = localizePath('/search/');
+const q = path.startsWith(searchPath) ? (Astro.url.searchParams.get('q') ?? '') : '';
+
+const categories = [
+  {
+    label: m.cat_all(),
+    href: searchPath,
+    icon: 'fa-grid-2',
+    active: path.startsWith(searchPath),
+  },
+  ...LISTING_CATEGORIES.map((c) => ({
+    label: listingCategoryLabel(c.slug),
+    href: localizePath(`/${c.slugs[locale]}/`),
+    icon: `fa-${c.icon}`,
+    active: path.startsWith(localizePath(`/${c.slugs[locale]}/`)),
+  })),
+];
+---
+
+<header class="glass sticky top-0 z-40 border-b" style="padding-top: env(safe-area-inset-top)">
+  <!-- Row 1: logo · AI search · articles/contact · auth -->
+  <div class="mx-auto flex h-14 max-w-7xl items-center gap-3 px-4 md:h-[4.25rem] md:gap-5 md:px-6">
+    <a href={localizePath("/")} aria-label={m.app_name()} class="flex flex-none items-center">
+      <!-- naming follows the source files: LIGHT = light (white) lettering, DARK = dark lettering -->
+      <img src="/img/logo-dark.svg" alt={m.app_name()} class="h-9 w-auto dark:hidden" />
+      <img src="/img/logo-light.svg" alt={m.app_name()} class="hidden h-9 w-auto dark:block" />
+    </a>
+
+    <form action={searchPath} method="get" class="hidden w-full max-w-md md:block">
+      <label
+        class="flex h-11 w-full cursor-text items-center gap-3 rounded-xl bg-muted pl-4 pr-1.5 ring-1 ring-transparent transition-shadow focus-within:ring-ring"
+      >
+      <i class="fa-thin fa-wand-magic-sparkles text-primary" aria-hidden="true"></i>
+      <input
+        type="search"
+        name="q"
+        value={q}
+        data-ai-search
+        placeholder={m.search_ai_placeholder()}
+        class="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground [&::-webkit-search-cancel-button]:hidden"
+      />
+      <button
+        type="submit"
+        data-ai-go
+        class:list={['flex h-8 flex-none items-center gap-1.5 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground transition-opacity duration-200 hover:opacity-90', !q && 'pointer-events-none opacity-0']}
+      >
+        <i class="fa-thin fa-sparkles" aria-hidden="true"></i>
+        {m.nav_search()}
+      </button>
+      </label>
+    </form>
+
+    <nav class="ml-auto hidden flex-none items-center gap-5 text-sm font-medium md:flex">
+      <a href={localizePath("/blog/")} class="text-muted-foreground transition-colors hover:text-foreground">
+        {m.section_articles()}
+      </a>
+      <a href={localizePath("/contact/")} class="text-muted-foreground transition-colors hover:text-foreground">
+        {m.nav_contact()}
+      </a>
+    </nav>
+
+    <div class="ml-auto flex flex-none items-center gap-4 md:ml-0">
+      <button
+        type="button"
+        data-modal-open="auth"
+        data-auth-tab="login"
+        class="text-sm font-semibold transition-colors hover:text-primary"
+      >
+        {m.nav_login()}
+      </button>
+      <button
+        type="button"
+        data-modal-open="auth"
+        data-auth-tab="register"
+        class="h-9 rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 md:h-10 md:px-6"
+      >
+        {m.nav_register()}
+      </button>
+    </div>
+  </div>
+
+  <!-- Row 2: main categories -->
+  <div class="border-t border-border/60 bg-muted/30">
+    <nav
+      class="mx-auto flex h-12 max-w-7xl items-stretch overflow-x-auto px-4 [scrollbar-width:none] md:h-14 md:px-6 [&::-webkit-scrollbar]:hidden"
+      aria-label={m.all_categories()}
+    >
+      {
+        categories.map((l) => (
+          <a
+            href={l.href}
+            aria-current={l.active ? 'page' : undefined}
+            class:list={[
+              'relative flex flex-1 items-center justify-center gap-3 border-l border-border px-5 text-sm font-medium transition-colors last:border-r',
+              l.active
+                ? 'bg-primary/5 text-primary after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:bg-primary'
+                : 'text-foreground hover:bg-muted/50',
+            ]}
+          >
+            <i class:list={['fa-thin', l.icon, l.active ? 'text-primary' : 'text-muted-foreground']} aria-hidden="true" />
+            {l.label}
+          </a>
+        ))
+      }
+    </nav>
+  </div>
+</header>
+
+<script>
+  // AI search: reveal the inline button only once the user starts typing.
+  function initAiSearch() {
+    if (document.documentElement.dataset.aiSearchInit) return;
+    document.documentElement.dataset.aiSearchInit = '1';
+    document.addEventListener('input', (e) => {
+      const inp = (e.target as HTMLElement).closest?.('[data-ai-search]') as HTMLInputElement | null;
+      if (!inp) return;
+      const btn = inp.parentElement?.querySelector('[data-ai-go]');
+      if (!btn) return;
+      const show = inp.value.trim().length > 0;
+      btn.classList.toggle('opacity-0', !show);
+      btn.classList.toggle('pointer-events-none', !show);
+    });
+  }
+  initAiSearch();
+  document.addEventListener('astro:page-load', initAiSearch);
+</script>

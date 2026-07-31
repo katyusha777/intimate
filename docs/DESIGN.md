@@ -1,13 +1,13 @@
 # Design System
 
 The visual + component foundation for Intimate. This is **priority 3** in the
-Foundation (`PLAN.md`) but it is the layer the user actually feels, and its one
+Base architecture (`ARCHITECTURE.md`) but it is the layer the user actually feels, and its one
 non-negotiable is **cohesion**: every screen is assembled from the same small
 set of components, on the same spacing scale, with the same materials. If a
 screen needs something the library doesn't have, we add it to the library — we
 never one-off it.
 
-Companion to `PLAN.md` (the what) and `taxonomy.ts` (the vocabulary). This is
+Companion to `ARCHITECTURE.md` (the what) and `taxonomy.ts` (the vocabulary). This is
 the how-it-looks. No page is built until the token layer and the primitives it
 needs exist.
 
@@ -134,6 +134,24 @@ Helper: `.display` = uppercase + tight tracking + trailing crimson period via
 iOS 26 leans on **translucency + light**, not Material drop shadows. Use glass
 (§5) for floating chrome; reserve real shadows for resting cards only:
 `shadow-sm` at rest, `shadow-md` on hover. No shadow deeper than `md` anywhere.
+
+### 2.6 Cohesion enforcement (tested)
+
+`tests/style.test.ts` fails the build on arbitrary rhythm values in class
+names — **no** `p-[13px]` / `mt-[7px]` / `gap-[18px]`, **no** `text-[15px]`,
+**no** `tracking-[…]` / `leading-[…]`. Dimensions, grid templates, `%` and
+`env()` are layout, not rhythm, and stay free.
+
+How to stay inside the rules:
+- **Type roles:** `.display` (uppercase display + crimson period), `.eyebrow`
+  (micro-label; override color/weight/size with plain utilities per variant),
+  and the standard `text-*` scale extended with the `text-2xs` (11px) token.
+  Need a new size/tracking? Add a **token** in `global.css` — never a bracket.
+- **Section rhythm is owned by `molecules/Section.astro`** (`py-6 md:py-10`,
+  heading + meta/actions slots) — pages never hand-roll spacing between blocks
+  or heading margins.
+- **Component-internal spacing** follows §2.3 (p-4/6 innards, gap-4 grids) and
+  lives inside the owning component, so changing it once propagates.
 
 ---
 

@@ -1,0 +1,10 @@
+---
+/**
+ * App-facing Button — currently the anaglyph style (the swap-point doctrine
+ * in action: implementation changed here, zero call sites touched).
+ * Previous vendor wrapper: `import { Button } from '@/components/ui/button'`.
+ */
+import AnaglyphButton from './AnaglyphButton.astro';
+---
+
+<AnaglyphButton {...Astro.props}><slot /></AnaglyphButton>

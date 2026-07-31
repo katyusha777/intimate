@@ -5,8 +5,9 @@
  * Open via data-modal-open="auth" (+ optional data-auth-tab="login|register").
  */
 import * as m from '@/paraglide/messages';
-import Modal from './Modal.astro';
-import { Button } from '@/components/ui/button';
+import { localizePath } from '@/lib/i18n';
+import Modal from '@/components/molecules/Modal.astro';
+import Button from '@/components/atoms/Button.astro';
 ---
 
 <Modal id="auth">
@@ -117,7 +118,7 @@ import { Button } from '@/components/ui/button';
 
       <Button type="submit" size="lg" class="w-full">{m.nav_login()}</Button>
       <p class="text-center text-xs">
-        <a href="/account/" class="text-muted-foreground underline-offset-2 hover:underline">
+        <a href={localizePath("/account/")} class="text-muted-foreground underline-offset-2 hover:underline">
           {m.auth_forgot()}
         </a>
       </p>

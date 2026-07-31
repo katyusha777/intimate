@@ -24,7 +24,7 @@
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
     "dart.analysis.tool.window.visible": "false",
-    "last_opened_file_path": "/Users/katyusha/Code/intimate/src/lib",
+    "last_opened_file_path": "/Users/katyusha/Code/intimate/docs",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
@@ -42,8 +42,8 @@
 }]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
-      <recent name="$PROJECT_DIR$/src/lib" />
       <recent name="$PROJECT_DIR$/docs" />
+      <recent name="$PROJECT_DIR$/src/lib" />
       <recent name="$PROJECT_DIR$" />
     </key>
   </component>
@@ -55,7 +55,7 @@
       <option name="presentableId" value="Default" />
       <updated>1785456702504</updated>
       <workItem from="1785456703567" duration="5846000" />
-      <workItem from="1785485860014" duration="2049000" />
+      <workItem from="1785485860014" duration="7013000" />
     </task>
     <servers />
   </component>

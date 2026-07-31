@@ -119,6 +119,10 @@
 
 @theme inline {
   --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  /* micro-label size + the one sanctioned wide tracking (style test bans arbitrary values) */
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 0.875rem;
+  --tracking-eyebrow: 0.14em;
   --color-online: var(--online);
   --color-glass-ultrathin: var(--glass-ultrathin);
   --color-glass-thin: var(--glass-thin);
@@ -197,6 +201,12 @@
   .display::after {
     content: ".";
     @apply text-primary;
+  }
+
+  /* Eyebrow micro-label role (DESIGN §2.4) — override color/size/weight with
+     plain utilities where a variant is needed. */
+  .eyebrow {
+    @apply text-xs font-medium uppercase tracking-eyebrow text-muted-foreground;
   }
 
   /* iOS glass materials — floating chrome only, never resting cards. */

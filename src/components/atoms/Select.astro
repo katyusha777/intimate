@@ -1,0 +1,27 @@
+---
+/**
+ * Styled native <select> (options via slot). Own primitive — matches the muted
+ * input styling; chevron is drawn so the appearance reset stays consistent.
+ */
+import { cn } from '@/lib/utils';
+import Icon from './Icon.astro';
+
+interface Props {
+  class?: string;
+  [key: string]: unknown;
+}
+
+const { class: className, ...props } = Astro.props;
+---
+
+<span class:list={['relative inline-flex w-full items-center', className]}>
+  <select
+    class={cn(
+      'h-10 w-full cursor-pointer appearance-none rounded-lg border border-input bg-transparent pl-3 pr-9 text-sm outline-none transition-shadow focus-visible:ring-2 focus-visible:ring-ring',
+    )}
+    {...props}
+  >
+    <slot />
+  </select>
+  <Icon name="chevron-down" class="pointer-events-none absolute right-3 text-xs text-muted-foreground" />
+</span>

@@ -1,6 +1,6 @@
 ---
 /**
- * The ONLY way profile imagery renders (DESIGN.md §6, §11).
+ * The ONLY way sensitive imagery renders — profiles, articles, promo stills (DESIGN.md §6, §11).
  * Fail-closed: server always emits the safe placeholder as `src`; the inline
  * safe-mode script in Layout swaps to `data-real` only when the user opted out.
  */
@@ -9,7 +9,7 @@ import { safeImageFor } from '@/lib/safe-images';
 interface Props {
   /** Stable key (profile/media id) — picks the deterministic safe image. */
   imageKey: string;
-  /** Real photo URL. Optional: fixtures have none. */
+  /** Real photo URL. Optional: dummy data has none. */
   src?: string;
   alt: string;
   class?: string;

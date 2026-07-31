@@ -1,0 +1,38 @@
+[
+  {
+    "id": "a01",
+    "slug": "ontdek-de-intimate-app",
+    "title": "Discover the Intimate app: a new dimension in erotic pleasure",
+    "excerpt": "The Intimate app brings verified profiles, safe chat and community features together in one place. Here is what to expect.",
+    "minutes": 2,
+    "featured": true,
+    "publishedAt": "2026-07-02T09:00:00.000Z"
+  },
+  {
+    "id": "a02",
+    "slug": "verleidelijke-achtergronden",
+    "title": "Seductive wallpapers from Intimate.nl — free download!",
+    "excerpt": "A set of wallpapers from our photo shoots, free to use.",
+    "minutes": 1,
+    "featured": false,
+    "publishedAt": "2026-07-09T09:00:00.000Z"
+  },
+  {
+    "id": "a03",
+    "slug": "starten-als-escort-in-nederland",
+    "title": "Starting as an escort in the Netherlands: guidelines, tips and support",
+    "excerpt": "What you need to know before you start — legislation, safety and verification.",
+    "minutes": 5,
+    "featured": false,
+    "publishedAt": "2026-07-16T09:00:00.000Z"
+  },
+  {
+    "id": "a04",
+    "slug": "girlfriend-experience-gfe",
+    "title": "The Girlfriend Experience (GFE): a deeper dive into intimacy and connection",
+    "excerpt": "Why GFE is the most requested experience and what it involves.",
+    "minutes": 4,
+    "featured": false,
+    "publishedAt": "2026-07-23T09:00:00.000Z"
+  }
+]

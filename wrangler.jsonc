@@ -11,16 +11,25 @@
   "placement": { "mode": "smart" },
   "observability": { "enabled": true },
   // ponytail: production points at the same Hyperdrive/db as staging until the
-  // Supabase staging branch exists — split ids when the schema work starts.
+  // prod Supabase project exists (INFRASTRUCTURE §7) — split ids then.
   "hyperdrive": [
     { "binding": "HYPERDRIVE", "id": "c56d9b6e947a4841baa30f8b6a6b9e55" }
   ],
+  "vars": {
+    // prod values — replace when the prod Supabase project exists (INFRASTRUCTURE §7)
+    "PUBLIC_SUPABASE_URL": "https://jqrfzqbuvekhcptqcpda.supabase.co",
+    "PUBLIC_SUPABASE_KEY": "sb_publishable_jzpgxggUIg8-uodVAaT1SA_KZxO34fe"
+  },
   "env": {
     "staging": {
       "name": "intimate-staging",
       "hyperdrive": [
         { "binding": "HYPERDRIVE", "id": "c56d9b6e947a4841baa30f8b6a6b9e55" }
-      ]
+      ],
+      "vars": {
+        "PUBLIC_SUPABASE_URL": "https://jqrfzqbuvekhcptqcpda.supabase.co",
+        "PUBLIC_SUPABASE_KEY": "sb_publishable_jzpgxggUIg8-uodVAaT1SA_KZxO34fe"
+      }
     }
   }
 }

@@ -1,0 +1,30 @@
+---
+/**
+ * Titled page section — owns vertical rhythm and the section-heading style
+ * (DESIGN §2.3/2.6). Pages never hand-roll `py-*` between blocks or heading
+ * margins; adjacent Sections sum to the DESIGN rhythm (48px mobile / 80px md).
+ * Slots: default (content) · `meta` (beside the title) · `actions` (right side).
+ */
+interface Props {
+  title?: string;
+  class?: string;
+}
+
+const { title, class: className } = Astro.props;
+const hasHeader = Boolean(title || Astro.slots.has('meta') || Astro.slots.has('actions'));
+---
+
+<section class:list={['py-6 md:py-10', className]}>
+  {
+    hasHeader && (
+      <div class="mb-5 flex items-end justify-between gap-4">
+        <div class="flex items-baseline gap-3">
+          {title && <h2 class="display text-2xl">{title}</h2>}
+          <slot name="meta" />
+        </div>
+        <slot name="actions" />
+      </div>
+    )
+  }
+  <slot />
+</section>

@@ -1,5 +1,5 @@
 import * as m from '@/paraglide/messages';
-import type { Gender, Service } from './taxonomy';
+import type { Gender, ListingCategorySlug, Service, ServiceCategory, SortOption } from './taxonomy';
 
 /** Taxonomy value → localized label (taxonomy = law: labels only via i18n). */
 export function genderLabel(g: Gender): string {
@@ -21,4 +21,37 @@ export function genderLabel(g: Gender): string {
 export function serviceLabel(s: Service): string {
   const fn = (m as Record<string, unknown>)[`taxonomy_services_${s}`];
   return typeof fn === 'function' ? (fn as () => string)() : s;
+}
+
+export function serviceCategoryLabel(c: ServiceCategory): string {
+  const fn = (m as Record<string, unknown>)[`taxonomy_service_categories_${c}`];
+  return typeof fn === 'function' ? (fn as () => string)() : c;
+}
+
+export function listingCategoryLabel(slug: ListingCategorySlug): string {
+  switch (slug) {
+    case 'private-visit':
+      return m.cat_private();
+    case 'escort':
+      return m.cat_escort();
+    case 'erotic-massage':
+      return m.cat_massage();
+    case 'virtual-sex':
+      return m.cat_virtual();
+    case 'bdsm':
+      return m.cat_bdsm();
+  }
+}
+
+export function sortLabel(s: SortOption): string {
+  switch (s) {
+    case 'newest':
+      return m.sort_newest();
+    case 'recently_online':
+      return m.sort_recently_online();
+    case 'price_low_high':
+      return m.sort_price_low_high();
+    case 'price_high_low':
+      return m.sort_price_high_low();
+  }
 }

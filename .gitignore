@@ -21,3 +21,6 @@ safeimg-originals/
 .idea/
 .remember/
 .claude/settings.local.json
+
+# supabase CLI runtime artifacts
+supabase/.temp/

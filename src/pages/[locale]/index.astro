@@ -1,26 +1,48 @@
 ---
 import Layout from '@/layouts/Layout.astro';
 import * as m from '@/paraglide/messages';
-import ProfileCard from '@/components/ProfileCard.astro';
-import ProfileImage from '@/components/ProfileImage.astro';
-import SearchControl from '@/components/SearchControl.astro';
-import { Button } from '@/components/ui/button';
-import { ARTICLES, FEATURED, PROFILES } from '@/lib/fixtures';
+import { isLocale, localizePath, samePathAlternates } from '@/lib/i18n';
+import { organizationJsonLd, websiteJsonLd } from '@/lib/seo';
+import ProfileCard from '@/components/organisms/profile/ProfileCard.astro';
+import Section from '@/components/molecules/Section.astro';
+import SafeImage from '@/components/atoms/SafeImage.astro';
+import SearchControl from '@/components/molecules/SearchControl.astro';
+import Button from '@/components/atoms/Button.astro';
+import { articlesApi } from '@/app/api/articles';
+import { profilesApi } from '@/app/api/profiles';
 import { CITIES } from '@/lib/taxonomy';
 
+const locale = Astro.params.locale;
+if (!isLocale(locale)) return new Response(null, { status: 404 });
+
 const cities = CITIES.slice(0, 8);
-const onlineCount = PROFILES.filter((p) => p.online).length;
-const rail = [...FEATURED, ...PROFILES.filter((p) => !p.featured)].slice(0, 8);
-const heroAvatars = [PROFILES[2]!, PROFILES[3]!, PROFILES[6]!];
-const featuredArticle = ARTICLES.find((a) => a.featured)!;
-const moreArticles = ARTICLES.filter((a) => !a.featured);
+const alternates = samePathAlternates(Astro.url.origin, '/');
+const jsonLd = [websiteJsonLd(Astro.url.origin, locale), organizationJsonLd(Astro.url.origin)];
+
+const [{ items: profiles }, { items: featured }, { total: onlineCount }, { items: articles }] =
+  await Promise.all([
+    profilesApi.list({ limit: 24 }),
+    profilesApi.list({ featuredOnly: true, limit: 8 }),
+    profilesApi.list({ onlineOnly: true, limit: 0 }),
+    articlesApi.list(),
+  ]);
+
+const rail = [...featured, ...profiles.filter((p) => !p.featured)].slice(0, 8);
+const heroAvatars = [profiles[2], profiles[3], profiles[6]].filter((p) => p !== undefined);
+const featuredArticle = articles.find((a) => a.featured)!;
+const moreArticles = articles.filter((a) => !a.featured);
 ---
 
-<Layout>
+<Layout
+  description="Verified directory for legal adult services in the Netherlands — private visits, escorts, massage. Every profile verified."
+  canonical={new URL(`/${locale}/`, Astro.url.origin).href}
+  {alternates}
+  {jsonLd}
+>
   <div class="mx-auto max-w-7xl px-4 md:px-6">
     <!-- Hero: clean black card (registration for advertisers + clients) -->
     <section
-      class="relative mt-4 overflow-hidden rounded-3xl bg-neutral-950 text-white ring-1 ring-white/10 md:mt-6"
+      class="dark relative mt-4 overflow-hidden rounded-3xl bg-neutral-950 text-white ring-1 ring-white/10 md:mt-6"
     >
       <!-- Promo video fills the right half, fading into the black (intimate.nl style).
            Safe-mode gated: safe image by default, video only when safe mode is off. -->
@@ -38,7 +60,7 @@ const moreArticles = ARTICLES.filter((a) => !a.featured);
           <source src="/video/hero.webm" type="video/webm" />
           <source src="/video/hero.mp4" type="video/mp4" />
         </video>
-        <ProfileImage imageKey="hero-video" alt="" class="h-full w-full" loading="eager" />
+        <SafeImage imageKey="hero-video" alt="" class="h-full w-full" loading="eager" />
         <div
           class="absolute inset-0 bg-gradient-to-r from-neutral-950 via-neutral-950/35 to-transparent"
           aria-hidden="true"
@@ -53,7 +75,7 @@ const moreArticles = ARTICLES.filter((a) => !a.featured);
             <span class="mx-1 inline-flex align-middle -space-x-3">
               {
                 heroAvatars.map((a) => (
-                  <ProfileImage
+                  <SafeImage
                     imageKey={a.id}
                     src={a.photos[0]}
                     alt={a.name}
@@ -69,17 +91,17 @@ const moreArticles = ARTICLES.filter((a) => !a.featured);
             Verified profiles, discreet and safe — for advertisers and visitors.
           </p>
           <div class="mt-7 flex flex-wrap gap-3">
-            <Button as="a" href="/account/" size="lg">Start advertising</Button>
+            <Button as="a" href={localizePath("/account/")} size="lg">Start advertising</Button>
             <Button
               as="a"
-              href="/account/"
+              href={localizePath("/account/")}
               size="lg"
               class="border-0 bg-white text-neutral-900 hover:bg-white/90"
             >
               Create free account
             </Button>
           </div>
-          <p class="mt-8 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.14em] text-white/60">
+          <p class="mt-8 eyebrow flex items-center gap-2 text-white/60">
             <span class="size-1.5 rounded-full bg-online"></span>
             {onlineCount} {m.online_now().toLowerCase()} · 100% verified
           </p>
@@ -94,7 +116,7 @@ const moreArticles = ARTICLES.filter((a) => !a.featured);
         {
           cities.map((c, i) => (
             <a
-              href={`/${c.slug}/`}
+              href={localizePath(`/${c.slug}/`)}
               class:list={[
                 'flex-none rounded-full border px-4 py-2 text-sm font-medium transition-colors',
                 i === 0
@@ -110,8 +132,7 @@ const moreArticles = ARTICLES.filter((a) => !a.featured);
     </section>
 
     <!-- Featured: slideshow of cards -->
-    <section class="py-10 md:py-14">
-      <h2 class="display mb-5 text-2xl">{m.section_featured()}</h2>
+    <Section title={m.section_featured()}>
       <!-- bleeds to the viewport edge so cards and their shadows never get cut -->
       <div
         class="-mx-4 -mb-6 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-10 pt-1 [scrollbar-width:none] scroll-pl-4 md:-mx-6 md:px-6 md:scroll-pl-6 [&::-webkit-scrollbar]:hidden"
@@ -124,51 +145,42 @@ const moreArticles = ARTICLES.filter((a) => !a.featured);
           ))
         }
       </div>
-    </section>
+    </Section>
 
     <!-- Grid -->
-    <section class="pb-10 md:pb-14">
-      <h2 class="display mb-5 text-2xl">New & online</h2>
+    <Section title="New & online">
       <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-        {PROFILES.map((p, i) => <ProfileCard profile={p} loading={i < 4 ? 'eager' : 'lazy'} />)}
+        {profiles.map((p, i) => <ProfileCard profile={p} loading={i < 4 ? 'eager' : 'lazy'} />)}
       </div>
-    </section>
+    </Section>
 
     <!-- Articles -->
-    <section class="pb-12 md:pb-16">
-      <div class="mb-5 flex items-end justify-between gap-4">
-        <div class="flex items-baseline gap-3">
-          <h2 class="display text-2xl">{m.section_articles()}</h2>
-          <p class="hidden text-sm text-muted-foreground sm:block">{m.articles_by()}</p>
-        </div>
-        <a
-          href="/blog/"
-          class="text-xs font-semibold uppercase tracking-[0.12em] text-foreground hover:text-primary"
-        >
-          {m.to_blog()} →
-        </a>
-      </div>
+    <Section title={m.section_articles()}>
+      <p slot="meta" class="hidden text-sm text-muted-foreground sm:block">{m.articles_by()}</p>
+      <a slot="actions" href={localizePath("/blog/")} class="eyebrow font-semibold text-foreground hover:text-primary">
+        {m.to_blog()} →
+      </a>
 
       <div class="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
         <a
-          href={`/blog/${featuredArticle.slug}/`}
+          href={localizePath(`/blog/${featuredArticle.slug}/`)}
           class="group relative block overflow-hidden rounded-2xl shadow-soft transition-shadow hover:shadow-soft-lg dark:ring-1 dark:ring-border"
         >
-          <ProfileImage
+          <SafeImage
             imageKey={featuredArticle.id}
             alt={featuredArticle.title}
             class="aspect-[16/10] h-full w-full transition-transform duration-300 group-hover:scale-[1.02] lg:aspect-auto lg:absolute lg:inset-0"
           />
-          <span class="glass-media absolute left-4 top-4 rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em]">
+          <span class="glass-media absolute left-4 top-4 eyebrow rounded-full border px-3 py-1 text-2xs font-semibold text-white">
             {m.section_featured()}
           </span>
           <div class="glass-media bottom-4 left-4 right-4 rounded-xl border p-5 lg:absolute">
-            <p class="font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-primary-foreground/90">
+            <p class="eyebrow text-2xs font-mono font-semibold text-primary-foreground/90">
               {featuredArticle.minutes} {m.min_read()}
             </p>
             <h3 class="mt-1.5 text-xl font-semibold leading-snug">{featuredArticle.title}</h3>
             <p class="mt-1.5 line-clamp-2 text-sm text-white/80">{featuredArticle.excerpt}</p>
-            <p class="mt-3 text-xs font-semibold uppercase tracking-[0.12em]">
+            <p class="eyebrow mt-3 font-semibold text-white">
               {m.read_article()} →
             </p>
           </div>
@@ -180,16 +192,16 @@ const moreArticles = ARTICLES.filter((a) => !a.featured);
           {
             moreArticles.map((a) => (
               <a
-                href={`/blog/${a.slug}/`}
+                href={localizePath(`/blog/${a.slug}/`)}
                 class="group flex items-center gap-4 rounded-2xl bg-card p-3 shadow-soft transition-shadow hover:shadow-soft-lg dark:ring-1 dark:ring-border"
               >
-                <ProfileImage
+                <SafeImage
                   imageKey={a.id}
                   alt={a.title}
                   class="aspect-[4/3] w-28 flex-none rounded-xl"
                 />
                 <div class="min-w-0">
-                  <p class="font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-primary">
+                  <p class="eyebrow text-2xs font-mono font-semibold text-primary">
                     {a.minutes} {m.min_read()}
                   </p>
                   <h3 class="mt-1 line-clamp-2 font-semibold leading-snug group-hover:text-primary">
@@ -201,26 +213,26 @@ const moreArticles = ARTICLES.filter((a) => !a.featured);
           }
         </div>
       </div>
-    </section>
+    </Section>
 
     <!-- Bottom hero: advertisers CTA banner -->
     <section class="pb-12 md:pb-16">
       <div class="grid overflow-hidden rounded-3xl shadow-soft dark:ring-1 dark:ring-border lg:grid-cols-[1fr_1.15fr]">
         <div class="relative aspect-[16/10] lg:aspect-auto lg:min-h-[22rem]">
-          <ProfileImage
+          <SafeImage
             imageKey="bottom-hero"
             src="/video/hero-poster.jpg"
             alt=""
             class="h-full w-full lg:absolute lg:inset-0"
           />
-          <span class="glass-media absolute left-4 top-4 rounded-full border px-3.5 py-1.5 text-[11px] font-semibold uppercase tracking-[0.12em]">
+          <span class="glass-media absolute left-4 top-4 eyebrow rounded-full border px-3.5 py-1.5 text-2xs font-semibold text-white">
             Free in early access
           </span>
         </div>
         <div
           class="flex flex-col justify-center bg-gradient-to-br from-(--accent-gradient-from) to-(--accent-gradient-to) p-8 text-white md:p-12"
         >
-          <p class="flex items-center gap-3 text-xs font-medium uppercase tracking-[0.18em] text-white/70">
+          <p class="eyebrow flex items-center gap-3 text-white/70">
             <span class="h-px w-6 bg-white/50" aria-hidden="true"></span>
             For advertisers
           </p>
@@ -232,12 +244,12 @@ const moreArticles = ARTICLES.filter((a) => !a.featured);
             in your region.
           </p>
           <div class="mt-7 flex flex-wrap gap-3">
-            <Button as="a" href="/account/" size="lg" class="border-0 bg-white text-neutral-900 hover:bg-white/90">
+            <Button as="a" href={localizePath("/account/")} size="lg" class="border-0 bg-white text-neutral-900 hover:bg-white/90">
               Place ad
             </Button>
             <Button
               as="a"
-              href="/blog/starten-als-escort-in-nederland/"
+              href={localizePath("/blog/starten-als-escort-in-nederland/")}
               size="lg"
               class="border border-white/30 bg-white/10 text-white hover:bg-white/20"
             >
