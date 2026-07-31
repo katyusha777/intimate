@@ -1,0 +1,60 @@
+---
+/**
+ * Generic modal on the native <dialog> element (focus trap, Esc, inert page —
+ * all free from the platform). Open with any element carrying
+ * `data-modal-open="<id>"`; close via `data-modal-close` or backdrop click.
+ */
+interface Props {
+  id: string;
+  class?: string;
+}
+const { id, class: className } = Astro.props;
+---
+
+<dialog
+  id={id}
+  data-modal
+  class:list={[
+    'm-auto w-full max-w-md rounded-2xl border-0 bg-card p-0 text-foreground shadow-soft-lg',
+    'backdrop:bg-black/60 backdrop:backdrop-blur-sm',
+    className,
+  ]}
+>
+  <slot />
+</dialog>
+
+<script>
+  function initModals() {
+    document.querySelectorAll<HTMLDialogElement>('dialog[data-modal]').forEach((d) => {
+      if (d.dataset.init) return;
+      d.dataset.init = '1';
+      // click on the backdrop (the dialog element itself) closes
+      d.addEventListener('click', (e) => {
+        if (e.target === d) d.close();
+      });
+    });
+  }
+
+  if (!(window as any).__modalDelegation) {
+    (window as any).__modalDelegation = true;
+    document.addEventListener('click', (e) => {
+      const t = e.target as HTMLElement;
+      if (!t.closest) return;
+      const opener = t.closest<HTMLElement>('[data-modal-open]');
+      if (opener) {
+        e.preventDefault();
+        const dlg = document.getElementById(opener.dataset.modalOpen!) as HTMLDialogElement | null;
+        if (dlg) {
+          dlg.dispatchEvent(new CustomEvent('modal:open', { detail: opener.dataset }));
+          dlg.showModal();
+        }
+        return;
+      }
+      const closer = t.closest('[data-modal-close]');
+      if (closer) closer.closest('dialog')?.close();
+    });
+  }
+
+  initModals();
+  document.addEventListener('astro:page-load', initModals);
+</script>

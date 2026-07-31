@@ -3,6 +3,7 @@ import { ClientRouter } from 'astro:transitions';
 import * as m from '@/paraglide/messages';
 import ThemeToggle from '@/components/ThemeToggle.astro';
 import SafeModeToggle from '@/components/SafeModeToggle.astro';
+import AuthModal from '@/components/AuthModal.astro';
 import { CITIES } from '@/lib/taxonomy';
 import '@fontsource-variable/inter';
 import '@/styles/global.css';
@@ -38,7 +39,7 @@ const tabs = [
 ---
 
 <!doctype html>
-<html lang="nl">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -74,152 +75,110 @@ const tabs = [
       class="glass sticky top-0 z-40 border-b"
       style="padding-top: env(safe-area-inset-top)"
     >
-      <!-- Row 1: logo · locale · search · nav · theme/favorites · login -->
-      <div class="mx-auto flex h-14 max-w-7xl items-center gap-3 px-4 md:h-[4.5rem] md:gap-5 md:px-6">
+      <!-- Row 1: logo · nav (active underline) · location · circle buttons · account -->
+      <div class="mx-auto flex h-14 max-w-7xl items-center gap-3 px-4 md:h-[4.25rem] md:gap-4 md:px-6">
         <a href="/" aria-label={m.app_name()} class="flex flex-none items-center">
           <!-- naming follows the source files: LIGHT = light (white) lettering, DARK = dark lettering -->
           <img src="/img/logo-dark.svg" alt={m.app_name()} class="h-9 w-auto dark:hidden" />
           <img src="/img/logo-light.svg" alt={m.app_name()} class="hidden h-9 w-auto dark:block" />
         </a>
 
-        <button
-          type="button"
-          class="hidden flex-none items-center gap-1 rounded-md px-2 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground md:flex"
-        >
-          NL
-          <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
-        </button>
-
-        <label
-          class="hidden h-11 max-w-xl flex-1 cursor-text items-center gap-3 rounded-full bg-muted/70 px-5 ring-1 ring-transparent transition-shadow focus-within:ring-ring md:flex"
-        >
-          <svg class="size-4.5 flex-none text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
-          <input
-            type="search"
-            placeholder={m.search_placeholder()}
-            class="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground [&::-webkit-search-cancel-button]:hidden"
-          />
-        </label>
-
-        <nav class="ml-auto hidden flex-none items-center gap-5 text-sm font-medium lg:flex">
-          <a href="/account/" class="rounded-sm bg-primary/15 px-2 py-1">{m.cta_advertise()}</a>
-          <a href="/blog/" class="text-muted-foreground transition-colors hover:text-foreground">{m.section_articles()}</a>
-          <a href="/contact/" class="text-muted-foreground transition-colors hover:text-foreground">{m.nav_contact()}</a>
+        <!-- Main categories -->
+        <nav class="ml-2 hidden items-stretch self-stretch lg:flex">
+          {
+            [
+              { label: m.cat_private(), href: '/private-visit/', icon: 'fa-house', active: path.startsWith('/private-visit') },
+              { label: m.cat_escort(), href: '/escort/', icon: 'fa-car-side', active: path.startsWith('/escort') },
+              { label: m.cat_massage(), href: '/massage/', icon: 'fa-spa', active: path.startsWith('/massage') },
+              { label: m.cat_virtual(), href: '/virtual/', icon: 'fa-camera-web', active: path.startsWith('/virtual') },
+              { label: m.cat_bdsm(), href: '/bdsm/', icon: 'fa-handcuffs', active: path.startsWith('/bdsm') },
+            ].map((l) => (
+              <a
+                href={l.href}
+                aria-current={l.active ? 'page' : undefined}
+                class:list={[
+                  'relative flex items-center gap-2 px-3.5 text-sm font-medium transition-colors',
+                  l.active
+                    ? 'text-primary after:absolute after:inset-x-3.5 after:bottom-0 after:h-0.5 after:bg-primary'
+                    : 'text-muted-foreground hover:text-foreground',
+                ]}
+              >
+                <i class:list={['fa-thin', l.icon]} aria-hidden="true" />
+                {l.label}
+              </a>
+            ))
+          }
         </nav>
 
-        <span class="hidden h-6 w-px flex-none bg-border lg:block" aria-hidden="true"></span>
+        <nav class="ml-auto hidden flex-none items-center gap-5 text-sm font-medium md:flex">
+          <a href="/blog/" class="text-muted-foreground transition-colors hover:text-foreground">
+            {m.section_articles()}
+          </a>
+          <a href="/contact/" class="text-muted-foreground transition-colors hover:text-foreground">
+            {m.nav_contact()}
+          </a>
+        </nav>
 
-        <div class="ml-auto flex flex-none items-center gap-0.5 lg:ml-0">
-          <ThemeToggle />
-          <a
-            href="/favorites/"
-            aria-label={m.nav_favorites()}
-            class="hidden rounded-md p-2 text-muted-foreground hover:text-foreground md:block"
+        <div class="ml-auto flex flex-none items-center gap-4 md:ml-5">
+          <button
+            type="button"
+            data-modal-open="auth"
+            data-auth-tab="login"
+            class="text-sm font-semibold transition-colors hover:text-primary"
           >
-            <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7Z" /></svg>
-          </a>
-          <a
-            href="/"
-            aria-label={m.nav_search()}
-            class="rounded-md p-2 text-muted-foreground hover:text-foreground md:hidden"
+            {m.nav_login()}
+          </button>
+          <button
+            type="button"
+            data-modal-open="auth"
+            data-auth-tab="register"
+            class="h-9 rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 md:h-10 md:px-6"
           >
-            <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
-          </a>
+            {m.nav_register()}
+          </button>
         </div>
-
-        <a
-          href="/account/"
-          class="flex h-9 flex-none items-center rounded-full bg-foreground px-5 text-sm font-semibold text-background transition-opacity hover:opacity-85 md:h-11 md:px-7"
-        >
-          {m.nav_login()}
-        </a>
       </div>
 
-      <!-- Row 2: category bar -->
-      <div class="border-t border-border/60">
-        <div class="mx-auto flex h-12 max-w-7xl items-stretch px-4 md:h-14 md:px-6">
+      <!-- Row 2: search bar · filter segments · save search -->
+      <div class="border-t border-border/60 bg-muted/30">
+        <div class="mx-auto flex h-14 max-w-7xl items-center px-4 md:h-16 md:px-6">
+          <label
+            class="flex h-10 w-full max-w-sm cursor-text items-center gap-3 rounded-xl bg-muted px-4 ring-1 ring-transparent transition-shadow focus-within:ring-ring md:h-11"
+          >
+            <i class="fa-thin fa-wand-magic-sparkles text-primary" aria-hidden="true"></i>
+            <input
+              type="search"
+              placeholder={m.search_ai_placeholder()}
+              class="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground [&::-webkit-search-cancel-button]:hidden"
+            />
+          </label>
           <button
             type="button"
-            class="my-2 mr-4 hidden flex-none items-center gap-3 rounded-xl bg-gradient-to-r from-(--accent-gradient-from) to-(--accent-gradient-to) px-5 text-sm font-semibold uppercase tracking-wide text-white transition-opacity hover:opacity-90 md:flex"
+            class="ml-3 flex h-10 flex-none items-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 md:h-11 md:px-6"
           >
-            <svg class="size-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></svg>
-            {m.all_categories()}
-            <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+            <i class="fa-thin fa-sparkles" aria-hidden="true"></i>
+            {m.nav_search()}
           </button>
 
-          <nav
-            class="flex flex-1 items-stretch overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-            aria-label={m.all_categories()}
-          >
+          <div class="mx-2 hidden flex-1 items-stretch self-stretch lg:flex">
             {
               [
-                {
-                  label: m.cat_women(),
-                  href: '/vrouwen/',
-                  active: true,
-                  icon: '<circle cx="12" cy="8" r="5"/><path d="M12 13v8M9 18h6"/>',
-                },
-                {
-                  label: m.cat_men(),
-                  href: '/mannen/',
-                  icon: '<circle cx="10" cy="14" r="5"/><path d="m19 5-5.4 5.4M14 5h5v5"/>',
-                },
-                {
-                  label: m.cat_lgbt(),
-                  href: '/lgbt/',
-                  icon: '<path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7Z"/>',
-                },
-                {
-                  label: m.cat_business(),
-                  href: '/bedrijven/',
-                  icon: '<rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4M8 7h.01M16 7h.01M12 7h.01M8 12h.01M12 12h.01M16 12h.01"/>',
-                },
-                {
-                  label: m.cat_events(),
-                  href: '/evenementen/',
-                  icon: '<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
-                },
-              ].map((c) => (
-                <a
-                  href={c.href}
-                  aria-current={c.active ? 'page' : undefined}
-                  class:list={[
-                    'relative flex flex-none items-center gap-2.5 px-4 text-sm font-medium transition-colors md:px-6',
-                    c.active
-                      ? 'bg-primary/5 text-primary after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:bg-primary'
-                      : 'text-muted-foreground hover:text-foreground',
-                  ]}
+                { label: 'Amsterdam', icon: 'fa-location-dot' },
+                { label: m.cat_women(), icon: 'fa-venus' },
+                { label: m.search_availability(), icon: 'fa-bolt' },
+              ].map((f) => (
+                <button
+                  type="button"
+                  class="flex flex-1 items-center justify-center gap-3 border-l border-border text-sm font-medium text-foreground transition-colors last:border-r hover:bg-muted/50"
                 >
-                  <svg
-                    class="size-5"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="1.8"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    aria-hidden="true"
-                    set:html={c.icon}
-                  />
-                  {c.label}
-                </a>
+                  <i class:list={['fa-thin', f.icon, 'text-muted-foreground']} aria-hidden="true" />
+                  {f.label}
+                  <i class="fa-thin fa-chevron-down text-xs text-muted-foreground" aria-hidden="true" />
+                </button>
               ))
             }
-          </nav>
+          </div>
 
-          <button
-            type="button"
-            class="my-2 ml-4 hidden flex-none items-center gap-3 rounded-xl px-2 text-left transition-colors hover:bg-muted/60 lg:flex"
-          >
-            <span class="grid size-10 flex-none place-items-center rounded-full bg-primary/10 text-primary">
-              <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0Z" /><circle cx="12" cy="10" r="3" /></svg>
-            </span>
-            <span>
-              <span class="block text-sm font-semibold leading-tight">Amsterdam</span>
-              <span class="block text-xs leading-tight text-muted-foreground">Noord-Holland</span>
-            </span>
-            <svg class="size-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
-          </button>
         </div>
       </div>
     </header>
@@ -257,12 +216,12 @@ const tabs = [
               <span class="size-1.5 rounded-full bg-primary"></span>
               Early access
             </span>
-            <p class="display mt-5 text-3xl md:text-5xl">Waar connecties beginnen</p>
+            <p class="display mt-5 text-3xl md:text-5xl">Where connections begin</p>
           </div>
           <div class="space-y-3 lg:text-right">
             <img src="/img/logo-light.svg" alt={m.app_name()} class="h-14 w-auto lg:ml-auto" />
             <p class="max-w-xs text-sm text-white/50 lg:ml-auto">
-              Nieuw platform, volop in ontwikkeling. We bouwen Intimate samen met jou.
+              A new platform, in active development. We're building Intimate together with you.
             </p>
           </div>
         </div>
@@ -272,27 +231,27 @@ const tabs = [
           {
             [
               {
-                title: 'Informatie',
+                title: 'Information',
                 links: [
-                  ['Over Intimate', '/over/'],
-                  ['Artikelen', '/blog/'],
+                  ['About Intimate', '/about/'],
+                  ['Articles', '/blog/'],
                   ['Forum', '/forum/'],
-                  ['Documentatie', '/docs/'],
+                  ['Documentation', '/docs/'],
                 ],
               },
               {
                 title: 'Help',
                 links: [
-                  ['Profielregels', '/profielregels/'],
-                  ['Veiligheid & Bewustwording', '/veiligheid/'],
+                  ['Profile rules', '/profile-rules/'],
+                  ['Safety & awareness', '/safety/'],
                   ['Helpdesk', '/helpdesk/'],
                   ['Contact', '/contact/'],
                 ],
               },
               {
-                title: 'Regelgeving',
+                title: 'Legal',
                 links: [
-                  ['Algemene Voorwaarden', '/voorwaarden/'],
+                  ['Terms & conditions', '/terms/'],
                   ['Privacy & Cookies', '/privacy/'],
                 ],
               },
@@ -318,7 +277,7 @@ const tabs = [
           <div class="rounded-2xl bg-white/5 p-5 ring-1 ring-white/10">
             <p class="flex items-center gap-3 text-xs font-medium uppercase tracking-[0.18em] text-white/50">
               <span class="h-px w-5 bg-white/30" aria-hidden="true"></span>
-              Vragen?
+              Questions?
             </p>
             <p class="mt-3 flex items-center gap-2.5">
               <span class="grid size-8 place-items-center rounded-full bg-online/90 text-neutral-950">
@@ -326,14 +285,14 @@ const tabs = [
               </span>
               <span class="font-semibold">085 333 2377</span>
             </p>
-            <p class="mt-2 text-xs text-white/50">WhatsApp, ma–vr 9:00–17:00</p>
+            <p class="mt-2 text-xs text-white/50">WhatsApp, Mon–Fri 9:00–17:00</p>
             <div class="mt-4 rounded-lg bg-amber-400/10 p-3 ring-1 ring-amber-400/25">
               <p class="text-[11px] font-bold uppercase tracking-[0.08em] text-amber-200">
-                ⚠ Géén escortbureau
+                ⚠ Not an escort agency
               </p>
               <p class="mt-1 text-xs leading-relaxed text-amber-100/70">
-                Wij zijn een advertentieplatform — afspraken maak je rechtstreeks met adverteerders.
-                We bemiddelen niet en plannen geen boekingen.
+                We are an advertising platform — appointments are made directly with advertisers.
+                We do not mediate or schedule bookings.
               </p>
             </div>
           </div>
@@ -343,16 +302,17 @@ const tabs = [
         <div class="flex flex-wrap items-center justify-between gap-4 border-t border-white/10 py-6 pb-24 md:pb-6">
           <p class="flex items-center gap-3">
             <span class="rounded-full px-2.5 py-1 text-xs font-bold ring-1 ring-white/25">18+</span>
-            <span class="text-sm text-white/50">© 2026 Intimate.nl. Alle rechten voorbehouden.</span>
+            <span class="text-sm text-white/50">© 2026 Intimate.nl. All rights reserved.</span>
           </p>
           <div class="flex items-center gap-6">
             <SafeModeToggle />
+            <ThemeToggle />
             <button
               type="button"
               data-scroll-top
               class="flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] ring-1 ring-white/20 transition-colors hover:bg-white/10"
             >
-              Terug naar boven
+              Back to top
               <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m18 15-6-6-6 6" /></svg>
             </button>
           </div>
@@ -392,6 +352,8 @@ const tabs = [
         }
       </div>
     </nav>
+
+    <AuthModal />
 
     <script is:inline>
       // Safe mode (DESIGN.md §6): fail-closed. Server HTML always ships safe

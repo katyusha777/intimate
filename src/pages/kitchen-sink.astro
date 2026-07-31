@@ -29,11 +29,11 @@ const swatches = [
 <Layout title="Kitchen sink">
   <div class="mx-auto max-w-7xl space-y-14 px-4 py-10 md:px-6">
     <header>
-      <p class="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">intern</p>
+      <p class="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">internal</p>
       <h1 class="display text-3xl">Kitchen sink</h1>
       <p class="mt-2 text-sm text-muted-foreground">
-        Elke variant, beide thema's, safe mode aan/uit. Als twee componenten hier van elkaar
-        afwijken, zijn zíj fout — niet de pagina.
+        Every variant, both themes, safe mode on/off. If two components here disagree
+        with each other, they are wrong — not the page.
       </p>
     </header>
 
@@ -53,7 +53,7 @@ const swatches = [
     </section>
 
     <section class="space-y-4">
-      <h2 class="text-xl font-semibold">Kleuren</h2>
+      <h2 class="text-xl font-semibold">Colors</h2>
       <div class="flex flex-wrap gap-3">
         {
           swatches.map(([name, cls]) => (
@@ -67,50 +67,50 @@ const swatches = [
     </section>
 
     <section class="space-y-4">
-      <h2 class="text-xl font-semibold">Typografie</h2>
+      <h2 class="text-xl font-semibold">Typography</h2>
       <div class="space-y-3">
         <p class="display text-5xl">Display</p>
-        <p class="text-2xl font-semibold tracking-tight">Paginatitel (h1)</p>
-        <p class="text-xl font-semibold">Sectie (h2)</p>
-        <p class="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">Eyebrow-label</p>
+        <p class="text-2xl font-semibold tracking-tight">Page title (h1)</p>
+        <p class="text-xl font-semibold">Section (h2)</p>
+        <p class="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">Eyebrow label</p>
         <p class="max-w-lg leading-relaxed">
-          Body — modern, discreet en veilig. Eén font, gewicht en tracking doen het werk.
+          Body — modern, discreet and safe. One font; weight and tracking do the work.
         </p>
         <p class="text-sm text-muted-foreground">Meta / caption</p>
       </div>
     </section>
 
     <section class="space-y-4">
-      <h2 class="text-xl font-semibold">Knoppen & badges</h2>
+      <h2 class="text-xl font-semibold">Buttons & badges</h2>
       <div class="flex flex-wrap items-center gap-3">
-        <Button>Primair</Button>
+        <Button>Primary</Button>
         <Button variant="outline">Outline</Button>
         <Button variant="ghost">Ghost</Button>
-        <Button variant="secondary">Secundair</Button>
-        <Button size="sm">Klein</Button>
+        <Button variant="secondary">Secondary</Button>
+        <Button size="sm">Small</Button>
         <Badge>Badge</Badge>
-        <Badge variant="secondary">Secundair</Badge>
+        <Badge variant="secondary">Secondary</Badge>
         <Badge variant="outline">Outline</Badge>
-        <span class="flex items-center gap-1 text-sm font-medium"><VerifiedBadge /> Geverifieerd</span>
-        <span class="flex items-center gap-1.5 text-sm"><span class="size-2 rounded-full bg-online"></span> Nu online</span>
+        <span class="flex items-center gap-1 text-sm font-medium"><VerifiedBadge /> Verified</span>
+        <span class="flex items-center gap-1.5 text-sm"><span class="size-2 rounded-full bg-online"></span> Online now</span>
       </div>
     </section>
 
     <section class="space-y-4">
-      <h2 class="text-xl font-semibold">Glass-materialen</h2>
+      <h2 class="text-xl font-semibold">Glass materials</h2>
       <div class="relative overflow-hidden rounded-2xl">
-        <ProfileImage imageKey="glass-demo" alt="Glass demo achtergrond" class="h-64 w-full" />
+        <ProfileImage imageKey="glass-demo" alt="Glass demo background" class="h-64 w-full" />
         <div class="absolute inset-0 flex flex-col items-start justify-center gap-3 p-6">
-          <div class="glass-media rounded-full border px-4 py-2 text-sm">media — overlays op foto's (themavast)</div>
+          <div class="glass-media rounded-full border px-4 py-2 text-sm">media — overlays on photos (theme-fixed)</div>
           <div class="glass-ultrathin rounded-full border px-4 py-2 text-sm">ultrathin</div>
-          <div class="glass-thin rounded-xl border px-4 py-2 text-sm">thin — tabbar, actiebalk</div>
+          <div class="glass-thin rounded-xl border px-4 py-2 text-sm">thin — tab bar, action bar</div>
           <div class="glass rounded-xl border px-4 py-2 text-sm">regular — header, sheets</div>
         </div>
       </div>
     </section>
 
     <section class="space-y-4">
-      <h2 class="text-xl font-semibold">Zoek & schakelaars</h2>
+      <h2 class="text-xl font-semibold">Search & toggles</h2>
       <div class="flex flex-wrap items-center gap-6">
         <SearchControl />
         <SafeModeToggle />
@@ -140,7 +140,7 @@ const swatches = [
     </section>
 
     <section class="space-y-4">
-      <h2 class="text-xl font-semibold">Carousel (los)</h2>
+      <h2 class="text-xl font-semibold">Carousel (standalone)</h2>
       <PhotoCarousel photos={p.photos} keyBase="sink-carousel" alt={p.name} class="aspect-[4/3] max-w-md rounded-2xl" />
     </section>
 

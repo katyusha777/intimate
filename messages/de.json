@@ -34,5 +34,22 @@
   "cat_men": "Männer",
   "cat_lgbt": "LGBT",
   "cat_business": "Betriebe",
-  "cat_events": "Events"
+  "cat_events": "Events",
+  "nav_home": "Home",
+  "save_search": "Suche speichern",
+  "cat_private": "Privatempfang",
+  "cat_escort": "Escort",
+  "cat_massage": "Erotische Massage",
+  "cat_virtual": "Virtueller Sex",
+  "cat_bdsm": "BDSM",
+  "search_ai_placeholder": "Beschreibe, was du suchst…",
+  "nav_register": "Registrieren",
+  "role_advertiser": "Inserent",
+  "role_client": "Kunde",
+  "auth_email": "E-Mail-Adresse",
+  "auth_password": "Passwort",
+  "auth_create_account": "Konto erstellen",
+  "auth_forgot": "Passwort vergessen?",
+  "auth_terms": "Mit dem Fortfahren akzeptierst du die AGB und die Datenschutzerklärung.",
+  "auth_welcome": "Willkommen bei Intimate"
 }

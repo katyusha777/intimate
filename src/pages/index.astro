@@ -49,7 +49,7 @@ const moreArticles = ARTICLES.filter((a) => !a.featured);
       <div class="relative p-7 md:p-12">
         <div class="lg:max-w-[52%]">
           <h1 class="text-4xl font-bold tracking-tight md:text-6xl">
-            Vind
+            Find
             <span class="mx-1 inline-flex align-middle -space-x-3">
               {
                 heroAvatars.map((a) => (
@@ -63,25 +63,25 @@ const moreArticles = ARTICLES.filter((a) => !a.featured);
                 ))
               }
             </span>
-            jouw intieme connectie<span class="text-primary">.</span>
+            your intimate connection<span class="text-primary">.</span>
           </h1>
           <p class="mt-5 max-w-md leading-relaxed text-white/70">
-            Geverifieerde profielen, discreet en veilig — voor adverteerders én bezoekers.
+            Verified profiles, discreet and safe — for advertisers and visitors.
           </p>
           <div class="mt-7 flex flex-wrap gap-3">
-            <Button as="a" href="/account/" size="lg">Start met adverteren</Button>
+            <Button as="a" href="/account/" size="lg">Start advertising</Button>
             <Button
               as="a"
               href="/account/"
               size="lg"
               class="border-0 bg-white text-neutral-900 hover:bg-white/90"
             >
-              Maak gratis account
+              Create free account
             </Button>
           </div>
           <p class="mt-8 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.14em] text-white/60">
             <span class="size-1.5 rounded-full bg-online"></span>
-            {onlineCount} {m.online_now().toLowerCase()} · 100% geverifieerd
+            {onlineCount} {m.online_now().toLowerCase()} · 100% verified
           </p>
         </div>
       </div>
@@ -128,7 +128,7 @@ const moreArticles = ARTICLES.filter((a) => !a.featured);
 
     <!-- Grid -->
     <section class="pb-10 md:pb-14">
-      <h2 class="display mb-5 text-2xl">Nieuw & online</h2>
+      <h2 class="display mb-5 text-2xl">New & online</h2>
       <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
         {PROFILES.map((p, i) => <ProfileCard profile={p} loading={i < 4 ? 'eager' : 'lazy'} />)}
       </div>
@@ -214,7 +214,7 @@ const moreArticles = ARTICLES.filter((a) => !a.featured);
             class="h-full w-full lg:absolute lg:inset-0"
           />
           <span class="glass-media absolute left-4 top-4 rounded-full border px-3.5 py-1.5 text-[11px] font-semibold uppercase tracking-[0.12em]">
-            Gratis in early access
+            Free in early access
           </span>
         </div>
         <div
@@ -222,18 +222,18 @@ const moreArticles = ARTICLES.filter((a) => !a.featured);
         >
           <p class="flex items-center gap-3 text-xs font-medium uppercase tracking-[0.18em] text-white/70">
             <span class="h-px w-6 bg-white/50" aria-hidden="true"></span>
-            Voor adverteerders
+            For advertisers
           </p>
           <h2 class="display mt-4 text-3xl md:text-5xl [&::after]:text-white">
-            Plaats je advertentie
+            Place your ad
           </h2>
           <p class="mt-4 max-w-md leading-relaxed text-white/85">
-            En word eenvoudig gevonden door de juiste mensen — geverifieerd, discreet en zichtbaar
-            in jouw regio.
+            And get found easily by the right people — verified, discreet and visible
+            in your region.
           </p>
           <div class="mt-7 flex flex-wrap gap-3">
             <Button as="a" href="/account/" size="lg" class="border-0 bg-white text-neutral-900 hover:bg-white/90">
-              Plaats advertentie
+              Place ad
             </Button>
             <Button
               as="a"
@@ -241,7 +241,7 @@ const moreArticles = ARTICLES.filter((a) => !a.featured);
               size="lg"
               class="border border-white/30 bg-white/10 text-white hover:bg-white/20"
             >
-              Meer info →
+              More info →
             </Button>
           </div>
         </div>

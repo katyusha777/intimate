@@ -6,7 +6,7 @@
  */
 import * as m from '@/paraglide/messages';
 import type { FixtureProfile } from '@/lib/fixtures';
-import { genderLabel } from '@/lib/labels';
+import { genderLabel, serviceLabel } from '@/lib/labels';
 import { CITIES } from '@/lib/taxonomy';
 import ProfileImage from './ProfileImage.astro';
 import PhotoCarousel from './PhotoCarousel.astro';
@@ -57,10 +57,17 @@ const href = `/profile/${p.slug}/`;
           </div>
           <p class="flex-none pt-0.5 text-base font-semibold">€{p.priceFrom}</p>
         </div>
-        <div class="mt-2.5 flex flex-wrap gap-1.5">
-          <span class="rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
+        <div class="mt-2.5 flex h-6 gap-1.5 overflow-hidden">
+          <span class="flex-none rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium leading-none text-muted-foreground">
             {genderLabel(p.gender)}
           </span>
+          {
+            p.services.slice(0, 2).map((s) => (
+              <span class="flex-none rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium leading-none text-muted-foreground">
+                {serviceLabel(s)}
+              </span>
+            ))
+          }
         </div>
       </div>
     </a>

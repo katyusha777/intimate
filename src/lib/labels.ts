@@ -1,5 +1,5 @@
 import * as m from '@/paraglide/messages';
-import type { Gender } from './taxonomy';
+import type { Gender, Service } from './taxonomy';
 
 /** Taxonomy value → localized label (taxonomy = law: labels only via i18n). */
 export function genderLabel(g: Gender): string {
@@ -15,4 +15,10 @@ export function genderLabel(g: Gender): string {
     case 'non_binary':
       return m.taxonomy_genders_non_binary();
   }
+}
+
+/** 47 services → one generated key family; dynamic access beats a 47-arm switch. */
+export function serviceLabel(s: Service): string {
+  const fn = (m as Record<string, unknown>)[`taxonomy_services_${s}`];
+  return typeof fn === 'function' ? (fn as () => string)() : s;
 }

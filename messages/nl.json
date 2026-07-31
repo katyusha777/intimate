@@ -34,5 +34,22 @@
   "cat_men": "Mannen",
   "cat_lgbt": "LGBT",
   "cat_business": "Bedrijven",
-  "cat_events": "Evenementen"
+  "cat_events": "Evenementen",
+  "nav_home": "Home",
+  "save_search": "Zoekopdracht opslaan",
+  "cat_private": "Privé ontvangst",
+  "cat_escort": "Escort",
+  "cat_massage": "Erotische massage",
+  "cat_virtual": "Virtual sex",
+  "cat_bdsm": "BDSM",
+  "search_ai_placeholder": "Omschrijf wat je zoekt…",
+  "nav_register": "Registreren",
+  "role_advertiser": "Adverteerder",
+  "role_client": "Klant",
+  "auth_email": "E-mailadres",
+  "auth_password": "Wachtwoord",
+  "auth_create_account": "Account aanmaken",
+  "auth_forgot": "Wachtwoord vergeten?",
+  "auth_terms": "Door verder te gaan accepteer je de voorwaarden en het privacybeleid.",
+  "auth_welcome": "Welkom bij Intimate"
 }
