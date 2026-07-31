@@ -1,0 +1,92 @@
+---
+/** Scroll-snap photo carousel with dots + hover arrows (featured card, gallery). */
+import ProfileImage from './ProfileImage.astro';
+
+interface Props {
+  photos: string[];
+  keyBase: string;
+  alt: string;
+  class?: string;
+  /** Loading strategy for the first frame; the rest are always lazy. */
+  loading?: 'lazy' | 'eager';
+}
+
+const { photos, keyBase, alt, class: className, loading = 'lazy' } = Astro.props;
+---
+
+<div class:list={['pc group relative isolate overflow-hidden', className]}>
+  <div
+    class="pc-track flex h-full snap-x snap-mandatory overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+  >
+    {
+      photos.map((p, i) => (
+        <ProfileImage
+          imageKey={`${keyBase}-${i}`}
+          src={p}
+          alt={`${alt} — foto ${i + 1}`}
+          class="h-full w-full flex-none snap-center"
+          loading={i === 0 ? loading : 'lazy'}
+        />
+      ))
+    }
+  </div>
+
+  {
+    photos.length > 1 && (
+      <>
+        <button
+          type="button"
+          data-dir="-1"
+          aria-label="Vorige foto"
+          class="pc-btn absolute left-2 top-1/2 grid size-8 -translate-y-1/2 place-items-center rounded-full bg-white/95 text-neutral-900 shadow-md opacity-0 transition-opacity hover:bg-white group-hover:opacity-100"
+        >
+          <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
+        </button>
+        <button
+          type="button"
+          data-dir="1"
+          aria-label="Volgende foto"
+          class="pc-btn absolute right-2 top-1/2 grid size-8 -translate-y-1/2 place-items-center rounded-full bg-white/95 text-neutral-900 shadow-md opacity-0 transition-opacity hover:bg-white group-hover:opacity-100"
+        >
+          <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+        </button>
+        <div class="pc-dots pointer-events-none absolute inset-x-0 bottom-2 flex justify-center gap-1.5">
+          {photos.map((_, i) => (
+            <span class:list={['size-1.5 rounded-full bg-white/60 shadow-sm transition-all', i === 0 && 'w-3 bg-white']} />
+          ))}
+        </div>
+      </>
+    )
+  }
+</div>
+
+<script>
+  function initCarousels() {
+    document.querySelectorAll<HTMLElement>('.pc').forEach((pc) => {
+      if (pc.dataset.init) return;
+      pc.dataset.init = '1';
+      const track = pc.querySelector<HTMLElement>('.pc-track')!;
+      const dots = [...pc.querySelectorAll<HTMLElement>('.pc-dots > span')];
+
+      const setActive = () => {
+        const i = Math.round(track.scrollLeft / track.clientWidth);
+        dots.forEach((d, j) => {
+          d.classList.toggle('w-3', j === i);
+          d.classList.toggle('bg-white', j === i);
+          d.classList.toggle('bg-white/60', j !== i);
+        });
+      };
+      track.addEventListener('scroll', setActive, { passive: true });
+
+      pc.querySelectorAll<HTMLElement>('.pc-btn').forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          track.scrollBy({ left: Number(btn.dataset.dir) * track.clientWidth, behavior: 'smooth' });
+        });
+      });
+    });
+  }
+  initCarousels();
+  document.addEventListener('astro:page-load', initCarousels);
+</script>

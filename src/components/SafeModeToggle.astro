@@ -1,0 +1,25 @@
+---
+/**
+ * Safe-mode switch (DESIGN.md §6). Default ON; state is applied client-side by
+ * the safe-mode script in Layout (cookie `safe_mode`), so cached HTML stays
+ * identical for everyone.
+ */
+import * as m from '@/paraglide/messages';
+---
+
+<button
+  type="button"
+  role="switch"
+  aria-checked="true"
+  data-safe-toggle
+  class="group flex min-h-11 items-center gap-2.5"
+>
+  <span class="text-sm text-muted-foreground">{m.safe_mode()}</span>
+  <span
+    class="relative h-6 w-10 flex-none rounded-full bg-input transition-colors duration-200 group-aria-checked:bg-primary"
+  >
+    <span
+      class="absolute left-0.5 top-0.5 size-5 rounded-full bg-white shadow-sm transition-transform duration-200 ease-[cubic-bezier(0.2,0.8,0.2,1)] group-aria-checked:translate-x-4"
+    ></span>
+  </span>
+</button>

@@ -1,0 +1,31 @@
+---
+/**
+ * The ONLY way profile imagery renders (DESIGN.md §6, §11).
+ * Fail-closed: server always emits the safe placeholder as `src`; the inline
+ * safe-mode script in Layout swaps to `data-real` only when the user opted out.
+ */
+import { safeImageFor } from '@/lib/safe-images';
+
+interface Props {
+  /** Stable key (profile/media id) — picks the deterministic safe image. */
+  imageKey: string;
+  /** Real photo URL. Optional: fixtures have none. */
+  src?: string;
+  alt: string;
+  class?: string;
+  loading?: 'lazy' | 'eager';
+}
+
+const { imageKey, src, alt, class: className, loading = 'lazy' } = Astro.props;
+const safe = safeImageFor(imageKey);
+---
+
+<img
+  src={safe}
+  data-safe={safe}
+  data-real={src}
+  alt={alt}
+  loading={loading}
+  decoding="async"
+  class:list={['object-cover', className]}
+/>

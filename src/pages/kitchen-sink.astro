@@ -1,0 +1,163 @@
+---
+/**
+ * The consistency contract (DESIGN.md §10): every component, every variant,
+ * both themes, safe mode on/off. Dev reference — not linked from anywhere.
+ */
+import Layout from '@/layouts/Layout.astro';
+import ProfileCard from '@/components/ProfileCard.astro';
+import PhotoCarousel from '@/components/PhotoCarousel.astro';
+import ProfileImage from '@/components/ProfileImage.astro';
+import SearchControl from '@/components/SearchControl.astro';
+import SafeModeToggle from '@/components/SafeModeToggle.astro';
+import VerifiedBadge from '@/components/VerifiedBadge.astro';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { PROFILES } from '@/lib/fixtures';
+
+const p = PROFILES[0]!;
+const swatches = [
+  ['primary', 'bg-primary'],
+  ['online', 'bg-online'],
+  ['foreground', 'bg-foreground'],
+  ['muted', 'bg-muted'],
+  ['card', 'bg-card'],
+  ['border', 'bg-border'],
+] as const;
+---
+
+<Layout title="Kitchen sink">
+  <div class="mx-auto max-w-7xl space-y-14 px-4 py-10 md:px-6">
+    <header>
+      <p class="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">intern</p>
+      <h1 class="display text-3xl">Kitchen sink</h1>
+      <p class="mt-2 text-sm text-muted-foreground">
+        Elke variant, beide thema's, safe mode aan/uit. Als twee componenten hier van elkaar
+        afwijken, zijn zíj fout — niet de pagina.
+      </p>
+    </header>
+
+    <section class="space-y-4">
+      <h2 class="text-xl font-semibold">Font Awesome Pro (thin + brands)</h2>
+      <div class="flex flex-wrap items-center gap-5 text-2xl">
+        <i class="fa-thin fa-heart" title="fa-thin fa-heart"></i>
+        <i class="fa-thin fa-magnifying-glass" title="fa-thin fa-magnifying-glass"></i>
+        <i class="fa-thin fa-user" title="fa-thin fa-user"></i>
+        <i class="fa-thin fa-location-dot" title="fa-thin fa-location-dot"></i>
+        <i class="fa-thin fa-badge-check text-primary" title="fa-thin fa-badge-check"></i>
+        <i class="fa-thin fa-venus" title="fa-thin fa-venus"></i>
+        <i class="fa-thin fa-calendar" title="fa-thin fa-calendar"></i>
+        <i class="fa-brands fa-whatsapp text-online" title="fa-brands fa-whatsapp"></i>
+        <i class="fa-brands fa-telegram" title="fa-brands fa-telegram"></i>
+      </div>
+    </section>
+
+    <section class="space-y-4">
+      <h2 class="text-xl font-semibold">Kleuren</h2>
+      <div class="flex flex-wrap gap-3">
+        {
+          swatches.map(([name, cls]) => (
+            <div class="space-y-1 text-center">
+              <div class:list={['size-14 rounded-lg ring-1 ring-border', cls]} />
+              <p class="text-xs text-muted-foreground">{name}</p>
+            </div>
+          ))
+        }
+      </div>
+    </section>
+
+    <section class="space-y-4">
+      <h2 class="text-xl font-semibold">Typografie</h2>
+      <div class="space-y-3">
+        <p class="display text-5xl">Display</p>
+        <p class="text-2xl font-semibold tracking-tight">Paginatitel (h1)</p>
+        <p class="text-xl font-semibold">Sectie (h2)</p>
+        <p class="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">Eyebrow-label</p>
+        <p class="max-w-lg leading-relaxed">
+          Body — modern, discreet en veilig. Eén font, gewicht en tracking doen het werk.
+        </p>
+        <p class="text-sm text-muted-foreground">Meta / caption</p>
+      </div>
+    </section>
+
+    <section class="space-y-4">
+      <h2 class="text-xl font-semibold">Knoppen & badges</h2>
+      <div class="flex flex-wrap items-center gap-3">
+        <Button>Primair</Button>
+        <Button variant="outline">Outline</Button>
+        <Button variant="ghost">Ghost</Button>
+        <Button variant="secondary">Secundair</Button>
+        <Button size="sm">Klein</Button>
+        <Badge>Badge</Badge>
+        <Badge variant="secondary">Secundair</Badge>
+        <Badge variant="outline">Outline</Badge>
+        <span class="flex items-center gap-1 text-sm font-medium"><VerifiedBadge /> Geverifieerd</span>
+        <span class="flex items-center gap-1.5 text-sm"><span class="size-2 rounded-full bg-online"></span> Nu online</span>
+      </div>
+    </section>
+
+    <section class="space-y-4">
+      <h2 class="text-xl font-semibold">Glass-materialen</h2>
+      <div class="relative overflow-hidden rounded-2xl">
+        <ProfileImage imageKey="glass-demo" alt="Glass demo achtergrond" class="h-64 w-full" />
+        <div class="absolute inset-0 flex flex-col items-start justify-center gap-3 p-6">
+          <div class="glass-media rounded-full border px-4 py-2 text-sm">media — overlays op foto's (themavast)</div>
+          <div class="glass-ultrathin rounded-full border px-4 py-2 text-sm">ultrathin</div>
+          <div class="glass-thin rounded-xl border px-4 py-2 text-sm">thin — tabbar, actiebalk</div>
+          <div class="glass rounded-xl border px-4 py-2 text-sm">regular — header, sheets</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="space-y-4">
+      <h2 class="text-xl font-semibold">Zoek & schakelaars</h2>
+      <div class="flex flex-wrap items-center gap-6">
+        <SearchControl />
+        <SafeModeToggle />
+      </div>
+    </section>
+
+    <section class="space-y-4">
+      <h2 class="text-xl font-semibold">ProfileCard — grid</h2>
+      <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+        {PROFILES.slice(0, 5).map((prof) => <ProfileCard profile={prof} />)}
+      </div>
+    </section>
+
+    <section class="space-y-4">
+      <h2 class="text-xl font-semibold">ProfileCard — featured</h2>
+      <div class="grid gap-4 lg:grid-cols-2">
+        <ProfileCard profile={p} variant="featured" />
+        <ProfileCard profile={PROFILES[3]!} variant="featured" />
+      </div>
+    </section>
+
+    <section class="space-y-4">
+      <h2 class="text-xl font-semibold">ProfileCard — compact</h2>
+      <div class="max-w-sm rounded-xl bg-card p-2 ring-1 ring-border">
+        {PROFILES.slice(0, 4).map((prof) => <ProfileCard profile={prof} variant="compact" />)}
+      </div>
+    </section>
+
+    <section class="space-y-4">
+      <h2 class="text-xl font-semibold">Carousel (los)</h2>
+      <PhotoCarousel photos={p.photos} keyBase="sink-carousel" alt={p.name} class="aspect-[4/3] max-w-md rounded-2xl" />
+    </section>
+
+    <section class="space-y-4">
+      <h2 class="text-xl font-semibold">Skeletons</h2>
+      <div class="grid max-w-md grid-cols-2 gap-4">
+        <div class="space-y-2">
+          <Skeleton class="aspect-[3/4] rounded-xl" />
+          <Skeleton class="h-4 w-2/3" />
+          <Skeleton class="h-3 w-1/2" />
+        </div>
+        <div class="space-y-2">
+          <Skeleton class="aspect-[3/4] rounded-xl" />
+          <Skeleton class="h-4 w-2/3" />
+          <Skeleton class="h-3 w-1/2" />
+        </div>
+      </div>
+    </section>
+  </div>
+</Layout>

@@ -42,7 +42,8 @@ Bun (toolchain) · Astro SSR (Cloudflare adapter) · Cloudflare Workers + static
 ```bash
 bun install · bun run dev · bun test · bun run build
 bun run db:generate · bun run db:migrate     # staging branch first, always
-bunx wrangler deploy --env staging           # then: bunx wrangler deploy
+bun run deploy:staging                       # = CLOUDFLARE_ENV=staging astro build && wrangler deploy --env staging
+                                             # env is baked at BUILD time (CLOUDFLARE_ENV); prod: build without it, then wrangler deploy
 ```
 
 ## Environments

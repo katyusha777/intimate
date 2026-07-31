@@ -1,0 +1,26 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "intimate",
+  "main": "@astrojs/cloudflare/entrypoints/server",
+  "compatibility_date": "2026-07-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "binding": "ASSETS",
+    "directory": "./dist"
+  },
+  "placement": { "mode": "smart" },
+  "observability": { "enabled": true },
+  // ponytail: production points at the same Hyperdrive/db as staging until the
+  // Supabase staging branch exists — split ids when the schema work starts.
+  "hyperdrive": [
+    { "binding": "HYPERDRIVE", "id": "c56d9b6e947a4841baa30f8b6a6b9e55" }
+  ],
+  "env": {
+    "staging": {
+      "name": "intimate-staging",
+      "hyperdrive": [
+        { "binding": "HYPERDRIVE", "id": "c56d9b6e947a4841baa30f8b6a6b9e55" }
+      ]
+    }
+  }
+}
