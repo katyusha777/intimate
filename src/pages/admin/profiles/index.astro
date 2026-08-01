@@ -5,7 +5,7 @@
  * flags; a detail drawer with all media (blurred + reveal), full facts, reports
  * against, and lifecycle actions (approve/pause/block/unblock/delete + reason).
  */
-import { getAdmin } from '@/actions/admin/lib';
+import { getAdmin, listAudit } from '@/actions/admin/lib';
 import { listProfilesAdmin, profileByIdAdmin } from '@/actions/admin/entities';
 import { reportsApi } from '@/app/api/reports';
 import { localizedDescription } from '@/app/models/profile';
@@ -30,6 +30,11 @@ const detail = session && id ? await profileByIdAdmin(id) : null;
 const reportsAgainst = detail
   ? (await reportsApi.list()).filter((r) => r.profileSlug === detail.profile.slug)
   : [];
+// Per-profile audit history (state changes etc.) — the "everything" trail.
+const history = detail
+  ? (await listAudit()).filter((e) => e.entityType === 'profile' && e.entityId === detail.admin.id).slice(0, 8)
+  : [];
+const humanizeH = (s: string) => s.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
 
 const stateClass = (s: string) =>
   ({ live: 'text-online', pending_review: 'text-amber-500', paused: 'text-muted-foreground', blocked: 'text-brand', deleted: 'text-muted-foreground', draft: 'text-muted-foreground' })[s] ??
@@ -155,6 +160,34 @@ const genderLabel = (g: string) => ({ female: 'F', male: 'M', trans_woman: 'TW',
               <div class="flex flex-wrap gap-2">
                 <a href={`/en/profile/${detail.profile.slug}/`} target="_blank" class="text-xs font-medium underline underline-offset-4">Public page ↗</a>
               </div>
+
+              {reportsAgainst.length > 0 && (
+                <div class="border-t border-border pt-3">
+                  <p class="text-2xs font-semibold uppercase tracking-wide text-brand">Reports against ({reportsAgainst.length})</p>
+                  <ul class="mt-1.5 space-y-1">
+                    {reportsAgainst.slice(0, 5).map((r) => (
+                      <li class="flex items-center justify-between gap-2 text-xs">
+                        <span>{humanizeH(r.reason)}{r.escalated && ' ⚠'}</span>
+                        <span class="text-2xs text-muted-foreground">{r.state}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {history.length > 0 && (
+                <div class="border-t border-border pt-3">
+                  <p class="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">History</p>
+                  <ul class="mt-1.5 space-y-1">
+                    {history.map((e) => (
+                      <li class="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                        <span>{humanizeH(e.action)}{e.reason ? ` · ${humanizeH(e.reason)}` : ''}</span>
+                        <span class="text-2xs">{e.adminEmail.split('@')[0]}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
               {/* Lifecycle actions */}
               <div class="space-y-2 border-t border-border pt-3">
