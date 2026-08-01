@@ -3,8 +3,8 @@ import * as m from '@/paraglide/messages';
 ---
 
 <button
-  id="theme-toggle"
   type="button"
+  data-theme-toggle
   aria-label={m.theme_toggle()}
   class="grid size-10 place-items-center rounded-full ring-1 ring-border text-muted-foreground transition-colors hover:text-foreground"
 >
@@ -17,10 +17,13 @@ import * as m from '@/paraglide/messages';
 </button>
 
 <script>
-  document.addEventListener('astro:page-load', () => {
-    document.getElementById('theme-toggle')?.addEventListener('click', () => {
+  // Delegated so every ThemeToggle instance works (header + footer both render one).
+  if (!(window as any).__themeToggle) {
+    (window as any).__themeToggle = true;
+    document.addEventListener('click', (e) => {
+      if (!(e.target as HTMLElement).closest?.('[data-theme-toggle]')) return;
       const dark = document.documentElement.classList.toggle('dark');
       localStorage.theme = dark ? 'dark' : 'light';
     });
-  });
+  }
 </script>

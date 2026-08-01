@@ -550,3 +550,26 @@
     }
   }
 }
+
+/* ────────────────────────────────────────────────────────────────────────
+   AGENT: chrome/profile-sheet/gallery fixes — APPEND-ONLY BLOCK.
+   (Another concurrent agent may also append below their own banner; keep
+   additions inside this commented block.)
+   ──────────────────────────────────────────────────────────────────────── */
+@layer base {
+  /* Overscroll root cause (Task 3): the document-level `overscroll-behavior-y:
+     none` above stops the ROOT bounce, but any inner region that scrolls (filter
+     panels, comboboxes, sheet bodies, chat) can still chain its overscroll up to
+     the document and rubber-band it once it hits an end. One rule contains every
+     internal vertical scroller by default — cheaper and more complete than
+     patching each component, and it can't over-reach the root (html/body keep
+     their stricter `none` above). */
+  :where(
+      [class*='overflow-y-auto'],
+      [class*='overflow-y-scroll'],
+      [class*='overflow-auto']
+    ):not(html):not(body) {
+    overscroll-behavior: contain;
+  }
+}
+

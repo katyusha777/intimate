@@ -42,6 +42,14 @@ const { id = 'lightbox' } = Astro.props;
       class="flex h-full w-full snap-x snap-mandatory items-center overflow-x-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
     >
     </div>
+    <!-- Thumbnail rail: tap a thumb to jump; the active one is ringed. Hidden
+         when there's only one photo (nothing to navigate). -->
+    <div
+      data-lightbox-thumbs
+      class="pointer-events-auto absolute inset-x-0 bottom-0 z-10 flex gap-2 overflow-x-auto px-4 pt-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      style="padding-bottom: calc(0.75rem + env(safe-area-inset-bottom))"
+    >
+    </div>
   </div>
 </dialog>
 
@@ -69,16 +77,34 @@ const { id = 'lightbox' } = Astro.props;
 
     const track = dialog.querySelector<HTMLElement>('[data-lightbox-track]')!;
     const counter = dialog.querySelector<HTMLElement>('[data-lightbox-counter]')!;
+    const thumbs = dialog.querySelector<HTMLElement>('[data-lightbox-thumbs]')!;
     let total = 0;
+    let current = -1;
+
+    const setActive = (i: number) => {
+      if (i === current) return;
+      current = i;
+      counter.textContent = total ? `${i + 1} / ${total}` : '';
+      const btns = thumbs.children;
+      for (let k = 0; k < btns.length; k++) {
+        const on = k === i;
+        (btns[k] as HTMLElement).classList.toggle('opacity-100', on);
+        (btns[k] as HTMLElement).classList.toggle('ring-2', on);
+        (btns[k] as HTMLElement).classList.toggle('opacity-45', !on);
+      }
+      // Keep the active thumbnail visible in the rail.
+      (btns[i] as HTMLElement)?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+    };
 
     const update = () => {
       const i = track.clientWidth ? Math.round(track.scrollLeft / track.clientWidth) : 0;
-      counter.textContent = total ? `${i + 1} / ${total}` : '';
+      setActive(i);
     };
     track.addEventListener('scroll', update, { passive: true });
 
     const openLightbox = (photos: { src: string; alt: string }[], index: number) => {
       total = photos.length;
+      current = -1;
       track.replaceChildren(
         ...photos.map((p) => {
           const img = document.createElement('img');
@@ -89,11 +115,32 @@ const { id = 'lightbox' } = Astro.props;
           return img;
         }),
       );
+      // Thumbnail rail — tap a thumb to jump to that photo. Hidden for singles.
+      thumbs.classList.toggle('hidden', photos.length < 2);
+      thumbs.replaceChildren(
+        ...photos.map((p, i) => {
+          const t = document.createElement('button');
+          t.type = 'button';
+          t.setAttribute('aria-label', `${i + 1} / ${photos.length}`);
+          t.className =
+            'h-14 w-11 flex-none cursor-pointer overflow-hidden rounded-md opacity-45 ring-white ring-inset transition-opacity';
+          const img = document.createElement('img');
+          img.src = p.src;
+          img.alt = '';
+          img.draggable = false;
+          img.className = 'h-full w-full object-cover';
+          t.appendChild(img);
+          t.addEventListener('click', () => {
+            track.scrollTo({ left: i * track.clientWidth, behavior: 'smooth' });
+          });
+          return t;
+        }),
+      );
       dialog.showModal();
       dialog.setAttribute('data-open', '');
       requestAnimationFrame(() => {
         track.scrollLeft = index * track.clientWidth;
-        update();
+        setActive(index);
       });
     };
     (window as any).__openLightbox = openLightbox;
