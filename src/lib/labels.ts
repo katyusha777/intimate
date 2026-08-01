@@ -1,9 +1,9 @@
 import * as m from '@/paraglide/messages';
 import type { Day, Gender, ListingCategorySlug, Service, ServiceCategory, SortOption } from './taxonomy';
 
-/** Localized weekday name. */
-export function dayLabel(d: Day): string {
-  const fn = (m as Record<string, unknown>)[`day_${d}`];
+/** Localized weekday name; `short` gives the 3-letter form for tight chrome. */
+export function dayLabel(d: Day, short = false): string {
+  const fn = (m as Record<string, unknown>)[`${short ? 'day_short' : 'day'}_${d}`];
   return typeof fn === 'function' ? (fn as () => string)() : d;
 }
 

@@ -10,6 +10,9 @@ import SafeImage from '@/components/atoms/SafeImage.astro';
 import SearchControl from '@/components/molecules/SearchControl.astro';
 import Combobox from '@/components/molecules/Combobox.astro';
 import ActionSheet from '@/components/molecules/ActionSheet.astro';
+import AvailabilityLine from '@/components/molecules/AvailabilityLine.astro';
+import LinkChips from '@/components/molecules/LinkChips.astro';
+import CitySheet from '@/components/molecules/CitySheet.astro';
 import ProfilePhotoMosaic from '@/components/organisms/profile/ProfilePhotoMosaic.astro';
 import { CITIES } from '@/lib/taxonomy';
 import { profileAge } from '@/app/models/profile';
@@ -27,6 +30,31 @@ import { profilesApi } from '@/app/api/profiles';
 
 const { items: profiles } = await profilesApi.list({ limit: 12 });
 const p = profiles[0]!;
+
+/* Availability fixtures — force the three honest states with a fixed `now`
+ * (a Wednesday 14:00 in Amsterdam) so the reference is stable across time. */
+const availNow = new Date('2026-08-05T12:00:00.000Z');
+const availFixtures = [
+  { label: 'online', profile: { ...profiles[1]!, online: true } },
+  {
+    label: 'today_until',
+    profile: {
+      ...profiles[2]!,
+      online: false,
+      openingHours: { wed: { closed: false, allDay: false, from: '09:00', to: '23:00' } },
+      lastActiveAt: '2026-08-05T12:20:00.000Z',
+    },
+  },
+  {
+    label: 'back_at',
+    profile: {
+      ...profiles[3]!,
+      online: false,
+      openingHours: { fri: { closed: false, allDay: false, from: '10:00', to: '20:00' } },
+      lastActiveAt: '2026-08-04T15:00:00.000Z',
+    },
+  },
+] as const;
 const mosaicPhotos = profiles.flatMap((pr) => pr.photos).slice(0, 5);
 const swatches = [
   ['primary', 'bg-primary'],
@@ -223,6 +251,52 @@ const swatches = [
       <div class="max-w-sm rounded-xl bg-card p-2 ring-1 ring-border">
         {profiles.slice(0, 4).map((prof) => <ProfileCard profile={prof} variant="compact" />)}
       </div>
+    </section>
+
+    <section class="space-y-4">
+      <h2 class="text-xl font-semibold">AvailabilityLine — three honest states</h2>
+      <p class="text-sm text-muted-foreground">
+        One helper (<code>availabilityState</code>), dot + text, never on the photo.
+        Fixed <code>now</code> = Wed 14:00 Amsterdam.
+      </p>
+      <div class="grid gap-6 sm:grid-cols-2">
+        <div class="space-y-2">
+          <p class="eyebrow">line variant</p>
+          {
+            availFixtures.map((f) => (
+              <AvailabilityLine profile={f.profile} variant="line" now={availNow} />
+            ))
+          }
+        </div>
+        <div class="space-y-2 rounded-xl bg-neutral-950 p-4 text-white">
+          <p class="eyebrow text-white/50">card variant (on ink)</p>
+          {
+            availFixtures.map((f) => (
+              <AvailabilityLine profile={f.profile} variant="card" now={availNow} />
+            ))
+          }
+        </div>
+      </div>
+    </section>
+
+    <section class="space-y-4">
+      <h2 class="text-xl font-semibold">LinkChips — SSR zero-JS fold chips</h2>
+      <p class="text-sm text-muted-foreground">
+        Every chip is an <code>&lt;a&gt;</code> to a canonical listing URL.
+      </p>
+      <div class="space-y-3">
+        <LinkChips city="amsterdam" />
+        <LinkChips />
+      </div>
+    </section>
+
+    <section class="space-y-4">
+      <h2 class="text-xl font-semibold">CitySheet — "ask the city once"</h2>
+      <p class="text-sm text-muted-foreground">
+        First-visit bottom sheet (auto-opens once). Trigger it manually here:
+      </p>
+      <Button data-sheet-open="city-sheet">Open city sheet</Button>
+      <CitySheet manual />
     </section>
 
     <section class="space-y-4">

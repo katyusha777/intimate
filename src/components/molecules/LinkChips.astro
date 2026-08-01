@@ -1,0 +1,50 @@
+---
+/**
+ * Home fold quick-filters (UX-PLAN 1.5): `[City ▾] [Now · Tonight ▾] [≤ €150 ▾]`
+ * as server-rendered <a> link-chips to canonical listing URLs. ZERO JS — every
+ * chip is one tap to a real, indexable URL; the filter sheet keeps the long
+ * tail. The ▾ signals "more inside" (the city sheet / filter sheet), it is not
+ * a JS dropdown here.
+ *
+ * Misprint: sharp slab-cut chips, ink keyline on paper, thumb-height (h-11).
+ */
+import * as m from '@/paraglide/messages';
+import { localizePath } from '@/lib/i18n';
+import { CITIES, type CitySlug } from '@/lib/taxonomy';
+
+interface Props {
+  /** Current shelf city (from the cookie/URL); undefined = all of NL. */
+  city?: CitySlug;
+  class?: string;
+}
+const { city, class: className } = Astro.props;
+
+const cityName = CITIES.find((c) => c.slug === city)?.name;
+/* Canonical listing base: the city hub /{locale}/{city}/ when a city is set,
+ * else the search index. Query presets ride profileListParamsFromUrl. */
+const base = city ? localizePath(`/${city}/`) : localizePath('/search/');
+
+const chips = [
+  { label: cityName ?? m.chip_all_nl(), href: base, caret: true },
+  { label: m.chips_now_tonight(), href: `${base}?online`, caret: true },
+  { label: m.chip_price_under({ price: 150 }), href: `${base}?priceMax=150`, caret: true },
+];
+---
+
+<div class:list={['flex flex-wrap gap-2', className]}>
+  {
+    chips.map((c) => (
+      <a
+        href={c.href}
+        class="slab-cut flex h-11 items-center gap-1.5 border border-foreground/20 px-3.5 text-sm font-medium transition-colors hover:border-foreground/60 active:scale-[0.97]"
+      >
+        <span class="truncate">{c.label}</span>
+        {c.caret && (
+          <svg class="size-3 flex-none text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="m6 9 6 6 6-6" />
+          </svg>
+        )}
+      </a>
+    ))
+  }
+</div>
