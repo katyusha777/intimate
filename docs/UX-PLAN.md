@@ -88,6 +88,8 @@ Discretion is a client feature too — a wall of bright anime draws the glance i
 
 DoD: all three states in kitchen-sink · toggle reachable without scrolling on every template · tab title/favicon flip verified (Playwright) · fail-closed default intact (no-JS shows neutral set).
 
+**Status: ✅ landed.** Safe mode is three-valued (`off | neutral | dev`); `neutral` is the deterministic muted-SVG set generated in `safe-images.ts` (`neutralImageFor`, no committed files), `dev` is the old anime set. `SafeImage` ships neutral as the fail-closed server `src` + `data-dev`/`data-real`. New `molecules/SafeModeBar` floats above the dock (mobile) / in the corner (desktop); footer + settings keep the `SafeModeToggle` mirror; both cycle off→neutral→dev. The sitewide inline script neutralizes the tab title + favicon while on and restores them off, and adds the Esc·Esc boss key (flips off↔neutral). Kitchen-sink shows all three states. Design decision: the neutral set is generated (SVG gradients) rather than sourced — real discreet stock wasn't available, and generation reuses the existing deterministic-by-key FNV mechanism, keeping SSR/edge cache stable with zero test drift.
+
 ## Phase 6 — Finders' quality-of-life
 
 **6.1 The wand on mobile.** AI search opens from the search icon as a sheet with three tappable example queries; parses into taxonomy + presence filters (the existing `aiSearch` action) so typing stays optional. Not promoted to a hero position until it reliably beats keyword matching — the page's best promise must not break on first use.

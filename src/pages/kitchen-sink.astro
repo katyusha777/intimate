@@ -19,6 +19,7 @@ import GoodToKnow from '@/components/organisms/profile/GoodToKnow.astro';
 import ProfileFacts from '@/components/organisms/profile/ProfileFacts.astro';
 import SimilarProfiles from '@/components/organisms/profile/SimilarProfiles.astro';
 import { CITIES } from '@/lib/taxonomy';
+import { neutralImageFor, safeImageFor, nsfwImageFor } from '@/lib/safe-images';
 import { profileAge } from '@/app/models/profile';
 import SafeModeToggle from '@/components/molecules/SafeModeToggle.astro';
 import Section from '@/components/molecules/Section.astro';
@@ -167,6 +168,37 @@ const swatches = [
             Content — sections own their vertical rhythm (py-6 md:py-10) and heading style; pages never hand-roll either.
           </p>
         </Section>
+      </div>
+    </section>
+
+    <section class="space-y-4">
+      <h2 class="text-xl font-semibold">Safe mode — three states (Phase 5)</h2>
+      <p class="text-sm text-muted-foreground">
+        Fail-closed: the server always ships the <strong>neutral</strong> placeholder.
+        The cookie swaps to <strong>dev</strong> (anime, build-in-public) or <strong>off</strong>
+        (real photos). No-JS keeps neutral. Below shows all three deterministic picks for the same key.
+      </p>
+      <div class="grid grid-cols-3 gap-4">
+        {
+          (
+            [
+              ['off', nsfwImageFor('sink-safe-demo')],
+              ['neutral', neutralImageFor('sink-safe-demo')],
+              ['dev', safeImageFor('sink-safe-demo')],
+            ] as const
+          ).map(([label, url]) => (
+            <figure class="space-y-2">
+              <img src={url} alt={`Safe-mode ${label} placeholder`} class="h-48 w-full rounded-xl object-cover ring-1 ring-border" />
+              <figcaption class="eyebrow font-semibold text-muted-foreground">{label}</figcaption>
+            </figure>
+          ))
+        }
+      </div>
+      <p class="text-sm text-muted-foreground">
+        Live toggle (cycles off → neutral → dev), plus the floating bar (bottom-right on this page):
+      </p>
+      <div class="flex flex-wrap items-center gap-6">
+        <SafeModeToggle />
       </div>
     </section>
 
