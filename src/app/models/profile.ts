@@ -16,6 +16,7 @@ import {
   SERVICE_CATEGORIES,
   SORT_OPTIONS,
   type CitySlug,
+  type Day,
   type Locale,
   type Service,
 } from '@/lib/taxonomy';
@@ -52,6 +53,12 @@ export const ProfileSchema = z.object({
   meetingTypes: z.array(z.enum(MEETING_TYPES)),
   /** Availability per weekday (optional — absent = not specified). */
   openingHours: OpeningHoursSchema.default({}),
+  /**
+   * Last time presence was seen (ISO datetime). Mock now; the realtime
+   * (Supabase presence) upgrade swaps the input, not the availability helper.
+   * Optional — absent = never seen.
+   */
+  lastActiveAt: z.iso.datetime().optional(),
   /** Original description as written by the advertiser (their language). */
   description: z.string(),
   /** Managed translations per locale; UI reads via localizedDescription(). */
@@ -78,6 +85,93 @@ export function birthDateForAge(age: number, now: Date = new Date()): string {
 /** Description in the current locale, falling back to the original text. */
 export function localizedDescription(p: Profile, locale: Locale = getLocale() as Locale): string {
   return p.descriptionTranslations[locale] ?? p.description;
+}
+
+/**
+ * The three honest availability states (UX-PLAN 1.3). One helper is the single
+ * source of truth: cards, profile and the sticky card all derive from it, and
+ * the realtime upgrade swaps `p.online`/`p.lastActiveAt` inputs, not the UI.
+ *
+ *   online       → ● presence flag is on
+ *   today_until  → ◐ open today (now or later); `until` = today's closing HH:MM
+ *   back_at      → ○ not open today; `nextDay` = next open weekday (DAYS value)
+ *
+ * `lastActiveLabel` (e.g. "14:20") is the wall-clock of lastActiveAt when it
+ * falls on `now`'s local day — the honest "active today HH:MM" line for offline
+ * cards. Times are computed in Europe/Amsterdam (the market's timezone) so a
+ * server in any region reads the same clock as the professional and client.
+ */
+export type AvailabilityKind = 'online' | 'today_until' | 'back_at';
+export interface Availability {
+  kind: AvailabilityKind;
+  /** today_until: closing time "HH:MM". */
+  until?: string;
+  /** back_at: next open weekday (a DAYS value: 'mon'…'sun'). */
+  nextDay?: Day;
+  /** "HH:MM" of lastActiveAt when it is on `now`'s local day, else undefined. */
+  lastActiveToday?: string;
+}
+
+const TZ = 'Europe/Amsterdam';
+const DOW: readonly Day[] = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as unknown as Day[];
+
+/** Wall-clock parts of an instant in the Amsterdam timezone. */
+function amsParts(d: Date): { day: Day; minutes: number; hhmm: string } {
+  const f = new Intl.DateTimeFormat('en-GB', {
+    timeZone: TZ,
+    weekday: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(d);
+  const get = (t: string) => f.find((p) => p.type === t)?.value ?? '';
+  const wd = get('weekday').toLowerCase().slice(0, 3) as Day;
+  let hh = get('hour');
+  if (hh === '24') hh = '00'; // some engines emit 24:00 for midnight
+  const mm = get('minute');
+  return { day: wd, minutes: Number(hh) * 60 + Number(mm), hhmm: `${hh}:${mm}` };
+}
+
+const toMinutes = (hhmm: string): number | null => {
+  const m = /^(\d{2}):(\d{2})$/.exec(hhmm);
+  return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+};
+
+/** Is the professional's day open at (or later than) `nowMin`? */
+function openTodayUntil(day: DayHours | undefined, nowMin: number): string | null {
+  if (!day || day.closed) return null;
+  if (day.allDay) return '24:00';
+  const to = toMinutes(day.to);
+  if (to === null) return null;
+  // Open now, or opens later today, and there's still time before close.
+  return to > nowMin ? day.to : null;
+}
+
+export function availabilityState(p: Profile, now: Date = new Date()): Availability {
+  const { day, minutes } = amsParts(now);
+  const dayIdx = DOW.indexOf(day);
+
+  // "active today HH:MM" — only when lastActiveAt lands on the same local day.
+  let lastActiveToday: string | undefined;
+  if (p.lastActiveAt) {
+    const la = amsParts(new Date(p.lastActiveAt));
+    if (la.day === day) lastActiveToday = la.hhmm;
+  }
+
+  if (p.online) return { kind: 'online', lastActiveToday };
+
+  const until = openTodayUntil(p.openingHours[day], minutes);
+  if (until) return { kind: 'today_until', until, lastActiveToday };
+
+  // Not open today → next open weekday (scan the coming 7 days).
+  for (let i = 1; i <= 7; i++) {
+    const d = DOW[(dayIdx + i) % 7]!;
+    const dh = p.openingHours[d];
+    if (dh && !dh.closed && (dh.allDay || toMinutes(dh.to) !== null)) {
+      return { kind: 'back_at', nextDay: d, lastActiveToday };
+    }
+  }
+  return { kind: 'back_at', lastActiveToday };
 }
 
 export const PAGE_SIZE = 24;

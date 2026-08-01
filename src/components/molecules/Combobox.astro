@@ -22,6 +22,8 @@ interface Props {
   target: string;
   /** Fallback when no target exists on the page: navigate `${navBase}${value}/`. */
   navBase?: string;
+  /** When navigating (navBase mode), persist the pick in this cookie (1yr). */
+  cookie?: string;
   /**
    * Language-switcher mode: on pick, follow the page's own hreflang alternate
    * link (SEO-correct — localized slugs included), falling back to /{lang}/.
@@ -40,6 +42,7 @@ const {
   searchPlaceholder,
   target,
   navBase,
+  cookie,
   lang,
   icon,
   class: className,
@@ -52,6 +55,7 @@ const current = options.find((o) => o.value === value);
   data-cbx
   data-cbx-target={target}
   data-cbx-nav-base={navBase}
+  data-cbx-cookie={cookie}
   data-cbx-lang={lang || undefined}
 >
   <button
@@ -178,7 +182,19 @@ const current = options.find((o) => o.value === value);
             return;
           }
           const base = cbx.dataset.cbxNavBase;
-          if (base) location.href = v ? `${base}${v}/` : base;
+          if (base) {
+            // Persist the location choice so it survives to next visit (1.2).
+            const ck = cbx.dataset.cbxCookie;
+            if (ck) {
+              document.cookie = v
+                ? `${ck}=${v}; path=/; max-age=31536000; samesite=lax`
+                : `${ck}=; path=/; max-age=0; samesite=lax`;
+              try {
+                localStorage.setItem('city_asked', '1');
+              } catch {}
+            }
+            location.href = v ? `${base}${v}/` : base;
+          }
         });
       });
     });

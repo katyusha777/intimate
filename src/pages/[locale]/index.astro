@@ -7,9 +7,12 @@ import ProfileCard from '@/components/organisms/profile/ProfileCard.astro';
 import Section from '@/components/molecules/Section.astro';
 import SafeImage from '@/components/atoms/SafeImage.astro';
 import SearchControl from '@/components/molecules/SearchControl.astro';
+import LinkChips from '@/components/molecules/LinkChips.astro';
+import CitySheet from '@/components/molecules/CitySheet.astro';
 import Button from '@/components/atoms/Button.astro';
 import { articlesApi } from '@/app/api/articles';
 import { profilesApi } from '@/app/api/profiles';
+import { CITIES } from '@/lib/taxonomy';
 
 const locale = Astro.params.locale;
 if (!isLocale(locale)) return new Response(null, { status: 404 });
@@ -17,16 +20,24 @@ if (!isLocale(locale)) return new Response(null, { status: 404 });
 const alternates = samePathAlternates(Astro.url.origin, '/');
 const jsonLd = [websiteJsonLd(Astro.url.origin, locale), organizationJsonLd(Astro.url.origin)];
 
-const [{ items: profiles }, { items: featured }, { total: onlineCount }, { items: articles }] =
+/* The generic home shows the flagship city's live shelf. A returning visitor
+ * with a chosen city was already 302'd to /{locale}/{city}/ by the middleware,
+ * so this page stays a SINGLE cached variant (no per-cookie HTML). */
+const FOLD_CITY = CITIES[0]!; // amsterdam
+
+const [{ items: online }, { total: onlineCount }, { items: fresh }, { items: featured }, { items: articles }] =
   await Promise.all([
-    profilesApi.list({ limit: 30 }),
+    // Default shelf (1.4): ONLINE NOW — online-first, the every-visit question.
+    profilesApi.list({ onlineOnly: true, sort: 'recently_online', limit: 18 }),
+    profilesApi.list({ city: FOLD_CITY.slug, onlineOnly: true, limit: 0 }),
+    // NEW THIS WEEK (1.4) — its own shelf, the cold-start boost. Mock: newest
+    // arrivals (the real backend windows to a true 7 days).
+    profilesApi.list({ sort: 'newest', limit: 12 }),
     profilesApi.list({ featuredOnly: true, limit: 8 }),
-    profilesApi.list({ onlineOnly: true, limit: 0 }),
     articlesApi.list(),
   ]);
 
-const rail = [...featured, ...profiles.filter((p) => !p.featured)].slice(0, 8);
-const heroAvatars = [profiles[2], profiles[3], profiles[6]].filter((p) => p !== undefined);
+const rail = featured.slice(0, 8);
 const featuredArticle = articles.find((a) => a.featured)!;
 const moreArticles = articles.filter((a) => !a.featured);
 ---
@@ -37,13 +48,36 @@ const moreArticles = articles.filter((a) => !a.featured);
   {alternates}
   {jsonLd}
 >
-  <!-- Hero: full-bleed cinematic media, content on a jagged ink panel
-       (Misprint §1.1 — the P5 storefront ref, tamed). Registration CTA. -->
-  <section class="dark relative overflow-hidden bg-neutral-950 text-white">
-    <!-- Promo video covers the whole band, edge to edge (1px bleed kills the
-         subpixel sliver at the section edges).
-         Safe-mode gated: safe image by default, video only when safe mode is off. -->
-    <div class="absolute -inset-px hidden lg:block" data-safe-video-wrap>
+  <!-- ===================================================================
+       MOBILE FOLD (UX-PLAN 1.1) — the every-visit question, "who's here now?"
+       Live local header line + compact search + link-chips, then the first
+       card row. No hero pitch wall, no account CTA above the fold. Desktop
+       (lg:) keeps the cinematic hero band below.
+       =================================================================== -->
+  <section class="mx-auto max-w-7xl px-4 pt-4 md:px-6 lg:hidden">
+    <!-- Live local header line: "AMSTERDAM · 34 ONLINE NOW" (count from data). -->
+    <p class="eyebrow flex items-center gap-2 font-condensed text-base font-bold uppercase tracking-wide">
+      <span>{FOLD_CITY.name}</span>
+      <span class="text-foreground/30" aria-hidden="true">·</span>
+      <span class="flex items-center gap-1.5 text-brand">
+        <span class="size-1.5 rounded-full bg-online"></span>
+        {m.fold_online_count({ count: onlineCount })}
+      </span>
+    </p>
+    <!-- Hero pitch collapses to one line. -->
+    <p class="mt-1 text-sm text-muted-foreground">{m.fold_pitch()}</p>
+
+    <div class="mt-3">
+      <SearchControl />
+    </div>
+    <LinkChips city={FOLD_CITY.slug} class="mt-3" />
+  </section>
+
+  <!-- DESKTOP HERO: full-bleed cinematic media on an ink panel. Kept for lg+
+       only; the fold above owns mobile. No account CTA — START ADVERTISING
+       lives in the menu + footer (1.1). -->
+  <section class="dark relative hidden overflow-hidden bg-neutral-950 text-white lg:block">
+    <div class="absolute -inset-px" data-safe-video-wrap>
       <video
         class="hidden h-full w-full object-cover"
         data-safe-video
@@ -59,51 +93,30 @@ const moreArticles = articles.filter((a) => !a.featured);
       </video>
       <SafeImage imageKey="hero-video" alt="" class="h-full w-full" loading="eager" />
     </div>
-    <!-- The ink panel: hard geometric cut instead of a fade. -->
-    <div class="hero-panel absolute inset-y-0 left-0 hidden w-[58%] bg-neutral-950 lg:block" aria-hidden="true"></div>
+    <div class="hero-panel absolute inset-y-0 left-0 w-[58%] bg-neutral-950" aria-hidden="true"></div>
 
-    <div class="relative mx-auto max-w-7xl px-4 md:px-6">
-      <div class="py-9 md:py-16 lg:py-24 xl:py-40 lg:max-w-[46%]">
-          <h1 class="text-4xl font-bold tracking-tight md:text-6xl">
-            Find
-            <span class="mx-1 inline-flex align-middle -space-x-3">
-              {
-                heroAvatars.map((a) => (
-                  <SafeImage
-                    imageKey={a.id}
-                    src={a.photos[0]}
-                    alt={a.name}
-                    class="size-10 rounded-full ring-3 ring-neutral-950 md:size-14"
-                    loading="eager"
-                  />
-                ))
-              }
-            </span>
-            your intimate connection<span class="text-brand">.</span>
-          </h1>
-          <p class="mt-5 max-w-md leading-relaxed text-white/70">
-            Verified profiles, discreet and safe — for advertisers and visitors.
-          </p>
-          <div class="mt-7 flex flex-wrap gap-3">
-            <Button as="a" href={localizePath("/account/")} size="lg">Start advertising</Button>
-            <Button as="a" href={localizePath("/account/")} size="lg">
-              Create free account
-            </Button>
-          </div>
-          <p class="mt-8 eyebrow flex items-center gap-2 text-white/60">
+    <div class="relative mx-auto max-w-7xl px-6">
+      <div class="py-24 xl:py-40 lg:max-w-[46%]">
+        <p class="eyebrow flex items-center gap-2 font-condensed text-lg font-bold uppercase tracking-wide text-white">
+          <span>{FOLD_CITY.name}</span>
+          <span class="text-white/30" aria-hidden="true">·</span>
+          <span class="flex items-center gap-1.5">
             <span class="size-1.5 rounded-full bg-online"></span>
-            {onlineCount} {m.online_now().toLowerCase()} · 100% verified
-          </p>
+            {m.fold_online_count({ count: onlineCount })}
+          </span>
+        </p>
+        <h1 class="mt-4 text-5xl font-bold tracking-tight xl:text-6xl">
+          Your intimate connection<span class="text-brand">.</span>
+        </h1>
+        <p class="mt-4 max-w-md leading-relaxed text-white/70">{m.fold_pitch()}</p>
+        <div class="mt-7 max-w-md">
+          <SearchControl />
+        </div>
       </div>
     </div>
   </section>
 
   <div class="mx-auto max-w-7xl px-4 md:px-6">
-    <!-- Search (mobile) -->
-    <section class="pt-6 md:hidden">
-      <SearchControl />
-    </section>
-
     <!-- Featured: slideshow of cards -->
     <Section title={m.section_featured()}>
       <div
@@ -119,10 +132,17 @@ const moreArticles = articles.filter((a) => !a.featured);
       </div>
     </Section>
 
-    <!-- Grid -->
-    <Section title="New & online">
+    <!-- ONLINE NOW — the default shelf (1.4). One claim it can prove. -->
+    <Section title={m.section_online()}>
       <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-        {profiles.map((p, i) => <ProfileCard profile={p} loading={i < 4 ? 'eager' : 'lazy'} />)}
+        {online.map((p, i) => <ProfileCard profile={p} loading={i < 4 ? 'eager' : 'lazy'} />)}
+      </div>
+    </Section>
+
+    <!-- NEW THIS WEEK — its own shelf (1.4), the cold-start boost. -->
+    <Section title={m.section_new_week()}>
+      <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+        {fresh.map((p) => <ProfileCard profile={p} />)}
       </div>
     </Section>
 
@@ -187,7 +207,7 @@ const moreArticles = articles.filter((a) => !a.featured);
       </div>
     </Section>
 
-    <!-- Bottom hero: advertisers CTA banner -->
+    <!-- Bottom hero: advertisers CTA banner (below the fold, deliberate). -->
     <section class="pb-12 md:pb-16">
       <div class="grid overflow-hidden rounded-lg shadow-soft lg:grid-cols-[1fr_1.15fr]">
         <div class="relative aspect-[16/10] lg:aspect-auto lg:min-h-[22rem]">
@@ -217,7 +237,7 @@ const moreArticles = articles.filter((a) => !a.featured);
           </p>
           <div class="mt-7 flex flex-wrap gap-3">
             <Button as="a" href={localizePath("/account/")} size="lg">
-              Place ad
+              {m.cta_start_advertising()}
             </Button>
             <Button
               as="a"
@@ -231,6 +251,9 @@ const moreArticles = articles.filter((a) => !a.featured);
       </div>
     </section>
   </div>
+
+  <!-- First-visit "ask the city once" sheet (1.2). Island; auto-opens once. -->
+  <CitySheet />
 </Layout>
 
 <style>

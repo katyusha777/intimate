@@ -56,6 +56,11 @@ const categories = [
     <AiSearchInput action={searchPath} value={q} class="hidden max-w-md md:block" />
 
     <nav class="ml-auto hidden flex-none items-center gap-5 text-sm font-semibold md:flex">
+      <!-- START ADVERTISING lives in the menu + footer (UX-PLAN 1.1), never
+           above the fold as an account wall. -->
+      <a href={localizePath("/account/")} class="transition-colors hover:text-brand">
+        {m.cta_start_advertising()}
+      </a>
       <a href={localizePath("/blog/")} class="transition-colors hover:text-brand">
         {m.section_articles()}
       </a>
@@ -139,6 +144,7 @@ const categories = [
           searchPlaceholder={m.filter_city()}
           target="[data-city-nav]"
           navBase={localizePath('/')}
+          cookie="city"
         />
       </div>
     </div>

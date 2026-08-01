@@ -12,6 +12,7 @@ import { CITIES } from '@/lib/taxonomy';
 import SafeImage from '@/components/atoms/SafeImage.astro';
 import PhotoCarousel from '@/components/molecules/PhotoCarousel.astro';
 import VerifiedBadge from '@/components/atoms/VerifiedBadge.astro';
+import AvailabilityLine from '@/components/molecules/AvailabilityLine.astro';
 import Badge from '@/components/atoms/Badge.astro';
 
 interface Props {
@@ -54,12 +55,6 @@ const slab = SLABS[[...p.id].reduce((s, c) => s + c.charCodeAt(0), 0) % SLABS.le
       >
         <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7Z" /></svg>
       </button>
-      {p.online && (
-        <span class="card-heart absolute left-2 top-2 flex items-center gap-1.5 bg-neutral-950 px-2.5 py-1.5 text-xs font-medium text-white">
-          <span class="size-1.5 rounded-full bg-online" />
-          {m.online_now()}
-        </span>
-      )}
       <!-- Ink slab floating WITHIN the photo (Misprint) — solid black,
            per-card position/tilt/cut so the grid feels hand-placed. -->
       <div
@@ -76,7 +71,9 @@ const slab = SLABS[[...p.id].reduce((s, c) => s + c.charCodeAt(0), 0) % SLABS.le
           </div>
           <p class="flex-none pt-0.5 text-base font-semibold">€{p.priceFrom}</p>
         </div>
-        <p class="mt-2 truncate text-xs text-white/50">
+        <!-- Honest availability (1.3): one line, one claim, no fake liveness. -->
+        <AvailabilityLine profile={p} variant="card" class="mt-2" />
+        <p class="mt-1 truncate text-xs text-white/50">
           {genderLabel(p.gender)}
           {p.services[0] && ` · ${serviceLabel(p.services[0])}`}
           {p.services.length > 1 && ` · +${p.services.length - 1}`}
@@ -98,12 +95,7 @@ const slab = SLABS[[...p.id].reduce((s, c) => s + c.charCodeAt(0), 0) % SLABS.le
           <h3 class="flex items-center gap-1.5 font-condensed text-xl font-semibold tracking-tight">
             <a href={href} class="after:absolute after:inset-0">{p.name}, {profileAge(p.birthDate)}</a>
             <VerifiedBadge class="size-4.5" />
-            {p.online && (
-              <span class="ml-auto flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                <span class="size-1.5 rounded-full bg-online" />
-                {m.online_now()}
-              </span>
-            )}
+            <AvailabilityLine profile={p} variant="line" class="ml-auto text-xs font-medium" />
           </h3>
           <p class="text-sm text-muted-foreground">{cityName}</p>
           <p class="text-sm leading-relaxed">{localizedDescription(p)}</p>
@@ -130,6 +122,7 @@ const slab = SLABS[[...p.id].reduce((s, c) => s + c.charCodeAt(0), 0) % SLABS.le
           <VerifiedBadge class="size-3.5" />
         </p>
         <p class="truncate text-xs text-muted-foreground">{cityName}</p>
+        <AvailabilityLine profile={p} variant="line" class="text-xs" />
       </div>
       <p class="flex-none text-sm font-semibold">€{p.priceFrom}</p>
     </a>
