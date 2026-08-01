@@ -8,6 +8,8 @@ import ProfileCard from '@/components/organisms/profile/ProfileCard.astro';
 import PhotoCarousel from '@/components/molecules/PhotoCarousel.astro';
 import SafeImage from '@/components/atoms/SafeImage.astro';
 import SearchControl from '@/components/molecules/SearchControl.astro';
+import Combobox from '@/components/molecules/Combobox.astro';
+import { CITIES } from '@/lib/taxonomy';
 import SafeModeToggle from '@/components/molecules/SafeModeToggle.astro';
 import Section from '@/components/molecules/Section.astro';
 import Select from '@/components/atoms/Select.astro';
@@ -134,6 +136,13 @@ const swatches = [
         <SafeModeToggle />
         <div class="w-56"><Select><option>Select atom</option><option>Option B</option></Select></div>
         <div class="w-56"><Input placeholder="Input atom" /></div>
+        <Combobox
+          options={CITIES.map((c) => ({ value: c.slug, label: c.name }))}
+          placeholder="City"
+          anyLabel="City: Any"
+          searchPlaceholder="City"
+          target="[data-none]"
+        />
       </div>
     </section>
 

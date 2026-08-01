@@ -56,7 +56,10 @@ export const PAGE_SIZE = 24;
 export const ProfileListParamsSchema = z.object({
   /** Free-text query (name/tagline/city/services). AI search rides this later. */
   q: z.string().trim().max(200).optional(),
+  /** Main city (URL path segment) — the primary location state. */
   city: z.enum(CITY_SLUGS).optional(),
+  /** Extra cities from the filter panel; effective set = union(city, cities). */
+  cities: z.array(z.enum(CITY_SLUGS)).default([]),
   /** Multi-select (checkbox chips); matches ANY — "Woman + Trans woman" is a real search. */
   genders: z.array(z.enum(GENDERS)).default([]),
   /** Multi-select; a profile matches when it offers ANY of these. */
@@ -102,6 +105,7 @@ export function profileListParamsFromUrl(url: URL): ProfileListParams {
   const candidate = {
     q: opt('q'),
     city: opt('city'),
+    cities: sp.getAll('cities'),
     genders: sp.getAll('genders'),
     services: sp.getAll('services'),
     meetingType: opt('visit'),

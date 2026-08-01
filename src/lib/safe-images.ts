@@ -49,12 +49,57 @@ export const SAFE_IMAGES: readonly string[] = [
   '/safeimg/98083210_p0.jpg',
 ];
 
+/**
+ * NSFW imagery served when safe mode is OFF and no real photo exists yet
+ * (dummy-data phase). Same deterministic pick, own pool (public/nsfwimg/).
+ */
+export const NSFW_IMAGES: readonly string[] = [
+  '/nsfwimg/agung-setiawan-uqIQkQE0gtM-unsplash.jpg',
+  '/nsfwimg/andrey-zvyagintsev-PsreHGlHZJ8-unsplash.jpg',
+  '/nsfwimg/anil-sharma-bzjVTQMMm-U-unsplash.jpg',
+  '/nsfwimg/ayo-ogunseinde-LX_nAdJQpAQ-unsplash.jpg',
+  '/nsfwimg/babi-JztG86OFVKo-unsplash.jpg',
+  '/nsfwimg/babi-Lf9JpqXS--0-unsplash.jpg',
+  '/nsfwimg/brian-lawson-GHFQL3sLfyQ-unsplash.jpg',
+  '/nsfwimg/brian-lawson-MRRgFUt3V0Q-unsplash.jpg',
+  '/nsfwimg/brian-lawson-P0w6oSpzYv0-unsplash.jpg',
+  '/nsfwimg/brian-wangenheim-wX-LgYYQXXA-unsplash.jpg',
+  '/nsfwimg/caique-nascimento-Ij24Uq1sMwM-unsplash.jpg',
+  '/nsfwimg/cucu-marius-daniel-KYr4v51hRqU-unsplash.jpg',
+  '/nsfwimg/ernest-tarasov-fNuQAdvynBQ-unsplash.jpg',
+  '/nsfwimg/felix-uresti-ZPOZsEuNhgo-unsplash.jpg',
+  '/nsfwimg/garin-chadwick-XNf_s_upjso-unsplash.jpg',
+  '/nsfwimg/gold-touch-nutrition-895Q_xZU4js-unsplash.jpg',
+  '/nsfwimg/jeferson-gomes-9crthglc2ZE-unsplash.jpg',
+  '/nsfwimg/jeferson-gomes-GYaEMfwk5pM-unsplash.jpg',
+  '/nsfwimg/josh-pereira-MMCbN2qBEJM-unsplash.jpg',
+  '/nsfwimg/joshua-rawson-harris-0SRum07agS0-unsplash.jpg',
+  '/nsfwimg/logan-weaver-lgnwvr-DFOqZDsIaUA-unsplash.jpg',
+  '/nsfwimg/marlon-alves-XIPHPLurLWc-unsplash.jpg',
+  '/nsfwimg/martin-martz-Mii2BAuPADw-unsplash.jpg',
+  '/nsfwimg/mihaela-claudia-puscas-P6ug7DiWzZ8-unsplash.jpg',
+  '/nsfwimg/mukul-kumar-oWfo8H7wvWo-unsplash.jpg',
+  '/nsfwimg/ph-m-duy-quang-8JJVTvNh4Cs-unsplash.jpg',
+  '/nsfwimg/siednji-leon-VKGNDoJXNQY-unsplash.jpg',
+  '/nsfwimg/vadim-yefremov-PZJAYsy4Uao-unsplash.jpg',
+  '/nsfwimg/vasi-AfcSlj6c0pU-unsplash.jpg',
+  '/nsfwimg/viktor-hesse-AIa89vmqZSA-unsplash.jpg',
+];
+
 /** FNV-1a — tiny, stable, good-enough spread for picking a placeholder. */
-export function safeImageFor(key: string): string {
+function fnv(key: string): number {
   let h = 0x811c9dc5;
   for (let i = 0; i < key.length; i++) {
     h ^= key.charCodeAt(i);
     h = Math.imul(h, 0x01000193);
   }
-  return SAFE_IMAGES[(h >>> 0) % SAFE_IMAGES.length]!;
+  return h >>> 0;
+}
+
+export function safeImageFor(key: string): string {
+  return SAFE_IMAGES[fnv(key) % SAFE_IMAGES.length]!;
+}
+
+export function nsfwImageFor(key: string): string {
+  return NSFW_IMAGES[fnv(key) % NSFW_IMAGES.length]!;
 }

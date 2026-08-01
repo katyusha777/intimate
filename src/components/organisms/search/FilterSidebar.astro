@@ -9,7 +9,7 @@
  */
 import * as m from '@/paraglide/messages';
 import { serviceCategoryLabel, serviceLabel } from '@/lib/labels';
-import { SERVICES, SERVICE_CATEGORIES } from '@/lib/taxonomy';
+import { CITIES, SERVICES, SERVICE_CATEGORIES } from '@/lib/taxonomy';
 import type { ProfileListParams } from '@/app/models/profile';
 import Icon from '@/components/atoms/Icon.astro';
 import Input from '@/components/atoms/Input.astro';
@@ -27,6 +27,8 @@ interface Props {
 const { params, resetHref, visitMode = 'query', openCategory } = Astro.props;
 const visitNav = visitMode === 'navigate';
 const selectedServices = new Set(params.services ?? []);
+/* Effective location set: main city (path, set top-right) + extra sidebar cities. */
+const selectedCities = new Set([params.city, ...(params.cities ?? [])].filter(Boolean));
 
 const card = 'space-y-4 rounded-2xl bg-card p-5 shadow-soft dark:ring-1 dark:ring-border';
 const checkbox = 'size-4 flex-none cursor-pointer accent-primary';
@@ -34,14 +36,37 @@ const row = 'flex cursor-pointer items-center gap-2.5 text-sm';
 ---
 
 <aside class="space-y-4">
-  <div class="flex items-center justify-between px-1">
-    <h2 class="text-xl font-semibold tracking-tight">{m.filter_title()}</h2>
+  <!-- h-9 matches the quick-control row so the first card top-aligns with the cards grid -->
+  <div class="flex h-9 items-center justify-between px-1">
+    <h2 class="font-condensed text-xl font-semibold tracking-tight">{m.filter_title()}</h2>
     <a
       href={resetHref}
-      class="rounded-full bg-muted px-3.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+      class="border border-foreground/20 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-foreground/60 hover:text-foreground"
     >
       {m.filter_reset()}
     </a>
+  </div>
+
+  <!-- Location: extra cities on top of the main one (top-right combobox).
+       Checking cities here never changes the main path state. -->
+  <div class={card}>
+    <h3 class="font-semibold">{m.filter_city()}</h3>
+    <div class="max-h-56 space-y-2 overflow-y-auto">
+      {
+        CITIES.map((c) => (
+          <label class={row}>
+            <input
+              type="checkbox"
+              name="cities"
+              value={c.slug}
+              checked={selectedCities.has(c.slug)}
+              class={checkbox}
+            />
+            {c.name}
+          </label>
+        ))
+      }
+    </div>
   </div>
 
   <!-- Services (grouped, collapsible, multi-select) -->

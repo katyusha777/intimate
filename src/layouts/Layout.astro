@@ -90,9 +90,16 @@ const locale = getLocale();
 
     <script is:inline>
       // Safe mode (DESIGN.md §6): fail-closed. Server HTML always ships safe
-      // placeholders; real photos swap in only when cookie safe_mode=off.
+      // placeholders; real photos swap in when safe mode is off. An explicit
+      // cookie wins; otherwise: local dev defaults SAFE, deployed defaults NSFW
+      // (it is an adult site — safe mode is the owner's build-in-public tool).
       (function () {
-        const isSafe = () => !document.cookie.includes('safe_mode=off');
+        const isSafe = () => {
+          const c = document.cookie;
+          if (c.includes('safe_mode=off')) return false;
+          if (c.includes('safe_mode=on')) return true;
+          return /^(localhost|127\.|192\.168\.|10\.)/.test(location.hostname);
+        };
         const apply = () => {
           const on = isSafe();
           document.querySelectorAll('img[data-safe]').forEach((el) => {

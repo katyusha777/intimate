@@ -3,35 +3,16 @@ import * as m from '@/paraglide/messages';
 import { localizePath } from '@/lib/i18n';
 import SafeModeToggle from '@/components/molecules/SafeModeToggle.astro';
 import ThemeToggle from '@/components/molecules/ThemeToggle.astro';
-import { CITIES } from '@/lib/taxonomy';
 ---
 
 <!-- Footer — always dark (intimate.nl style); `dark` class scopes tokens so
      children (safe-mode toggle, text colors) render on dark correctly. -->
 <footer class="dark mt-16 overflow-hidden bg-neutral-950 text-foreground">
-  <!-- City ticker -->
-  <div class="border-b border-white/10 py-3">
-    <div class="animate-ticker flex w-max">
-      {
-        [0, 1].map(() => (
-          <div class="flex items-center" aria-hidden="true">
-            {CITIES.slice(0, 12).map((c) => (
-              <span class="flex items-center gap-10 eyebrow pr-10 text-2xs text-white/40">
-                {c.name}
-                <span class="size-1 rounded-full bg-brand/80" />
-              </span>
-            ))}
-          </div>
-        ))
-      }
-    </div>
-  </div>
-
   <div class="mx-auto max-w-7xl px-4 md:px-6">
     <!-- Top: claim + logo -->
     <div class="grid gap-10 border-b border-white/10 py-12 lg:grid-cols-2 lg:items-center">
       <div>
-        <span class="inline-flex items-center gap-2 rounded-full border border-brand/40 px-3.5 py-1.5 eyebrow text-2xs font-semibold text-white/80">
+        <span class="inline-flex items-center gap-2 border border-brand/40 px-3.5 py-1.5 eyebrow text-2xs font-semibold text-white/80">
           <span class="size-1.5 rounded-full bg-brand"></span>
           Early access
         </span>
@@ -93,7 +74,7 @@ import { CITIES } from '@/lib/taxonomy';
         ))
       }
 
-      <div class="rounded-2xl bg-white/5 p-5 ring-1 ring-white/10">
+      <div class="border border-white/15 p-5">
         <p class="eyebrow flex items-center gap-3 text-white/50">
           <span class="h-px w-5 bg-white/30" aria-hidden="true"></span>
           Questions?
@@ -105,11 +86,11 @@ import { CITIES } from '@/lib/taxonomy';
           <span class="font-semibold">085 333 2377</span>
         </p>
         <p class="mt-2 text-xs text-white/50">WhatsApp, Mon–Fri 9:00–17:00</p>
-        <div class="mt-4 bg-amber-400/10 p-3 ring-1 ring-amber-400/25">
+        <div class="mt-4 border-l-2 border-amber-400/60 pl-3">
           <p class="eyebrow text-2xs font-bold text-amber-200">
-            ⚠ Not an escort agency
+            Not an escort agency
           </p>
-          <p class="mt-1 text-xs leading-relaxed text-amber-100/70">
+          <p class="mt-1 text-xs leading-relaxed text-white/50">
             We are an advertising platform — appointments are made directly with advertisers.
             We do not mediate or schedule bookings.
           </p>
@@ -120,7 +101,7 @@ import { CITIES } from '@/lib/taxonomy';
     <!-- Bottom bar -->
     <div class="flex flex-wrap items-center justify-between gap-4 border-t border-white/10 py-6 pb-24 md:pb-6">
       <p class="flex items-center gap-3">
-        <span class="rounded-full px-2.5 py-1 text-xs font-bold ring-1 ring-white/25">18+</span>
+        <span class="border border-white/25 px-2.5 py-1 text-xs font-bold">18+</span>
         <span class="text-sm text-white/50">© 2026 Intimate.nl. All rights reserved.</span>
       </p>
       <div class="flex items-center gap-6">
@@ -129,7 +110,7 @@ import { CITIES } from '@/lib/taxonomy';
         <button
           type="button"
           data-scroll-top
-          class="flex items-center gap-2 rounded-full px-4 py-2 eyebrow font-semibold text-foreground ring-1 ring-white/20 transition-colors hover:bg-white/10"
+          class="flex cursor-pointer items-center gap-2 border border-white/20 px-4 py-2 eyebrow font-semibold text-foreground transition-colors hover:bg-white/10"
         >
           Back to top
           <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m18 15-6-6-6 6" /></svg>

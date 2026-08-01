@@ -87,7 +87,7 @@ export const IMPORT_JOB_STATES = [
 // Person attributes
 // ---------------------------------------------------------------------------
 
-export const GENDERS = ['female', 'male', 'trans_woman', 'trans_man', 'non_binary'] as const;
+export const GENDERS = ['female', 'male', 'trans_woman', 'trans_man'] as const;
 
 export const AVAILABLE_FOR = ['men', 'women', 'couples'] as const;
 

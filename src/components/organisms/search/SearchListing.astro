@@ -62,7 +62,7 @@ function pageHref(p: number): string {
 
 /* Misprint chip: sharp keyline on bare canvas; checked = ink flip. */
 const chip =
-  'flex h-9 cursor-pointer select-none items-center gap-2 border border-foreground/20 px-4 text-sm font-medium transition-colors hover:border-foreground/60 active:scale-[0.96]';
+  'flex h-9 cursor-pointer select-none items-center gap-2 border border-foreground/20 px-3 text-sm font-medium transition-colors hover:border-foreground/60 active:scale-[0.96]';
 ---
 
 <form
@@ -77,74 +77,12 @@ const chip =
 >
   {params.q && <input type="hidden" name="q" value={params.q} />}
 
-  <div class="mb-5 flex flex-wrap items-end justify-between gap-4">
-    <div>
-      <h1 class="display text-3xl md:text-4xl">{title}</h1>
-      <p class="mt-1.5 max-w-2xl text-sm text-muted-foreground">
-        {intro ?? m.results_count({ count: result.total })}
-      </p>
-      {updated && <p class="eyebrow mt-1.5">{updated}</p>}
-    </div>
-    <label class="flex items-center gap-2.5 text-sm">
-      <span class="text-muted-foreground">{m.sort_by()}</span>
-      <span class="relative inline-flex h-9 items-center border border-foreground/20 transition-colors hover:border-foreground/60">
-        <select
-          name="sort"
-          class="h-full cursor-pointer appearance-none bg-transparent pl-3.5 pr-8 text-base font-medium outline-none md:text-sm"
-        >
-          {
-            SORT_OPTIONS.map((s) => (
-              <option value={s} selected={(params.sort ?? 'newest') === s}>
-                {sortLabel(s)}
-              </option>
-            ))
-          }
-        </select>
-        <Icon name="chevron-down" class="pointer-events-none absolute right-3 text-xs text-muted-foreground" />
-      </span>
-    </label>
-  </div>
-
-  <!-- Quick chips: city (path navigation) · gender multi · online now · Filters (mobile) -->
-  <div class="mb-6 flex flex-wrap items-center gap-2">
-    <span class="relative inline-flex items-center">
-      <select data-city-nav aria-label={m.filter_city()} class:list={[chip, 'appearance-none pr-9']}>
-        <option value="">{m.filter_city()}: {m.filter_any()}</option>
-        {
-          CITIES.map((c) => (
-            <option value={c.slug} selected={params.city === c.slug}>
-              {c.name}
-            </option>
-          ))
-        }
-      </select>
-      <Icon name="chevron-down" class="pointer-events-none absolute right-3.5 text-xs text-muted-foreground" />
-    </span>
-
-    {
-      GENDERS.map((g) => (
-        <label>
-          <input
-            type="checkbox"
-            name="genders"
-            value={g}
-            checked={selectedGenders.has(g)}
-            class="peer sr-only"
-          />
-          <span class:list={[chip, 'peer-checked:border-foreground peer-checked:bg-foreground peer-checked:text-background']}>
-            {genderLabel(g)}
-          </span>
-        </label>
-      ))
-    }
-
-    <label>
-      <input type="checkbox" name="online" checked={params.onlineOnly} class="peer sr-only" />
-      <span class:list={[chip, 'peer-checked:border-foreground peer-checked:bg-foreground peer-checked:text-background']}>
-        <span class="size-1.5 rounded-full bg-online"></span>
-        {m.filter_online()}
-      </span>
-    </label>
+  <div class="mb-6">
+    <h1 class="display text-3xl md:text-4xl">{title}</h1>
+    <p class="mt-1.5 max-w-2xl text-sm text-muted-foreground">
+      {intro ?? m.results_count({ count: result.total })}
+    </p>
+    {updated && <p class="eyebrow mt-1.5">{updated}</p>}
   </div>
 
   <div class="grid items-start gap-6 lg:grid-cols-[17rem_1fr]">
@@ -161,6 +99,60 @@ const chip =
     </details>
 
     <div>
+      <!-- One control line above the results: genders · online ·· city · sort.
+           The combobox drives the hidden data-city-nav select (path navigation);
+           it is the MAIN location state — sidebar cities only add to it. -->
+      <div class="mb-4 flex flex-wrap items-center gap-2">
+        <select data-city-nav aria-hidden="true" tabindex="-1" class="sr-only">
+          <option value="" selected={!params.city} />
+          {CITIES.map((c) => <option value={c.slug} selected={params.city === c.slug} />)}
+        </select>
+
+        {
+          GENDERS.map((g) => (
+            <label>
+              <input
+                type="checkbox"
+                name="genders"
+                value={g}
+                checked={selectedGenders.has(g)}
+                class="peer sr-only"
+              />
+              <span class:list={[chip, 'peer-checked:border-foreground peer-checked:bg-foreground peer-checked:text-background']}>
+                {genderLabel(g)}
+              </span>
+            </label>
+          ))
+        }
+
+        <label>
+          <input type="checkbox" name="online" checked={params.onlineOnly} class="peer sr-only" />
+          <span class:list={[chip, 'peer-checked:border-foreground peer-checked:bg-foreground peer-checked:text-background']}>
+            <span class="size-1.5 rounded-full bg-online"></span>
+            {m.filter_online()}
+          </span>
+        </label>
+
+        <label class="ml-auto flex items-center text-sm">
+          <span class="relative inline-flex h-9 items-center border border-foreground/20 transition-colors hover:border-foreground/60">
+            <select
+              name="sort"
+              aria-label={m.sort_by()}
+              class="h-full cursor-pointer appearance-none bg-transparent pl-3.5 pr-8 text-base font-medium outline-none md:text-sm"
+            >
+              {
+                SORT_OPTIONS.map((s) => (
+                  <option value={s} selected={(params.sort ?? 'newest') === s}>
+                    {sortLabel(s)}
+                  </option>
+                ))
+              }
+            </select>
+            <Icon name="chevron-down" class="pointer-events-none absolute right-3 text-xs text-muted-foreground" />
+          </span>
+        </label>
+      </div>
+
       {
         result.items.length > 0 ? (
           <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">

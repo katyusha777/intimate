@@ -1,13 +1,17 @@
 ---
 import * as m from '@/paraglide/messages';
 import Button from '@/components/atoms/Button.astro';
+import Combobox from '@/components/molecules/Combobox.astro';
 import { getLocale } from '@/paraglide/runtime';
 import { listingCategoryLabel } from '@/lib/labels';
 import { localizePath } from '@/lib/i18n';
-import { LISTING_CATEGORIES, type Locale } from '@/lib/taxonomy';
+import { CITIES, LISTING_CATEGORIES, type Locale } from '@/lib/taxonomy';
 
 const locale = getLocale() as Locale;
 const path = Astro.url.pathname;
+/** Current city from the URL path (works on /{city}/, /{tab}/{city}/ …). */
+const pathSegs = path.split('/').filter(Boolean);
+const currentCity = CITIES.find((c) => pathSegs.includes(c.slug))?.slug;
 const searchPath = localizePath('/search/');
 const q = path.startsWith(searchPath) ? (Astro.url.searchParams.get('q') ?? '') : '';
 
@@ -38,7 +42,8 @@ const categories = [
       <!-- Misprint slab field; crimson caret = the motion accent while typing. -->
       <label class="slab-field flex h-11 w-full cursor-text">
         <span class="slab-field__face flex w-full items-center gap-3 pl-4 pr-1.5">
-      <i class="fa-thin fa-wand-magic-sparkles text-brand" aria-hidden="true"></i>
+      <!-- icon matches the frame ink (DESIGN: input icons = border color) -->
+      <i class="fa-thin fa-wand-magic-sparkles text-foreground" aria-hidden="true"></i>
       <input
         type="search"
         name="q"
@@ -83,35 +88,50 @@ const categories = [
     </div>
   </div>
 
-  <!-- Row 2: main categories — text tabs, active = short underline bar.
+  <!-- Row 2: main categories — text tabs, active = short underline bar — plus
+       the always-visible location control on the right.
        NOT the anaglyph style: that button is unique (DESIGN §2.6). -->
   <div class="border-t border-border/60">
-    <nav
-      class="mx-auto flex h-11 max-w-7xl select-none items-stretch gap-2 overflow-x-auto px-4 [scrollbar-width:none] md:h-12 md:px-6 [&::-webkit-scrollbar]:hidden"
-      aria-label={m.all_categories()}
-    >
-      {
-        categories.map((l) => (
-          <a
-            href={l.href}
-            aria-current={l.active ? 'page' : undefined}
-            class:list={[
-              'cat-link chroma-hover relative flex flex-none items-center px-3 font-condensed text-sm font-bold uppercase tracking-wide transition-colors active:scale-[0.97]',
-              l.active ? 'text-foreground' : 'text-foreground/55 hover:text-foreground',
-            ]}
-          >
-            {l.label}
-            <span
+    <div class="mx-auto flex h-12 max-w-7xl items-stretch gap-3 px-4 md:h-14 md:px-6">
+      <nav
+        class="flex min-w-0 flex-1 select-none items-stretch gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        aria-label={m.all_categories()}
+      >
+        {
+          categories.map((l) => (
+            <a
+              href={l.href}
+              aria-current={l.active ? 'page' : undefined}
               class:list={[
-                'cat-underline absolute bottom-1.5 left-1/2 h-0.5 w-5 -translate-x-1/2 bg-foreground transition-opacity',
-                l.active ? 'opacity-100' : 'opacity-0',
+                'cat-link chroma-hover relative flex flex-none items-center px-3 font-condensed text-sm font-bold uppercase tracking-wide transition-colors active:scale-[0.97]',
+                l.active ? 'text-foreground' : 'text-foreground/55 hover:text-foreground',
               ]}
-              aria-hidden="true"
-            />
-          </a>
-        ))
-      }
-    </nav>
+            >
+              {l.label}
+              <span
+                class:list={[
+                  'cat-underline absolute bottom-1.5 left-1/2 h-0.5 w-5 -translate-x-1/2 bg-foreground transition-opacity',
+                  l.active ? 'opacity-100' : 'opacity-0',
+                ]}
+                aria-hidden="true"
+              />
+            </a>
+          ))
+        }
+      </nav>
+      <div class="flex flex-none items-center border-l border-border/60 pl-3 md:pl-4">
+        <Combobox
+          icon="location-dot"
+          options={CITIES.map((c) => ({ value: c.slug, label: c.name }))}
+          value={currentCity}
+          placeholder={m.filter_city()}
+          anyLabel={`${m.filter_city()}: ${m.filter_any()}`}
+          searchPlaceholder={m.filter_city()}
+          target="[data-city-nav]"
+          navBase={localizePath('/')}
+        />
+      </div>
+    </div>
   </div>
 </header>
 

@@ -24,3 +24,4 @@ safeimg-originals/
 
 # supabase CLI runtime artifacts
 supabase/.temp/
+public/nsfwimg-originals/

@@ -45,11 +45,13 @@ export const profilesApi: ProfilesApi = {
     const categoryServices = q.serviceCategory
       ? new Set<string>(SERVICES[q.serviceCategory])
       : null;
+    // Location = union of the main city (path) and extra sidebar cities.
+    const citySet = new Set([...(q.city ? [q.city] : []), ...q.cities]);
 
     const rows = LIVE.filter(
       (p) =>
         (!q.q || matchesQuery(p, q.q)) &&
-        (!q.city || p.city === q.city) &&
+        (citySet.size === 0 || citySet.has(p.city)) &&
         (q.genders.length === 0 || q.genders.includes(p.gender)) &&
         (q.services.length === 0 || q.services.some((s) => p.services.includes(s))) &&
         (!categoryServices || p.services.some((s) => categoryServices.has(s))) &&

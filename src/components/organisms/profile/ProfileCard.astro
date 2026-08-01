@@ -48,12 +48,12 @@ const slab = SLABS[[...p.id].reduce((s, c) => s + c.charCodeAt(0), 0) % SLABS.le
       <button
         type="button"
         aria-label={m.nav_favorites()}
-        class="glass-media absolute right-2 top-2 grid size-9 place-items-center rounded-full border text-white transition-transform active:scale-90"
+        class="card-heart absolute right-2 top-2 grid size-9 cursor-pointer place-items-center bg-neutral-950 text-white transition-transform active:scale-90"
       >
         <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7Z" /></svg>
       </button>
       {p.online && (
-        <span class="glass-media absolute left-2 top-2 flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs font-medium text-white">
+        <span class="card-heart absolute left-2 top-2 flex items-center gap-1.5 bg-neutral-950 px-2.5 py-1.5 text-xs font-medium text-white">
           <span class="size-1.5 rounded-full bg-online" />
           {m.online_now()}
         </span>
@@ -134,3 +134,10 @@ const slab = SLABS[[...p.id].reduce((s, c) => s + c.charCodeAt(0), 0) % SLABS.le
   )
 }
 
+
+<style>
+  /* Heart + online flag are mini ink slabs like the arrows. */
+  .card-heart {
+    clip-path: polygon(0 3px, 100% 0, 100% calc(100% - 3px), 0 100%);
+  }
+</style>

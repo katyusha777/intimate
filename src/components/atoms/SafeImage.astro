@@ -4,7 +4,7 @@
  * Fail-closed: server always emits the safe placeholder as `src`; the inline
  * safe-mode script in Layout swaps to `data-real` only when the user opted out.
  */
-import { safeImageFor } from '@/lib/safe-images';
+import { nsfwImageFor, safeImageFor } from '@/lib/safe-images';
 
 interface Props {
   /** Stable key (profile/media id) — picks the deterministic safe image. */
@@ -18,12 +18,15 @@ interface Props {
 
 const { imageKey, src, alt, class: className, loading = 'lazy' } = Astro.props;
 const safe = safeImageFor(imageKey);
+/* Dummy-data photos point into /safeimg — those get a deterministic NSFW
+ * stand-in instead, so the safe-mode toggle actually changes the imagery. */
+const real = src && !src.startsWith('/safeimg/') ? src : nsfwImageFor(imageKey);
 ---
 
 <img
   src={safe}
   data-safe={safe}
-  data-real={src}
+  data-real={real}
   alt={alt}
   loading={loading}
   decoding="async"
