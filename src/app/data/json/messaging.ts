@@ -12,8 +12,11 @@
 import { env } from 'cloudflare:workers';
 import {
   ConversationSettingsSchema,
+  ManualContactSchema,
   ThreadSchema,
+  type ContactItem,
   type ConversationSettings,
+  type ManualContact,
   type Message,
   type MessagingApi,
   type Party,
@@ -46,6 +49,7 @@ const threadKey = (id: string) => `msg:thread:${id}`;
 const profIndexKey = (profileId: string) => `msg:idx:prof:${profileId}`;
 const clientIndexKey = (email: string) => `msg:idx:client:${emailKey(email)}`;
 const settingsKey = (profileId: string) => `msg:settings:${profileId}`;
+const contactsKey = (profileId: string) => `msg:contacts:${profileId}`;
 const makeThreadId = (profileId: string, email: string) => `${profileId}__${emailKey(email)}`;
 
 const now = () => new Date().toISOString();
@@ -128,6 +132,18 @@ async function threadsFor(indexKey: string, session: Session): Promise<{ t: Thre
 
 function indexKeyFor(session: Session): string {
   return session.profileId ? profIndexKey(session.profileId) : clientIndexKey(session.email);
+}
+
+async function readManualContacts(profileId: string): Promise<ManualContact[]> {
+  const raw = await kv()?.get(contactsKey(profileId));
+  if (!raw) return [];
+  try {
+    const arr = JSON.parse(raw);
+    if (!Array.isArray(arr)) return [];
+    return arr.map((c) => ManualContactSchema.safeParse(c)).flatMap((r) => (r.success ? [r.data] : []));
+  } catch {
+    return [];
+  }
 }
 
 export const messagingApi: MessagingApi = {
@@ -312,5 +328,127 @@ export const messagingApi: MessagingApi = {
     return all
       .filter(({ t, party }) => t.state === 'blocked' && t.blockedBy === party)
       .map(({ t, party }) => toSummary(t, party));
+  },
+
+  async listContacts(session) {
+    if (!session.profileId) return [];
+    // Conversations become contacts automatically…
+    const fromThreads: ContactItem[] = (await threadsFor(profIndexKey(session.profileId), session))
+      .filter(({ t }) => t.state !== 'blocked')
+      .map(({ t }) => ({
+        id: t.id,
+        name: t.clientName,
+        note: t.note,
+        handle: '',
+        pinned: t.pinned,
+        kind: 'thread' as const,
+        threadId: t.id,
+        mediaAllowed: t.clientMediaAllowed,
+      }));
+    // …plus manually-added address-book entries.
+    const manual = await readManualContacts(session.profileId);
+    const fromManual: ContactItem[] = manual.map((c) => ({
+      id: c.id,
+      name: c.name,
+      note: c.note,
+      handle: c.handle,
+      pinned: false,
+      kind: 'manual' as const,
+    }));
+    return [...fromThreads, ...fromManual].sort(
+      (a, b) => Number(b.pinned) - Number(a.pinned) || a.name.localeCompare(b.name),
+    );
+  },
+
+  async addContact(session, { name, handle = '', note = '' }) {
+    if (!session.profileId) return;
+    const list = await readManualContacts(session.profileId);
+    list.push(ManualContactSchema.parse({ id: rid(), name, handle, note, createdAt: now() }));
+    await kv()?.put(contactsKey(session.profileId), JSON.stringify(list));
+  },
+
+  async updateContact(session, { id, name, handle = '', note = '' }) {
+    if (!session.profileId) return;
+    const list = await readManualContacts(session.profileId);
+    const c = list.find((x) => x.id === id);
+    if (!c) return;
+    c.name = name;
+    c.handle = handle;
+    c.note = note;
+    await kv()?.put(contactsKey(session.profileId), JSON.stringify(list));
+  },
+
+  async removeContact(session, { id }) {
+    if (!session.profileId) return;
+    const list = await readManualContacts(session.profileId);
+    await kv()?.put(contactsKey(session.profileId), JSON.stringify(list.filter((c) => c.id !== id)));
+  },
+
+  async seedDemo(session) {
+    if (!session.profileId) return;
+    const flag = `msg:seeded:${session.profileId}`;
+    if (await kv()?.get(flag)) return; // once per profile; respects later emptiness
+    await kv()?.put(flag, '1');
+
+    const min = (n: number) => new Date(Date.now() - n * 60_000).toISOString();
+    // Demo photo (SVG data-URL — the seed bypasses the jpeg upload validation).
+    const demoPhoto =
+      "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='240'%20height='320'%3E%3Crect%20width='240'%20height='320'%20fill='%23c81e5a'/%3E%3Ctext%20x='120'%20y='168'%20font-size='24'%20fill='white'%20text-anchor='middle'%20font-family='sans-serif'%3EDemo%20photo%3C/text%3E%3C/svg%3E";
+
+    const base = {
+      profileId: session.profileId,
+      profileSlug: session.profileSlug ?? '',
+      profileName: session.name,
+    };
+    const seeds: Array<Partial<Thread> & { clientEmail: string; clientName: string; messages: Message[] }> = [
+      {
+        clientEmail: 'daan@example.com',
+        clientName: 'Daan',
+        lastMessageAt: min(3),
+        messages: [
+          { id: rid(), sender: 'client', kind: 'text', body: 'Hi! Are you available tonight around 9?', createdAt: min(40), readAt: min(39) },
+          { id: rid(), sender: 'professional', kind: 'text', body: 'Hi Daan! Yes, from 8pm. Where are you based?', createdAt: min(38), readAt: min(37) },
+          { id: rid(), sender: 'client', kind: 'text', body: 'Amsterdam Zuid. How long can you do?', createdAt: min(3) }, // unread
+        ],
+      },
+      {
+        clientEmail: 'thomas@example.com',
+        clientName: 'Thomas',
+        clientMediaAllowed: true,
+        lastMessageAt: min(175),
+        messages: [
+          { id: rid(), sender: 'client', kind: 'text', body: 'Hey, really loved your profile 😊', createdAt: min(184), readAt: min(183) },
+          { id: rid(), sender: 'professional', kind: 'text', body: 'Thank you Thomas! 💋', createdAt: min(183), readAt: min(182) },
+          { id: rid(), sender: 'client', kind: 'text', body: 'Could I send you a picture?', createdAt: min(182), readAt: min(181) },
+          { id: rid(), sender: 'system', kind: 'system', body: 'msg_system_media_on', createdAt: min(180) },
+          { id: rid(), sender: 'client', kind: 'photo', photo: demoPhoto, body: '', createdAt: min(178), readAt: min(177) },
+          { id: rid(), sender: 'professional', kind: 'text', body: 'Looks great — see you Friday!', createdAt: min(175), readAt: min(174) },
+        ],
+      },
+      {
+        clientEmail: 'sven@example.com',
+        clientName: 'Sven',
+        pinned: true,
+        note: 'Regular — prefers evenings, always on time.',
+        lastMessageAt: min(1439),
+        messages: [
+          { id: rid(), sender: 'client', kind: 'text', body: 'Do you offer dinner dates?', createdAt: min(1440), readAt: min(1439) },
+          { id: rid(), sender: 'professional', kind: 'text', body: "I do! Let's arrange something next week.", createdAt: min(1439), readAt: min(1438) },
+        ],
+      },
+    ];
+
+    for (const s of seeds) {
+      const id = makeThreadId(session.profileId, s.clientEmail);
+      const t = ThreadSchema.parse({
+        ...base,
+        ...s,
+        id,
+        createdAt: s.messages[0]!.createdAt,
+      });
+      await writeThread(t);
+      await addToIndex(profIndexKey(session.profileId), id);
+      await addToIndex(clientIndexKey(s.clientEmail), id);
+    }
   },
 };

@@ -416,10 +416,14 @@
     /* Reserve the scrollbar gutter so opening a modal (which locks background
        scroll) never shifts centered content sideways. */
     scrollbar-gutter: stable;
+    /* No document rubber-band on mobile (whichever element scrolls the root). */
+    overscroll-behavior-y: none;
   }
 
   body {
     @apply bg-background text-foreground font-sans;
-    overscroll-behavior-y: contain;
+    /* App-like: kill the document rubber-band bounce that reveals the black
+       page edge on mobile lists (native PWA feel). */
+    overscroll-behavior-y: none;
   }
 }

@@ -18,6 +18,10 @@
 
 export const ACCOUNT_TYPES = ['advertiser', 'agency', 'client', 'admin'] as const;
 
+// --- Admin (docs/ADMIN.md §1) --------------------------------------------
+/** Admin sub-roles (the `admin_role` claim). Enforced in every admin action. */
+export const ADMIN_ROLES = ['moderator', 'support', 'super'] as const;
+
 export const PROFILE_STATES = [
   'draft',
   'pending_review',
@@ -62,6 +66,14 @@ export const REPORT_REASONS = [
   'other',
 ] as const;
 
+/** Reasons that force a report to the top of the queue + the admin banner. */
+export const ESCALATION_REASONS = ['underage_suspicion', 'coercion_suspicion'] as const;
+
+export const REPORT_TARGETS = ['profile', 'message'] as const;
+export const REPORT_STATES = ['open', 'resolved', 'dismissed'] as const;
+/** What an admin did when resolving a report (shown in audit + to the reporter as "reviewed"). */
+export const REPORT_RESOLUTIONS = ['content_removed', 'profile_blocked', 'no_action'] as const;
+
 export const ADMIN_ACTIONS = [
   // audit_log.action values
   'approve_profile',
@@ -79,6 +91,13 @@ export const ADMIN_ACTIONS = [
   'delete_account',
   'edit_profile_admin',
   'add_note',
+  // queue interaction + sensitive reads (ADMIN.md §0.3, §5, §9)
+  'claim_item',
+  'unclaim_item',
+  'escalate',
+  'verification_doc_viewed',
+  'thread_viewed_by_admin',
+  'send_platform_message',
 ] as const;
 
 export const IMPORT_JOB_STATES = [
@@ -467,6 +486,10 @@ export const THEMES = ['light', 'dark', 'system'] as const;
 // ---------------------------------------------------------------------------
 
 export type AccountType = (typeof ACCOUNT_TYPES)[number];
+export type AdminRole = (typeof ADMIN_ROLES)[number];
+export type ReportTarget = (typeof REPORT_TARGETS)[number];
+export type ReportState = (typeof REPORT_STATES)[number];
+export type ReportResolution = (typeof REPORT_RESOLUTIONS)[number];
 export type ProfileState = (typeof PROFILE_STATES)[number];
 export type VerificationState = (typeof VERIFICATION_STATES)[number];
 export type MediaType = (typeof MEDIA_TYPES)[number];

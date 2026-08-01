@@ -1,0 +1,180 @@
+---
+/**
+ * Contacts CRM (docs/MESSAGING.md §6). Her address book: conversations become
+ * contacts automatically, plus manually-added entries (name + phone/email +
+ * note). Reads as contacts — avatar, name, note — NOT a message list (no chat
+ * snippet or timestamp). A conversation row opens the thread; a manual row
+ * opens the edit sheet. The "+" adds a new one.
+ */
+import * as m from '@/paraglide/messages';
+import type { ContactItem } from '@/app/models/messaging';
+import { localizePath } from '@/lib/i18n';
+import Button from '@/components/atoms/Button.astro';
+import SlabField from '@/components/molecules/SlabField.astro';
+import ActionSheet from '@/components/molecules/ActionSheet.astro';
+
+interface Props {
+  contacts: ContactItem[];
+}
+const { contacts } = Astro.props;
+
+const rowInner =
+  'flex flex-1 items-center gap-3 py-3.5 text-left transition-colors hover:bg-muted/50';
+---
+
+{
+  contacts.length === 0 ? (
+    <div class="grid place-items-center py-24 text-center">
+      <svg class="size-10 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 20c0-3.3 2.5-5.4 5.5-5.4s5.5 2.1 5.5 5.4"/><path d="M16 5.2a3 3 0 0 1 0 5.6"/><path d="M18.5 20c0-2.6-1-4.4-2.6-5.2"/></svg>
+      <p class="mt-4 font-condensed text-lg font-bold">{m.contacts_empty_title()}</p>
+      <p class="mt-1 max-w-xs text-sm text-muted-foreground">{m.contacts_empty_body()}</p>
+    </div>
+  ) : (
+    <ul class="divide-y divide-border">
+      {contacts.map((c) => {
+        const avatar = (
+          <span class="grid size-12 flex-none place-items-center rounded-full bg-foreground font-condensed text-lg font-bold text-background">
+            {c.name.charAt(0)}
+          </span>
+        );
+        const body = (
+          <span class="min-w-0 flex-1">
+            <span class="flex items-center gap-2">
+              {c.pinned && (
+                <svg class="size-3.5 flex-none text-brand" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7.4L12 17l-6.3 4.4L8 14 2 9.4h7.6z"/></svg>
+              )}
+              <span class="truncate font-condensed text-base font-bold">{c.name}</span>
+              {c.mediaAllowed && (
+                <svg class="size-3.5 flex-none text-online" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="1.6"/><path d="m21 17-5-5-9 7"/></svg>
+              )}
+            </span>
+            <span class="mt-0.5 block truncate text-sm text-muted-foreground">
+              {c.note || c.handle || m.contacts_no_note()}
+            </span>
+          </span>
+        );
+        return (
+          <li class="flex items-center gap-1">
+            {c.kind === 'thread' ? (
+              <a href={localizePath(`/messages/${c.threadId}/`)} class={rowInner}>
+                {avatar}
+                {body}
+                <svg class="size-4 flex-none text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/></svg>
+              </a>
+            ) : (
+              <button
+                type="button"
+                class={`${rowInner} w-full cursor-pointer`}
+                data-edit-contact
+                data-id={c.id}
+                data-name={c.name}
+                data-handle={c.handle}
+                data-note={c.note}
+              >
+                {avatar}
+                {body}
+                <svg class="size-4 flex-none text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+              </button>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  )
+}
+
+<ActionSheet id="contact-sheet" label={m.contacts_add()}>
+  <form data-contact-form data-edit-title={m.contacts_edit_title()} class="space-y-4 px-5 pb-8 pt-1">
+    <h2 data-contact-title class="display text-2xl">{m.contacts_add_title()}</h2>
+    <input type="hidden" name="id" />
+    <SlabField label={m.contacts_name()} name="name" required />
+    <SlabField label={m.contacts_handle()} name="handle" placeholder={m.contacts_handle_ph()} />
+    <label class="block space-y-1.5">
+      <span class="text-sm font-medium">{m.msg_note()}</span>
+      <span class="slab-field block">
+        <span class="slab-field__face block">
+          <textarea
+            name="note"
+            rows="2"
+            maxlength="500"
+            placeholder={m.msg_note_placeholder()}
+            class="w-full resize-none bg-transparent p-2.5 text-sm caret-brand outline-none placeholder:text-muted-foreground"
+          />
+        </span>
+      </span>
+    </label>
+    <div class="flex items-center gap-4 pt-1">
+      <Button type="submit">{m.contacts_save()}</Button>
+      <button
+        type="button"
+        data-contact-delete
+        hidden
+        class="cursor-pointer text-sm font-medium text-brand underline-offset-4 hover:underline"
+      >
+        {m.contacts_delete()}
+      </button>
+    </div>
+  </form>
+</ActionSheet>
+
+<script>
+  import { actions } from 'astro:actions';
+
+  function initContacts() {
+    const form = document.querySelector<HTMLFormElement>('[data-contact-form]');
+    const sheet = document.getElementById('contact-sheet') as (HTMLElement & { openSheet?: () => void }) | null;
+    if (!form || form.dataset.init) return;
+    form.dataset.init = '1';
+
+    const title = form.querySelector<HTMLElement>('[data-contact-title]')!;
+    const del = form.querySelector<HTMLButtonElement>('[data-contact-delete]')!;
+    const field = (name: string) => form.querySelector<HTMLInputElement | HTMLTextAreaElement>(`[name="${name}"]`)!;
+
+    function open(mode: 'add' | 'edit', data?: DOMStringMap) {
+      form!.reset();
+      (field('id') as HTMLInputElement).value = data?.id ?? '';
+      field('name').value = data?.name ?? '';
+      field('handle').value = data?.handle ?? '';
+      field('note').value = data?.note ?? '';
+      title.textContent = mode === 'edit' ? titleEdit : titleAdd;
+      del.hidden = mode !== 'edit';
+      sheet?.openSheet?.();
+      setTimeout(() => field('name').focus(), 250);
+    }
+    const titleAdd = title.textContent || '';
+    const titleEdit = form.dataset.editTitle || titleAdd;
+
+    // "+" button lives in the page header.
+    document.querySelectorAll('[data-add-contact]').forEach((b) =>
+      b.addEventListener('click', () => open('add')),
+    );
+    // Manual contact rows open the edit sheet.
+    document.querySelectorAll<HTMLElement>('[data-edit-contact]').forEach((b) =>
+      b.addEventListener('click', () => open('edit', b.dataset)),
+    );
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fd = new FormData(form);
+      const input = {
+        name: String(fd.get('name') ?? '').trim(),
+        handle: String(fd.get('handle') ?? '').trim(),
+        note: String(fd.get('note') ?? ''),
+      };
+      if (!input.name) return;
+      const id = String(fd.get('id') ?? '');
+      if (id) await actions.messaging.updateContact({ id, ...input });
+      else await actions.messaging.addContact(input);
+      location.reload();
+    });
+
+    del.addEventListener('click', async () => {
+      const id = (field('id') as HTMLInputElement).value;
+      if (!id) return;
+      await actions.messaging.removeContact({ id });
+      location.reload();
+    });
+  }
+  initContacts();
+  document.addEventListener('astro:page-load', initContacts);
+</script>

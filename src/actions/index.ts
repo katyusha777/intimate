@@ -10,8 +10,11 @@ import { getAiSearchConfig, OPENROUTER_URL } from "@/lib/ai";
 import { ProfileEditSchema } from "@/app/models/account";
 import { accountApi } from "@/app/api/account";
 import { messagingApi } from "@/app/api/messaging";
+import { reportsApi } from "@/app/api/reports";
 import { sessionApi } from "@/app/api/session";
-import { CONVERSATION_MODES } from "@/lib/taxonomy";
+import { CONVERSATION_MODES, REPORT_REASONS, REPORT_TARGETS } from "@/lib/taxonomy";
+// The one sanctioned cross-fence import: the action registry wires in admin.
+import { admin } from "@/actions/admin";
 import {
   ALL_SERVICES,
   CITIES,
@@ -297,7 +300,11 @@ export const server = {
         // Documents are NEVER stored here (hard rule 3: toxic waste). The real
         // impl streams EXIF-stripped files to the private R2 bucket; the mock
         // discards them client-side and only records the state transition.
-        await accountApi.save(session, { idVerification: "pending" });
+        await accountApi.save(session, {
+          idVerification: "pending",
+          verificationSubmittedAt: new Date().toISOString(),
+          verificationReason: undefined,
+        });
         return { ok: true };
       },
     }),
@@ -408,5 +415,65 @@ export const server = {
         return { ok: true };
       },
     }),
+
+    // Contacts CRM — her address book (professional-only, enforced in the data layer).
+    addContact: defineAction({
+      input: z.object({
+        name: z.string().trim().min(1).max(60),
+        handle: z.string().trim().max(120).optional(),
+        note: z.string().max(500).optional(),
+      }),
+      handler: async (input, context) => {
+        const session = await requireSession(context);
+        await messagingApi.addContact(session, input);
+        return { ok: true };
+      },
+    }),
+
+    updateContact: defineAction({
+      input: z.object({
+        id: z.string().max(60),
+        name: z.string().trim().min(1).max(60),
+        handle: z.string().trim().max(120).optional(),
+        note: z.string().max(500).optional(),
+      }),
+      handler: async (input, context) => {
+        const session = await requireSession(context);
+        await messagingApi.updateContact(session, input);
+        return { ok: true };
+      },
+    }),
+
+    removeContact: defineAction({
+      input: z.object({ id: z.string().max(60) }),
+      handler: async ({ id }, context) => {
+        const session = await requireSession(context);
+        await messagingApi.removeContact(session, { id });
+        return { ok: true };
+      },
+    }),
   },
+
+  // User-facing reporting (docs/ADMIN.md §7) — feeds the admin Reports queue.
+  report: {
+    file: defineAction({
+      input: z.object({
+        targetKind: z.enum(REPORT_TARGETS),
+        targetId: z.string().max(200),
+        targetLabel: z.string().max(200).optional(),
+        profileSlug: z.string().max(120).optional(),
+        threadId: z.string().max(200).optional(),
+        reason: z.enum(REPORT_REASONS),
+        note: z.string().max(1000).optional(),
+      }),
+      handler: async (input, context) => {
+        const session = await requireSession(context);
+        await reportsApi.file(session, input);
+        return { ok: true };
+      },
+    }),
+  },
+
+  // Admin action tree (fenced in src/actions/admin/**).
+  admin,
 };

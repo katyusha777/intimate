@@ -1,0 +1,158 @@
+---
+/**
+ * Verification queue (docs/ADMIN.md §5) — the crown jewel. Oldest-first list →
+ * claim → review (doc viewer w/ audit-on-read, profile-vs-doc, SMS gate) →
+ * approve / reject-with-reason / escalate. Keyboard a/r/e.
+ */
+import { getAdmin } from '@/actions/admin/lib';
+import { verificationQueue } from '@/actions/admin/queues';
+import { accountApi } from '@/app/api/account';
+import { profilesApi } from '@/app/api/profiles';
+import { profileAge } from '@/app/models/profile';
+import { REJECTION_REASONS } from '@/lib/taxonomy';
+import { cityName } from '@/lib/seo';
+import AdminShell from '@/components/organisms/admin/AdminShell.astro';
+import QueueList from '@/components/organisms/admin/QueueList.astro';
+import DocViewer from '@/components/organisms/admin/DocViewer.astro';
+
+const session = await getAdmin({ cookies: Astro.cookies });
+const items = session ? await verificationQueue() : [];
+const selectedEmail = Astro.url.searchParams.get('item');
+const selected = items.find((i) => i.email === selectedEmail) ?? null;
+
+const acct = selected ? await accountApi.byEmail(selected.email) : null;
+const profile = selected?.profileSlug ? await profilesApi.bySlug(selected.profileSlug) : null;
+const birthDate = acct?.profileOverride?.birthDate ?? profile?.birthDate ?? null;
+
+function ago(iso: string): string {
+  const mins = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+  return mins < 60 ? `${mins}m` : mins < 2880 ? `${Math.round(mins / 60)}h` : `${Math.round(mins / 1440)}d`;
+}
+const humanize = (s: string) => s.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
+
+const rows = items.map((i) => ({
+  href: `/admin/verification?item=${encodeURIComponent(i.email)}`,
+  title: i.profileName,
+  subtitle: i.email,
+  age: i.submittedAt ? ago(i.submittedAt) : '—',
+  claimedBy: i.claim?.by ?? null,
+  active: i.email === selectedEmail,
+}));
+---
+
+<AdminShell title="Verification" section="verification">
+  {
+    session && (
+      <div>
+        <div class="flex items-end justify-between gap-4">
+          <div>
+            <h1 class="display text-3xl">Verification</h1>
+            <p class="mt-1 text-sm text-muted-foreground">{items.length} pending · oldest-first · SLA &lt; 24h</p>
+          </div>
+        </div>
+
+        <div class="mt-6 grid gap-6 lg:grid-cols-[20rem_1fr]">
+          <QueueList rows={rows} empty="Queue empty — nothing awaiting verification." />
+
+          {!selected ? (
+            <div class="grid place-items-center border border-dashed border-border py-24 text-sm text-muted-foreground">
+              Select an item to review.
+            </div>
+          ) : (
+            <div data-review data-email={selected.email} class="min-w-0 space-y-5">
+              <div class="grid gap-5 md:grid-cols-2">
+                <div>
+                  <h2 class="font-condensed text-sm font-bold uppercase tracking-wide text-muted-foreground">Submitted document</h2>
+                  <div class="mt-2">
+                    <DocViewer email={selected.email} admin={session.email} label="ID document + selfie" />
+                  </div>
+                  <p class="mt-2 text-2xs text-muted-foreground">
+                    Presigned ≤5min in prod (private R2). Every reveal is audit-logged.
+                  </p>
+                </div>
+
+                <div>
+                  <h2 class="font-condensed text-sm font-bold uppercase tracking-wide text-muted-foreground">Claim vs document</h2>
+                  <dl class="mt-2 divide-y divide-border border border-border text-sm">
+                    <div class="flex justify-between gap-4 px-3 py-2"><dt class="text-muted-foreground">Name</dt><dd class="font-medium">{selected.profileName}</dd></div>
+                    <div class="flex justify-between gap-4 px-3 py-2"><dt class="text-muted-foreground">Birth date</dt><dd class="font-medium">{birthDate ?? '—'}{birthDate ? ` (${profileAge(birthDate)})` : ''}</dd></div>
+                    <div class="flex justify-between gap-4 px-3 py-2"><dt class="text-muted-foreground">City</dt><dd class="font-medium">{profile ? cityName(profile.city) : '—'}</dd></div>
+                    <div class="flex justify-between gap-4 px-3 py-2">
+                      <dt class="text-muted-foreground">Phone (SMS)</dt>
+                      <dd class:list={['font-medium', selected.phoneVerified ? 'text-online' : 'text-brand']}>
+                        {selected.phoneVerified ? 'Verified' : 'NOT verified'}
+                      </dd>
+                    </div>
+                    <div class="flex justify-between gap-4 px-3 py-2"><dt class="text-muted-foreground">Submitted</dt><dd class="font-medium">{selected.submittedAt ? `${ago(selected.submittedAt)} ago` : '—'}</dd></div>
+                  </dl>
+                  {!selected.phoneVerified && (
+                    <p class="mt-2 border-l-2 border-brand pl-2 text-xs text-muted-foreground">
+                      Both gates must pass before publish — SMS not yet verified.
+                    </p>
+                  )}
+                  {selected.claim && (
+                    <p class="mt-2 text-xs text-muted-foreground">Claimed by {selected.claim.by.split('@')[0]}.</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Decision bar */}
+              <div class="flex flex-wrap items-end gap-3 border-t border-border pt-5">
+                <button type="button" data-approve class="slab-cut bg-online px-4 py-2 text-sm font-semibold text-white">Approve (a)</button>
+                <label class="text-sm">
+                  <span class="mb-1 block text-xs font-medium text-muted-foreground">Reject reason</span>
+                  <select data-reason class="slab-cut border border-foreground/20 bg-background px-3 py-2 text-sm">
+                    <option value="">Select reason…</option>
+                    {REJECTION_REASONS.map((r) => <option value={r}>{humanize(r)}</option>)}
+                  </select>
+                </label>
+                <button type="button" data-reject class="slab-cut border border-brand px-4 py-2 text-sm font-semibold text-brand">Reject (r)</button>
+                <button type="button" data-escalate class="ml-auto text-sm font-medium text-muted-foreground hover:text-foreground">Escalate to super (e)</button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+</AdminShell>
+
+<script>
+  import { actions } from 'astro:actions';
+  function initReview() {
+    const panel = document.querySelector<HTMLElement>('[data-review]');
+    if (!panel || panel.dataset.init) return;
+    panel.dataset.init = '1';
+    const email = panel.dataset.email!;
+
+    // Claim on open (broadcast "reviewing", §5).
+    actions.admin.claim({ itemKey: `verify:${email.toLowerCase()}` });
+
+    const reason = panel.querySelector('[data-reason]') as unknown as HTMLSelectElement;
+    const approve = async () => {
+      await actions.admin.verificationDecision({ email, decision: 'approve' });
+      location.href = '/admin/verification';
+    };
+    const reject = async () => {
+      if (!reason.value) { reason.focus(); return; }
+      await actions.admin.verificationDecision({ email, decision: 'reject', reason: reason.value as any });
+      location.href = '/admin/verification';
+    };
+    const escalate = async () => {
+      await actions.admin.escalate({ entityType: 'account', entityId: email });
+      alert('Escalated to super.');
+    };
+    panel.querySelector('[data-approve]')!.addEventListener('click', approve);
+    panel.querySelector('[data-reject]')!.addEventListener('click', reject);
+    panel.querySelector('[data-escalate]')!.addEventListener('click', escalate);
+
+    document.addEventListener('keydown', (e) => {
+      if ((e.target as HTMLElement)?.tagName === 'SELECT' || (e.target as HTMLElement)?.tagName === 'INPUT') return;
+      if (e.key === 'a') approve();
+      else if (e.key === 'r') reject();
+      else if (e.key === 'e') escalate();
+    });
+  }
+  initReview();
+  document.addEventListener('astro:page-load', initReview);
+</script>

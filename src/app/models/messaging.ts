@@ -73,6 +73,30 @@ export interface ThreadSummary {
   unread: number;
 }
 
+/** A manually-added contact (no conversation needed) — her address book. */
+export const ManualContactSchema = z.object({
+  id: z.string(),
+  name: z.string().trim().min(1).max(60),
+  /** Phone or email, freeform (how she'd reach them). */
+  handle: z.string().trim().max(120).default(''),
+  note: z.string().max(500).default(''),
+  createdAt: z.string(),
+});
+export type ManualContact = z.infer<typeof ManualContactSchema>;
+
+/** Unified contact row for the CRM: either a conversation or an address-book entry. */
+export interface ContactItem {
+  id: string;
+  name: string;
+  note: string;
+  /** phone/email for manual entries; '' for conversation-derived ones. */
+  handle: string;
+  pinned: boolean;
+  kind: 'thread' | 'manual';
+  threadId?: string;
+  mediaAllowed?: boolean;
+}
+
 export interface MessagingApi {
   settings(profileId: string): Promise<ConversationSettings>;
   setMode(session: Session, mode: ConversationSettings['mode']): Promise<void>;
@@ -112,4 +136,16 @@ export interface MessagingApi {
   // blocking — either side, bidirectional effect
   setBlocked(session: Session, input: { threadId: string; blocked: boolean }): Promise<void>;
   listBlocked(session: Session): Promise<ThreadSummary[]>;
+
+  // contacts CRM — professional's address book (conversations + manual entries)
+  listContacts(session: Session): Promise<ContactItem[]>;
+  addContact(session: Session, input: { name: string; handle?: string; note?: string }): Promise<void>;
+  updateContact(
+    session: Session,
+    input: { id: string; name: string; handle?: string; note?: string },
+  ): Promise<void>;
+  removeContact(session: Session, input: { id: string }): Promise<void>;
+
+  /** Demo only: seed a professional's empty inbox with sample threads (once). */
+  seedDemo(session: Session): Promise<void>;
 }

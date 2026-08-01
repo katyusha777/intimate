@@ -98,16 +98,27 @@ const stats =
                   <span class="text-white/70">{m.account_id()}</span>
                   <span
                     class:list={
-                      account.idVerification === 'approved' ? 'font-medium text-online' : 'text-white/50'
+                      account.idVerification === 'approved'
+                        ? 'font-medium text-online'
+                        : account.idVerification === 'rejected'
+                          ? 'font-medium text-brand'
+                          : 'text-white/50'
                     }
                   >
                     {account.idVerification === 'approved'
                       ? m.verify_verified()
                       : account.idVerification === 'pending'
                         ? m.verify_pending()
-                        : '—'}
+                        : account.idVerification === 'rejected'
+                          ? m.verify_rejected()
+                          : '—'}
                   </span>
                 </p>
+                {account.idVerification === 'rejected' && account.verificationReason && (
+                  <p class="mt-1 border-l-2 border-brand pl-2.5 text-xs leading-relaxed text-white/70">
+                    {m.verify_reason_label()}: {account.verificationReason.replace(/_/g, ' ')}. {m.verify_reason_fix()}
+                  </p>
+                )}
               </div>
               <a
                 href={localizePath('/account/verification/')}

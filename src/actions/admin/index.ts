@@ -1,0 +1,127 @@
+/**
+ * Admin actions (docs/ADMIN.md). Every one: role-guarded (never UI-only) and
+ * audit-logged. Registered into the app action tree by src/actions/index.ts
+ * (the one sanctioned cross-fence import). In prod the guard also asserts
+ * MFA/aal2 and the service-role client is constructed here — nowhere else.
+ */
+import { ActionError, defineAction } from 'astro:actions';
+import { z } from 'astro:schema';
+import { accountApi } from '@/app/api/account';
+import { reportsApi } from '@/app/api/reports';
+import { REJECTION_REASONS, REPORT_RESOLUTIONS } from '@/lib/taxonomy';
+import { claimItem, record, releaseItem, requireAdmin } from './lib';
+import { removeModerationItem } from './queues';
+
+export const admin = {
+  // --- queue claims (broadcast "X is reviewing", §5) ---
+  claim: defineAction({
+    input: z.object({ itemKey: z.string().max(200) }),
+    handler: async ({ itemKey }, context) => {
+      const session = await requireAdmin(context);
+      await claimItem(session, itemKey);
+      await record(session, { action: 'claim_item', entityType: 'queue', entityId: itemKey });
+      return { ok: true };
+    },
+  }),
+  release: defineAction({
+    input: z.object({ itemKey: z.string().max(200) }),
+    handler: async ({ itemKey }, context) => {
+      const session = await requireAdmin(context);
+      await releaseItem(session, itemKey);
+      return { ok: true };
+    },
+  }),
+
+  // --- verification (§5): moderator/super ---
+  verificationDocViewed: defineAction({
+    // The sensitive read itself is logged (doc reveal → audit, §5).
+    input: z.object({ email: z.string().email() }),
+    handler: async ({ email }, context) => {
+      const session = await requireAdmin(context, ['moderator']);
+      await record(session, { action: 'verification_doc_viewed', entityType: 'account', entityId: email });
+      return { ok: true };
+    },
+  }),
+  verificationDecision: defineAction({
+    input: z.object({
+      email: z.string().email(),
+      decision: z.enum(['approve', 'reject']),
+      reason: z.enum(REJECTION_REASONS).optional(),
+      note: z.string().max(500).optional(),
+    }),
+    handler: async ({ email, decision, reason, note }, context) => {
+      const session = await requireAdmin(context, ['moderator']);
+      if (decision === 'reject' && !reason) throw new ActionError({ code: 'BAD_REQUEST', message: 'reason required' });
+      if (decision === 'approve') {
+        await accountApi.saveByEmail(email, { idVerification: 'approved', verificationReason: undefined });
+        await record(session, { action: 'approve_verification', entityType: 'account', entityId: email });
+      } else {
+        await accountApi.saveByEmail(email, { idVerification: 'rejected', verificationReason: reason });
+        await record(session, {
+          action: 'reject_verification',
+          entityType: 'account',
+          entityId: email,
+          reason,
+          meta: note ? { note } : undefined,
+        });
+      }
+      await releaseItem(session, `verify:${email.toLowerCase()}`);
+      return { ok: true };
+    },
+  }),
+
+  // --- moderation (§6): moderator/super ---
+  moderationDecision: defineAction({
+    input: z.object({
+      id: z.string().max(120),
+      decision: z.enum(['approve', 'reject']),
+      reason: z.enum(REJECTION_REASONS).optional(),
+    }),
+    handler: async ({ id, decision, reason }, context) => {
+      const session = await requireAdmin(context, ['moderator']);
+      if (decision === 'reject' && !reason) throw new ActionError({ code: 'BAD_REQUEST', message: 'reason required' });
+      await removeModerationItem(id);
+      await record(session, {
+        action: decision === 'approve' ? 'approve_profile' : 'reject_profile',
+        entityType: 'moderation',
+        entityId: id,
+        reason,
+      });
+      await releaseItem(session, `mod:${id}`);
+      return { ok: true };
+    },
+  }),
+
+  // --- reports (§7): moderator/super ---
+  reportDecision: defineAction({
+    input: z.object({
+      id: z.string().max(60),
+      decision: z.enum(['resolve', 'dismiss']),
+      resolution: z.enum(REPORT_RESOLUTIONS).optional(),
+      note: z.string().max(500).optional(),
+    }),
+    handler: async ({ id, decision, resolution, note }, context) => {
+      const session = await requireAdmin(context, ['moderator']);
+      if (decision === 'resolve') {
+        if (!resolution) throw new ActionError({ code: 'BAD_REQUEST', message: 'resolution required' });
+        await reportsApi.resolve({ id, resolution, note, handledBy: session.email });
+        await record(session, { action: 'resolve_report', entityType: 'report', entityId: id, reason: resolution, meta: note ? { note } : undefined });
+      } else {
+        await reportsApi.dismiss({ id, note, handledBy: session.email });
+        await record(session, { action: 'dismiss_report', entityType: 'report', entityId: id, meta: note ? { note } : undefined });
+      }
+      await releaseItem(session, `report:${id}`);
+      return { ok: true };
+    },
+  }),
+
+  // --- escalate to super (§5, §7) ---
+  escalate: defineAction({
+    input: z.object({ entityType: z.string().max(40), entityId: z.string().max(200) }),
+    handler: async ({ entityType, entityId }, context) => {
+      const session = await requireAdmin(context);
+      await record(session, { action: 'escalate', entityType, entityId });
+      return { ok: true };
+    },
+  }),
+};

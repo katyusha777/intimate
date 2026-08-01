@@ -1,0 +1,79 @@
+---
+/**
+ * Audit log viewer (docs/ADMIN.md §12). Filter by admin/action/entity;
+ * sensitive-read actions (doc views, thread views) are visually distinct.
+ * Retention is long by design — the audit trail is our defensibility.
+ */
+import { getAdmin, listAudit } from '@/actions/admin/lib';
+import { ADMIN_ACTIONS } from '@/lib/taxonomy';
+import AdminShell from '@/components/organisms/admin/AdminShell.astro';
+
+const session = await getAdmin({ cookies: Astro.cookies });
+const action = Astro.url.searchParams.get('action') ?? '';
+const entries = session ? await listAudit(action ? { action } : {}) : [];
+
+const SENSITIVE = new Set(['verification_doc_viewed', 'thread_viewed_by_admin']);
+const humanize = (s: string) => s.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
+const when = (iso: string) => iso.replace('T', ' ').slice(0, 16) + 'Z';
+---
+
+<AdminShell title="Audit log" section="audit">
+  {
+    session && (
+      <div>
+        <div class="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h1 class="display text-3xl">Audit log</h1>
+            <p class="mt-1 text-sm text-muted-foreground">{entries.length} entries{action ? ` · ${humanize(action)}` : ''}</p>
+          </div>
+          <form method="get" class="flex items-end gap-2">
+            <label class="text-sm">
+              <span class="mb-1 block text-xs font-medium text-muted-foreground">Action</span>
+              <select name="action" class="slab-cut border border-foreground/20 bg-background px-3 py-2 text-sm">
+                <option value="">All actions</option>
+                {ADMIN_ACTIONS.map((a) => <option value={a} selected={a === action}>{humanize(a)}</option>)}
+              </select>
+            </label>
+            <button type="submit" class="slab-cut border border-foreground/20 px-3 py-2 text-sm font-medium">Filter</button>
+            <a href="/admin/audit" class="px-2 py-2 text-sm text-muted-foreground hover:text-foreground">Reset</a>
+          </form>
+        </div>
+
+        <div class="mt-6 overflow-x-auto border border-border">
+          <table class="w-full min-w-[720px] text-left text-sm">
+            <thead class="border-b border-border bg-muted text-2xs uppercase tracking-wide text-muted-foreground">
+              <tr>
+                <th class="px-3 py-2 font-semibold">Time (UTC)</th>
+                <th class="px-3 py-2 font-semibold">Admin</th>
+                <th class="px-3 py-2 font-semibold">Role</th>
+                <th class="px-3 py-2 font-semibold">Action</th>
+                <th class="px-3 py-2 font-semibold">Entity</th>
+                <th class="px-3 py-2 font-semibold">Reason</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-border">
+              {entries.length === 0 ? (
+                <tr><td colspan="6" class="px-3 py-10 text-center text-muted-foreground">No entries.</td></tr>
+              ) : (
+                entries.map((e) => (
+                  <tr class:list={[SENSITIVE.has(e.action) && 'bg-brand/5']}>
+                    <td class="whitespace-nowrap px-3 py-2 tabular-nums text-muted-foreground">{when(e.at)}</td>
+                    <td class="px-3 py-2">{e.adminEmail.split('@')[0]}</td>
+                    <td class="px-3 py-2 text-muted-foreground">{e.adminRole}</td>
+                    <td class="px-3 py-2">
+                      <span class:list={['font-medium', SENSITIVE.has(e.action) && 'text-brand']}>
+                        {SENSITIVE.has(e.action) && '👁 '}{humanize(e.action)}
+                      </span>
+                    </td>
+                    <td class="px-3 py-2 text-muted-foreground">{e.entityType}: {e.entityId.split('@')[0]}</td>
+                    <td class="px-3 py-2 text-muted-foreground">{e.reason ? humanize(e.reason) : (e.meta?.note ?? '—')}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    )
+  }
+</AdminShell>

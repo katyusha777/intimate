@@ -1,0 +1,105 @@
+---
+/**
+ * Reports queue (docs/ADMIN.md §7). Escalations (underage/coercion) pinned top;
+ * then oldest. Report-scoped context by default (§9). Resolve with the action
+ * taken, or dismiss with a reason — the reporter is notified it was reviewed.
+ */
+import { getAdmin } from '@/actions/admin/lib';
+import { reportsQueue } from '@/actions/admin/queues';
+import { REPORT_RESOLUTIONS } from '@/lib/taxonomy';
+import AdminShell from '@/components/organisms/admin/AdminShell.astro';
+import QueueList from '@/components/organisms/admin/QueueList.astro';
+
+const session = await getAdmin({ cookies: Astro.cookies });
+const items = session ? await reportsQueue() : [];
+const selId = Astro.url.searchParams.get('item');
+const selected = items.find((r) => r.id === selId) ?? null;
+
+function ago(iso: string): string {
+  const mins = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+  return mins < 60 ? `${mins}m` : mins < 2880 ? `${Math.round(mins / 60)}h` : `${Math.round(mins / 1440)}d`;
+}
+const humanize = (s: string) => s.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
+
+const rows = items.map((r) => ({
+  href: `/admin/reports?item=${r.id}`,
+  title: `${humanize(r.reason)}${r.escalated ? ' · ESCALATION' : ''}`,
+  subtitle: `${r.targetKind}: ${r.targetLabel || r.targetId}`,
+  age: ago(r.createdAt),
+  claimedBy: r.claim?.by ?? null,
+  escalated: r.escalated,
+  active: r.id === selId,
+}));
+---
+
+<AdminShell title="Reports" section="reports">
+  {
+    session && (
+      <div>
+        <h1 class="display text-3xl">Reports</h1>
+        <p class="mt-1 text-sm text-muted-foreground">{items.length} open · escalations pinned</p>
+
+        <div class="mt-6 grid gap-6 lg:grid-cols-[22rem_1fr]">
+          <QueueList rows={rows} empty="No open reports." />
+
+          {!selected ? (
+            <div class="grid place-items-center border border-dashed border-border py-24 text-sm text-muted-foreground">
+              Select a report to review.
+            </div>
+          ) : (
+            <div data-report data-id={selected.id} class="min-w-0 space-y-5">
+              {selected.escalated && (
+                <div class="bg-brand px-3 py-2 text-sm font-semibold text-white">Escalation — underage / coercion. Prioritise.</div>
+              )}
+              <dl class="divide-y divide-border border border-border text-sm">
+                <div class="flex justify-between gap-4 px-3 py-2"><dt class="text-muted-foreground">Reason</dt><dd class="font-medium">{humanize(selected.reason)}</dd></div>
+                <div class="flex justify-between gap-4 px-3 py-2"><dt class="text-muted-foreground">Target</dt><dd class="font-medium">{selected.targetKind}: {selected.targetLabel || selected.targetId}</dd></div>
+                <div class="flex justify-between gap-4 px-3 py-2"><dt class="text-muted-foreground">Reporter</dt><dd class="font-medium">{selected.reporterEmail.split('@')[0]}</dd></div>
+                <div class="flex justify-between gap-4 px-3 py-2"><dt class="text-muted-foreground">Filed</dt><dd class="font-medium">{ago(selected.createdAt)} ago</dd></div>
+              </dl>
+              {selected.note && <p class="border border-border bg-muted/40 px-3 py-2 text-sm">“{selected.note}”</p>}
+              {selected.profileSlug && (
+                <a href={`/en/profile/${selected.profileSlug}/`} target="_blank" class="inline-block text-sm font-medium underline underline-offset-4">Open reported profile ↗</a>
+              )}
+
+              <div class="flex flex-wrap items-end gap-3 border-t border-border pt-5">
+                <label class="text-sm">
+                  <span class="mb-1 block text-xs font-medium text-muted-foreground">Action taken</span>
+                  <select data-resolution class="slab-cut border border-foreground/20 bg-background px-3 py-2 text-sm">
+                    <option value="">Select…</option>
+                    {REPORT_RESOLUTIONS.map((r) => <option value={r}>{humanize(r)}</option>)}
+                  </select>
+                </label>
+                <button type="button" data-resolve class="slab-cut bg-foreground px-4 py-2 text-sm font-semibold text-background">Resolve</button>
+                <button type="button" data-dismiss class="slab-cut border border-foreground/20 px-4 py-2 text-sm font-medium">Dismiss</button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+</AdminShell>
+
+<script>
+  import { actions } from 'astro:actions';
+  function initReport() {
+    const panel = document.querySelector<HTMLElement>('[data-report]');
+    if (!panel || panel.dataset.init) return;
+    panel.dataset.init = '1';
+    const id = panel.dataset.id!;
+    actions.admin.claim({ itemKey: `report:${id}` });
+    const resolution = panel.querySelector('[data-resolution]') as unknown as HTMLSelectElement;
+    panel.querySelector('[data-resolve]')!.addEventListener('click', async () => {
+      if (!resolution.value) { resolution.focus(); return; }
+      await actions.admin.reportDecision({ id, decision: 'resolve', resolution: resolution.value as any });
+      location.href = '/admin/reports';
+    });
+    panel.querySelector('[data-dismiss]')!.addEventListener('click', async () => {
+      await actions.admin.reportDecision({ id, decision: 'dismiss' });
+      location.href = '/admin/reports';
+    });
+  }
+  initReport();
+  document.addEventListener('astro:page-load', initReport);
+</script>

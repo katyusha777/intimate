@@ -4,7 +4,7 @@
  * never change.
  */
 import { z } from 'zod';
-import { ACCOUNT_TYPES } from '@/lib/taxonomy';
+import { ACCOUNT_TYPES, ADMIN_ROLES } from '@/lib/taxonomy';
 
 export const SessionSchema = z.object({
   email: z.string().email(),
@@ -14,6 +14,8 @@ export const SessionSchema = z.object({
   /** Linked public profile — advertisers only. */
   profileId: z.string().optional(),
   profileSlug: z.string().optional(),
+  /** Admin sub-role (ADMIN.md §1). Present only when role === 'admin'. */
+  adminRole: z.enum(ADMIN_ROLES).optional(),
 });
 export type Session = z.infer<typeof SessionSchema>;
 

@@ -8,8 +8,9 @@ import { negotiateLocale } from '@/lib/i18n';
  * getLocale()/m.* resolve the URL's locale per request (AsyncLocalStorage —
  * safe under concurrent requests in one isolate).
  */
-/** Internal, non-localized routes the URL strategy must not redirect. */
-const BYPASS = ['/kitchen-sink', '/_actions'];
+/** Internal, non-localized routes the URL strategy must not redirect.
+ *  `/admin` is locale-less by design (ADMIN.md §1) — English-only internal tool. */
+const BYPASS = ['/kitchen-sink', '/_actions', '/admin'];
 
 export const onRequest = defineMiddleware((context, next) => {
   if (context.url.pathname === '/') {

@@ -15,6 +15,7 @@
 import * as m from '@/paraglide/messages';
 import type { Thread } from '@/app/models/messaging';
 import { localizePath } from '@/lib/i18n';
+import SafeImage from '@/components/atoms/SafeImage.astro';
 
 interface Props {
   thread: Thread;
@@ -54,6 +55,15 @@ const utcTime = (iso: string): string =>
     >
       <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
     </a>
+    {
+      viewer === 'client' ? (
+        <SafeImage imageKey={thread.profileId} alt={otherName} class="size-9 flex-none rounded-full object-cover" />
+      ) : (
+        <span class="grid size-9 flex-none place-items-center rounded-full bg-foreground font-condensed text-sm font-bold text-background">
+          {otherName.charAt(0)}
+        </span>
+      )
+    }
     <span class="min-w-0 flex-1 truncate font-condensed text-lg font-bold">{otherName}</span>
 
     <div class="relative" data-thread-menu>
@@ -87,13 +97,17 @@ const utcTime = (iso: string): string =>
               </label>
               <div class="px-3.5 py-2.5">
                 <p class="mb-1.5 text-2xs font-medium uppercase tracking-wide text-muted-foreground">{m.msg_note()}</p>
-                <textarea
-                  data-note
-                  rows="2"
-                  maxlength="500"
-                  placeholder={m.msg_note_placeholder()}
-                  class="w-full border border-foreground/20 bg-transparent p-2 text-sm caret-brand outline-none transition-colors focus:border-foreground"
-                >{thread.note}</textarea>
+                <span class="slab-field block">
+                  <span class="slab-field__face block">
+                    <textarea
+                      data-note
+                      rows="2"
+                      maxlength="500"
+                      placeholder={m.msg_note_placeholder()}
+                      class="w-full resize-none bg-transparent p-2.5 text-sm caret-brand outline-none placeholder:text-muted-foreground"
+                    >{thread.note}</textarea>
+                  </span>
+                </span>
               </div>
               <div class="my-1 border-t border-border" />
             </>
@@ -185,13 +199,17 @@ const utcTime = (iso: string): string =>
           <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="m21 17-5-5-9 7"/></svg>
           <input type="file" accept="image/*" data-photo-input class="hidden" />
         </label>
-        <textarea
-          data-input
-          rows="1"
-          maxlength="4000"
-          placeholder={m.msg_placeholder()}
-          class="max-h-32 flex-1 resize-none border border-foreground/20 bg-transparent px-3.5 py-2 text-base caret-brand outline-none transition-colors focus:border-foreground md:text-sm"
-        />
+        <span class="slab-field block flex-1">
+          <span class="slab-field__face flex items-center">
+            <textarea
+              data-input
+              rows="1"
+              maxlength="4000"
+              placeholder={m.msg_placeholder()}
+              class="max-h-32 w-full resize-none bg-transparent px-3.5 py-2.5 text-base caret-brand outline-none placeholder:text-muted-foreground md:text-sm"
+            />
+          </span>
+        </span>
         <button
           type="submit"
           data-send

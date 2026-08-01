@@ -83,3 +83,26 @@ test('app/api is only called from pages, layouts and actions', () => {
     .filter((f) => importsOf(f).some((spec) => spec.startsWith('@/app/api/')));
   expect(offenders).toEqual([]);
 });
+
+// --- admin fence (docs/ADMIN.md §1) ---
+
+const ADMIN_FENCE = ['src/pages/admin/', 'src/actions/admin/', 'src/components/organisms/admin/'];
+const ADMIN_SPECS = ['@/actions/admin', '@/pages/admin', '@/components/organisms/admin'];
+
+test('nothing outside the admin fence imports admin code', () => {
+  // The action registry is the ONE sanctioned cross-fence import (it must wire
+  // admin actions into the app action tree).
+  const registry = 'src/actions/index.ts';
+  const offenders = files
+    .filter((f) => !ADMIN_FENCE.some((a) => f.includes(a)) && !f.endsWith(registry))
+    .filter((f) => importsOf(f).some((spec) => ADMIN_SPECS.some((a) => spec.startsWith(a))));
+  expect(offenders).toEqual([]);
+});
+
+test('the Supabase service-role client is constructed only inside the admin fence', () => {
+  // Grep guard (ADMIN.md §1): no service-role key/client leaks outside admin.
+  const offenders = files
+    .filter((f) => !ADMIN_FENCE.some((a) => f.includes(a)))
+    .filter((f) => /service_role|SERVICE_ROLE/.test(readFileSync(f, 'utf8')));
+  expect(offenders).toEqual([]);
+});

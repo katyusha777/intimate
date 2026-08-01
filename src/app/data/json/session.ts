@@ -51,6 +51,25 @@ function clientIdentity(email: string): Session {
   return { email, role: 'client', name };
 }
 
+/**
+ * Mock admin gate (ADMIN.md §1): a designated email → an admin session with a
+ * sub-role. NOT production security — real admin auth is Cloudflare Access +
+ * Supabase MFA (aal2). Documented as the swap; enforced today so the role
+ * matrix and boundary are exercised end-to-end.
+ * ponytail: hardcoded demo admins; real accounts come with Supabase Auth.
+ */
+const ADMIN_EMAILS: Record<string, Session['adminRole']> = {
+  'admin@intimate.nl': 'super',
+  'mod@intimate.nl': 'moderator',
+  'support@intimate.nl': 'support',
+};
+function adminIdentity(email: string): Session | null {
+  const adminRole = ADMIN_EMAILS[email.toLowerCase()];
+  if (!adminRole) return null;
+  const name = `${(localPart(email) || 'admin').replace(/^\w/, (c) => c.toUpperCase())} (admin)`;
+  return { email, role: 'admin', name, adminRole };
+}
+
 export const sessionApi: SessionApi = {
   async fromCookies(cookies) {
     const raw = cookies.get(COOKIE)?.value;
@@ -65,11 +84,15 @@ export const sessionApi: SessionApi = {
 
   async register(cookies, { email, role }) {
     const session =
-      role === 'advertiser' ? await advertiserIdentity(email) : clientIdentity(email);
+      adminIdentity(email) ??
+      (role === 'advertiser' ? await advertiserIdentity(email) : clientIdentity(email));
     return write(cookies, session);
   },
 
   async signIn(cookies, { email }) {
+    // Designated admin email → admin session (mock gate, ADMIN.md §1).
+    const admin = adminIdentity(email);
+    if (admin) return write(cookies, admin);
     // Remembered from a prior register → same identity. Else the mock heuristic:
     // email local-part matching a profile slug → that advertiser, else client.
     const remembered = await kv()?.get(userKey(email));

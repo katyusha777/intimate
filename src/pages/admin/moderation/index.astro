@@ -1,0 +1,132 @@
+---
+/**
+ * Moderation queue (docs/ADMIN.md §6). New/edited profiles + flagged media.
+ * Field-level diff for edits (review the change, not the whole profile); media
+ * strip sorted riskiest-first, blurred-by-default per-item reveal (§2).
+ * Approve → live; reject → taxonomy reason.
+ */
+import { getAdmin } from '@/actions/admin/lib';
+import { moderationQueue } from '@/actions/admin/queues';
+import { REJECTION_REASONS } from '@/lib/taxonomy';
+import AdminShell from '@/components/organisms/admin/AdminShell.astro';
+import QueueList from '@/components/organisms/admin/QueueList.astro';
+import SafeImage from '@/components/atoms/SafeImage.astro';
+
+const session = await getAdmin({ cookies: Astro.cookies });
+const items = session ? await moderationQueue() : [];
+const selId = Astro.url.searchParams.get('item');
+const selected = items.find((m) => m.id === selId) ?? null;
+
+function ago(iso: string): string {
+  const mins = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+  return mins < 60 ? `${mins}m` : mins < 2880 ? `${Math.round(mins / 60)}h` : `${Math.round(mins / 1440)}d`;
+}
+const humanize = (s: string) => s.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
+const kindLabel = (k: string) => ({ new_profile: 'New profile', profile_edit: 'Profile edit', media: 'Flagged media' })[k] ?? k;
+
+const rows = items.map((m) => ({
+  href: `/admin/moderation?item=${m.id}`,
+  title: m.profileName,
+  subtitle: kindLabel(m.kind),
+  age: ago(m.submittedAt),
+  claimedBy: m.claim?.by ?? null,
+  active: m.id === selId,
+}));
+---
+
+<AdminShell title="Moderation" section="moderation">
+  {
+    session && (
+      <div>
+        <h1 class="display text-3xl">Moderation</h1>
+        <p class="mt-1 text-sm text-muted-foreground">{items.length} awaiting review</p>
+
+        <div class="mt-6 grid gap-6 lg:grid-cols-[20rem_1fr]">
+          <QueueList rows={rows} empty="Nothing to moderate." />
+
+          {!selected ? (
+            <div class="grid place-items-center border border-dashed border-border py-24 text-sm text-muted-foreground">
+              Select an item to review.
+            </div>
+          ) : (
+            <div data-mod data-id={selected.id} class="min-w-0 space-y-5">
+              <div class="flex items-center gap-3">
+                <span class="slab-cut border border-foreground/20 px-2 py-0.5 text-2xs font-bold uppercase tracking-wide">{kindLabel(selected.kind)}</span>
+                <a href={`/en/profile/${selected.profileSlug}/`} target="_blank" class="text-sm font-medium underline underline-offset-4">{selected.profileName} ↗</a>
+              </div>
+
+              {selected.diff.length > 0 && (
+                <div>
+                  <h2 class="font-condensed text-sm font-bold uppercase tracking-wide text-muted-foreground">Changes</h2>
+                  <div class="mt-2 divide-y divide-border border border-border">
+                    {selected.diff.map((d) => (
+                      <div class="px-3 py-2 text-sm">
+                        <p class="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">{d.field}</p>
+                        <p class="mt-1 text-brand line-through decoration-brand/40">{d.before}</p>
+                        <p class="text-online">{d.after}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {selected.media.length > 0 && (
+                <div>
+                  <h2 class="font-condensed text-sm font-bold uppercase tracking-wide text-muted-foreground">Media · riskiest first</h2>
+                  <div class="mt-2 flex flex-wrap gap-3">
+                    {selected.media.map((mm) => (
+                      <button type="button" data-reveal class="group relative block size-28 overflow-hidden border border-border">
+                        <SafeImage imageKey={mm.imageKey} alt="media" class="size-full blur-lg transition group-[.shown]:blur-0" />
+                        <span class:list={['absolute left-1 top-1 rounded px-1 text-2xs font-bold text-white', mm.nsfwScore > 0.6 ? 'bg-brand' : 'bg-black/60']}>{Math.round(mm.nsfwScore * 100)}%</span>
+                        <span class="absolute inset-x-0 bottom-0 bg-black/60 py-0.5 text-center text-2xs text-white group-[.shown]:hidden">tap to reveal</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div class="flex flex-wrap items-end gap-3 border-t border-border pt-5">
+                <button type="button" data-approve class="slab-cut bg-online px-4 py-2 text-sm font-semibold text-white">Approve</button>
+                <label class="text-sm">
+                  <span class="mb-1 block text-xs font-medium text-muted-foreground">Reject reason</span>
+                  <select data-reason class="slab-cut border border-foreground/20 bg-background px-3 py-2 text-sm">
+                    <option value="">Select reason…</option>
+                    {REJECTION_REASONS.map((r) => <option value={r}>{humanize(r)}</option>)}
+                  </select>
+                </label>
+                <button type="button" data-reject class="slab-cut border border-brand px-4 py-2 text-sm font-semibold text-brand">Reject</button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+</AdminShell>
+
+<script>
+  import { actions } from 'astro:actions';
+  function initMod() {
+    const panel = document.querySelector<HTMLElement>('[data-mod]');
+    if (!panel || panel.dataset.init) return;
+    panel.dataset.init = '1';
+    const id = panel.dataset.id!;
+    actions.admin.claim({ itemKey: `mod:${id}` });
+    // Per-item blur reveal (§2 — no page-wide toggle).
+    panel.querySelectorAll<HTMLElement>('[data-reveal]').forEach((b) =>
+      b.addEventListener('click', () => b.classList.toggle('shown')),
+    );
+    const reason = panel.querySelector('[data-reason]') as unknown as HTMLSelectElement;
+    panel.querySelector('[data-approve]')!.addEventListener('click', async () => {
+      await actions.admin.moderationDecision({ id, decision: 'approve' });
+      location.href = '/admin/moderation';
+    });
+    panel.querySelector('[data-reject]')!.addEventListener('click', async () => {
+      if (!reason.value) { reason.focus(); return; }
+      await actions.admin.moderationDecision({ id, decision: 'reject', reason: reason.value as any });
+      location.href = '/admin/moderation';
+    });
+  }
+  initMod();
+  document.addEventListener('astro:page-load', initMod);
+</script>

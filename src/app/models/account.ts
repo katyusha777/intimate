@@ -29,6 +29,10 @@ export const AccountSchema = z.object({
   phone: z.string().optional(),
   phoneVerifiedAt: z.string().optional(),
   idVerification: z.enum(VERIFICATION_STATES).default('unverified'),
+  /** When the advertiser submitted ID for review (drives the admin queue order). */
+  verificationSubmittedAt: z.string().optional(),
+  /** Admin's rejection reason (taxonomy) — shown to the advertiser verbatim (ADMIN.md §5). */
+  verificationReason: z.string().optional(),
   profileOverride: ProfileEditSchema.partial().default({}),
   /** Small re-encoded JPEG data-URLs added via the media manager (mock store). */
   extraPhotos: z.array(z.string()).default([]),
@@ -39,9 +43,20 @@ export const AccountSchema = z.object({
 });
 export type Account = z.infer<typeof AccountSchema>;
 
+/** An account plus its owning email — the shape admin lookups return. */
+export interface AccountRecord extends Account {
+  email: string;
+}
+
 export interface AccountApi {
   get(session: Session): Promise<Account>;
   save(session: Session, patch: Partial<Account>): Promise<Account>;
   /** The advertiser's profile with her edits + photo changes merged in. */
   myProfile(session: Session): Promise<Profile | null>;
+
+  // --- admin-capable access (ADMIN.md): by email, not session. In prod these
+  // are RLS-gated to the service role; the admin action checks the role first.
+  all(): Promise<AccountRecord[]>;
+  byEmail(email: string): Promise<AccountRecord | null>;
+  saveByEmail(email: string, patch: Partial<Account>): Promise<Account>;
 }

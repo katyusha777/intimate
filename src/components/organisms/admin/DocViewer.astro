@@ -1,0 +1,70 @@
+---
+/**
+ * Verification document viewer (docs/ADMIN.md §5). Blurred, tap-to-reveal;
+ * revealing logs the sensitive read (verification_doc_viewed → audit) and
+ * stamps an "ADMIN VIEW · {admin} · {ts}" watermark (screenshot deterrent).
+ *
+ * The doc itself is toxic waste (hard rule 3) — never stored in the mock, so
+ * this renders a placeholder. In prod the <img> src is a short-TTL (≤5min)
+ * presigned R2 GET issued by the admin action that also writes the audit line.
+ */
+interface Props {
+  /** Account whose doc this is (audited on reveal). */
+  email: string;
+  /** Admin identity for the watermark. */
+  admin: string;
+  label: string;
+}
+const { email, admin, label } = Astro.props;
+---
+
+<figure class="relative overflow-hidden border border-border bg-muted" data-doc data-doc-email={email}>
+  <div class="grid aspect-[3/2] place-items-center">
+    <div class="text-center text-muted-foreground">
+      <svg class="mx-auto size-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="1"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
+      <p class="mt-2 text-xs font-medium">{label}</p>
+    </div>
+  </div>
+
+  <!-- Blur + reveal gate -->
+  <div data-doc-cover class="absolute inset-0 grid place-items-center bg-card/70 backdrop-blur-md">
+    <button
+      type="button"
+      data-doc-reveal
+      class="slab-cut flex items-center gap-2 border border-foreground/30 bg-background px-3 py-1.5 text-sm font-medium"
+    >
+      <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+      Reveal document (logged)
+    </button>
+  </div>
+
+  <!-- Watermark overlay, shown after reveal -->
+  <div
+    data-doc-mark
+    hidden
+    class="pointer-events-none absolute inset-0 grid select-none place-items-center text-center text-lg font-bold uppercase tracking-widest text-brand/30"
+    style="transform: rotate(-24deg)"
+  >
+    ADMIN VIEW · {admin.split('@')[0]}
+  </div>
+</figure>
+
+<script>
+  import { actions } from 'astro:actions';
+  function initDoc() {
+    document.querySelectorAll<HTMLElement>('[data-doc]').forEach((fig) => {
+      if (fig.dataset.init) return;
+      fig.dataset.init = '1';
+      const btn = fig.querySelector<HTMLButtonElement>('[data-doc-reveal]');
+      btn?.addEventListener('click', async () => {
+        const email = fig.dataset.docEmail!;
+        // Log the sensitive read BEFORE revealing (ADMIN.md §5).
+        await actions.admin.verificationDocViewed({ email });
+        fig.querySelector<HTMLElement>('[data-doc-cover]')!.hidden = true;
+        fig.querySelector<HTMLElement>('[data-doc-mark]')!.hidden = false;
+      });
+    });
+  }
+  initDoc();
+  document.addEventListener('astro:page-load', initDoc);
+</script>

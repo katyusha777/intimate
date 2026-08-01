@@ -28,6 +28,9 @@ if (session && !session.profileId) {
 }
 
 const viewer: 'professional' | 'client' = session?.profileId ? 'professional' : 'client';
+// Demo convenience: a professional's first inbox visit seeds sample threads
+// (once per profile). Mock-only; the Supabase backend has no such hook.
+if (session?.profileId) await messagingApi.seedDemo(session);
 const threads = session ? await messagingApi.listThreads(session) : [];
 ---
 

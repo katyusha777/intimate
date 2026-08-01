@@ -8,7 +8,7 @@ import * as m from '@/paraglide/messages';
 import { messagingApi } from '@/app/api/messaging';
 import { sessionApi } from '@/app/api/session';
 import { isLocale, localizePath } from '@/lib/i18n';
-import Inbox from '@/components/organisms/messaging/Inbox.astro';
+import ContactList from '@/components/organisms/messaging/ContactList.astro';
 import SignInPrompt from '@/components/organisms/dashboard/SignInPrompt.astro';
 import Layout from '@/layouts/Layout.astro';
 
@@ -18,7 +18,7 @@ if (!isLocale(locale)) return new Response(null, { status: 404 });
 const session = await sessionApi.fromCookies(Astro.cookies);
 if (session && !session.profileId) return Astro.redirect(localizePath('/messages/'));
 
-const threads = session ? await messagingApi.listThreads(session) : [];
+const contacts = session ? await messagingApi.listContacts(session) : [];
 ---
 
 <Layout noindex title={`${m.contacts_title()} | Intimate`}>
@@ -26,9 +26,19 @@ const threads = session ? await messagingApi.listThreads(session) : [];
   {
     session && (
       <div class="mx-auto max-w-2xl px-4 py-6 pb-24 md:py-10 md:pb-10">
-        <h1 class="display text-3xl md:text-4xl">{m.contacts_title()}</h1>
+        <div class="flex items-center justify-between gap-4">
+          <h1 class="display text-3xl md:text-4xl">{m.contacts_title()}</h1>
+          <button
+            type="button"
+            data-add-contact
+            aria-label={m.contacts_add()}
+            class="slab-cut flex size-10 flex-none cursor-pointer items-center justify-center bg-foreground text-background transition-colors hover:bg-brand"
+          >
+            <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+          </button>
+        </div>
         <div class="mt-4">
-          <Inbox {threads} viewer="professional" variant="contacts" />
+          <ContactList {contacts} />
         </div>
       </div>
     )

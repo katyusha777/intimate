@@ -19,6 +19,7 @@ const tab = (href: string, label: string, icon: string, exact = false) => ({
   active: exact ? path === localizePath(href) : path.startsWith(localizePath(href.replace(/\/$/, ''))),
   icon,
   dot: false,
+  exact,
 });
 
 /* Role tab matrix (MESSAGING.md §10). The bar only swaps at login/logout, never
@@ -64,6 +65,8 @@ const tabs =
       tabs.map((t) => (
         <a
           href={t.href}
+          data-tab
+          data-tab-exact={t.exact ? '' : undefined}
           class:list={[
             'relative flex min-w-18 flex-col items-center gap-0.5 rounded-full px-4 py-1.5 text-2xs font-medium transition-[background-color,color,transform] active:scale-[0.92]',
             t.active ? 'bg-foreground/10 text-foreground' : 'text-muted-foreground',
@@ -88,6 +91,27 @@ const tabs =
     }
   </div>
 </nav>
+
+<script>
+  // The dock is transition:persist, so its server-rendered active state goes
+  // stale on client-side navigation. Re-sync from the URL on every page load.
+  function syncTabs() {
+    const path = location.pathname;
+    document.querySelectorAll<HTMLAnchorElement>('[data-tab]').forEach((a) => {
+      const href = new URL(a.href).pathname;
+      const active = a.hasAttribute('data-tab-exact')
+        ? path === href
+        : path.startsWith(href.replace(/\/$/, ''));
+      a.classList.toggle('bg-foreground/10', active);
+      a.classList.toggle('text-foreground', active);
+      a.classList.toggle('text-muted-foreground', !active);
+      if (active) a.setAttribute('aria-current', 'page');
+      else a.removeAttribute('aria-current');
+    });
+  }
+  syncTabs();
+  document.addEventListener('astro:page-load', syncTabs);
+</script>
 
 <style>
   /* Liquid glass: heavy blur + saturation boost, translucent canvas, a

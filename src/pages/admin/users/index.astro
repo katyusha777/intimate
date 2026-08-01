@@ -1,0 +1,106 @@
+---
+/**
+ * Users lookup + relations panel (docs/ADMIN.md §8). Search by email; detail
+ * resolves the tangle in one view: account → profile, verification, reports
+ * made/received, favorites. Status actions (warn/suspend/block) ride on
+ * platform messaging (§10) — next pass; this is the read surface.
+ */
+import { getAdmin } from '@/actions/admin/lib';
+import { accountApi } from '@/app/api/account';
+import { reportsApi } from '@/app/api/reports';
+import { profilesApi } from '@/app/api/profiles';
+
+import AdminShell from '@/components/organisms/admin/AdminShell.astro';
+
+const session = await getAdmin({ cookies: Astro.cookies });
+const q = (Astro.url.searchParams.get('q') ?? '').toLowerCase().trim();
+const email = Astro.url.searchParams.get('email');
+
+const [accounts, reports, { items: profiles }] = session
+  ? await Promise.all([accountApi.all(), reportsApi.list(), profilesApi.list({ limit: 60 })])
+  : [[], [], { items: [] }];
+
+const filtered = q ? accounts.filter((a) => a.email.includes(q)) : accounts;
+const selected = email ? (accounts.find((a) => a.email === email) ?? null) : null;
+
+const localPart = (e: string) => (e.split('@')[0] ?? '').replace(/[^a-z0-9]/g, '');
+const profileFor = (e: string) => profiles.find((p) => p.slug.startsWith(localPart(e)));
+const selProfile = selected ? profileFor(selected.email) : null;
+const madeBy = selected ? reports.filter((r) => r.reporterEmail === selected.email).length : 0;
+const againstProfile = selProfile ? reports.filter((r) => r.profileSlug === selProfile.slug).length : 0;
+const humanize = (s: string) => s.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
+---
+
+<AdminShell title="Users" section="users">
+  {
+    session && (
+      <div>
+        <h1 class="display text-3xl">Users</h1>
+        <form method="get" class="mt-3 flex max-w-md gap-2">
+          <input
+            type="search"
+            name="q"
+            value={q}
+            placeholder="Search by email…"
+            class="slab-cut w-full border border-foreground/20 bg-background px-3 py-2 text-sm outline-none focus:border-foreground"
+          />
+          <button type="submit" class="slab-cut border border-foreground/20 px-3 py-2 text-sm font-medium">Search</button>
+        </form>
+
+        <div class="mt-6 grid gap-6 lg:grid-cols-[22rem_1fr]">
+          <ul class="divide-y divide-border border border-border">
+            {filtered.length === 0 ? (
+              <li class="px-3 py-10 text-center text-sm text-muted-foreground">No accounts.</li>
+            ) : (
+              filtered.slice(0, 40).map((a) => (
+                <li>
+                  <a
+                    href={`/admin/users?email=${encodeURIComponent(a.email)}${q ? `&q=${q}` : ''}`}
+                    class:list={['flex items-center justify-between gap-3 px-3 py-2.5 text-sm transition-colors hover:bg-muted', a.email === email && 'bg-muted']}
+                  >
+                    <span class="min-w-0 truncate">{a.email}</span>
+                    <span class:list={['flex-none text-2xs', a.idVerification === 'approved' ? 'text-online' : 'text-muted-foreground']}>{a.idVerification}</span>
+                  </a>
+                </li>
+              ))
+            )}
+          </ul>
+
+          {!selected ? (
+            <div class="grid place-items-center border border-dashed border-border py-24 text-sm text-muted-foreground">Select a user.</div>
+          ) : (
+            <div class="min-w-0 space-y-5">
+              <div class="flex items-center gap-3">
+                <span class="grid size-10 flex-none place-items-center rounded-full bg-foreground font-condensed text-base font-bold text-background">{selected.email.charAt(0).toUpperCase()}</span>
+                <div><p class="font-condensed text-xl font-bold">{selected.email}</p></div>
+              </div>
+
+              <dl class="grid gap-px overflow-hidden border border-border bg-border sm:grid-cols-2">
+                {[
+                  ['Linked profile', selProfile ? selProfile.name : '—'],
+                  ['Profile state', selProfile?.state ?? '—'],
+                  ['ID verification', humanize(selected.idVerification)],
+                  ['Phone (SMS)', selected.phoneVerifiedAt ? 'Verified' : '—'],
+                  ['Favorites', String(selected.favorites.length)],
+                  ['Reports made', String(madeBy)],
+                  ['Reports against profile', String(againstProfile)],
+                  ['Reject reason', selected.verificationReason ? humanize(selected.verificationReason) : '—'],
+                ].map(([k, v]) => (
+                  <div class="bg-card px-3 py-2.5">
+                    <dt class="text-2xs uppercase tracking-wide text-muted-foreground">{k}</dt>
+                    <dd class="mt-0.5 text-sm font-medium">{v}</dd>
+                  </div>
+                ))}
+              </dl>
+
+              {selProfile && (
+                <a href={`/en/profile/${selProfile.slug}/`} target="_blank" class="inline-block text-sm font-medium underline underline-offset-4">Open public profile ↗</a>
+              )}
+              <p class="text-2xs text-muted-foreground">Status actions (warn / suspend / block) arrive with platform messaging (§10).</p>
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+</AdminShell>

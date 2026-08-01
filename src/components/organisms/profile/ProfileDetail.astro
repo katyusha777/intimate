@@ -16,6 +16,7 @@ import ProfileFacts from '@/components/organisms/profile/ProfileFacts.astro';
 import ProfileGallery from '@/components/organisms/profile/ProfileGallery.astro';
 import ProfileHero from '@/components/organisms/profile/ProfileHero.astro';
 import ProfilePhotoMosaic from '@/components/organisms/profile/ProfilePhotoMosaic.astro';
+import ReportControl from '@/components/organisms/profile/ReportControl.astro';
 
 interface Props {
   profile: Profile;
@@ -144,6 +145,10 @@ function hoursLabel(h: (typeof hours)[keyof typeof hours]): string {
             <ProfileGallery photos={p.photos} keyBase={p.id} alt={p.name} />
           </div>
         </section>
+
+        <div class="border-t border-border pt-5">
+          <ReportControl profileId={p.id} profileSlug={p.slug} profileName={p.name} />
+        </div>
       </div>
     </div>
   </div>

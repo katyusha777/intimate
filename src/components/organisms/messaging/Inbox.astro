@@ -12,11 +12,8 @@ import SafeImage from '@/components/atoms/SafeImage.astro';
 interface Props {
   threads: ThreadSummary[];
   viewer: 'professional' | 'client';
-  /** 'contacts' = her CRM view: note preview + photo-grant glyph instead of unread. */
-  variant?: 'inbox' | 'contacts';
 }
-const { threads, viewer, variant = 'inbox' } = Astro.props;
-const contacts = variant === 'contacts';
+const { threads, viewer } = Astro.props;
 
 /** UTC fallback; the client script localizes each row to the user's timezone. */
 function utcTime(iso: string): string {
@@ -32,8 +29,8 @@ function utcTime(iso: string): string {
   threads.length === 0 ? (
     <div class="grid place-items-center py-24 text-center">
       <svg class="size-10 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/></svg>
-      <p class="mt-4 font-condensed text-lg font-bold">{contacts ? m.contacts_empty_title() : m.msg_empty_title()}</p>
-      <p class="mt-1 max-w-xs text-sm text-muted-foreground">{contacts ? m.contacts_empty_body() : m.msg_empty_body()}</p>
+      <p class="mt-4 font-condensed text-lg font-bold">{m.msg_empty_title()}</p>
+      <p class="mt-1 max-w-xs text-sm text-muted-foreground">{m.msg_empty_body()}</p>
     </div>
   ) : (
     <ul class="divide-y divide-border">
@@ -60,17 +57,12 @@ function utcTime(iso: string): string {
                 </span>
               </span>
               <span class="mt-0.5 flex items-center gap-1.5 text-sm text-muted-foreground">
-                {contacts && t.clientMediaAllowed && (
-                  <svg class="size-3.5 flex-none text-online" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="1.6"/><path d="m21 17-5-5-9 7"/></svg>
-                )}
-                <span class="truncate">
-                  {contacts ? t.note || m.contacts_no_note() : t.snippet || m.msg_snippet_empty()}
-                </span>
+                <span class="truncate">{t.snippet || m.msg_snippet_empty()}</span>
               </span>
             </span>
             <span class="flex flex-none flex-col items-end gap-1.5">
               <span class="text-2xs text-muted-foreground" data-inbox-time={t.lastMessageAt}>{utcTime(t.lastMessageAt)}</span>
-              {!contacts && t.unread > 0 && (
+              {t.unread > 0 && (
                 <span class="grid min-w-5 place-items-center rounded-full bg-brand px-1.5 text-2xs font-bold text-white">
                   {t.unread}
                 </span>
