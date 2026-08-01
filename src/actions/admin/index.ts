@@ -11,6 +11,8 @@ import { reportsApi } from '@/app/api/reports';
 import { REJECTION_REASONS, REPORT_RESOLUTIONS } from '@/lib/taxonomy';
 import { claimItem, record, releaseItem, requireAdmin } from './lib';
 import { removeModerationItem } from './queues';
+import { setProfileState } from './entities';
+import type { AdminAction, ProfileState } from '@/lib/taxonomy';
 
 export const admin = {
   // --- queue claims (broadcast "X is reviewing", §5) ---
@@ -111,6 +113,29 @@ export const admin = {
         await record(session, { action: 'dismiss_report', entityType: 'report', entityId: id, meta: note ? { note } : undefined });
       }
       await releaseItem(session, `report:${id}`);
+      return { ok: true };
+    },
+  }),
+
+  // --- profile lifecycle (§8): moderator/super ---
+  profileState: defineAction({
+    input: z.object({
+      id: z.string().max(60),
+      action: z.enum(['approve', 'pause', 'block', 'unblock', 'delete']),
+      reason: z.string().max(200).optional(),
+    }),
+    handler: async ({ id, action, reason }, context) => {
+      const session = await requireAdmin(context, ['moderator']);
+      const map: Record<string, { state: ProfileState; audit: AdminAction }> = {
+        approve: { state: 'live', audit: 'approve_profile' },
+        pause: { state: 'paused', audit: 'edit_profile_admin' },
+        block: { state: 'blocked', audit: 'block_profile' },
+        unblock: { state: 'live', audit: 'unblock_profile' },
+        delete: { state: 'deleted', audit: 'delete_profile' },
+      };
+      const m = map[action]!;
+      await setProfileState(id, m.state, session.email, reason);
+      await record(session, { action: m.audit, entityType: 'profile', entityId: id, reason });
       return { ok: true };
     },
   }),

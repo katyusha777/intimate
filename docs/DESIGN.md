@@ -36,6 +36,16 @@ Design principles: generous whitespace · one accent · real typographic
 hierarchy · photography-first · zero clutter · zero ads-look · **CLS = 0** ·
 390px designed first, desktop second · both themes first-class.
 
+**Product honesty (from the 2026-08 UX review — permanent):** the client wants
+zero friction to contact; the professional wants enough friction to filter —
+the best controls do both at once, reading as convenience on one screen and as
+screening on the other. Every surface makes only claims it can prove: no fake
+liveness (an availability state is timestamped or it isn't shown), no fused
+claims ("NEW & ONLINE"-style), dated proof over badges, no reviews of people,
+no dark patterns. Discretion is a feature for BOTH roles — the professional's
+(location/identity never leak) and the client's (safe mode, neutral browser
+chrome, panic-reachable toggle).
+
 ### 1.1 The design language: **Misprint**
 
 What the anaglyph buttons started has a name and a grammar. **Misprint** =

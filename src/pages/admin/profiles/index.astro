@@ -1,0 +1,201 @@
+---
+/**
+ * Profiles directory — the "girls" god-view (docs/ADMIN.md §8). Filterable
+ * table of every profile with state, verification, completeness % and quality
+ * flags; a detail drawer with all media (blurred + reveal), full facts, reports
+ * against, and lifecycle actions (approve/pause/block/unblock/delete + reason).
+ */
+import { getAdmin } from '@/actions/admin/lib';
+import { listProfilesAdmin, profileByIdAdmin } from '@/actions/admin/entities';
+import { reportsApi } from '@/app/api/reports';
+import { localizedDescription } from '@/app/models/profile';
+import { CITIES, GENDERS, PROFILE_STATES } from '@/lib/taxonomy';
+import { cityName } from '@/lib/seo';
+import AdminShell from '@/components/organisms/admin/AdminShell.astro';
+import SafeImage from '@/components/atoms/SafeImage.astro';
+
+const session = await getAdmin({ cookies: Astro.cookies });
+const sp = Astro.url.searchParams;
+const f = {
+  q: sp.get('q') ?? '',
+  state: sp.get('state') ?? '',
+  city: sp.get('city') ?? '',
+  gender: sp.get('gender') ?? '',
+  onlineOnly: sp.has('online'),
+  verifiedOnly: sp.has('verified'),
+};
+const rows = session ? await listProfilesAdmin(f) : [];
+const id = sp.get('id');
+const detail = session && id ? await profileByIdAdmin(id) : null;
+const reportsAgainst = detail
+  ? (await reportsApi.list()).filter((r) => r.profileSlug === detail.profile.slug)
+  : [];
+
+const stateClass = (s: string) =>
+  ({ live: 'text-online', pending_review: 'text-amber-500', paused: 'text-muted-foreground', blocked: 'text-brand', deleted: 'text-muted-foreground', draft: 'text-muted-foreground' })[s] ??
+  'text-muted-foreground';
+const genderLabel = (g: string) => ({ female: 'F', male: 'M', trans_woman: 'TW', trans_man: 'TM' })[g] ?? g;
+---
+
+<AdminShell title="Profiles" section="profiles">
+  {
+    session && (
+      <div>
+        <div class="flex items-end justify-between gap-4">
+          <div>
+            <h1 class="display text-3xl">Profiles</h1>
+            <p class="mt-1 text-sm text-muted-foreground">{rows.length} shown</p>
+          </div>
+        </div>
+
+        {/* Filter bar */}
+        <form method="get" class="mt-4 flex flex-wrap items-center gap-2 text-sm">
+          <input name="q" value={f.q} placeholder="Search name / city…" class="slab-cut border border-foreground/20 bg-background px-3 py-1.5 outline-none focus:border-foreground" />
+          <select name="state" class="slab-cut border border-foreground/20 bg-background px-2 py-1.5">
+            <option value="">All states</option>
+            {PROFILE_STATES.map((s) => <option value={s} selected={f.state === s}>{s}</option>)}
+          </select>
+          <select name="city" class="slab-cut border border-foreground/20 bg-background px-2 py-1.5">
+            <option value="">All cities</option>
+            {CITIES.map((c) => <option value={c.slug} selected={f.city === c.slug}>{c.name}</option>)}
+          </select>
+          <select name="gender" class="slab-cut border border-foreground/20 bg-background px-2 py-1.5">
+            <option value="">All genders</option>
+            {GENDERS.map((g) => <option value={g} selected={f.gender === g}>{g}</option>)}
+          </select>
+          <label class="flex items-center gap-1.5"><input type="checkbox" name="online" checked={f.onlineOnly} class="cbx-box" /> Online</label>
+          <label class="flex items-center gap-1.5"><input type="checkbox" name="verified" checked={f.verifiedOnly} class="cbx-box" /> Verified</label>
+          <button type="submit" class="slab-cut border border-foreground/20 px-3 py-1.5 font-medium">Filter</button>
+          <a href="/admin/profiles" class="px-2 py-1.5 text-muted-foreground hover:text-foreground">Reset</a>
+        </form>
+
+        <div class="mt-5 grid gap-6 xl:grid-cols-[1fr_24rem]">
+          {/* Table */}
+          <div class="overflow-x-auto border border-border">
+            <table class="w-full min-w-[760px] text-left text-sm">
+              <thead class="border-b border-border bg-muted text-2xs uppercase tracking-wide text-muted-foreground">
+                <tr>
+                  <th class="px-3 py-2 font-semibold">Profile</th>
+                  <th class="px-3 py-2 font-semibold">City</th>
+                  <th class="px-3 py-2 font-semibold">State</th>
+                  <th class="px-3 py-2 font-semibold">Price</th>
+                  <th class="px-3 py-2 font-semibold">Complete</th>
+                  <th class="px-3 py-2 font-semibold">Flags</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-border">
+                {rows.map((r) => (
+                  <tr class:list={['transition-colors hover:bg-muted', r.id === id && 'bg-muted']}>
+                    <td class="px-3 py-2">
+                      <a href={`/admin/profiles?id=${r.id}`} class="flex items-center gap-2.5">
+                        <SafeImage imageKey={r.id} alt={r.name} class="size-9 flex-none rounded-full object-cover" />
+                        <span class="min-w-0">
+                          <span class="flex items-center gap-1.5 font-medium">
+                            {r.name}, {r.age}
+                            {r.verified && <svg class="size-3 flex-none text-online" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9 12l2 2 4-4 1.5 1.5L11 17l-3.5-3.5z"/><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/></svg>}
+                            {r.online && <span class="size-1.5 rounded-full bg-online" title="online" />}
+                          </span>
+                          <span class="block text-2xs text-muted-foreground">{genderLabel(r.gender)} · {r.servicesCount} services · {r.photos.length}📷</span>
+                        </span>
+                      </a>
+                    </td>
+                    <td class="px-3 py-2 text-muted-foreground">{cityName(r.city)}</td>
+                    <td class:list={['px-3 py-2 font-medium', stateClass(r.state)]}>{r.state}</td>
+                    <td class="px-3 py-2 tabular-nums">€{r.priceFrom}</td>
+                    <td class="px-3 py-2">
+                      <span class="flex items-center gap-1.5">
+                        <span class="relative h-1.5 w-12 overflow-hidden rounded-full bg-muted"><span class:list={['absolute inset-y-0 left-0', r.completeness >= 75 ? 'bg-online' : r.completeness >= 50 ? 'bg-amber-500' : 'bg-brand']} style={`width:${r.completeness}%`} /></span>
+                        <span class="tabular-nums text-2xs text-muted-foreground">{r.completeness}%</span>
+                      </span>
+                    </td>
+                    <td class="px-3 py-2 text-2xs text-brand">{r.flags.join(', ')}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Detail drawer */}
+          {detail && (
+            <aside data-profile-detail data-id={detail.admin.id} class="space-y-4 border border-border p-4">
+              <div class="flex items-center gap-3">
+                <SafeImage imageKey={detail.admin.id} alt={detail.admin.name} class="size-12 flex-none rounded-full object-cover" />
+                <div class="min-w-0">
+                  <p class="font-condensed text-xl font-bold">{detail.admin.name}, {detail.admin.age}</p>
+                  <p class:list={['text-xs font-medium', stateClass(detail.admin.state)]}>{detail.admin.state}{detail.admin.stateReason ? ` · ${detail.admin.stateReason}` : ''}</p>
+                </div>
+              </div>
+
+              {/* Media strip — blurred, per-item reveal */}
+              <div class="flex flex-wrap gap-2">
+                {detail.profile.photos.slice(0, 8).map((_, i) => (
+                  <button type="button" data-reveal class="group relative block size-16 overflow-hidden border border-border">
+                    <SafeImage imageKey={`${detail.admin.id}-${i}`} alt="photo" class="size-full blur-md transition group-[.shown]:blur-0" />
+                  </button>
+                ))}
+              </div>
+
+              <dl class="grid grid-cols-2 gap-px overflow-hidden border border-border bg-border text-xs">
+                {[
+                  ['City', cityName(detail.profile.city)],
+                  ['Gender', detail.profile.gender],
+                  ['Price', `€${detail.profile.priceFrom}`],
+                  ['Services', String(detail.profile.services.length)],
+                  ['Photos', String(detail.profile.photos.length)],
+                  ['Completeness', `${detail.admin.completeness}%`],
+                  ['Verified', detail.profile.verified ? 'Yes' : 'No'],
+                  ['Reports', String(reportsAgainst.length)],
+                ].map(([k, v]) => (
+                  <div class="bg-card px-2.5 py-1.5"><dt class="text-2xs uppercase tracking-wide text-muted-foreground">{k}</dt><dd class="font-medium">{v}</dd></div>
+                ))}
+              </dl>
+
+              <p class="line-clamp-3 text-xs text-muted-foreground">{localizedDescription(detail.profile, 'en')}</p>
+
+              <div class="flex flex-wrap gap-2">
+                <a href={`/en/profile/${detail.profile.slug}/`} target="_blank" class="text-xs font-medium underline underline-offset-4">Public page ↗</a>
+              </div>
+
+              {/* Lifecycle actions */}
+              <div class="space-y-2 border-t border-border pt-3">
+                <input data-reason placeholder="Reason (for block/delete)" class="w-full slab-cut border border-foreground/20 bg-background px-2.5 py-1.5 text-xs outline-none focus:border-foreground" />
+                <div class="flex flex-wrap gap-1.5">
+                  <button type="button" data-act="approve" class="slab-cut bg-online px-2.5 py-1 text-2xs font-bold uppercase text-white">Approve</button>
+                  <button type="button" data-act="pause" class="slab-cut border border-foreground/20 px-2.5 py-1 text-2xs font-bold uppercase">Pause</button>
+                  {detail.admin.state === 'blocked' ? (
+                    <button type="button" data-act="unblock" class="slab-cut border border-foreground/20 px-2.5 py-1 text-2xs font-bold uppercase">Unblock</button>
+                  ) : (
+                    <button type="button" data-act="block" class="slab-cut border border-brand px-2.5 py-1 text-2xs font-bold uppercase text-brand">Block</button>
+                  )}
+                  <button type="button" data-act="delete" class="slab-cut border border-brand px-2.5 py-1 text-2xs font-bold uppercase text-brand">Delete</button>
+                </div>
+              </div>
+            </aside>
+          )}
+        </div>
+      </div>
+    )
+  }
+</AdminShell>
+
+<script>
+  import { actions } from 'astro:actions';
+  function initProfiles() {
+    const d = document.querySelector<HTMLElement>('[data-profile-detail]');
+    if (!d || d.dataset.init) return;
+    d.dataset.init = '1';
+    const id = d.dataset.id!;
+    d.querySelectorAll<HTMLElement>('[data-reveal]').forEach((b) => b.addEventListener('click', () => b.classList.toggle('shown')));
+    const reason = d.querySelector('[data-reason]') as unknown as HTMLInputElement;
+    d.querySelectorAll<HTMLElement>('[data-act]').forEach((b) =>
+      b.addEventListener('click', async () => {
+        const action = b.dataset.act as 'approve' | 'pause' | 'block' | 'unblock' | 'delete';
+        if ((action === 'block' || action === 'delete') && !reason.value) { reason.focus(); return; }
+        await actions.admin.profileState({ id, action, reason: reason.value || undefined });
+        location.reload();
+      }),
+    );
+  }
+  initProfiles();
+  document.addEventListener('astro:page-load', initProfiles);
+</script>

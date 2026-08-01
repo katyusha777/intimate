@@ -17,6 +17,7 @@ Verified marketplace/directory for legal adult services (independent sex workers
 | `docs/API.md` | data layer: models, api seam (json-now/db-later), security, realtime | any data/API work |
 | `docs/INFRASTRUCTURE.md` | environments, deploy, CI, services, assets, gotchas | deploy/config work |
 | `docs/SEO.md` + `docs/SEO-BUILD.md` | AI-search/SEO spec + phased build tracker | any page/URL/meta work |
+| `docs/UX-PLAN.md` | **temporary** execution tracker from the design review (fold, cards, rates, request sheet, discretion kit) — delete when its phases land | home/listing/profile/messaging UX work, while it exists |
 | `docs/ANALYTICS.md` | PostHog: consent model, event contract, wrapper law, flags | any tracking/flag work |
 | `docs/ADMIN.md` | admin system: roles, queues, governance, isolation | any /admin work |
 | `docs/SECURITY.md` | threat model, data safety, secrets, review discipline for sensitive diffs | auth/RLS/storage/actions/deploy work |
@@ -87,6 +88,6 @@ Three tiers (ARCHITECTURE §9, runbook in INFRASTRUCTURE.md): `dev` = local + lo
 
 ## Conventions
 
-TypeScript strict · server actions in `src/actions/` (Zod-validated) · URLs ALWAYS locale-prefixed (`/{locale}/…`, no locale-less; `/` 302s by Accept-Language): `/{locale}/{city}/`, `/{locale}/{category-slug}/{city}/` (localized slugs), `/{locale}/profile/{slug}/` · one base profile-card component (grid/featured/compact variants) · conventional commits · feature branches + PRs · GitHub Issues is the plan of record.
+Roles, not genders: code, copy, and i18n say `client`/`professional` (`ACCOUNT_TYPES`) — never gendered pronouns for a role; no copy assumes the client is male · TypeScript strict · server actions in `src/actions/` (Zod-validated) · URLs ALWAYS locale-prefixed (`/{locale}/…`, no locale-less; `/` 302s by Accept-Language): `/{locale}/{city}/`, `/{locale}/{category-slug}/{city}/` (localized slugs), `/{locale}/profile/{slug}/` · one base profile-card component (grid/featured/compact variants) · conventional commits · feature branches + PRs · GitHub Issues is the plan of record.
 
 **Components: follow `docs/COMPONENTS.md` (atomic design, tested by `tests/architecture.test.ts`)** — levels `ui (vendor) → atoms → molecules → organisms/<domain> → pages`; `ui/` importable only from `atoms/` (UI-library swap = rewrite atoms); Fulldev registry first (`@fulldev` via shadcn CLI/MCP); variants as props; zero-JS default; every component on `/kitchen-sink` (both themes + safe mode) before it ships.
