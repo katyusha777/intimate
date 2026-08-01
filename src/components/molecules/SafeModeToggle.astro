@@ -6,33 +6,64 @@
  * safe-mode script in Layout (cookie `safe_mode`) — it sets `aria-checked` and
  * `data-safe-state`, and clicking cycles off → neutral → dev. Cached HTML stays
  * identical for everyone; the label swaps via CSS on `data-safe-state`.
+ *
+ * `compact` — an icon-only round control (matches ThemeToggle) for the top
+ * header, where a labelled switch would not fit. The eye glyph swaps open/closed
+ * via `data-safe-state` so the state is still legible at a glance.
  */
 import * as m from '@/paraglide/messages';
+
+interface Props {
+  /** Icon-only round button for the top header (next to ThemeToggle). */
+  compact?: boolean;
+}
+const { compact = false } = Astro.props;
 ---
 
-<button
-  type="button"
-  role="switch"
-  aria-checked="true"
-  aria-label={m.safe_mode_cycle()}
-  data-safe-toggle
-  data-safe-state="neutral"
-  class="safe-toggle group flex min-h-11 items-center gap-2.5"
->
-  <span class="text-sm text-muted-foreground">{m.safe_mode()}</span>
-  <span
-    class="relative h-6 w-10 flex-none rounded-full bg-input transition-colors duration-200 group-aria-checked:bg-primary"
-  >
-    <span
-      class="absolute left-0.5 top-0.5 size-5 rounded-full bg-white shadow-sm transition-transform duration-200 ease-[cubic-bezier(0.2,0.8,0.2,1)] group-aria-checked:translate-x-4"
-    ></span>
-  </span>
-  <span class="w-14 text-left text-2xs font-semibold uppercase tracking-wide text-muted-foreground">
-    <span data-when="off">{m.safe_off()}</span>
-    <span data-when="neutral">{m.safe_neutral()}</span>
-    <span data-when="dev">{m.safe_dev()}</span>
-  </span>
-</button>
+{
+  compact ? (
+    <button
+      type="button"
+      role="switch"
+      aria-checked="true"
+      aria-label={m.safe_mode_cycle()}
+      data-safe-toggle
+      data-safe-state="neutral"
+      class="safe-toggle safe-icon grid size-10 place-items-center rounded-full text-muted-foreground ring-1 ring-border transition-colors hover:text-foreground"
+    >
+      <svg class="safe-eye-off size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M2 2 22 22" />
+        <path d="M6.7 6.7A10.4 10.4 0 0 0 1 12s4 7 11 7a10 10 0 0 0 4.4-1" />
+        <path d="M9.9 4.2A10.8 10.8 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.3 3.3" />
+        <path d="M9.6 9.6a3 3 0 0 0 4.2 4.2" />
+      </svg>
+      <svg class="safe-eye-on size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z" />
+        <circle cx="12" cy="12" r="3" />
+      </svg>
+    </button>
+  ) : (
+    <button
+      type="button"
+      role="switch"
+      aria-checked="true"
+      aria-label={m.safe_mode_cycle()}
+      data-safe-toggle
+      data-safe-state="neutral"
+      class="safe-toggle group flex min-h-11 items-center gap-2.5"
+    >
+      <span class="text-sm text-muted-foreground">{m.safe_mode()}</span>
+      <span class="relative h-6 w-10 flex-none rounded-full bg-input transition-colors duration-200 group-aria-checked:bg-primary">
+        <span class="absolute left-0.5 top-0.5 size-5 rounded-full bg-white shadow-sm transition-transform duration-200 ease-[cubic-bezier(0.2,0.8,0.2,1)] group-aria-checked:translate-x-4" />
+      </span>
+      <span class="w-14 text-left text-2xs font-semibold uppercase tracking-wide text-muted-foreground">
+        <span data-when="off">{m.safe_off()}</span>
+        <span data-when="neutral">{m.safe_neutral()}</span>
+        <span data-when="dev">{m.safe_dev()}</span>
+      </span>
+    </button>
+  )
+}
 
 <style>
   /* Show only the label matching the current state; script sets data-safe-state. */
@@ -43,5 +74,19 @@ import * as m from '@/paraglide/messages';
   .safe-toggle[data-safe-state='neutral'] [data-when='neutral'],
   .safe-toggle[data-safe-state='dev'] [data-when='dev'] {
     display: inline;
+  }
+
+  /* Compact icon: eye-open when safe mode is OFF, eye-off when it's active. */
+  .safe-icon .safe-eye-on {
+    display: none;
+  }
+  .safe-icon .safe-eye-off {
+    display: block;
+  }
+  .safe-icon[data-safe-state='off'] .safe-eye-on {
+    display: block;
+  }
+  .safe-icon[data-safe-state='off'] .safe-eye-off {
+    display: none;
   }
 </style>

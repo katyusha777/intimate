@@ -101,24 +101,30 @@ import ThemeToggle from '@/components/molecules/ThemeToggle.astro';
       </div>
     </div>
 
-    <!-- Bottom bar -->
-    <div class="flex flex-wrap items-center justify-between gap-4 border-t border-white/10 py-6 pb-24 md:pb-6">
-      <p class="flex items-center gap-3">
-        <span class="border border-white/25 px-2.5 py-1 text-xs font-bold">18+</span>
-        <span class="text-sm text-white/50">© 2026 Intimate.nl. All rights reserved.</span>
-      </p>
-      <div class="flex items-center gap-6">
-        <SafeModeToggle />
-        <ThemeToggle />
+    <!-- Bottom bar — on mobile it stacks: controls row, then the legal line, so
+         nothing cramps or wraps mid-word at 390px. Desktop lays it side-by-side. -->
+    <div class="flex flex-col gap-5 border-t border-white/10 py-6 pb-24 md:flex-row md:items-center md:justify-between md:pb-6">
+      <!-- Controls: safe-mode + theme on one line, back-to-top full-width beneath
+           on mobile (a comfortable 44pt tap target), inline on desktop. -->
+      <div class="order-1 flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6 md:order-2">
+        <div class="flex items-center justify-between gap-6 sm:justify-start">
+          <SafeModeToggle />
+          <ThemeToggle />
+        </div>
         <button
           type="button"
           data-scroll-top
-          class="flex cursor-pointer items-center gap-2 border border-white/20 px-4 py-2 eyebrow font-semibold text-foreground transition-colors hover:bg-white/10"
+          class="flex cursor-pointer items-center justify-center gap-2 border border-white/20 px-4 py-2.5 eyebrow font-semibold text-foreground transition-colors hover:bg-white/10 active:scale-[0.98] sm:justify-start"
         >
           Back to top
           <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m18 15-6-6-6 6" /></svg>
         </button>
       </div>
+
+      <p class="order-2 flex items-center gap-3 md:order-1">
+        <span class="flex-none border border-white/25 px-2.5 py-1 text-xs font-bold">18+</span>
+        <span class="text-sm text-white/50">© 2026 Intimate.nl. All rights reserved.</span>
+      </p>
     </div>
   </div>
 </footer>

@@ -6,6 +6,8 @@ import WandSheet from '@/components/molecules/WandSheet.astro';
 import Button from '@/components/atoms/Button.astro';
 import Combobox from '@/components/molecules/Combobox.astro';
 import UserMenu from '@/components/molecules/UserMenu.astro';
+import SafeModeToggle from '@/components/molecules/SafeModeToggle.astro';
+import ThemeToggle from '@/components/molecules/ThemeToggle.astro';
 import { getLocale } from '@/paraglide/runtime';
 import { listingCategoryLabel } from '@/lib/labels';
 import { localizePath } from '@/lib/i18n';
@@ -81,6 +83,14 @@ const categories = [
     >
       <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
     </button>
+
+    <!-- Discretion + theme: primary, always-visible controls (safe-mode cycles
+         off → discreet → dev; mirrored in the footer). Sit next to each other
+         at the right edge on every breakpoint. -->
+    <div class="flex flex-none items-center gap-2">
+      <SafeModeToggle compact />
+      <ThemeToggle />
+    </div>
 
     <div class="flex flex-none items-center gap-4">
       {

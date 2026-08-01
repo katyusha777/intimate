@@ -9,7 +9,6 @@ import { sessionApi } from '@/app/api/session';
 import Header from '@/components/organisms/layout/Header.astro';
 import Footer from '@/components/organisms/layout/Footer.astro';
 import BottomTabBar from '@/components/organisms/layout/BottomTabBar.astro';
-import SafeModeBar from '@/components/molecules/SafeModeBar.astro';
 import AuthModal from '@/components/organisms/auth/AuthModal.astro';
 import ProfileSheet from '@/components/organisms/profile/ProfileSheet.astro';
 import Lightbox from '@/components/molecules/Lightbox.astro';
@@ -118,7 +117,6 @@ const unread =
       {!bare && <Footer />}
     </div>
     {!bare && <BottomTabBar {session} {idVerified} {unread} />}
-    {!bare && <SafeModeBar />}
     <AuthModal />
     <ProfileSheet />
     <Lightbox />

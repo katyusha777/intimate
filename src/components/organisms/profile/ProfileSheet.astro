@@ -9,7 +9,11 @@
 import ActionSheet from '@/components/molecules/ActionSheet.astro';
 ---
 
-<ActionSheet id="profile-sheet" label="Profile" flush>
+<!-- Near-full-screen: the profile is a destination, not a peek. `!max-h-dvh`
+     overrides ActionSheet's default 94dvh cap so the panel fills the viewport
+     (only a hair of backdrop shows at the very top), and `flush` floats the
+     grab pill over the immersive hero. -->
+<ActionSheet id="profile-sheet" label="Profile" flush class="!max-h-dvh h-dvh rounded-t-none">
   <div data-profile-sheet-slot></div>
 </ActionSheet>
 
