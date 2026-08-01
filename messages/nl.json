@@ -91,5 +91,6 @@
   "stats_count": "Geverifieerd",
   "stats_min": "Vanaf",
   "stats_avg": "Gemiddeld",
-  "stats_online": "Nu online"
+  "stats_online": "Nu online",
+  "seo_intro_generic": "{count} geverifieerde professionals in {where}. Tarieven vanaf €{min} · {online} nu online. Elk profiel op Intimate is geverifieerd."
 }

@@ -85,19 +85,14 @@ const moreArticles = articles.filter((a) => !a.featured);
                 ))
               }
             </span>
-            your intimate connection<span class="text-primary">.</span>
+            your intimate connection<span class="text-brand">.</span>
           </h1>
           <p class="mt-5 max-w-md leading-relaxed text-white/70">
             Verified profiles, discreet and safe — for advertisers and visitors.
           </p>
           <div class="mt-7 flex flex-wrap gap-3">
             <Button as="a" href={localizePath("/account/")} size="lg">Start advertising</Button>
-            <Button
-              as="a"
-              href={localizePath("/account/")}
-              size="lg"
-              class="border-0 bg-white text-neutral-900 hover:bg-white/90"
-            >
+            <Button as="a" href={localizePath("/account/")} size="lg">
               Create free account
             </Button>
           </div>
@@ -118,10 +113,10 @@ const moreArticles = articles.filter((a) => !a.featured);
             <a
               href={localizePath(`/${c.slug}/`)}
               class:list={[
-                'flex-none rounded-full border px-4 py-2 text-sm font-medium transition-colors',
+                'chroma-hover flex-none px-3.5 py-2 font-condensed text-sm font-bold uppercase tracking-wide transition-colors active:scale-[0.97]',
                 i === 0
-                  ? 'border-transparent bg-foreground text-background'
-                  : 'bg-card text-muted-foreground hover:text-foreground',
+                  ? 'bg-foreground text-background'
+                  : 'text-foreground/60 hover:text-foreground',
               ]}
             >
               {c.name}
@@ -157,7 +152,7 @@ const moreArticles = articles.filter((a) => !a.featured);
     <!-- Articles -->
     <Section title={m.section_articles()}>
       <p slot="meta" class="hidden text-sm text-muted-foreground sm:block">{m.articles_by()}</p>
-      <a slot="actions" href={localizePath("/blog/")} class="eyebrow font-semibold text-foreground hover:text-primary">
+      <a slot="actions" href={localizePath("/blog/")} class="eyebrow font-semibold text-foreground hover:text-brand">
         {m.to_blog()} →
       </a>
 
@@ -175,7 +170,7 @@ const moreArticles = articles.filter((a) => !a.featured);
             {m.section_featured()}
           </span>
           <div class="glass-media bottom-4 left-4 right-4 rounded-xl border p-5 lg:absolute">
-            <p class="eyebrow text-2xs font-mono font-semibold text-primary-foreground/90">
+            <p class="eyebrow text-2xs font-mono font-semibold text-white/90">
               {featuredArticle.minutes} {m.min_read()}
             </p>
             <h3 class="mt-1.5 text-xl font-semibold leading-snug">{featuredArticle.title}</h3>
@@ -201,10 +196,10 @@ const moreArticles = articles.filter((a) => !a.featured);
                   class="aspect-[4/3] w-28 flex-none rounded-xl"
                 />
                 <div class="min-w-0">
-                  <p class="eyebrow text-2xs font-mono font-semibold text-primary">
+                  <p class="eyebrow text-2xs font-mono font-semibold text-brand">
                     {a.minutes} {m.min_read()}
                   </p>
-                  <h3 class="mt-1 line-clamp-2 font-semibold leading-snug group-hover:text-primary">
+                  <h3 class="mt-1 line-clamp-2 font-semibold leading-snug group-hover:text-brand">
                     {a.title}
                   </h3>
                 </div>
@@ -230,13 +225,13 @@ const moreArticles = articles.filter((a) => !a.featured);
           </span>
         </div>
         <div
-          class="flex flex-col justify-center bg-gradient-to-br from-(--accent-gradient-from) to-(--accent-gradient-to) p-8 text-white md:p-12"
+          class="dark flex flex-col justify-center bg-neutral-950 p-8 text-white md:p-12"
         >
           <p class="eyebrow flex items-center gap-3 text-white/70">
             <span class="h-px w-6 bg-white/50" aria-hidden="true"></span>
             For advertisers
           </p>
-          <h2 class="display mt-4 text-3xl md:text-5xl [&::after]:text-white">
+          <h2 class="display mt-4 text-3xl md:text-5xl">
             Place your ad
           </h2>
           <p class="mt-4 max-w-md leading-relaxed text-white/85">
@@ -244,14 +239,13 @@ const moreArticles = articles.filter((a) => !a.featured);
             in your region.
           </p>
           <div class="mt-7 flex flex-wrap gap-3">
-            <Button as="a" href={localizePath("/account/")} size="lg" class="border-0 bg-white text-neutral-900 hover:bg-white/90">
+            <Button as="a" href={localizePath("/account/")} size="lg">
               Place ad
             </Button>
             <Button
               as="a"
               href={localizePath("/blog/starten-als-escort-in-nederland/")}
               size="lg"
-              class="border border-white/30 bg-white/10 text-white hover:bg-white/20"
             >
               More info →
             </Button>

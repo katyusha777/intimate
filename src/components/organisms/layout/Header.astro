@@ -1,5 +1,6 @@
 ---
 import * as m from '@/paraglide/messages';
+import Button from '@/components/atoms/Button.astro';
 import { getLocale } from '@/paraglide/runtime';
 import { listingCategoryLabel } from '@/lib/labels';
 import { localizePath } from '@/lib/i18n';
@@ -14,13 +15,11 @@ const categories = [
   {
     label: m.cat_all(),
     href: searchPath,
-    icon: 'fa-grid-2',
     active: path.startsWith(searchPath),
   },
   ...LISTING_CATEGORIES.map((c) => ({
     label: listingCategoryLabel(c.slug),
     href: localizePath(`/${c.slugs[locale]}/`),
-    icon: `fa-${c.icon}`,
     active: path.startsWith(localizePath(`/${c.slugs[locale]}/`)),
   })),
 ];
@@ -36,34 +35,35 @@ const categories = [
     </a>
 
     <form action={searchPath} method="get" class="hidden w-full max-w-md md:block">
-      <label
-        class="flex h-11 w-full cursor-text items-center gap-3 rounded-xl bg-muted pl-4 pr-1.5 ring-1 ring-transparent transition-shadow focus-within:ring-ring"
-      >
-      <i class="fa-thin fa-wand-magic-sparkles text-primary" aria-hidden="true"></i>
+      <!-- Misprint slab field; crimson caret = the motion accent while typing. -->
+      <label class="slab-field flex h-11 w-full cursor-text">
+        <span class="slab-field__face flex w-full items-center gap-3 pl-4 pr-1.5">
+      <i class="fa-thin fa-wand-magic-sparkles text-brand" aria-hidden="true"></i>
       <input
         type="search"
         name="q"
         value={q}
         data-ai-search
         placeholder={m.search_ai_placeholder()}
-        class="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground [&::-webkit-search-cancel-button]:hidden"
+        class="w-full bg-transparent text-base caret-brand outline-none placeholder:text-muted-foreground md:text-sm [&::-webkit-search-cancel-button]:hidden"
       />
       <button
         type="submit"
         data-ai-go
-        class:list={['flex h-8 flex-none items-center gap-1.5 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground transition-opacity duration-200 hover:opacity-90', !q && 'pointer-events-none opacity-0']}
+        class:list={['flex h-8 flex-none items-center gap-1.5 bg-primary px-3 text-xs font-semibold text-primary-foreground transition-opacity duration-200 hover:opacity-90', !q && 'pointer-events-none opacity-0']}
       >
         <i class="fa-thin fa-sparkles" aria-hidden="true"></i>
         {m.nav_search()}
       </button>
+        </span>
       </label>
     </form>
 
-    <nav class="ml-auto hidden flex-none items-center gap-5 text-sm font-medium md:flex">
-      <a href={localizePath("/blog/")} class="text-muted-foreground transition-colors hover:text-foreground">
+    <nav class="ml-auto hidden flex-none items-center gap-5 text-sm font-semibold md:flex">
+      <a href={localizePath("/blog/")} class="transition-colors hover:text-brand">
         {m.section_articles()}
       </a>
-      <a href={localizePath("/contact/")} class="text-muted-foreground transition-colors hover:text-foreground">
+      <a href={localizePath("/contact/")} class="transition-colors hover:text-brand">
         {m.nav_contact()}
       </a>
     </nav>
@@ -77,21 +77,17 @@ const categories = [
       >
         {m.nav_login()}
       </button>
-      <button
-        type="button"
-        data-modal-open="auth"
-        data-auth-tab="register"
-        class="h-9 rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 md:h-10 md:px-6"
-      >
+      <Button size="sm" data-modal-open="auth" data-auth-tab="register">
         {m.nav_register()}
-      </button>
+      </Button>
     </div>
   </div>
 
-  <!-- Row 2: main categories -->
-  <div class="border-t border-border/60 bg-muted/30">
+  <!-- Row 2: main categories — text tabs, active = short underline bar.
+       NOT the anaglyph style: that button is unique (DESIGN §2.6). -->
+  <div>
     <nav
-      class="mx-auto flex h-12 max-w-7xl items-stretch overflow-x-auto px-4 [scrollbar-width:none] md:h-14 md:px-6 [&::-webkit-scrollbar]:hidden"
+      class="mx-auto flex h-11 max-w-7xl select-none items-stretch gap-2 overflow-x-auto px-4 [scrollbar-width:none] md:h-12 md:px-6 [&::-webkit-scrollbar]:hidden"
       aria-label={m.all_categories()}
     >
       {
@@ -100,20 +96,35 @@ const categories = [
             href={l.href}
             aria-current={l.active ? 'page' : undefined}
             class:list={[
-              'relative flex flex-1 items-center justify-center gap-3 border-l border-border px-5 text-sm font-medium transition-colors last:border-r',
-              l.active
-                ? 'bg-primary/5 text-primary after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:bg-primary'
-                : 'text-foreground hover:bg-muted/50',
+              'cat-link chroma-hover relative flex flex-none items-center px-3 font-condensed text-sm font-bold uppercase tracking-wide transition-colors active:scale-[0.97]',
+              l.active ? 'text-foreground' : 'text-foreground/55 hover:text-foreground',
             ]}
           >
-            <i class:list={['fa-thin', l.icon, l.active ? 'text-primary' : 'text-muted-foreground']} aria-hidden="true" />
             {l.label}
+            <span
+              class:list={[
+                'cat-underline absolute bottom-1.5 left-1/2 h-0.5 w-5 -translate-x-1/2 bg-foreground transition-opacity',
+                l.active ? 'opacity-100' : 'opacity-0',
+              ]}
+              aria-hidden="true"
+            />
           </a>
         ))
       }
     </nav>
   </div>
 </header>
+
+<style>
+  /* In motion (hover), the underline picks up the anaglyph pink/cyan split
+     (text handled by the global .chroma-hover utility). */
+  .cat-link:hover .cat-underline {
+    opacity: 1;
+    box-shadow:
+      -2px 0 var(--brand),
+      2px 0 #00e5ff;
+  }
+</style>
 
 <script>
   // AI search: reveal the inline button only once the user starts typing.

@@ -14,7 +14,7 @@ const BYPASS = ['/kitchen-sink'];
 export const onRequest = defineMiddleware((context, next) => {
   if (context.url.pathname === '/') {
     const locale = negotiateLocale(context.request.headers.get('accept-language'));
-    return context.redirect(`/${locale}/`, 302);
+    return context.redirect(`/${locale}/${context.url.search}`, 302);
   }
   if (BYPASS.some((p) => context.url.pathname.startsWith(p))) return next();
   return paraglideMiddleware(context.request, () => next());

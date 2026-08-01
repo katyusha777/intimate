@@ -41,7 +41,7 @@ const Tag = as ?? (href ? 'a' : 'button');
 <style>
   .ana-btn {
     /* -- tunables ------------------------------------------------ */
-    --ana-pink: var(--primary);
+    --ana-pink: var(--brand);
     --ana-cyan: #00e5ff;
     --ana-fill: var(--foreground);
     --ana-text: var(--background);
@@ -49,7 +49,7 @@ const Tag = as ?? (href ? 'a' : 'button');
     --ana-offset-y: 2px;
     --ana-offset-x-hover: 5px;
     --ana-offset-y-hover: 3.5px;
-    --ana-clip: polygon(2% 8%, 100% 0, 98% 92%, 0 100%);
+    --ana-clip: polygon(1.5% 6%, 100% 0, 98.5% 94%, 0 100%);
     /* ------------------------------------------------------------ */
 
     position: relative;
@@ -58,7 +58,7 @@ const Tag = as ?? (href ? 'a' : 'button');
     border: none;
     background: none;
     cursor: pointer;
-    transform: rotate(-0.8deg);
+    transform: rotate(-0.5deg);
     transition: transform 0.15s ease;
     -webkit-tap-highlight-color: transparent;
   }
@@ -105,7 +105,7 @@ const Tag = as ?? (href ? 'a' : 'button');
     letter-spacing: 0.05em;
     text-transform: uppercase;
     color: var(--ana-text);
-    transform: skew(-6deg);
+    transform: skew(-4deg);
     white-space: nowrap;
   }
   .ana-btn--sm .ana-btn__label {
@@ -120,7 +120,7 @@ const Tag = as ?? (href ? 'a' : 'button');
 
   /* hover: layers spread, button leans in */
   .ana-btn:hover {
-    transform: rotate(-0.8deg) scale(1.02);
+    transform: rotate(-0.5deg) scale(1.02);
   }
   .ana-btn:hover .ana-btn__layer--pink {
     transform: translate(calc(var(--ana-offset-x-hover) * -1), var(--ana-offset-y-hover));

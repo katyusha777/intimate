@@ -36,6 +36,86 @@ Design principles: generous whitespace · one accent · real typographic
 hierarchy · photography-first · zero clutter · zero ads-look · **CLS = 0** ·
 390px designed first, desktop second · both themes first-class.
 
+### 1.1 The design language: **Misprint**
+
+What the anaglyph buttons started has a name and a grammar. **Misprint** =
+*clean monochrome print whose ink slips when things move.* The page is a
+perfectly printed poster — paper, ink, one spot color — and interaction is a
+printing error: plates misregister, pink and cyan fringes appear, the sticker
+shivers. The reference images live in `docs/design-refs/`.
+
+**Where it comes from** (the mix the owner senses — "sorta Persona 5, sorta
+cyberpunk"):
+
+| Lineage | What it contributes |
+|---|---|
+| **Risograph / misregistered offset print** | The core visual: flat spot-color layers slightly out of register. Zine and gig-poster culture. Why it must stay *flat* and *simple* — riso can't do gradients or grays. |
+| **Anaglyph 3D** (red/cyan glasses) | The exact color pair, and the reading that the element "exists in more dimensions than the screen". Our button's namesake. |
+| **Glitch / chromatic aberration** | The cyberpunk half: RGB channel-split as a sign of *live signal* — used by NieR: Automata, Cyberpunk 2077 as a *state*, not decoration. Restraint is the lesson: NieR is calm 95% of the time. |
+| **Persona 5 (Soejima UI)** | Punk-collage energy: hard-cut slabs at slight angles, italic condensed uppercase, red/black/white, UI that moves like it's alive. Itself descended from Jamie Reid's ransom-note punk zines. |
+| **Swiss / International Style** | The calm base that makes the glitch land: strict grid, one grotesk family (Barlow), monochrome + one accent, whitespace as structure. |
+| **Constructivist posters** | Diagonal composition, red/black/white confidence — where the slight rotations and crimson marks come from. |
+| **Sportswear / streetwear graphics** | The italic bold condensed uppercase action label ("speed text"). |
+| **Zenless Zone Zero, Splatoon, Jet Set Radio** | Proof that street-punk UI can be ergonomic, mobile-native and fun without being noisy. |
+
+**The grammar** — eight rules, in priority order:
+
+1. **Paper and ink.** The canvas is paper (near-white / near-black), content
+   surfaces are paper, the brand layer is ink (pure foreground). 95% of any
+   screen is calm Swiss print. The language dies if everything shouts.
+2. **Ink is binary — no grays.** Print has no gray pigment; it has ink
+   coverage. Text hierarchy = *ink opacity* (`text-foreground/55…/80`), never a
+   third gray tone. Surfaces are paper, ink (`bg-foreground text-background`
+   flip), or a **keyline** (border of ink at low opacity) on bare canvas.
+   Mid-gray *filled* chrome (`bg-muted` panels, gray pills, gray icon circles)
+   is the "default software" look we are escaping — banned in the brand layer.
+   Recessed form fields may sit a whisper off-canvas, never a visible gray slab.
+3. **The slip is earned.** Pink/cyan misregistration appears only where there
+   is *energy*: the Button (the brand seal, always), hover/tap motion
+   (chroma text-shadow), live/realtime moments. Never at rest, never on body
+   text, never on two things in the same view. If everything glitches, nothing
+   does.
+4. **Cut, not rounded — radius is binary.** Print objects are cut sharp:
+   buttons, inputs, tags, banners, active states → square corners (the Button
+   goes further with its angled clip). Paper surfaces that *hold* content —
+   cards, sheets, modals, photos — keep soft large radii for native mobile
+   feel. Circles (dots, avatars, icon seals) are die-cuts and always allowed.
+   The banned zone is the middle: 6–12px rounding on small chrome is exactly
+   the generic look. Sharp or soft-large or circle — pick one.
+5. **Crimson is a mark, not a paint.** Periods, seals, dots, the wand — never
+   fills, never large areas, never text blocks.
+6. **Speed text.** Display and actions are Barlow Condensed bold uppercase;
+   action labels may italicize (the sportswear voice). Body stays quiet Barlow.
+7. **Motion is the medium, on a budget.** The language *lives* in transitions —
+   glitch shiver on click, chroma shadow on hover, view transitions — but
+   150–250ms, transform/opacity only, `prefers-reduced-motion` safe. The
+   button shiver is the loudest sound allowed.
+8. **Mobile-first simplicity overrides all of it.** Every effect is a few
+   lines of CSS — no images, no canvas, no JS animation loops. When a Misprint
+   idea conflicts with clean/fast/native-feeling on a 390px screen, print calm
+   wins.
+9. **The language never touches people.** Glitch, chroma, skew, ink slabs —
+   brand chrome only. Profile photos, names in listings, anything that *is* a
+   person stays completely straight: clean paper card, honest photography,
+   calm type. The product is the professionals; the UI is the gallery wall,
+   not the exhibit. A chromatic fringe on someone's photo isn't punk, it's
+   disrespectful — and it makes the money surface harder to scan. The formula:
+   Airbnb-calm cards inside a Misprint frame. (This is also the market
+   position: our competitors are either sleaze-classifieds or sterile
+   templates; we are the editorial gallery between them.)
+
+**Applying it to inputs** (the P5 sign-up reference, heavily tamed): a form
+field is a printed box — sharp corners, ink keyline on bare canvas, condensed
+label. A *sub-degree* tilt (−0.3°…−0.5°) may be tried on marketing/auth
+surfaces via `/kitchen-sink` first; workaday filters and dashboards stay
+straight.
+
+Reference files: `design-refs/misprint-buttons-live.png` (our hero CTAs — the
+canonical rendering) · `design-refs/p5-phan-site-mobile.webp` (P5 fan UI:
+slab inputs, mobile energy) · `design-refs/p5-storefront-concept.webp`
+(P5-style storefront: maximal end of the spectrum — study, don't copy; we sit
+much closer to Swiss).
+
 ---
 
 ## 2. Tokens
@@ -83,20 +163,17 @@ Fulldev defaults) with **Intimate crimson**, and add surface/material tokens.
 Rule: **one accent.** Crimson is for primary action, active state, verified,
 and the trailing "." device — nothing else. Everything structural is neutral.
 
-### 2.2 Radius
+### 2.2 Radius — binary (Misprint rule 4)
 
-iOS-generous. Fulldev ships `--radius: 0.625rem`; we scale up for cards/sheets.
+Sharp or soft-large or circle; the 6–12px middle is banned on brand-layer
+chrome.
 
-```css
---radius: 0.75rem;      /* 12px base (inputs, small controls) */
-```
-| Token | px | Use |
-|---|---|---|
-| `rounded-md` (`--radius`) | 12 | inputs, chips, small buttons |
-| `rounded-lg` | 16 | buttons, list rows |
-| `rounded-xl` | 20 | cards, tiles |
-| `rounded-2xl` | 28 | sheets, modals, hero media, glass bars |
-| `rounded-full` | — | pills, avatars, icon buttons, tabs |
+| Token | Use |
+|---|---|
+| `rounded-none` | **print objects**: inputs, selects, tags, banners, active states, segmented controls (Button goes further with its clip cut) |
+| `rounded-xl` / `rounded-2xl` | **paper surfaces**: cards, tiles, sheets, modals, photos/media |
+| `rounded-full` | **die-cuts**: dots, avatars, icon seals, count pills |
+| `rounded-md` / `rounded-lg` | legacy vendor default — do not use in new work; sweep out when touched |
 
 ### 2.3 Spacing
 
@@ -111,23 +188,26 @@ for the WordPress drift:
 
 ### 2.4 Typography
 
-**One variable font** (perf budget: one font, `font-display: optional`,
-preloaded). A grotesk with a wide weight range (e.g. Geist / Inter / Hanken) —
-display feel comes from **weight + tracking + uppercase**, not a second family.
-The intimate.nl "big bold uppercase headline with a crimson period" is a
-utility class, not a font.
+**Two families, strict roles** (perf budget: static weights only, subset by
+usage): **Barlow** (`font-sans`, weights 400/500/600/700 + 600-italic for the
+anaglyph label) for everything, and **Barlow Condensed** (`font-condensed`,
+500/600/700) for *titles and names only* — display headings, page/section
+titles, profile names, category tabs. Body copy, labels, chips, forms never
+use condensed.
 
 | Role | Spec |
 |---|---|
-| Display (hero) | `text-4xl`→`text-6xl`, `font-bold`, `tracking-tight`, optional `uppercase` + crimson `.` |
-| H1 / page title | `text-2xl`–`text-3xl` `font-semibold tracking-tight` |
-| H2 / section | `text-xl font-semibold` |
+| Display (hero) | `.display` + `text-4xl`→`text-6xl` (condensed bold uppercase, crimson `.`) |
+| H1 / page title | `.display` or `font-condensed text-2xl`–`text-3xl` `font-semibold tracking-tight` |
+| H2 / section | `font-condensed text-xl font-semibold` |
+| Profile name | `font-condensed font-semibold`, one size up from surrounding body |
+| Category tabs | `font-condensed text-sm font-bold uppercase tracking-wide` |
 | Eyebrow | `text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground` |
-| Body | `text-base leading-relaxed` (`text-sm` in dense chrome) |
+| Body | `text-base leading-relaxed` (`text-sm` in dense chrome) — Barlow |
 | Meta / caption | `text-sm text-muted-foreground` |
 
-Helper: `.display` = uppercase + tight tracking + trailing crimson period via
-`::after`. One class, brand-consistent everywhere.
+Helper: `.display` = condensed + uppercase + tight tracking + trailing crimson
+period via `::after`. One class, brand-consistent everywhere.
 
 ### 2.5 Elevation
 
@@ -169,6 +249,15 @@ Button (solid/gradient · outline · ghost · pill · icon), Input, Select, Badg
 Chip/Tag, Avatar (with verified tick + presence dot), Card, Sheet (bottom on
 mobile), Dialog, Dropdown, Tabs, Tooltip, Toast, Skeleton, Switch, Segmented
 control, GlassBar (§5), Icon (lucide). All theme-aware, all on the token scale.
+
+**The anaglyph Button is unique.** Its skewed face, chromatic offset layers and
+italic uppercase label belong to the Button atom and nothing else. Never apply
+that style — or approximations of it (chunky rounded pills, skewed text, offset
+shadows) — to tabs, chips, nav items, toggles or any other control. Everything
+that is not a Button stays flat monochrome; active states are marked with a
+short underline bar or a plain foreground/background flip, and the pink/cyan
+split may appear only as a *motion* accent (hover/tap text-shadow), never at
+rest.
 
 ### 3.2 App components — the load-bearing ones
 

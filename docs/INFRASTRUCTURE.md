@@ -78,6 +78,10 @@ Worker. Repo secrets (set): `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`
 
 - The Astro 7 dev server is a daemon: if the port is stuck or serving stale
   code, `bunx astro dev stop` then `bun run dev`.
+- Installing/removing packages while the daemon runs can leave a stale vite
+  dep-optimizer bundle ("file does not exist at …/.vite/deps_ssr/… " 500s on
+  every page). Fix: `bunx astro dev stop && rm -rf node_modules/.vite .astro`
+  then start dev again.
 - Real keys live in `.dev.vars` (gitignored) and `keys.md` (gitignored). The
   committed `.env.example` lists every variable.
 - Paraglide compiles messages into `src/paraglide/` (gitignored). If the dev

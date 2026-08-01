@@ -139,5 +139,6 @@
   "stats_count": "Verified",
   "stats_min": "From",
   "stats_avg": "Average",
-  "stats_online": "Online now"
+  "stats_online": "Online now",
+  "seo_intro_generic": "{count} verified professionals in {where}. Rates from €{min} · {online} online now. Every profile on Intimate is verified."
 }

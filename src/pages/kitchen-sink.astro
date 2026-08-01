@@ -11,6 +11,7 @@ import SearchControl from '@/components/molecules/SearchControl.astro';
 import SafeModeToggle from '@/components/molecules/SafeModeToggle.astro';
 import Section from '@/components/molecules/Section.astro';
 import Select from '@/components/atoms/Select.astro';
+import Input from '@/components/atoms/Input.astro';
 import FilterSidebar from '@/components/organisms/search/FilterSidebar.astro';
 import VerifiedBadge from '@/components/atoms/VerifiedBadge.astro';
 import Button from '@/components/atoms/Button.astro';
@@ -22,6 +23,7 @@ const { items: profiles } = await profilesApi.list({ limit: 12 });
 const p = profiles[0]!;
 const swatches = [
   ['primary', 'bg-primary'],
+  ['brand', 'bg-brand'],
   ['online', 'bg-online'],
   ['foreground', 'bg-foreground'],
   ['muted', 'bg-muted'],
@@ -48,7 +50,7 @@ const swatches = [
         <i class="fa-thin fa-magnifying-glass" title="fa-thin fa-magnifying-glass"></i>
         <i class="fa-thin fa-user" title="fa-thin fa-user"></i>
         <i class="fa-thin fa-location-dot" title="fa-thin fa-location-dot"></i>
-        <i class="fa-thin fa-badge-check text-primary" title="fa-thin fa-badge-check"></i>
+        <i class="fa-thin fa-badge-check text-brand" title="fa-thin fa-badge-check"></i>
         <i class="fa-thin fa-venus" title="fa-thin fa-venus"></i>
         <i class="fa-thin fa-calendar" title="fa-thin fa-calendar"></i>
         <i class="fa-brands fa-whatsapp text-online" title="fa-brands fa-whatsapp"></i>
@@ -74,11 +76,12 @@ const swatches = [
       <h2 class="text-xl font-semibold">Typography</h2>
       <div class="space-y-3">
         <p class="display text-5xl">Display</p>
-        <p class="text-2xl font-semibold tracking-tight">Page title (h1)</p>
-        <p class="text-xl font-semibold">Section (h2)</p>
+        <p class="font-condensed text-2xl font-semibold tracking-tight">Page title (h1)</p>
+        <p class="font-condensed text-xl font-semibold">Section (h2)</p>
         <p class="eyebrow">Eyebrow label</p>
         <p class="max-w-lg leading-relaxed">
-          Body — modern, discreet and safe. One font; weight and tracking do the work.
+          Body — modern, discreet and safe. Barlow for body; Barlow Condensed for
+          titles, names and tabs (DESIGN §2.4).
         </p>
         <p class="text-sm text-muted-foreground">Meta / caption</p>
       </div>
@@ -87,11 +90,9 @@ const swatches = [
     <section class="space-y-4">
       <h2 class="text-xl font-semibold">Buttons & badges</h2>
       <div class="flex flex-wrap items-center gap-3">
-        <Button>Primary</Button>
-        <Button variant="outline">Outline</Button>
-        <Button variant="ghost">Ghost</Button>
-        <Button variant="secondary">Secondary</Button>
         <Button size="sm">Small</Button>
+        <Button>Default</Button>
+        <Button size="lg">Large</Button>
         <Badge>Badge</Badge>
         <Badge variant="secondary">Secondary</Badge>
         <Badge variant="outline">Outline</Badge>
@@ -118,7 +119,7 @@ const swatches = [
       <div class="rounded-xl ring-1 ring-border">
         <Section title="Section title" class="px-4">
           <p slot="meta" class="hidden text-sm text-muted-foreground sm:block">meta slot</p>
-          <a slot="actions" href="#" class="eyebrow font-semibold text-foreground hover:text-primary">actions slot →</a>
+          <a slot="actions" href="#" class="eyebrow font-semibold text-foreground hover:text-brand">actions slot →</a>
           <p class="text-sm text-muted-foreground">
             Content — sections own their vertical rhythm (py-6 md:py-10) and heading style; pages never hand-roll either.
           </p>
@@ -127,11 +128,12 @@ const swatches = [
     </section>
 
     <section class="space-y-4">
-      <h2 class="text-xl font-semibold">Search & toggles</h2>
+      <h2 class="text-xl font-semibold">Search, forms & toggles</h2>
       <div class="flex flex-wrap items-center gap-6">
         <SearchControl />
         <SafeModeToggle />
         <div class="w-56"><Select><option>Select atom</option><option>Option B</option></Select></div>
+        <div class="w-56"><Input placeholder="Input atom" /></div>
       </div>
     </section>
 

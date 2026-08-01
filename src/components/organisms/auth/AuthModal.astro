@@ -24,13 +24,13 @@ import Button from '@/components/atoms/Button.astro';
     <p class="text-lg font-semibold tracking-tight">{m.auth_welcome()}</p>
 
     <!-- Tabs -->
-    <div class="mt-5 grid grid-cols-2 gap-1 rounded-xl bg-muted p-1" role="tablist">
+    <div class="mt-5 grid grid-cols-2 gap-1 border border-foreground/15 p-1" role="tablist">
       <button
         type="button"
         role="tab"
         data-tab-btn="register"
         data-active="true"
-        class="rounded-lg py-2 text-sm font-medium text-muted-foreground transition-colors data-[active=true]:bg-card data-[active=true]:text-foreground data-[active=true]:shadow-sm"
+        class="py-2 text-sm font-medium text-muted-foreground transition-colors data-[active=true]:bg-foreground data-[active=true]:text-background"
       >
         {m.nav_register()}
       </button>
@@ -39,7 +39,7 @@ import Button from '@/components/atoms/Button.astro';
         role="tab"
         data-tab-btn="login"
         data-active="false"
-        class="rounded-lg py-2 text-sm font-medium text-muted-foreground transition-colors data-[active=true]:bg-card data-[active=true]:text-foreground data-[active=true]:shadow-sm"
+        class="py-2 text-sm font-medium text-muted-foreground transition-colors data-[active=true]:bg-foreground data-[active=true]:text-background"
       >
         {m.nav_login()}
       </button>
@@ -52,7 +52,7 @@ import Button from '@/components/atoms/Button.astro';
           type="button"
           data-role-btn="advertiser"
           data-active="true"
-          class="flex flex-col items-center gap-2 rounded-xl border py-4 text-sm font-medium text-muted-foreground transition-colors data-[active=true]:border-primary data-[active=true]:bg-primary/5 data-[active=true]:text-foreground"
+          class="flex flex-col items-center gap-2 border border-foreground/15 py-4 text-sm font-medium text-muted-foreground transition-colors data-[active=true]:border-foreground data-[active=true]:bg-foreground/5 data-[active=true]:text-foreground"
         >
           <i class="fa-thin fa-camera-retro text-2xl" aria-hidden="true"></i>
           {m.role_advertiser()}
@@ -61,7 +61,7 @@ import Button from '@/components/atoms/Button.astro';
           type="button"
           data-role-btn="client"
           data-active="false"
-          class="flex flex-col items-center gap-2 rounded-xl border py-4 text-sm font-medium text-muted-foreground transition-colors data-[active=true]:border-primary data-[active=true]:bg-primary/5 data-[active=true]:text-foreground"
+          class="flex flex-col items-center gap-2 border border-foreground/15 py-4 text-sm font-medium text-muted-foreground transition-colors data-[active=true]:border-foreground data-[active=true]:bg-foreground/5 data-[active=true]:text-foreground"
         >
           <i class="fa-thin fa-user text-2xl" aria-hidden="true"></i>
           {m.role_client()}
@@ -70,23 +70,31 @@ import Button from '@/components/atoms/Button.astro';
 
       <label class="block space-y-1.5">
         <span class="text-sm font-medium">{m.auth_email()}</span>
-        <input
-          type="email"
-          name="email"
-          autocomplete="email"
-          required
-          class="h-11 w-full rounded-xl border bg-transparent px-4 text-sm outline-none transition-shadow focus:ring-2 focus:ring-ring"
-        />
+        <span class="slab-field block">
+          <span class="slab-field__face flex h-11 items-center">
+            <input
+              type="email"
+              name="email"
+              autocomplete="email"
+              required
+              class="h-full w-full bg-transparent px-4 text-base caret-brand outline-none md:text-sm"
+            />
+          </span>
+        </span>
       </label>
       <label class="block space-y-1.5">
         <span class="text-sm font-medium">{m.auth_password()}</span>
-        <input
-          type="password"
-          name="password"
-          autocomplete="new-password"
-          required
-          class="h-11 w-full rounded-xl border bg-transparent px-4 text-sm outline-none transition-shadow focus:ring-2 focus:ring-ring"
-        />
+        <span class="slab-field block">
+          <span class="slab-field__face flex h-11 items-center">
+            <input
+              type="password"
+              name="password"
+              autocomplete="new-password"
+              required
+              class="h-full w-full bg-transparent px-4 text-base caret-brand outline-none md:text-sm"
+            />
+          </span>
+        </span>
       </label>
 
       <Button type="submit" size="lg" class="w-full">{m.auth_create_account()}</Button>
@@ -97,23 +105,31 @@ import Button from '@/components/atoms/Button.astro';
     <form data-tab-panel="login" class="mt-6 hidden space-y-4">
       <label class="block space-y-1.5">
         <span class="text-sm font-medium">{m.auth_email()}</span>
-        <input
-          type="email"
-          name="email"
-          autocomplete="email"
-          required
-          class="h-11 w-full rounded-xl border bg-transparent px-4 text-sm outline-none transition-shadow focus:ring-2 focus:ring-ring"
-        />
+        <span class="slab-field block">
+          <span class="slab-field__face flex h-11 items-center">
+            <input
+              type="email"
+              name="email"
+              autocomplete="email"
+              required
+              class="h-full w-full bg-transparent px-4 text-base caret-brand outline-none md:text-sm"
+            />
+          </span>
+        </span>
       </label>
       <label class="block space-y-1.5">
         <span class="text-sm font-medium">{m.auth_password()}</span>
-        <input
-          type="password"
-          name="password"
-          autocomplete="current-password"
-          required
-          class="h-11 w-full rounded-xl border bg-transparent px-4 text-sm outline-none transition-shadow focus:ring-2 focus:ring-ring"
-        />
+        <span class="slab-field block">
+          <span class="slab-field__face flex h-11 items-center">
+            <input
+              type="password"
+              name="password"
+              autocomplete="current-password"
+              required
+              class="h-full w-full bg-transparent px-4 text-base caret-brand outline-none md:text-sm"
+            />
+          </span>
+        </span>
       </label>
 
       <Button type="submit" size="lg" class="w-full">{m.nav_login()}</Button>

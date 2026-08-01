@@ -3,29 +3,34 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: oklch(1 0 0);
+  --background: oklch(0.975 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.55 0.222 25);
+  --primary: oklch(0.185 0 0);
   --primary-foreground: oklch(0.99 0 0);
+  --brand: oklch(0.55 0.222 25);
+  --brand-foreground: oklch(0.99 0 0);
   --accent-gradient-from: oklch(0.58 0.225 18);
   --accent-gradient-to: oklch(0.52 0.223 30);
   --online: oklch(0.72 0.19 150);
-  --glass-ultrathin: color-mix(in oklch, var(--background) 55%, transparent);
-  --glass-thin: color-mix(in oklch, var(--background) 70%, transparent);
-  --glass-regular: color-mix(in oklch, var(--background) 82%, transparent);
+  --glass-ultrathin: color-mix(in oklch, var(--background) 70%, transparent);
+  --glass-thin: color-mix(in oklch, var(--background) 84%, transparent);
+  --glass-regular: color-mix(in oklch, var(--background) 95%, transparent);
   --glass-border: color-mix(in oklch, var(--foreground) 12%, transparent);
   /* aceplace-style diffuse card shadows */
   --shadow-soft: 0 2px 6px rgb(0 0 0 / 0.03), 0 12px 32px rgb(0 0 0 / 0.07);
   --shadow-soft-lg: 0 4px 10px rgb(0 0 0 / 0.05), 0 18px 44px rgb(0 0 0 / 0.11);
-  --secondary: oklch(0.97 0 0);
+  /* Misprint rule 2: no gray pigment. "Muted" fills are a whisper of ink wash
+     over the canvas; muted text is ink at reduced coverage — never a third
+     gray tone. Composites correctly on any surface. */
+  --secondary: color-mix(in oklch, var(--foreground) 5%, var(--background));
   --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
+  --muted: color-mix(in oklch, var(--foreground) 5%, var(--background));
+  --muted-foreground: color-mix(in oklch, var(--foreground) 62%, transparent);
+  --accent: color-mix(in oklch, var(--foreground) 7%, var(--background));
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(1 0 0);
@@ -67,22 +72,24 @@
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.269 0 0);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.62 0.225 22);
-  --primary-foreground: oklch(0.99 0 0);
+  --primary: oklch(0.95 0 0);
+  --primary-foreground: oklch(0.16 0 0);
+  --brand: oklch(0.62 0.225 22);
+  --brand-foreground: oklch(0.99 0 0);
   --accent-gradient-from: oklch(0.64 0.225 18);
   --accent-gradient-to: oklch(0.58 0.223 30);
   --online: oklch(0.72 0.19 150);
-  --glass-ultrathin: color-mix(in oklch, var(--background) 50%, transparent);
-  --glass-thin: color-mix(in oklch, var(--background) 62%, transparent);
-  --glass-regular: color-mix(in oklch, var(--background) 74%, transparent);
+  --glass-ultrathin: color-mix(in oklch, var(--background) 66%, transparent);
+  --glass-thin: color-mix(in oklch, var(--background) 80%, transparent);
+  --glass-regular: color-mix(in oklch, var(--background) 92%, transparent);
   --glass-border: color-mix(in oklch, var(--foreground) 16%, transparent);
   --shadow-soft: 0 2px 6px rgb(0 0 0 / 0.3), 0 12px 32px rgb(0 0 0 / 0.35);
   --shadow-soft-lg: 0 4px 10px rgb(0 0 0 / 0.35), 0 18px 44px rgb(0 0 0 / 0.4);
-  --secondary: oklch(0.269 0 0);
+  --secondary: color-mix(in oklch, var(--foreground) 6%, var(--background));
   --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.371 0 0);
+  --muted: color-mix(in oklch, var(--foreground) 6%, var(--background));
+  --muted-foreground: color-mix(in oklch, var(--foreground) 62%, transparent);
+  --accent: color-mix(in oklch, var(--foreground) 9%, var(--background));
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.704 0.191 22.216);
   --destructive-foreground: oklch(0.985 0 0);
@@ -118,12 +125,16 @@
 }
 
 @theme inline {
-  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Barlow", ui-sans-serif, system-ui, sans-serif;
+  /* titles, headings, profile names — anything display-ish */
+  --font-condensed: "Barlow Condensed", "Barlow", ui-sans-serif, system-ui, sans-serif;
   /* micro-label size + the one sanctioned wide tracking (style test bans arbitrary values) */
   --text-2xs: 0.6875rem;
   --text-2xs--line-height: 0.875rem;
   --tracking-eyebrow: 0.14em;
   --color-online: var(--online);
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
   --color-glass-ultrathin: var(--glass-ultrathin);
   --color-glass-thin: var(--glass-thin);
   --color-glass-regular: var(--glass-regular);
@@ -194,13 +205,38 @@
     }
   }
 
-  /* Brand display heading: bold uppercase + trailing crimson period. */
+  /* Brand display heading: condensed bold uppercase + trailing crimson period. */
   .display {
-    @apply font-bold uppercase tracking-tight;
+    @apply font-condensed font-bold uppercase tracking-tight;
   }
   .display::after {
     content: ".";
-    @apply text-primary;
+    @apply text-brand;
+  }
+
+  /* Misprint slab field (the P5 sign-up reference, heavily tamed): a cut ink
+     frame around a paper face — unmistakably a control. The inner clip runs on
+     a smaller box, so the frame thickness varies like a hand-cut sticker.
+     Auth/search surfaces only; workaday filters use the plain Input atom. */
+  .slab-field {
+    --slab-clip: polygon(0.7% 9%, 100% 0, 99.3% 91%, 0 100%);
+    clip-path: var(--slab-clip);
+    background: var(--foreground);
+    padding: 4px;
+  }
+  .slab-field__face {
+    /* deliberately mismatched cut → frame thickness varies like a hand-cut sticker */
+    clip-path: polygon(1% 4%, 99.9% 0, 99% 96%, 0.1% 100%);
+    background: var(--background);
+  }
+
+  /* Misprint motion accent (DESIGN §1.1 rule 3): the anaglyph pink/cyan split
+     as a text-shadow, only while hovered/tapped — never at rest. */
+  .chroma-hover:hover,
+  .chroma-hover:active {
+    text-shadow:
+      -1px 0 var(--brand),
+      1px 0 #00e5ff;
   }
 
   /* Eyebrow micro-label role (DESIGN §2.4) — override color/size/weight with
@@ -241,45 +277,20 @@
     @apply font-sans;
   }
 
-  body {
-    @apply bg-background text-foreground font-sans;
-    /* Ambient brand wash (Treasure-style) — a clearly visible primary-tinted
-       canvas that the cards float on. Stronger in light mode. */
-    background-image:
-      radial-gradient(
-        120% 75% at 50% -10%,
-        color-mix(in oklch, var(--primary) 20%, transparent),
-        transparent 60%
-      ),
-      radial-gradient(
-        60rem 44rem at 105% 25%,
-        color-mix(in oklch, var(--primary) 13%, transparent),
-        transparent 65%
-      ),
-      radial-gradient(
-        60rem 44rem at -5% 65%,
-        color-mix(in oklch, var(--primary) 11%, transparent),
-        transparent 65%
-      );
-    background-attachment: fixed;
+  :root {
+    --sat: env(safe-area-inset-top, 0px);
+    --sab: env(safe-area-inset-bottom, 0px);
+    --sal: env(safe-area-inset-left, 0px);
+    --sar: env(safe-area-inset-right, 0px);
   }
 
-  .dark body {
-    background-image:
-      radial-gradient(
-        120% 70% at 50% -10%,
-        color-mix(in oklch, var(--primary) 14%, transparent),
-        transparent 60%
-      ),
-      radial-gradient(
-        55rem 40rem at 105% 25%,
-        color-mix(in oklch, var(--primary) 9%, transparent),
-        transparent 65%
-      ),
-      radial-gradient(
-        55rem 40rem at -5% 65%,
-        color-mix(in oklch, var(--primary) 7%, transparent),
-        transparent 65%
-      );
+  html {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+    overscroll-behavior-y: contain;
   }
 }

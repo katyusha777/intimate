@@ -27,7 +27,8 @@ const tabs = [
 ---
 
 <nav
-  class="glass-thin fixed inset-x-0 bottom-0 z-40 border-t pb-[env(safe-area-inset-bottom)] md:hidden"
+  transition:persist="tabbar"
+  class="glass-thin fixed inset-x-0 bottom-0 z-40 select-none border-t pb-[env(safe-area-inset-bottom)] md:hidden"
   aria-label={m.nav_search()}
 >
   <div class="grid grid-cols-3">
@@ -36,7 +37,7 @@ const tabs = [
         <a
           href={t.href}
           class:list={[
-            'flex min-h-14 flex-col items-center justify-center gap-0.5 text-2xs font-medium transition-colors',
+            'flex min-h-14 flex-col items-center justify-center gap-0.5 text-2xs font-medium transition-colors active:scale-[0.94] active:opacity-70',
             t.active ? 'text-primary' : 'text-muted-foreground',
           ]}
           aria-current={t.active ? 'page' : undefined}

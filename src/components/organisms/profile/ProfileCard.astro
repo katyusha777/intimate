@@ -9,7 +9,6 @@ import { localizedDescription, type Profile } from '@/app/models/profile';
 import { localizePath } from '@/lib/i18n';
 import { genderLabel, serviceLabel } from '@/lib/labels';
 import { CITIES } from '@/lib/taxonomy';
-import Chip from '@/components/atoms/Chip.astro';
 import SafeImage from '@/components/atoms/SafeImage.astro';
 import PhotoCarousel from '@/components/molecules/PhotoCarousel.astro';
 import VerifiedBadge from '@/components/atoms/VerifiedBadge.astro';
@@ -30,7 +29,7 @@ const href = localizePath(`/profile/${p.slug}/`);
   variant === 'grid' && (
     <a
       href={href}
-      class="group block overflow-hidden rounded-2xl bg-card shadow-soft transition-shadow duration-200 hover:shadow-soft-lg dark:ring-1 dark:ring-border"
+      class="group block overflow-hidden rounded-2xl bg-card shadow-soft transition-all duration-200 hover:shadow-soft-lg active:scale-[0.98] dark:ring-1 dark:ring-border"
     >
       <div class="relative aspect-[3/4] overflow-hidden">
         <PhotoCarousel photos={p.photos} keyBase={p.id} alt={p.name} class="h-full" {loading} />
@@ -51,7 +50,7 @@ const href = localizePath(`/profile/${p.slug}/`);
       <div class="p-4 pt-3">
         <div class="flex items-start justify-between gap-3">
           <div class="min-w-0">
-            <p class="flex items-center gap-1 font-semibold leading-snug">
+            <p class="flex items-center gap-1 font-condensed text-lg font-semibold leading-snug">
               <span class="truncate">{p.name}, {p.age}</span>
               {p.verified && <VerifiedBadge />}
             </p>
@@ -59,11 +58,11 @@ const href = localizePath(`/profile/${p.slug}/`);
           </div>
           <p class="flex-none pt-0.5 text-base font-semibold">€{p.priceFrom}</p>
         </div>
-        <div class="mt-2.5 flex h-6 gap-1.5 overflow-hidden">
-          <Chip class="flex-none">{genderLabel(p.gender)}</Chip>
-          {p.services[0] && <Chip class="min-w-0 truncate">{serviceLabel(p.services[0])}</Chip>}
-          {p.services.length > 1 && <Chip class="flex-none">+{p.services.length - 1}</Chip>}
-        </div>
+        <p class="mt-2 truncate text-xs text-muted-foreground">
+          {genderLabel(p.gender)}
+          {p.services[0] && ` · ${serviceLabel(p.services[0])}`}
+          {p.services.length > 1 && ` · +${p.services.length - 1}`}
+        </p>
       </div>
     </a>
   )
@@ -78,7 +77,7 @@ const href = localizePath(`/profile/${p.slug}/`);
       </div>
       <div class="flex flex-col justify-between gap-3 p-5">
         <div class="space-y-1.5">
-          <h3 class="flex items-center gap-1.5 text-lg font-semibold tracking-tight">
+          <h3 class="flex items-center gap-1.5 font-condensed text-xl font-semibold tracking-tight">
             <a href={href} class="after:absolute after:inset-0">{p.name}, {p.age}</a>
             {p.verified && <VerifiedBadge class="size-4.5" />}
             {p.online && (
@@ -108,7 +107,7 @@ const href = localizePath(`/profile/${p.slug}/`);
     >
       <SafeImage imageKey={p.id} src={p.photos[0]} alt={p.name} class="size-14 flex-none rounded-lg" {loading} />
       <div class="min-w-0 flex-1">
-        <p class="flex items-center gap-1 truncate text-sm font-semibold">
+        <p class="flex items-center gap-1 truncate font-condensed text-base font-semibold">
           {p.name}, {p.age}
           {p.verified && <VerifiedBadge class="size-3.5" />}
         </p>

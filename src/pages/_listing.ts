@@ -30,21 +30,24 @@ export async function buildListing({ url, locale, category, citySlug }: BuildArg
 
   // Answer-first block from live data (SEO.md §3) — same text feeds the meta description.
   const stats = listingStats(result.items.length === result.total ? result.items : result.items);
-  const what = category ? listingCategoryLabel(category.slug) : m.what_professionals();
   const where = citySlug ? cityName(citySlug) : m.where_netherlands();
-  const intro = m.seo_intro({
-    count: result.total,
-    what,
-    where,
-    min: stats.minPrice,
-    online: stats.online,
-  });
+  const introArgs = { count: result.total, where, min: stats.minPrice, online: stats.online };
+  const intro = category
+    ? m.seo_intro({ ...introArgs, what: listingCategoryLabel(category.slug) })
+    : m.seo_intro_generic(introArgs);
   const updated = stats.updated ? m.updated_label({ date: stats.updated.slice(0, 10) }) : undefined;
 
-  const title = m.title_listing({ count: result.total, what, where: citySlug ? where : '' })
+  const titleWhat = category ? listingCategoryLabel(category.slug) : m.nav_search();
+  const title = m.title_listing({ count: result.total, what: titleWhat, where: citySlug ? where : '' })
     .replace(/\s+–/, ' –')
     .replace(/\s{2,}/g, ' ');
-  const heading = citySlug ? `${what === m.what_professionals() ? where : what} · ${where}` : what;
+  const heading = category
+    ? citySlug
+      ? `${listingCategoryLabel(category.slug)} · ${where}`
+      : listingCategoryLabel(category.slug)
+    : citySlug
+      ? where
+      : m.nav_search();
 
   const citySeg = citySlug ? `${citySlug}/` : '';
   const canonicalPath = `${tabPath}${citySeg}`;

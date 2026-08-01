@@ -7,6 +7,7 @@ import { paraglideVitePlugin } from '@inlang/paraglide-js';
 export default defineConfig({
   output: 'server',
   adapter: cloudflare(),
+  devToolbar: { enabled: false },
   prefetch: { prefetchAll: true },
   vite: {
     plugins: [

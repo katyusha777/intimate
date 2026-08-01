@@ -1,6 +1,7 @@
 ---
 /**
- * The one clean search affordance (DESIGN.md §3.2, Airbnb-style segmented pill).
+ * The one clean search affordance — a Misprint ink slab (DESIGN §1.1): sharp
+ * ink-flip rectangle, hierarchy via ink opacity, paper die-cut for the icon.
  * Visual shell for now — opens nothing until search lands.
  */
 import * as m from '@/paraglide/messages';
@@ -14,16 +15,16 @@ const { class: className } = Astro.props;
 <button
   type="button"
   class:list={[
-    'glass flex items-center rounded-full border py-1.5 pl-5 pr-1.5 text-sm shadow-sm transition-shadow hover:shadow-md',
+    'flex items-center bg-foreground py-1.5 pl-5 pr-1.5 text-sm text-background transition-transform active:scale-[0.98]',
     className,
   ]}
 >
-  <span class="pr-4 font-medium">{m.search_city()}</span>
-  <span class="h-5 w-px bg-border" aria-hidden="true"></span>
-  <span class="px-4 text-muted-foreground">{m.search_availability()}</span>
-  <span class="h-5 w-px bg-border" aria-hidden="true"></span>
-  <span class="pl-4 pr-3 text-muted-foreground">{m.search_filters()}</span>
-  <span class="grid size-8 flex-none place-items-center rounded-full bg-primary text-primary-foreground">
+  <span class="pr-4 font-semibold">{m.search_city()}</span>
+  <span class="h-5 w-px bg-background/25" aria-hidden="true"></span>
+  <span class="px-4 text-background/60">{m.search_availability()}</span>
+  <span class="h-5 w-px bg-background/25" aria-hidden="true"></span>
+  <span class="pl-4 pr-3 text-background/60">{m.search_filters()}</span>
+  <span class="grid size-8 flex-none place-items-center rounded-full bg-background text-foreground">
     <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
   </span>
 </button>
