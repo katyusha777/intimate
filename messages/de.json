@@ -92,5 +92,6 @@
   "stats_min": "Ab",
   "stats_avg": "Durchschnitt",
   "stats_online": "Jetzt online",
-  "seo_intro_generic": "{count} verifizierte Professionelle in {where}. Preise ab €{min} · {online} jetzt online. Jedes Profil auf Intimate ist verifiziert."
+  "seo_intro_generic": "{count} verifizierte Professionelle in {where}. Preise ab €{min} · {online} jetzt online. Jedes Profil auf Intimate ist verifiziert.",
+  "filter_clear": "Löschen"
 }

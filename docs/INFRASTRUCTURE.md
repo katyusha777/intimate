@@ -112,3 +112,7 @@ context7, shadcn (→ `@fulldev` registry), playwright.
       ARCHITECTURE §8.10).
 - [ ] Custom domain + AI-crawler allowlist (GPTBot, OAI-SearchBot, ClaudeBot,
       PerplexityBot) once the zone exists.
+- [ ] **Zone rate-limiting rule on `/_actions/*`** (e.g. 10 req/10s per IP) —
+      the burst guard for AI search. The in-Worker KV counter only enforces
+      the hourly budget (KV read-caching makes short windows unenforceable);
+      Turnstile on the search form if abuse ever gets serious.

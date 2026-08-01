@@ -3,7 +3,7 @@
  * taxonomy, deterministic. Run: bun scripts/gen-profiles.ts
  */
 import { readdirSync, writeFileSync } from 'node:fs';
-import { CITIES, GENDERS, SERVICES } from '../src/lib/taxonomy';
+import { ALL_SERVICES, CITIES, GENDERS, SERVICES } from '../src/lib/taxonomy';
 
 const nsfw = readdirSync('public/nsfwimg')
   .filter((f) => !f.startsWith('.'))
@@ -64,12 +64,19 @@ const profiles = nsfw.map((img, i) => {
   const n = i + 1;
   const id = `p${String(n).padStart(2, '0')}`;
   const name = NAMES[i]!;
-  const city = CITIES[(i * 5) % 12]!.slug;
+  // every city gets at least one profile (30 profiles ≥ city count)
+  const city = CITIES[i % CITIES.length]!.slug;
   const gender = GENDERS[GENDER_PLAN[i]!]!;
   const virtual = i % 7 === 3; // a few offer virtual services (delivery = derived)
+  // coverage chunk: service j belongs to profile (j % 30) → EVERY service has
+  // at least one profile; extras on top for variety.
+  const chunk = ALL_SERVICES.filter((_, j) => j % nsfw.length === i);
   const services = [
-    ...pick(SERVICE_POOL, i, 3 + (i % 3)),
-    ...(virtual ? pick(VIRTUAL, i, 2) : []),
+    ...new Set([
+      ...chunk,
+      ...pick(SERVICE_POOL, i, 2 + (i % 2)),
+      ...(virtual ? pick(VIRTUAL, i, 2) : []),
+    ]),
   ];
   const meetingTypes = i % 5 === 0 ? ['incall'] : i % 5 === 2 ? ['outcall'] : ['incall', 'outcall'];
   const d = DESC[i % DESC.length]!;
@@ -83,7 +90,7 @@ const profiles = nsfw.map((img, i) => {
     age: 21 + ((i * 7) % 15),
     gender,
     city,
-    verified: i % 4 !== 3,
+    verified: true, // every profile on Intimate is verified
     online: i % 3 === 0,
     featured: i < 5,
     priceFrom: 100 + ((i * 37) % 18) * 10,

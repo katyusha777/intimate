@@ -68,7 +68,7 @@ const slab = SLABS[[...p.id].reduce((s, c) => s + c.charCodeAt(0), 0) % SLABS.le
           <div class="min-w-0">
             <p class="flex items-center gap-1 font-condensed text-lg font-semibold leading-snug">
               <span class="truncate">{p.name}, {p.age}</span>
-              {p.verified && <VerifiedBadge />}
+              <VerifiedBadge />
             </p>
             <p class="truncate text-sm text-white/60">{cityName}</p>
           </div>
@@ -95,7 +95,7 @@ const slab = SLABS[[...p.id].reduce((s, c) => s + c.charCodeAt(0), 0) % SLABS.le
         <div class="space-y-1.5">
           <h3 class="flex items-center gap-1.5 font-condensed text-xl font-semibold tracking-tight">
             <a href={href} class="after:absolute after:inset-0">{p.name}, {p.age}</a>
-            {p.verified && <VerifiedBadge class="size-4.5" />}
+            <VerifiedBadge class="size-4.5" />
             {p.online && (
               <span class="ml-auto flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                 <span class="size-1.5 rounded-full bg-online" />
@@ -125,7 +125,7 @@ const slab = SLABS[[...p.id].reduce((s, c) => s + c.charCodeAt(0), 0) % SLABS.le
       <div class="min-w-0 flex-1">
         <p class="flex items-center gap-1 truncate font-condensed text-base font-semibold">
           {p.name}, {p.age}
-          {p.verified && <VerifiedBadge class="size-3.5" />}
+          <VerifiedBadge class="size-3.5" />
         </p>
         <p class="truncate text-xs text-muted-foreground">{cityName}</p>
       </div>

@@ -9,7 +9,7 @@ import { negotiateLocale } from '@/lib/i18n';
  * safe under concurrent requests in one isolate).
  */
 /** Internal, non-localized routes the URL strategy must not redirect. */
-const BYPASS = ['/kitchen-sink'];
+const BYPASS = ['/kitchen-sink', '/_actions'];
 
 export const onRequest = defineMiddleware((context, next) => {
   if (context.url.pathname === '/') {

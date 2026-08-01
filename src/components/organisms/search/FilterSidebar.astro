@@ -1,6 +1,9 @@
 ---
 /**
- * Listing filters — grouped cards. Pure GET form controls; the wrapping
+ * Listing filters — flat print column: condensed group headings separated by
+ * hairlines, options as stacked rows with print checkboxes/radios (whole label
+ * clickable) — no gray cards, no native widgets (Misprint §1.1). Pure GET form
+ * controls; the wrapping
  * <form> lives in SearchListing. THE SIDEBAR NEVER CHANGES SHAPE: every page
  * shows the same groups, and route presets show up as selected state (on
  * /service/escort/ the visit-type radio arrives checked). On meeting-type
@@ -8,8 +11,8 @@
  * keeping tab and filter as one dimension.
  */
 import * as m from '@/paraglide/messages';
-import { serviceCategoryLabel, serviceLabel } from '@/lib/labels';
-import { CITIES, SERVICES, SERVICE_CATEGORIES } from '@/lib/taxonomy';
+import { genderLabel, serviceCategoryLabel, serviceLabel } from '@/lib/labels';
+import { CITIES, GENDERS, SERVICES, SERVICE_CATEGORIES } from '@/lib/taxonomy';
 import type { ProfileListParams } from '@/app/models/profile';
 import Icon from '@/components/atoms/Icon.astro';
 import Input from '@/components/atoms/Input.astro';
@@ -27,148 +30,166 @@ interface Props {
 const { params, resetHref, visitMode = 'query', openCategory } = Astro.props;
 const visitNav = visitMode === 'navigate';
 const selectedServices = new Set(params.services ?? []);
+const selectedGenders = new Set(params.genders ?? []);
 /* Effective location set: main city (path, set top-right) + extra sidebar cities. */
 const selectedCities = new Set([params.city, ...(params.cities ?? [])].filter(Boolean));
 
-const card = 'space-y-4 rounded-2xl bg-card p-5 shadow-soft dark:ring-1 dark:ring-border';
-const checkbox = 'size-4 flex-none cursor-pointer accent-primary';
-const row = 'flex cursor-pointer items-center gap-2.5 text-sm';
+const group = 'space-y-3 border-b border-border py-5 first:pt-0';
+const heading = 'font-condensed text-sm font-bold uppercase tracking-wide';
+/* One option row: clean print checkbox/radio, whole label clickable. */
+const row = 'flex cursor-pointer select-none items-center gap-2.5 text-sm hover:text-foreground/70';
 ---
 
-<aside class="space-y-4">
-  <!-- h-9 matches the quick-control row so the first card top-aligns with the cards grid -->
+<aside>
+  <!-- h-9 matches the quick-control row so the first group top-aligns with the cards grid -->
   <div class="flex h-9 items-center justify-between px-1">
     <h2 class="font-condensed text-xl font-semibold tracking-tight">{m.filter_title()}</h2>
     <a
       href={resetHref}
-      class="border border-foreground/20 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-foreground/60 hover:text-foreground"
+      class="slab-cut border border-foreground/20 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-foreground/60 hover:text-foreground"
     >
       {m.filter_reset()}
     </a>
   </div>
 
-  <!-- Location: extra cities on top of the main one (top-right combobox).
-       Checking cities here never changes the main path state. -->
-  <div class={card}>
-    <h3 class="font-semibold">{m.filter_city()}</h3>
-    <div class="max-h-56 space-y-2 overflow-y-auto">
-      {
-        CITIES.map((c) => (
-          <label class={row}>
-            <input
-              type="checkbox"
-              name="cities"
-              value={c.slug}
-              checked={selectedCities.has(c.slug)}
-              class={checkbox}
-            />
-            {c.name}
-          </label>
-        ))
-      }
+  <div class="mt-4 px-1">
+    <!-- Gender (desktop home; on mobile the quick chips above the grid own it —
+         the listing script disables whichever set is hidden). -->
+    <div class={group} data-gender-desktop>
+      <h3 class={heading}>{m.filter_gender()}</h3>
+      <div class="space-y-2">
+        {
+          GENDERS.map((g) => (
+            <label class={row}>
+              <input
+                type="checkbox"
+                name="genders"
+                value={g}
+                checked={selectedGenders.has(g)}
+                class="cbx-box"
+              />
+              {genderLabel(g)}
+            </label>
+          ))
+        }
+      </div>
     </div>
-  </div>
 
-  <!-- Services (grouped, collapsible, multi-select) -->
-  <div class={card}>
-    <h3 class="font-semibold">{m.filter_services()}</h3>
-    <div class="space-y-1">
-      {
-        SERVICE_CATEGORIES.map((cat) => {
-          const services = SERVICES[cat];
-          const checkedCount = services.filter((s) => selectedServices.has(s)).length;
-          return (
-            <details
-              class="group/cat rounded-lg"
-              open={cat === openCategory || checkedCount > 0 || undefined}
-            >
-              <summary class="flex cursor-pointer list-none items-center justify-between gap-2 rounded-lg px-2 py-2 text-sm font-medium transition-colors hover:bg-muted/60 [&::-webkit-details-marker]:hidden">
-                <span class="flex items-center gap-2">
-                  {serviceCategoryLabel(cat)}
-                  {checkedCount > 0 && (
-                    <span class="grid size-5 place-items-center rounded-full bg-primary text-2xs font-semibold text-primary-foreground">
-                      {checkedCount}
-                    </span>
-                  )}
-                </span>
-                <Icon
-                  name="chevron-down"
-                  class="text-xs text-muted-foreground transition-transform group-open/cat:rotate-180"
-                />
-              </summary>
-              <div class="space-y-2 px-2 pb-2 pt-1">
-                {services.map((s) => (
-                  <label class={row}>
-                    <input
-                      type="checkbox"
-                      name="services"
-                      value={s}
-                      checked={selectedServices.has(s)}
-                      class={checkbox}
-                    />
-                    {serviceLabel(s)}
-                  </label>
-                ))}
-              </div>
-            </details>
-          );
-        })
-      }
+    <!-- Location: extra cities on top of the main one (header combobox).
+         Checking cities here never changes the main path state. -->
+    <div class={group}>
+      <h3 class={heading}>{m.filter_city()}</h3>
+      <div class="max-h-56 space-y-2 overflow-y-auto">
+        {
+          CITIES.map((c) => (
+            <label class={row}>
+              <input
+                type="checkbox"
+                name="cities"
+                value={c.slug}
+                checked={selectedCities.has(c.slug)}
+                class="cbx-box"
+              />
+              {c.name}
+            </label>
+          ))
+        }
+      </div>
     </div>
-  </div>
 
-  <!-- Visit type (always present; preset pages arrive with their radio checked) -->
-  <div class={card}>
-    <h3 class="font-semibold">{m.filter_visit()}</h3>
-    <div class="space-y-2">
-      <label class={row}>
-        <input type="radio" name={visitNav ? undefined : 'visit'} data-visit-nav={visitNav || undefined} value="" checked={!params.meetingType} class={checkbox} />
-        {m.filter_any()}
-      </label>
-      <label class={row}>
-        <input type="radio" name={visitNav ? undefined : 'visit'} data-visit-nav={visitNav || undefined} value="incall" checked={params.meetingType === 'incall'} class={checkbox} />
-        {m.cat_private()}
-      </label>
-      <label class={row}>
-        <input type="radio" name={visitNav ? undefined : 'visit'} data-visit-nav={visitNav || undefined} value="outcall" checked={params.meetingType === 'outcall'} class={checkbox} />
-        {m.cat_escort()}
-      </label>
+    <!-- Services (grouped, collapsible, multi-select chips) -->
+    <div class={group}>
+      <h3 class={heading}>{m.filter_services()}</h3>
+      <div>
+        {
+          SERVICE_CATEGORIES.map((cat) => {
+            const services = SERVICES[cat];
+            const checkedCount = services.filter((s) => selectedServices.has(s)).length;
+            return (
+              <details
+                class="group/cat"
+                open={cat === openCategory || checkedCount > 0 || undefined}
+              >
+                <summary class="flex cursor-pointer list-none items-center justify-between gap-2 py-2 text-sm font-medium transition-colors hover:text-foreground/70 [&::-webkit-details-marker]:hidden">
+                  <span class="flex items-center gap-2">
+                    {serviceCategoryLabel(cat)}
+                    {checkedCount > 0 && (
+                      <span class="grid size-5 place-items-center bg-foreground text-2xs font-semibold text-background">
+                        {checkedCount}
+                      </span>
+                    )}
+                  </span>
+                  <Icon
+                    name="chevron-down"
+                    class="text-xs text-muted-foreground transition-transform group-open/cat:rotate-180"
+                  />
+                </summary>
+                <div class="space-y-2 pb-3 pt-1">
+                  {services.map((s) => (
+                    <label class={row}>
+                      <input
+                        type="checkbox"
+                        name="services"
+                        value={s}
+                        checked={selectedServices.has(s)}
+                        class="cbx-box"
+                      />
+                      {serviceLabel(s)}
+                    </label>
+                  ))}
+                </div>
+              </details>
+            );
+          })
+        }
+      </div>
     </div>
-  </div>
 
-  <!-- Price -->
-  <div class={card}>
-    <h3 class="font-semibold">{m.filter_price()}</h3>
-    <div class="flex items-center gap-3">
-      <Input
-        type="number"
-        inputmode="numeric"
-        name="priceMin"
-        min="0"
-        step="10"
-        placeholder={m.filter_min()}
-        value={params.priceMin ?? ''}
-        aria-label={m.filter_min()}
-      />
-      <span class="text-muted-foreground" aria-hidden="true">–</span>
-      <Input
-        type="number"
-        inputmode="numeric"
-        name="priceMax"
-        min="0"
-        step="10"
-        placeholder={m.filter_max()}
-        value={params.priceMax ?? ''}
-        aria-label={m.filter_max()}
-      />
+    <!-- Visit type (always present; preset pages arrive with their radio checked) -->
+    <div class={group}>
+      <h3 class={heading}>{m.filter_visit()}</h3>
+      <div class="space-y-2">
+        <label class={row}>
+          <input type="radio" name={visitNav ? undefined : 'visit'} data-visit-nav={visitNav || undefined} value="" checked={!params.meetingType} class="radio-dot" />
+          {m.filter_any()}
+        </label>
+        <label class={row}>
+          <input type="radio" name={visitNav ? undefined : 'visit'} data-visit-nav={visitNav || undefined} value="incall" checked={params.meetingType === 'incall'} class="radio-dot" />
+          {m.cat_private()}
+        </label>
+        <label class={row}>
+          <input type="radio" name={visitNav ? undefined : 'visit'} data-visit-nav={visitNav || undefined} value="outcall" checked={params.meetingType === 'outcall'} class="radio-dot" />
+          {m.cat_escort()}
+        </label>
+      </div>
     </div>
-  </div>
 
-  <!-- Toggles -->
-  <div class={card}>
-    <label class={row}>
-      <input type="checkbox" name="verified" checked={params.verifiedOnly} class={checkbox} />
-      {m.filter_verified()}
-    </label>
+    <!-- Price -->
+    <div class:list={[group, 'border-b-0']}>
+      <h3 class={heading}>{m.filter_price()}</h3>
+      <div class="flex items-center gap-3">
+        <Input
+          type="number"
+          inputmode="numeric"
+          name="priceMin"
+          min="0"
+          step="10"
+          placeholder={m.filter_min()}
+          value={params.priceMin ?? ''}
+          aria-label={m.filter_min()}
+        />
+        <span class="text-muted-foreground" aria-hidden="true">–</span>
+        <Input
+          type="number"
+          inputmode="numeric"
+          name="priceMax"
+          min="0"
+          step="10"
+          placeholder={m.filter_max()}
+          value={params.priceMax ?? ''}
+          aria-label={m.filter_max()}
+        />
+      </div>
+    </div>
   </div>
 </aside>

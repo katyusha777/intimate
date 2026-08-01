@@ -10,12 +10,10 @@ import SearchControl from '@/components/molecules/SearchControl.astro';
 import Button from '@/components/atoms/Button.astro';
 import { articlesApi } from '@/app/api/articles';
 import { profilesApi } from '@/app/api/profiles';
-import { CITIES } from '@/lib/taxonomy';
 
 const locale = Astro.params.locale;
 if (!isLocale(locale)) return new Response(null, { status: 404 });
 
-const cities = CITIES.slice(0, 8);
 const alternates = samePathAlternates(Astro.url.origin, '/');
 const jsonLd = [websiteJsonLd(Astro.url.origin, locale), organizationJsonLd(Astro.url.origin)];
 
@@ -42,9 +40,10 @@ const moreArticles = articles.filter((a) => !a.featured);
   <!-- Hero: full-bleed cinematic media, content on a jagged ink panel
        (Misprint §1.1 — the P5 storefront ref, tamed). Registration CTA. -->
   <section class="dark relative overflow-hidden bg-neutral-950 text-white">
-    <!-- Promo video covers the whole band, edge to edge.
+    <!-- Promo video covers the whole band, edge to edge (1px bleed kills the
+         subpixel sliver at the section edges).
          Safe-mode gated: safe image by default, video only when safe mode is off. -->
-    <div class="absolute inset-0 hidden lg:block" data-safe-video-wrap>
+    <div class="absolute -inset-px hidden lg:block" data-safe-video-wrap>
       <video
         class="hidden h-full w-full object-cover"
         data-safe-video
@@ -100,26 +99,9 @@ const moreArticles = articles.filter((a) => !a.featured);
   </section>
 
   <div class="mx-auto max-w-7xl px-4 md:px-6">
-    <!-- Search (mobile) + city chips -->
-    <section class="space-y-4 pt-6 md:pt-10">
-      <SearchControl class="md:hidden" />
-      <div class="flex gap-2 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {
-          cities.map((c, i) => (
-            <a
-              href={localizePath(`/${c.slug}/`)}
-              class:list={[
-                'chroma-hover flex-none px-3.5 py-2 font-condensed text-sm font-bold uppercase tracking-wide transition-colors active:scale-[0.97]',
-                i === 0
-                  ? 'bg-foreground text-background'
-                  : 'text-foreground/60 hover:text-foreground',
-              ]}
-            >
-              {c.name}
-            </a>
-          ))
-        }
-      </div>
+    <!-- Search (mobile) -->
+    <section class="pt-6 md:hidden">
+      <SearchControl />
     </section>
 
     <!-- Featured: slideshow of cards -->
@@ -183,12 +165,12 @@ const moreArticles = articles.filter((a) => !a.featured);
             moreArticles.map((a) => (
               <a
                 href={localizePath(`/blog/${a.slug}/`)}
-                class="group flex items-center gap-4 rounded-lg bg-card p-3 shadow-soft transition-shadow hover:shadow-soft-lg dark:ring-1 dark:ring-border"
+                class="group flex items-center gap-4 border border-foreground/15 p-3 transition-colors hover:border-foreground/50"
               >
                 <SafeImage
                   imageKey={a.id}
                   alt={a.title}
-                  class="aspect-[4/3] w-28 flex-none rounded-md"
+                  class="aspect-[4/3] w-28 flex-none"
                 />
                 <div class="min-w-0">
                   <p class="eyebrow text-2xs font-mono font-semibold text-brand">

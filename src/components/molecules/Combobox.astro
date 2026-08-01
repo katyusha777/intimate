@@ -14,13 +14,19 @@ interface Props {
   options: { value: string; label: string }[];
   value?: string;
   placeholder: string;
-  /** Shown for the empty option (clears the value). */
-  anyLabel: string;
-  searchPlaceholder: string;
+  /** Shown for the empty option (clears the value); omit for no empty option. */
+  anyLabel?: string;
+  /** Omit to drop the search input (short lists don't need one). */
+  searchPlaceholder?: string;
   /** CSS selector of the form control to drive (searched document-wide). */
   target: string;
   /** Fallback when no target exists on the page: navigate `${navBase}${value}/`. */
   navBase?: string;
+  /**
+   * Language-switcher mode: on pick, follow the page's own hreflang alternate
+   * link (SEO-correct — localized slugs included), falling back to /{lang}/.
+   */
+  lang?: boolean;
   /** Optional leading icon (e.g. location-dot). */
   icon?: string;
   class?: string;
@@ -34,6 +40,7 @@ const {
   searchPlaceholder,
   target,
   navBase,
+  lang,
   icon,
   class: className,
 } = Astro.props;
@@ -45,12 +52,13 @@ const current = options.find((o) => o.value === value);
   data-cbx
   data-cbx-target={target}
   data-cbx-nav-base={navBase}
+  data-cbx-lang={lang || undefined}
 >
   <button
     type="button"
     aria-haspopup="listbox"
     data-cbx-btn
-    class="flex h-9 w-full cursor-pointer select-none items-center gap-2 border border-foreground/20 px-3 text-sm font-medium transition-colors hover:border-foreground/60"
+    class="slab-cut flex h-9 w-full cursor-pointer select-none items-center gap-2 border border-foreground/20 px-3 text-sm font-medium transition-colors hover:border-foreground/60"
   >
     {icon && <Icon name={icon} class="text-muted-foreground" />}
     <span data-cbx-label class="truncate">{current ? current.label : placeholder}</span>
@@ -62,27 +70,35 @@ const current = options.find((o) => o.value === value);
     hidden
     class="absolute right-0 z-30 mt-1 w-56 border border-foreground/20 bg-background shadow-soft-lg"
   >
-    <input
-      data-cbx-search
-      type="text"
-      placeholder={searchPlaceholder}
-      autocomplete="off"
-      class="h-10 w-full border-b border-foreground/20 bg-transparent px-3 text-base caret-brand outline-none placeholder:text-muted-foreground md:text-sm"
-    />
+    {
+      searchPlaceholder && (
+        <input
+          data-cbx-search
+          type="text"
+          placeholder={searchPlaceholder}
+          autocomplete="off"
+          class="h-10 w-full border-b border-foreground/20 bg-transparent px-3 text-base caret-brand outline-none placeholder:text-muted-foreground md:text-sm"
+        />
+      )
+    }
     <ul class="max-h-64 overflow-y-auto p-1" role="listbox">
-      <li>
-        <button
-          type="button"
-          data-cbx-option
-          data-value=""
-          class:list={[
-            'flex w-full cursor-pointer items-center justify-between px-2.5 py-2 text-left text-sm transition-colors hover:bg-muted',
-            !value && 'font-semibold',
-          ]}
-        >
-          {anyLabel}
-        </button>
-      </li>
+      {
+        anyLabel && (
+          <li>
+            <button
+              type="button"
+              data-cbx-option
+              data-value=""
+              class:list={[
+                'flex w-full cursor-pointer items-center justify-between px-2.5 py-2 text-left text-sm transition-colors hover:bg-muted',
+                !value && 'font-semibold',
+              ]}
+            >
+              {anyLabel}
+            </button>
+          </li>
+        )
+      }
       {
         options.map((o) => (
           <li data-cbx-item data-label={o.label.toLowerCase()}>
@@ -112,14 +128,14 @@ const current = options.find((o) => o.value === value);
       cbx.dataset.init = '1';
       const btn = cbx.querySelector<HTMLElement>('[data-cbx-btn]')!;
       const panel = cbx.querySelector<HTMLElement>('[data-cbx-panel]')!;
-      const search = cbx.querySelector<HTMLInputElement>('[data-cbx-search]')!;
+      const search = cbx.querySelector<HTMLInputElement>('[data-cbx-search]');
 
       const close = () => {
         panel.hidden = true;
       };
       btn.addEventListener('click', () => {
         panel.hidden = !panel.hidden;
-        if (!panel.hidden) {
+        if (!panel.hidden && search) {
           search.value = '';
           filter();
           search.focus();
@@ -133,22 +149,29 @@ const current = options.find((o) => o.value === value);
       });
 
       const filter = () => {
-        const term = search.value.trim().toLowerCase();
+        const term = (search?.value ?? '').trim().toLowerCase();
         cbx.querySelectorAll<HTMLElement>('[data-cbx-item]').forEach((li) => {
           li.hidden = term.length > 0 && !li.dataset.label!.includes(term);
         });
       };
-      search.addEventListener('input', filter);
+      search?.addEventListener('input', filter);
 
       cbx.querySelectorAll<HTMLElement>('[data-cbx-option]').forEach((opt) => {
         opt.addEventListener('click', () => {
           close();
           const v = opt.dataset.value ?? '';
+          // Language mode: this page already computed its localized alternate
+          // URLs (hreflang, incl. localized slugs) — just follow them.
+          if (cbx.dataset.cbxLang !== undefined) {
+            const alt = document.querySelector<HTMLLinkElement>(
+              `link[rel="alternate"][hreflang="${v}"]`,
+            );
+            location.href = alt?.href ?? `/${v}/`;
+            return;
+          }
           // Prefer a live form control (listing pages keep their tab + query);
           // otherwise navigate to the base path (header on any other page).
-          const ctl = document.querySelector<HTMLSelectElement | HTMLInputElement>(
-            cbx.dataset.cbxTarget!,
-          );
+          const ctl = document.querySelector(cbx.dataset.cbxTarget!) as HTMLSelectElement | null;
           if (ctl) {
             ctl.value = v;
             ctl.dispatchEvent(new Event('change', { bubbles: true }));

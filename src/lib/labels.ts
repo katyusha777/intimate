@@ -12,8 +12,6 @@ export function genderLabel(g: Gender): string {
       return m.taxonomy_genders_trans_woman();
     case 'trans_man':
       return m.taxonomy_genders_trans_man();
-    case 'non_binary':
-      return m.taxonomy_genders_non_binary();
   }
 }
 

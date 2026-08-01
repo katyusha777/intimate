@@ -60,9 +60,9 @@ function pageHref(p: number): string {
   return qs ? `${basePath}?${qs}` : basePath;
 }
 
-/* Misprint chip: sharp keyline on bare canvas; checked = ink flip. */
+/* Misprint chip: cut keyline slab on bare canvas; checked = ink flip. */
 const chip =
-  'flex h-9 cursor-pointer select-none items-center gap-2 border border-foreground/20 px-3 text-sm font-medium transition-colors hover:border-foreground/60 active:scale-[0.96]';
+  'slab-cut flex h-9 cursor-pointer select-none items-center gap-2 border border-foreground/20 px-3 text-sm font-medium transition-colors hover:border-foreground/60 active:scale-[0.96]';
 ---
 
 <form
@@ -85,7 +85,7 @@ const chip =
     {updated && <p class="eyebrow mt-1.5">{updated}</p>}
   </div>
 
-  <div class="grid items-start gap-6 lg:grid-cols-[17rem_1fr]">
+  <div class="grid items-start gap-4 lg:grid-cols-[17rem_1fr] lg:gap-6">
     <details data-filter-panel class="min-w-0">
       <summary
         class:list={[chip, 'w-fit select-none list-none lg:hidden [&::-webkit-details-marker]:hidden']}
@@ -108,33 +108,47 @@ const chip =
           {CITIES.map((c) => <option value={c.slug} selected={params.city === c.slug} />)}
         </select>
 
-        {
-          GENDERS.map((g) => (
-            <label>
-              <input
-                type="checkbox"
-                name="genders"
-                value={g}
-                checked={selectedGenders.has(g)}
-                class="peer sr-only"
-              />
-              <span class:list={[chip, 'peer-checked:border-foreground peer-checked:bg-foreground peer-checked:text-background']}>
-                {genderLabel(g)}
-              </span>
-            </label>
-          ))
-        }
+        <!-- Gender chips: mobile only — on lg the sidebar group owns gender
+             (the script disables whichever set is hidden, so values never double). -->
+        <div class="flex flex-wrap items-center gap-2 lg:hidden" data-gender-mobile>
+          {
+            GENDERS.map((g) => (
+              <label>
+                <input
+                  type="checkbox"
+                  name="genders"
+                  value={g}
+                  checked={selectedGenders.has(g)}
+                  class="peer sr-only"
+                />
+                <span class:list={[chip, 'peer-checked:border-foreground peer-checked:bg-foreground peer-checked:text-background']}>
+                  <span class="chip-box" aria-hidden="true" />
+                  {genderLabel(g)}
+                </span>
+              </label>
+            ))
+          }
+          {
+            selectedGenders.size > 0 && (
+              <button
+                type="button"
+                data-clear-genders
+                class="cursor-pointer px-1 text-xs text-muted-foreground underline-offset-2 transition-colors hover:text-foreground hover:underline"
+              >
+                {m.filter_clear()}
+              </button>
+            )
+          }
+        </div>
 
-        <label>
-          <input type="checkbox" name="online" checked={params.onlineOnly} class="peer sr-only" />
-          <span class:list={[chip, 'peer-checked:border-foreground peer-checked:bg-foreground peer-checked:text-background']}>
-            <span class="size-1.5 rounded-full bg-online"></span>
-            {m.filter_online()}
-          </span>
+        <label class="flex h-9 cursor-pointer select-none items-center gap-2.5 px-2 text-sm font-medium">
+          <input type="checkbox" name="online" checked={params.onlineOnly} class="sr-only" />
+          <span class="switch-track" aria-hidden="true"></span>
+          {m.filter_online()}
         </label>
 
-        <label class="ml-auto flex items-center text-sm">
-          <span class="relative inline-flex h-9 items-center border border-foreground/20 transition-colors hover:border-foreground/60">
+        <label class="ml-auto flex items-center text-sm max-sm:ml-0 max-sm:w-full">
+          <span class="slab-cut relative inline-flex h-9 items-center border border-foreground/20 transition-colors hover:border-foreground/60 max-sm:w-full">
             <select
               name="sort"
               aria-label={m.sort_by()}
@@ -202,12 +216,54 @@ const chip =
   // Auto-submit on change (SSR filters, zero client state). City navigates the
   // PATH (`${tabPath}${city}/`) keeping the remaining querystring. The filter
   // panel is a <details> that stays forced-open on desktop.
+  // Filter submits are full SSR navigations — restore the scroll position so
+  // clicking a filter never jumps the page. Re-asserted after paint because
+  // the browser applies its own to-top scroll around load time.
+  function restoreScroll() {
+    const saved = sessionStorage.getItem('listing-scroll');
+    if (saved === null) return;
+    sessionStorage.removeItem('listing-scroll');
+    const y = Number(saved);
+    const assert = () => window.scrollTo({ top: y, behavior: 'instant' });
+    assert();
+    requestAnimationFrame(assert);
+    setTimeout(assert, 60);
+  }
+
   function initListingForm() {
+    restoreScroll();
+
+    // Gender lives twice (mobile chips / desktop sidebar) — only the visible
+    // set may submit, so the hidden one is disabled.
+    const mqLg = matchMedia('(min-width: 64rem)');
+    const syncGender = () => {
+      document
+        .querySelectorAll<HTMLInputElement>('[data-gender-mobile] input')
+        .forEach((i) => (i.disabled = mqLg.matches));
+      document
+        .querySelectorAll<HTMLInputElement>('[data-gender-desktop] input')
+        .forEach((i) => (i.disabled = !mqLg.matches));
+    };
+    if (!(window as any).__genderMq) {
+      (window as any).__genderMq = true;
+      mqLg.addEventListener('change', syncGender);
+    }
+    syncGender();
+
     document.querySelectorAll<HTMLFormElement>('form[data-listing-form]').forEach((form) => {
       if (form.dataset.init) return;
       form.dataset.init = '1';
 
+      form.querySelector('[data-clear-genders]')?.addEventListener('click', () => {
+        form
+          .querySelectorAll<HTMLInputElement>('input[name="genders"]')
+          .forEach((i) => (i.checked = false));
+        sessionStorage.setItem('listing-scroll', String(window.scrollY));
+        form.requestSubmit();
+      });
+
       form.addEventListener('change', (e) => {
+        sessionStorage.setItem('listing-scroll', String(window.scrollY));
         const t = e.target as HTMLElement;
         const citySeg = () => (form.dataset.city ? `${form.dataset.city}/` : '');
 
