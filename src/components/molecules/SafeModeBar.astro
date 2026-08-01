@@ -1,14 +1,11 @@
 ---
 /**
- * Floating safe-mode control (Phase 5.2) — the panic switch, always one thumb
- * away, no full-page scroll to the footer.
- *   - Mobile: a glass pill lifted just above the tab dock.
- *   - Desktop: an always-visible glass button, bottom-right.
- * Reuses `data-safe-toggle`, so the sitewide safe-mode script in Layout owns the
- * behavior (click cycles off → neutral → dev; sets aria-checked + data-safe-state).
- * Fail-closed and zero-JS-of-its-own — the shared island already runs.
+ * Safe-mode control (Phase 5.2) — reachable without scrolling to the footer.
+ * Flat, docked at the bottom-left (not a floating glass pill); a single icon +
+ * the current state label. Reuses `data-safe-toggle`, so the sitewide safe-mode
+ * script in Layout owns the behavior (click cycles off → neutral → dev; sets
+ * aria-checked + data-safe-state). Fail-closed, zero-JS-of-its-own.
  */
-import Icon from '@/components/atoms/Icon.astro';
 import * as m from '@/paraglide/messages';
 ---
 
@@ -19,15 +16,16 @@ import * as m from '@/paraglide/messages';
   aria-label={m.safe_mode_cycle()}
   data-safe-toggle
   data-safe-state="neutral"
-  class="safe-bar pointer-events-auto fixed z-40 flex select-none items-center gap-2 rounded-full py-2 pl-3 pr-3.5 text-2xs font-semibold uppercase tracking-wide text-foreground transition-transform active:scale-[0.94]"
+  class="safe-bar fixed z-40 flex select-none items-center gap-2 border border-foreground/25 bg-card px-3 py-2 text-2xs font-semibold uppercase tracking-wide text-foreground shadow-sm transition-colors hover:border-foreground/50"
 >
-  <!-- eye-slash when active (neutral/dev), eye when off; CSS picks by state -->
-  <span class="grid place-items-center text-lg" aria-hidden="true">
-    <Icon name="eye-slash" class="icon-on" />
-    <Icon name="eye" class="icon-off" />
-  </span>
-  <span class="hidden sm:inline">{m.safe_mode()}</span>
-  <span class="w-14 text-left sm:w-16">
+  <svg class="size-4 flex-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M2 2 22 22" />
+    <path d="M6.7 6.7A10.4 10.4 0 0 0 1 12s4 7 11 7a10 10 0 0 0 4.4-1" />
+    <path d="M9.9 4.2A10.8 10.8 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.3 3.3" />
+    <path d="M9.6 9.6a3 3 0 0 0 4.2 4.2" />
+  </svg>
+  <span>{m.safe_mode()}</span>
+  <span class="w-14 text-left">
     <span data-when="off">{m.safe_off()}</span>
     <span data-when="neutral">{m.safe_neutral()}</span>
     <span data-when="dev">{m.safe_dev()}</span>
@@ -35,46 +33,21 @@ import * as m from '@/paraglide/messages';
 </button>
 
 <style>
-  /* Mobile: lifted above the tab dock, right-aligned, one thumb away.
-     Desktop: the dock is hidden, so drop to the corner. */
+  /* Docked flush at the bottom-left corner — the tab dock owns bottom-center. */
   .safe-bar {
-    right: 0.875rem;
-    bottom: calc(5.5rem + var(--sab));
+    left: 0.75rem;
+    bottom: calc(0.75rem + var(--sab));
   }
   @media (min-width: 768px) {
     .safe-bar {
-      right: 1.25rem;
+      left: 1.25rem;
       bottom: 1.25rem;
     }
   }
-
-  /* Liquid glass to match the tab dock (DESIGN §5). */
-  .safe-bar {
-    background: color-mix(in oklch, var(--background) 42%, transparent);
-    -webkit-backdrop-filter: blur(22px) saturate(1.7);
-    backdrop-filter: blur(22px) saturate(1.7);
-    border: 1px solid color-mix(in oklch, var(--foreground) 12%, transparent);
-    box-shadow:
-      inset 0 1px 0 0 color-mix(in oklch, white 30%, transparent),
-      inset 0 -1px 0 0 rgb(0 0 0 / 0.06),
-      0 10px 30px rgb(0 0 0 / 0.28);
-  }
   @media (prefers-reduced-transparency: reduce) {
     .safe-bar {
-      background: var(--background);
-      -webkit-backdrop-filter: none;
-      backdrop-filter: none;
+      box-shadow: none;
     }
-  }
-
-  /* Icon: eye-slash while safe mode active, plain eye when off. */
-  .safe-bar .icon-on,
-  .safe-bar .icon-off {
-    grid-area: 1 / 1;
-  }
-  .safe-bar[aria-checked='true'] .icon-off,
-  .safe-bar[aria-checked='false'] .icon-on {
-    display: none;
   }
 
   /* Only the label matching the current state shows. */
