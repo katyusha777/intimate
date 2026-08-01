@@ -36,6 +36,7 @@ const NAV: { key: string; label: string; href: string; roles: AdminRole[]; icon:
   { key: 'verification', label: 'Verification', href: '/admin/verification', roles: ['moderator', 'super'], icon: '<path d="M12 3l7 4v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V7z"/><path d="m9 12 2 2 4-4"/>' },
   { key: 'moderation', label: 'Moderation', href: '/admin/moderation', roles: ['moderator', 'super'], icon: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>' },
   { key: 'reports', label: 'Reports', href: '/admin/reports', roles: ['moderator', 'super'], icon: '<path d="M4 15V4a1 1 0 0 1 1-1h14l-3 5 3 5H5a1 1 0 0 0-1 1z"/><path d="M4 22v-7"/>', badge: badges.reportsOpen },
+  { key: 'imports', label: 'Imports', href: '/admin/imports', roles: ['moderator', 'super'], icon: '<path d="M12 3v12"/><path d="m8 11 4 4 4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/>' },
   { key: 'profiles', label: 'Profiles', href: '/admin/profiles', roles: ['moderator', 'support', 'super'], icon: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/>' },
   { key: 'clients', label: 'Clients', href: '/admin/clients', roles: ['support', 'super'], icon: '<circle cx="9" cy="8" r="3.5"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M17 5a3.5 3.5 0 0 1 0 7"/>' },
   { key: 'organizations', label: 'Agencies', href: '/admin/organizations', roles: ['moderator', 'support', 'super'], icon: '<path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 9h.01M9 13h.01M9 17h.01M15 9h.01M15 13h.01M15 17h.01"/>' },

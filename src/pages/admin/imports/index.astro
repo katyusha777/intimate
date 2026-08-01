@@ -1,0 +1,78 @@
+---
+/**
+ * Imports queue (docs/ADMIN.md §3): job monitor — states, failures, retries.
+ * Rides on the real import pipeline; seeded mock for now.
+ */
+import { getAdmin } from '@/actions/admin/lib';
+import { listImports } from '@/actions/admin/imports';
+import AdminShell from '@/components/organisms/admin/AdminShell.astro';
+
+const session = await getAdmin({ cookies: Astro.cookies });
+const jobs = session ? await listImports() : [];
+const failed = jobs.filter((j) => j.state === 'failed').length;
+
+const when = (iso: string) => iso.replace('T', ' ').slice(5, 16);
+const humanize = (s: string) => s.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
+const stateClass = (s: string) =>
+  s === 'failed' ? 'text-brand' : s === 'confirmed' || s === 'ready_for_review' ? 'text-online' : 'text-amber-500';
+---
+
+<AdminShell title="Imports" section="imports">
+  {
+    session && (
+      <div>
+        <h1 class="display text-3xl">Imports</h1>
+        <p class="mt-1 text-sm text-muted-foreground">{jobs.length} jobs · {failed} failed</p>
+
+        <div class="mt-6 overflow-x-auto border border-border">
+          <table class="w-full min-w-[720px] text-left text-sm">
+            <thead class="border-b border-border bg-muted text-2xs uppercase tracking-wide text-muted-foreground">
+              <tr>
+                <th class="px-3 py-2 font-semibold">Source</th>
+                <th class="px-3 py-2 font-semibold">State</th>
+                <th class="px-3 py-2 font-semibold">Detail</th>
+                <th class="px-3 py-2 font-semibold">Created</th>
+                <th class="px-3 py-2 font-semibold" />
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-border">
+              {jobs.length === 0 ? (
+                <tr><td colspan="5" class="px-3 py-10 text-center text-muted-foreground">No import jobs.</td></tr>
+              ) : (
+                jobs.map((j) => (
+                  <tr class="hover:bg-muted">
+                    <td class="max-w-xs truncate px-3 py-2 font-mono text-xs">{j.sourceUrl}</td>
+                    <td class:list={['px-3 py-2 font-medium', stateClass(j.state)]}>{humanize(j.state)}</td>
+                    <td class="px-3 py-2 text-xs text-muted-foreground">{j.error ?? j.profileName ?? '—'}</td>
+                    <td class="px-3 py-2 text-2xs text-muted-foreground">{when(j.createdAt)}</td>
+                    <td class="px-3 py-2 text-right">
+                      {j.state === 'failed' && (
+                        <button type="button" data-retry={j.id} class="slab-cut border border-foreground/20 px-2.5 py-1 text-2xs font-bold uppercase hover:border-foreground/60">Retry</button>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    )
+  }
+</AdminShell>
+
+<script>
+  import { actions } from 'astro:actions';
+  function initImports() {
+    document.querySelectorAll<HTMLElement>('[data-retry]').forEach((b) => {
+      if (b.dataset.init) return;
+      b.dataset.init = '1';
+      b.addEventListener('click', async () => {
+        await actions.admin.importRetry({ id: b.dataset.retry! });
+        location.reload();
+      });
+    });
+  }
+  initImports();
+  document.addEventListener('astro:page-load', initImports);
+</script>

@@ -12,6 +12,7 @@ import { REJECTION_REASONS, REPORT_RESOLUTIONS } from '@/lib/taxonomy';
 import { claimItem, record, releaseItem, requireAdmin } from './lib';
 import { removeModerationItem } from './queues';
 import { setProfileState } from './entities';
+import { retryImport } from './imports';
 import type { AdminAction, ProfileState } from '@/lib/taxonomy';
 
 export const admin = {
@@ -136,6 +137,17 @@ export const admin = {
       const m = map[action]!;
       await setProfileState(id, m.state, session.email, reason);
       await record(session, { action: m.audit, entityType: 'profile', entityId: id, reason });
+      return { ok: true };
+    },
+  }),
+
+  // --- imports (§3): moderator/super ---
+  importRetry: defineAction({
+    input: z.object({ id: z.string().max(60) }),
+    handler: async ({ id }, context) => {
+      const session = await requireAdmin(context, ['moderator']);
+      await retryImport(id);
+      await record(session, { action: 'add_note', entityType: 'import', entityId: id, meta: { note: 'retry' } });
       return { ok: true };
     },
   }),
