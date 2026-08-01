@@ -30,6 +30,12 @@ if (availabilityState(p).kind !== 'online') {
 // Measured reply speed (3.2): null below the honest sample threshold → hidden.
 const replySpeed = await messagingApi.replySpeedFor(p.id);
 
+// Request sheet (UX-PLAN 4.x): her screening question rides in the request when
+// set. Public projection only — the mode itself never leaks (the sheet just
+// won't submit if her inbox is off, enforced in the action).
+const convo = await messagingApi.settings(p.id);
+const screeningQuestion = convo.screeningQuestion || undefined;
+
 const description = localizedDescription(p);
 const city = cityName(p.city);
 const title = `${p.name}, ${profileAge(p.birthDate)} — ${city} | Intimate`;
@@ -63,5 +69,5 @@ const jsonLd = [
   alternates={samePathAlternates(Astro.url.origin, `/profile/${p.slug}/`)}
   {jsonLd}
 >
-  <ProfileDetail profile={p} {similar} {replySpeed} />
+  <ProfileDetail profile={p} {similar} {replySpeed} {screeningQuestion} />
 </Layout>

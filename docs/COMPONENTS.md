@@ -70,11 +70,11 @@ Folders appear when their first organism lands:
 
 | Domain | Organisms |
 |---|---|
-| `profile/` | ✓ ProfileCard, ProfileDetail, ProfileHero, ProfileGallery, ProfilePhotoMosaic, ProfileSheet, ProfileFacts (the deal card), RatesTable, GoodToKnow, SimilarProfiles, ReceiptSheet (the trust receipt of dated verification facts opened by any verified mark), ReportControl — anticipated: ContactCard |
+| `profile/` | ✓ ProfileCard, ProfileDetail, ProfileHero, ProfileGallery, ProfilePhotoMosaic, ProfileSheet, ProfileFacts (the deal card), RatesTable, GoodToKnow, SimilarProfiles, ReceiptSheet (the trust receipt of dated verification facts opened by any verified mark), RequestSheet (the flagship three-tap pre-qualified request opened by the deal card's SEND MESSAGE), ReportControl — anticipated: ContactCard |
 | `search/` | ✓ SearchListing, FilterSidebar |
 | `auth/` | ✓ AuthModal — anticipated: PasswordReset, OtpForm |
 | `dashboard/` | ✓ AccountShell, SignInPrompt, ProfileEditorForm, MediaManager, VerificationFlow — anticipated: ImportWizard steps, StatsTiles |
-| `messaging/` | ✓ Inbox, Thread, ContactList (MESSAGING.md §2 for the rest) |
+| `messaging/` | ✓ Inbox, Thread, RequestCard (the request card + Accept/Decline in the thread), ContactList (MESSAGING.md §2 for the rest) |
 | `layout/` | ✓ Header, Footer, BottomTabBar |
 | `admin/` | ✓ AdminShell, QueueList, DocViewer — ModerationQueue, ReportQueue, AuditLogTable (ADMIN.md §2) |
 | `contacts/` | — ContactDetail (MESSAGING.md) |

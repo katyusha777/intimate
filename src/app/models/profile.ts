@@ -115,6 +115,13 @@ export const ProfileSchema = z.object({
   /** Managed translations per locale; UI reads via localizedDescription(). */
   descriptionTranslations: z.partialRecord(z.enum(LOCALES), z.string()).default({}),
   photos: z.array(z.string()),
+  /**
+   * Her private photo set (UX-PLAN 4.4): shown only inside a thread AFTER she
+   * accepts that client's request (per-thread grant, reversed media direction).
+   * Public pages only reveal the COUNT ("N more, shared when she accepts your
+   * request") — never the images. Optional; empty = no locked set.
+   */
+  privatePhotos: z.array(z.string()).default([]),
   createdAt: z.iso.datetime(),
 }).transform((p) => ({
   // priceFrom is derived: the rates table wins; the authored number is only a

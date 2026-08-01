@@ -17,6 +17,8 @@ import ProfilePhotoMosaic from '@/components/organisms/profile/ProfilePhotoMosai
 import RatesTable from '@/components/organisms/profile/RatesTable.astro';
 import GoodToKnow from '@/components/organisms/profile/GoodToKnow.astro';
 import ProfileFacts from '@/components/organisms/profile/ProfileFacts.astro';
+import RequestSheet from '@/components/organisms/profile/RequestSheet.astro';
+import RequestCard from '@/components/organisms/messaging/RequestCard.astro';
 import ReceiptSheet from '@/components/organisms/profile/ReceiptSheet.astro';
 import SimilarProfiles from '@/components/organisms/profile/SimilarProfiles.astro';
 import { CITIES } from '@/lib/taxonomy';
@@ -36,6 +38,16 @@ import { profilesApi } from '@/app/api/profiles';
 
 const { items: profiles } = await profilesApi.list({ limit: 12 });
 const p = profiles[0]!;
+
+/* Request card fixture (UX-PLAN 4.2/4.3): a snapshotted pre-qualified card. */
+const requestFixture = {
+  service: p.services[0]!,
+  duration: (p.rates?.[0]?.duration ?? 'hour_1') as 'hour_1',
+  priceAtRequest: p.priceFrom,
+  when: 'tonight' as const,
+  note: 'First time, a bit nervous — is that ok?',
+  screeningAnswer: 'Found you via the Amsterdam shelf.',
+};
 
 /* Availability fixtures — force the three honest states with a fixed `now`
  * (a Wednesday 14:00 in Amsterdam) so the reference is stable across time. */
@@ -407,6 +419,26 @@ const swatches = [
     <section class="space-y-4">
       <h2 class="text-xl font-semibold">Carousel (standalone)</h2>
       <PhotoCarousel photos={p.photos} keyBase="sink-carousel" alt={p.name} class="aspect-[4/3] max-w-md rounded-2xl" />
+    </section>
+
+    <section class="space-y-4">
+      <h2 class="text-xl font-semibold">Request sheet (UX-PLAN 4.2)</h2>
+      <p class="text-sm text-muted-foreground">
+        Three-tap pre-qualified request from her data (service → duration+price →
+        when + optional note + screening). Opens from the deal card's SEND MESSAGE.
+      </p>
+      <Button data-sheet-open={`request-${p.id}`}>Open request sheet</Button>
+      <RequestSheet profile={p} screeningQuestion="How did you find me?" />
+    </section>
+
+    <section class="space-y-4">
+      <h2 class="text-xl font-semibold">Request card (UX-PLAN 4.3)</h2>
+      <div class="max-w-md space-y-4 rounded-2xl border border-border p-3">
+        <p class="text-sm text-muted-foreground">Client view (read-only):</p>
+        <RequestCard request={requestFixture} viewer="client" state="pending" threadId="sink" />
+        <p class="text-sm text-muted-foreground">Professional view (pending → Accept / Decline):</p>
+        <RequestCard request={requestFixture} viewer="professional" state="pending" threadId="sink" />
+      </div>
     </section>
 
     <section class="space-y-4">
