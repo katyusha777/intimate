@@ -55,6 +55,10 @@ Bun (toolchain) · Astro SSR (Cloudflare adapter) · Cloudflare Workers + static
 8. Dead public pages (blocked/deleted profiles) → HTTP 410. New public page types get the full SEO treatment (ARCHITECTURE §6): titles/descriptions per locale, canonical, hreflang, JSON-LD, sitemap, data as real HTML text.
 9. Everything EU; GDPR-minimal retention.
 
+## Browser checks
+
+Visual verification/screenshots via the **Playwright MCP** (`mcp__playwright__*`) ONLY — it runs its own isolated browser instance. Never use the claude-in-chrome tools: they take over the owner's personal Brave browser (tabs, window size, focus). Mobile-first: check 390×844 (`browser_resize`) before desktop. Dev server: localhost:4321.
+
 ## Commands
 
 ```bash

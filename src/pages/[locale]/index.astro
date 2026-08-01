@@ -39,37 +39,32 @@ const moreArticles = articles.filter((a) => !a.featured);
   {alternates}
   {jsonLd}
 >
-  <div class="mx-auto max-w-7xl px-4 md:px-6">
-    <!-- Hero: clean black card (registration for advertisers + clients) -->
-    <section
-      class="dark relative mt-4 overflow-hidden rounded-3xl bg-neutral-950 text-white ring-1 ring-white/10 md:mt-6"
-    >
-      <!-- Promo video fills the right half, fading into the black (intimate.nl style).
-           Safe-mode gated: safe image by default, video only when safe mode is off. -->
-      <div class="absolute inset-y-0 right-0 hidden w-[52%] lg:block" data-safe-video-wrap>
-        <video
-          class="hidden h-full w-full object-cover"
-          data-safe-video
-          muted
-          loop
-          playsinline
-          autoplay
-          preload="metadata"
-          poster="/video/hero-poster.jpg"
-        >
-          <source src="/video/hero.webm" type="video/webm" />
-          <source src="/video/hero.mp4" type="video/mp4" />
-        </video>
-        <SafeImage imageKey="hero-video" alt="" class="h-full w-full" loading="eager" />
-        <div
-          class="absolute inset-0 bg-gradient-to-r from-neutral-950 via-neutral-950/35 to-transparent"
-          aria-hidden="true"
-        >
-        </div>
-      </div>
+  <!-- Hero: full-bleed cinematic media, content on a jagged ink panel
+       (Misprint §1.1 — the P5 storefront ref, tamed). Registration CTA. -->
+  <section class="dark relative overflow-hidden bg-neutral-950 text-white">
+    <!-- Promo video covers the whole band, edge to edge.
+         Safe-mode gated: safe image by default, video only when safe mode is off. -->
+    <div class="absolute inset-0 hidden lg:block" data-safe-video-wrap>
+      <video
+        class="hidden h-full w-full object-cover"
+        data-safe-video
+        muted
+        loop
+        playsinline
+        autoplay
+        preload="metadata"
+        poster="/video/hero-poster.jpg"
+      >
+        <source src="/video/hero.webm" type="video/webm" />
+        <source src="/video/hero.mp4" type="video/mp4" />
+      </video>
+      <SafeImage imageKey="hero-video" alt="" class="h-full w-full" loading="eager" />
+    </div>
+    <!-- The ink panel: hard geometric cut instead of a fade. -->
+    <div class="hero-panel absolute inset-y-0 left-0 hidden w-[58%] bg-neutral-950 lg:block" aria-hidden="true"></div>
 
-      <div class="relative p-7 md:p-12">
-        <div class="lg:max-w-[52%]">
+    <div class="relative mx-auto max-w-7xl px-4 md:px-6">
+      <div class="py-9 md:py-16 lg:py-24 lg:max-w-[46%]">
           <h1 class="text-4xl font-bold tracking-tight md:text-6xl">
             Find
             <span class="mx-1 inline-flex align-middle -space-x-3">
@@ -100,10 +95,11 @@ const moreArticles = articles.filter((a) => !a.featured);
             <span class="size-1.5 rounded-full bg-online"></span>
             {onlineCount} {m.online_now().toLowerCase()} · 100% verified
           </p>
-        </div>
       </div>
-    </section>
+    </div>
+  </section>
 
+  <div class="mx-auto max-w-7xl px-4 md:px-6">
     <!-- Search (mobile) + city chips -->
     <section class="space-y-4 pt-6 md:pt-10">
       <SearchControl class="md:hidden" />
@@ -134,7 +130,7 @@ const moreArticles = articles.filter((a) => !a.featured);
       >
         {
           rail.map((p) => (
-            <div class="w-52 flex-none snap-start sm:w-60">
+            <div class="w-52 flex-none snap-start sm:w-60 lg:w-[calc((100%-4rem)/5)]">
               <ProfileCard profile={p} />
             </div>
           ))
@@ -144,7 +140,7 @@ const moreArticles = articles.filter((a) => !a.featured);
 
     <!-- Grid -->
     <Section title="New & online">
-      <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+      <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
         {profiles.map((p, i) => <ProfileCard profile={p} loading={i < 4 ? 'eager' : 'lazy'} />)}
       </div>
     </Section>
@@ -255,3 +251,10 @@ const moreArticles = articles.filter((a) => !a.featured);
     </section>
   </div>
 </Layout>
+
+<style>
+  /* Hero ink panel: jagged geometric right edge — a hard cut, not a fade. */
+  .hero-panel {
+    clip-path: polygon(0 0, 100% 0, 91% 32%, 97% 58%, 87% 100%, 0 100%);
+  }
+</style>

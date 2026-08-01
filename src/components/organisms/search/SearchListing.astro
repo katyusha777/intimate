@@ -60,8 +60,9 @@ function pageHref(p: number): string {
   return qs ? `${basePath}?${qs}` : basePath;
 }
 
+/* Misprint chip: sharp keyline on bare canvas; checked = ink flip. */
 const chip =
-  'flex h-9 cursor-pointer select-none items-center gap-2 rounded-full bg-card px-4 text-sm font-medium shadow-soft transition-transform transition-colors active:scale-[0.96] dark:ring-1 dark:ring-border';
+  'flex h-9 cursor-pointer select-none items-center gap-2 border border-foreground/20 px-4 text-sm font-medium transition-colors hover:border-foreground/60 active:scale-[0.96]';
 ---
 
 <form
@@ -86,10 +87,10 @@ const chip =
     </div>
     <label class="flex items-center gap-2.5 text-sm">
       <span class="text-muted-foreground">{m.sort_by()}</span>
-      <span class="relative inline-flex items-center">
+      <span class="relative inline-flex h-9 items-center border border-foreground/20 transition-colors hover:border-foreground/60">
         <select
           name="sort"
-          class="cursor-pointer appearance-none bg-transparent pr-6 text-base font-medium outline-none md:text-sm"
+          class="h-full cursor-pointer appearance-none bg-transparent pl-3.5 pr-8 text-base font-medium outline-none md:text-sm"
         >
           {
             SORT_OPTIONS.map((s) => (
@@ -99,7 +100,7 @@ const chip =
             ))
           }
         </select>
-        <Icon name="chevron-down" class="pointer-events-none absolute right-0 text-xs text-muted-foreground" />
+        <Icon name="chevron-down" class="pointer-events-none absolute right-3 text-xs text-muted-foreground" />
       </span>
     </label>
   </div>
@@ -130,7 +131,7 @@ const chip =
             checked={selectedGenders.has(g)}
             class="peer sr-only"
           />
-          <span class:list={[chip, 'peer-checked:bg-primary peer-checked:text-primary-foreground peer-checked:shadow-none']}>
+          <span class:list={[chip, 'peer-checked:border-foreground peer-checked:bg-foreground peer-checked:text-background']}>
             {genderLabel(g)}
           </span>
         </label>
@@ -139,7 +140,7 @@ const chip =
 
     <label>
       <input type="checkbox" name="online" checked={params.onlineOnly} class="peer sr-only" />
-      <span class:list={[chip, 'peer-checked:bg-primary peer-checked:text-primary-foreground peer-checked:shadow-none']}>
+      <span class:list={[chip, 'peer-checked:border-foreground peer-checked:bg-foreground peer-checked:text-background']}>
         <span class="size-1.5 rounded-full bg-online"></span>
         {m.filter_online()}
       </span>
@@ -162,7 +163,7 @@ const chip =
     <div>
       {
         result.items.length > 0 ? (
-          <div class="grid grid-cols-2 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">
             {result.items.map((p, i) => (
               <ProfileCard profile={p} loading={i < 6 ? 'eager' : 'lazy'} />
             ))}
@@ -184,7 +185,7 @@ const chip =
         pageCount > 1 && (
           <nav class="mt-8 flex items-center justify-center gap-2" aria-label="Pagination">
             {page > 1 && (
-              <a href={pageHref(page - 1)} class="flex h-10 items-center gap-2 rounded-full px-4 text-sm font-medium ring-1 ring-border transition-colors hover:bg-muted">
+              <a href={pageHref(page - 1)} class="flex h-10 items-center gap-2 border border-foreground/20 px-4 text-sm font-medium transition-colors hover:border-foreground/60">
                 <Icon name="chevron-left" class="text-xs" />
                 {m.pagination_prev()}
               </a>
@@ -193,7 +194,7 @@ const chip =
               {page} / {pageCount}
             </span>
             {page < pageCount && (
-              <a href={pageHref(page + 1)} class="flex h-10 items-center gap-2 rounded-full px-4 text-sm font-medium ring-1 ring-border transition-colors hover:bg-muted">
+              <a href={pageHref(page + 1)} class="flex h-10 items-center gap-2 border border-foreground/20 px-4 text-sm font-medium transition-colors hover:border-foreground/60">
                 {m.pagination_next()}
                 <Icon name="chevron-right" class="text-xs" />
               </a>

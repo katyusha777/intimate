@@ -1,5 +1,7 @@
 ---
-/** Scroll-snap photo carousel with dots + hover arrows (featured card, gallery). */
+/** Scroll-snap photo carousel with hover arrows (featured card, gallery).
+ * Touch swipe is disabled on mobile — it fights the page/rail scroll; the
+ * card link is the tap target there. */
 import SafeImage from '@/components/atoms/SafeImage.astro';
 
 interface Props {
@@ -16,7 +18,7 @@ const { photos, keyBase, alt, class: className, loading = 'lazy' } = Astro.props
 
 <div class:list={['pc group relative isolate overflow-hidden', className]}>
   <div
-    class="pc-track flex h-full snap-x snap-mandatory overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+    class="pc-track flex h-full snap-x snap-mandatory overflow-x-hidden md:overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
   >
     {
       photos.map((p, i) => (
@@ -50,11 +52,6 @@ const { photos, keyBase, alt, class: className, loading = 'lazy' } = Astro.props
         >
           <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
         </button>
-        <div class="pc-dots pointer-events-none absolute inset-x-0 bottom-2 flex justify-center gap-1.5">
-          {photos.map((_, i) => (
-            <span class:list={['size-1.5 rounded-full bg-white/60 shadow-sm transition-all', i === 0 && 'w-3 bg-white']} />
-          ))}
-        </div>
       </>
     )
   }
@@ -66,17 +63,6 @@ const { photos, keyBase, alt, class: className, loading = 'lazy' } = Astro.props
       if (pc.dataset.init) return;
       pc.dataset.init = '1';
       const track = pc.querySelector<HTMLElement>('.pc-track')!;
-      const dots = [...pc.querySelectorAll<HTMLElement>('.pc-dots > span')];
-
-      const setActive = () => {
-        const i = Math.round(track.scrollLeft / track.clientWidth);
-        dots.forEach((d, j) => {
-          d.classList.toggle('w-3', j === i);
-          d.classList.toggle('bg-white', j === i);
-          d.classList.toggle('bg-white/60', j !== i);
-        });
-      };
-      track.addEventListener('scroll', setActive, { passive: true });
 
       pc.querySelectorAll<HTMLElement>('.pc-btn').forEach((btn) => {
         btn.addEventListener('click', (e) => {
