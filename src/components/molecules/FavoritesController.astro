@@ -75,6 +75,10 @@
         favs.has(slug) ? favs.delete(slug) : favs.add(slug);
         write(favs);
         paint();
+        // Let other islands (e.g. the SAVED-compare rail) sync — this listener
+        // is capture-phase + stopImmediatePropagation, so they can't observe
+        // the click themselves.
+        document.dispatchEvent(new CustomEvent('favchange', { detail: { slug } }));
       },
       { capture: true },
     );

@@ -372,5 +372,11 @@
   "taxonomy_payment_methods_cash": "Cash",
   "taxonomy_payment_methods_pin": "Card / PIN",
   "taxonomy_payment_methods_bank_transfer": "Bank transfer",
-  "taxonomy_payment_methods_crypto": "Crypto"
+  "taxonomy_payment_methods_crypto": "Crypto",
+  "wand_title": "AI search",
+  "wand_subtitle": "Describe what you're looking for — or tap an example.",
+  "wand_examples_label": "Try",
+  "wand_example_1": "trans, online now",
+  "wand_example_2": "GFE under €150",
+  "wand_example_3": "erotic massage in Rotterdam"
 }
