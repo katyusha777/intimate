@@ -14,6 +14,7 @@ import PhotoCarousel from '@/components/molecules/PhotoCarousel.astro';
 import VerifiedBadge from '@/components/atoms/VerifiedBadge.astro';
 import AvailabilityLine from '@/components/molecules/AvailabilityLine.astro';
 import Badge from '@/components/atoms/Badge.astro';
+import ReceiptSheet from '@/components/organisms/profile/ReceiptSheet.astro';
 
 interface Props {
   profile: Profile;
@@ -41,6 +42,7 @@ const slab = SLABS[[...p.id].reduce((s, c) => s + c.charCodeAt(0), 0) % SLABS.le
 
 {
   variant === 'grid' && (
+    <>
     <a
       href={href}
       class="group relative block aspect-[3/4] transition-transform duration-200 active:scale-[0.98]"
@@ -67,7 +69,7 @@ const slab = SLABS[[...p.id].reduce((s, c) => s + c.charCodeAt(0), 0) % SLABS.le
           <div class="min-w-0">
             <p class="flex items-center gap-1 font-condensed text-lg font-semibold leading-snug">
               <span class="truncate">{p.name}, {profileAge(p.birthDate)}</span>
-              <VerifiedBadge />
+              <VerifiedBadge receiptFor={p.id} class="size-4" />
             </p>
             <p class="truncate text-sm text-white/60">{cityName}</p>
           </div>
@@ -90,11 +92,14 @@ const slab = SLABS[[...p.id].reduce((s, c) => s + c.charCodeAt(0), 0) % SLABS.le
         </p>
       </div>
     </a>
+    <ReceiptSheet profile={p} />
+    </>
   )
 }
 
 {
   variant === 'featured' && (
+    <>
     <article class="group relative overflow-hidden rounded-2xl bg-card shadow-soft transition-shadow hover:shadow-soft-lg dark:ring-1 dark:ring-border sm:grid sm:grid-cols-[2fr_3fr]">
       <div class="relative aspect-[3/4] sm:aspect-auto sm:h-full sm:min-h-72">
         <PhotoCarousel photos={p.photos} keyBase={p.id} alt={p.name} class="h-full" />
@@ -104,7 +109,7 @@ const slab = SLABS[[...p.id].reduce((s, c) => s + c.charCodeAt(0), 0) % SLABS.le
         <div class="space-y-1.5">
           <h3 class="flex items-center gap-1.5 font-condensed text-xl font-semibold tracking-tight">
             <a href={href} class="after:absolute after:inset-0">{p.name}, {profileAge(p.birthDate)}</a>
-            <VerifiedBadge class="size-4.5" />
+            <VerifiedBadge receiptFor={p.id} class="relative z-10 size-4.5" />
             <AvailabilityLine profile={p} variant="line" class="ml-auto text-xs font-medium" />
           </h3>
           <p class="text-sm text-muted-foreground">{cityName}</p>
@@ -116,11 +121,14 @@ const slab = SLABS[[...p.id].reduce((s, c) => s + c.charCodeAt(0), 0) % SLABS.le
         </p>
       </div>
     </article>
+    <ReceiptSheet profile={p} />
+    </>
   )
 }
 
 {
   variant === 'compact' && (
+    <>
     <a
       href={href}
       class="group flex items-center gap-3 rounded-lg p-2 transition-colors hover:bg-muted"
@@ -129,12 +137,14 @@ const slab = SLABS[[...p.id].reduce((s, c) => s + c.charCodeAt(0), 0) % SLABS.le
       <div class="min-w-0 flex-1">
         <p class="flex items-center gap-1 truncate font-condensed text-base font-semibold">
           {p.name}, {profileAge(p.birthDate)}
-          <VerifiedBadge class="size-3.5" />
+          <VerifiedBadge receiptFor={p.id} class="size-3.5" />
         </p>
         <p class="truncate text-xs text-muted-foreground">{cityName}</p>
         <AvailabilityLine profile={p} variant="line" class="text-xs" />
       </div>
       <p class="flex-none text-sm font-semibold">€{p.priceFrom}</p>
     </a>
+    <ReceiptSheet profile={p} />
+    </>
   )
 }

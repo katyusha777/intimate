@@ -17,6 +17,7 @@ import ProfilePhotoMosaic from '@/components/organisms/profile/ProfilePhotoMosai
 import RatesTable from '@/components/organisms/profile/RatesTable.astro';
 import GoodToKnow from '@/components/organisms/profile/GoodToKnow.astro';
 import ProfileFacts from '@/components/organisms/profile/ProfileFacts.astro';
+import ReceiptSheet from '@/components/organisms/profile/ReceiptSheet.astro';
 import SimilarProfiles from '@/components/organisms/profile/SimilarProfiles.astro';
 import { CITIES } from '@/lib/taxonomy';
 import { neutralImageFor, safeImageFor, nsfwImageFor } from '@/lib/safe-images';
@@ -236,6 +237,24 @@ const swatches = [
           <Button data-sheet-close class="w-full">Close</Button>
         </div>
       </ActionSheet>
+    </section>
+
+    <section class="space-y-4">
+      <h2 class="text-xl font-semibold">ReceiptSheet (tap a verified mark → dated trust facts)</h2>
+      <p class="text-sm text-muted-foreground">
+        The mark on every card and profile opens this. With a measured reply speed (≥5 samples)
+        and without — the reply line simply disappears below the honest threshold.
+      </p>
+      <div class="flex flex-wrap items-center gap-4">
+        <span class="flex items-center gap-1.5 text-sm">
+          <VerifiedBadge receiptFor={p.id} /> With reply speed
+        </span>
+        <span class="flex items-center gap-1.5 text-sm">
+          <VerifiedBadge receiptFor={`${p.id}-noreply`} /> Below sample threshold
+        </span>
+      </div>
+      <ReceiptSheet profile={p} replySpeed={{ medianMinutes: 10, sampleSize: 7 }} />
+      <ReceiptSheet profile={{ ...p, id: `${p.id}-noreply` }} replySpeed={null} />
     </section>
 
     <section class="space-y-4" data-lightbox-group>

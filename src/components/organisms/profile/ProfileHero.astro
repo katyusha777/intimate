@@ -7,6 +7,7 @@
  */
 import * as m from '@/paraglide/messages';
 import { profileAge, type Profile } from '@/app/models/profile';
+import type { ReplySpeed } from '@/app/models/messaging';
 import { serviceLabel } from '@/lib/labels';
 import { cityName } from '@/lib/seo';
 import SafeImage from '@/components/atoms/SafeImage.astro';
@@ -15,8 +16,10 @@ import AvailabilityLine from '@/components/molecules/AvailabilityLine.astro';
 
 interface Props {
   profile: Profile;
+  /** Measured reply speed (3.2); null → hidden. */
+  replySpeed?: ReplySpeed | null;
 }
-const { profile: p } = Astro.props;
+const { profile: p, replySpeed } = Astro.props;
 ---
 
 <section class="relative h-[72dvh] min-h-[26rem] overflow-hidden bg-neutral-950 md:h-[75vh]" data-profile-hero>
@@ -65,7 +68,7 @@ const { profile: p } = Astro.props;
     <div class="mx-auto max-w-7xl px-4 pb-10 text-white md:px-6">
       <h1 class="flex items-center gap-2.5 font-condensed text-4xl font-bold tracking-tight md:text-5xl">
         {p.name}, {profileAge(p.birthDate)}
-        <VerifiedBadge class="size-6" />
+        <VerifiedBadge receiptFor={p.id} class="size-6" />
       </h1>
       <p class="mt-1.5 flex items-center gap-2 text-sm text-white/80">
         <!-- One availability truth line (2.3), shared component (card variant
@@ -76,6 +79,14 @@ const { profile: p } = Astro.props;
         <span aria-hidden="true">·</span>
         {m.price_from()} <span class="font-semibold text-white">€{p.priceFrom}</span>
       </p>
+      {
+        replySpeed && (
+          <p class="mt-1 flex items-center gap-1.5 text-sm text-white/80">
+            <VerifiedBadge class="size-3.5 text-white" />
+            {m.receipt_reply_speed({ min: replySpeed.medianMinutes })}
+          </p>
+        )
+      }
       <div class="mt-3.5 flex flex-wrap gap-1.5">
         {
           p.services.slice(0, 3).map((s) => (

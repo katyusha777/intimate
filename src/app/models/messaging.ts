@@ -97,6 +97,53 @@ export interface ContactItem {
   mediaAllowed?: boolean;
 }
 
+/**
+ * Measured reply speed (UX-PLAN 3.2): the review-free trust signal. From each
+ * thread take the first client→professional first-reply latency (the client's
+ * first message → her first message after it), keep only replies inside the
+ * rolling window, and return the MEDIAN — but ONLY when the sample is honest.
+ *
+ * `null` below the threshold is load-bearing: a stat computed from 1–4 replies
+ * is noise dressed as a promise, so we show nothing rather than fabricate. Pure
+ * over thread data (no KV) so it's the same helper the SQL view replaces later.
+ */
+export const REPLY_SPEED_SAMPLE_MIN = 5;
+export const REPLY_SPEED_WINDOW_DAYS = 30;
+
+export interface ReplySpeed {
+  medianMinutes: number;
+  sampleSize: number;
+}
+
+export function replySpeed(
+  threads: readonly Pick<Thread, 'messages'>[],
+  now: Date = new Date(),
+  windowDays = REPLY_SPEED_WINDOW_DAYS,
+): ReplySpeed | null {
+  const cutoff = now.getTime() - windowDays * 86_400_000;
+  const latencies: number[] = [];
+
+  for (const t of threads) {
+    const firstClient = t.messages.find((msg) => msg.sender === 'client');
+    if (!firstClient) continue;
+    const reply = t.messages.find(
+      (msg) => msg.sender === 'professional' && msg.createdAt > firstClient.createdAt,
+    );
+    if (!reply) continue;
+    const repliedAt = new Date(reply.createdAt).getTime();
+    if (repliedAt < cutoff) continue; // rolling window on the reply moment
+    const mins = (repliedAt - new Date(firstClient.createdAt).getTime()) / 60_000;
+    if (mins >= 0) latencies.push(mins);
+  }
+
+  if (latencies.length < REPLY_SPEED_SAMPLE_MIN) return null;
+  latencies.sort((a, b) => a - b);
+  const mid = latencies.length >> 1;
+  const median =
+    latencies.length % 2 ? latencies[mid]! : (latencies[mid - 1]! + latencies[mid]!) / 2;
+  return { medianMinutes: Math.round(median), sampleSize: latencies.length };
+}
+
 /** Thread metadata for admin oversight (§9) — unrestricted; content is governed. */
 export interface ThreadMeta {
   id: string;
@@ -158,6 +205,12 @@ export interface MessagingApi {
     input: { id: string; name: string; handle?: string; note?: string },
   ): Promise<void>;
   removeContact(session: Session, input: { id: string }): Promise<void>;
+
+  /**
+   * Measured reply speed for a profile (UX-PLAN 3.2), or null below the honest
+   * sample threshold. Reads that profile's threads; mock now, SQL view later.
+   */
+  replySpeedFor(profileId: string): Promise<ReplySpeed | null>;
 
   /** Demo only: seed a professional's empty inbox with sample threads (once). */
   seedDemo(session: Session): Promise<void>;

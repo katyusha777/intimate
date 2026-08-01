@@ -5,6 +5,7 @@
  * facts column beside the content.
  */
 import { profilesApi } from '@/app/api/profiles';
+import { messagingApi } from '@/app/api/messaging';
 import { availabilityState, localizedDescription, profileAge } from '@/app/models/profile';
 import { isLocale, samePathAlternates } from '@/lib/i18n';
 import { breadcrumbJsonLd, cityName } from '@/lib/seo';
@@ -25,6 +26,9 @@ if (availabilityState(p).kind !== 'online') {
   const { items } = await profilesApi.list({ city: p.city, onlineOnly: true, limit: 12 });
   similar = items.filter((c) => c.id !== p.id && c.services.some((s) => services.has(s))).slice(0, 3);
 }
+
+// Measured reply speed (3.2): null below the honest sample threshold → hidden.
+const replySpeed = await messagingApi.replySpeedFor(p.id);
 
 const description = localizedDescription(p);
 const city = cityName(p.city);
@@ -59,5 +63,5 @@ const jsonLd = [
   alternates={samePathAlternates(Astro.url.origin, `/profile/${p.slug}/`)}
   {jsonLd}
 >
-  <ProfileDetail profile={p} {similar} />
+  <ProfileDetail profile={p} {similar} {replySpeed} />
 </Layout>

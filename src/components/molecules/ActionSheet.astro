@@ -249,18 +249,27 @@ const { id, class: className, label, flush } = Astro.props;
   // Delegated open/close triggers.
   if (!(window as any).__sheetDelegation) {
     (window as any).__sheetDelegation = true;
-    document.addEventListener('click', (e) => {
-      const t = e.target as HTMLElement;
-      if (!t.closest) return;
-      const opener = t.closest<HTMLElement>('[data-sheet-open]');
-      if (opener) {
-        const dlg = document.getElementById(opener.dataset.sheetOpen!) as any;
-        dlg?.openSheet?.();
-        return;
-      }
-      const closer = t.closest<HTMLElement>('[data-sheet-close]');
-      if (closer) (closer.closest('dialog') as any)?.closeSheet?.();
-    });
+    // Capture phase: an opener nested inside a link (a verified mark on a
+    // profile card) must beat Astro's ClientRouter link handler — so we
+    // preventDefault AND stopPropagation before navigation is ever considered.
+    document.addEventListener(
+      'click',
+      (e) => {
+        const t = e.target as HTMLElement;
+        if (!t.closest) return;
+        const opener = t.closest<HTMLElement>('[data-sheet-open]');
+        if (opener) {
+          e.preventDefault();
+          e.stopPropagation();
+          const dlg = document.getElementById(opener.dataset.sheetOpen!) as any;
+          dlg?.openSheet?.();
+          return;
+        }
+        const closer = t.closest<HTMLElement>('[data-sheet-close]');
+        if (closer) (closer.closest('dialog') as any)?.closeSheet?.();
+      },
+      { capture: true },
+    );
   }
 
   initSheets();

@@ -38,6 +38,8 @@ export const AccountSchema = z.object({
   idVerification: z.enum(VERIFICATION_STATES).default('unverified'),
   /** When the advertiser submitted ID for review (drives the admin queue order). */
   verificationSubmittedAt: z.string().optional(),
+  /** When her photos passed verification (UX-PLAN 3.1) — a dated trust-receipt fact. */
+  photoVerifiedAt: z.string().optional(),
   /** Admin's rejection reason (taxonomy) — shown to the advertiser verbatim (ADMIN.md §5). */
   verificationReason: z.string().optional(),
   profileOverride: ProfileEditSchema.partial().default({}),

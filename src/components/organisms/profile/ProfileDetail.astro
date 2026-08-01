@@ -18,15 +18,19 @@ import ProfileFacts from '@/components/organisms/profile/ProfileFacts.astro';
 import ProfileGallery from '@/components/organisms/profile/ProfileGallery.astro';
 import ProfileHero from '@/components/organisms/profile/ProfileHero.astro';
 import ProfilePhotoMosaic from '@/components/organisms/profile/ProfilePhotoMosaic.astro';
+import ReceiptSheet from '@/components/organisms/profile/ReceiptSheet.astro';
 import ReportControl from '@/components/organisms/profile/ReportControl.astro';
 import SimilarProfiles from '@/components/organisms/profile/SimilarProfiles.astro';
+import type { ReplySpeed } from '@/app/models/messaging';
 
 interface Props {
   profile: Profile;
   /** Offline-fallback candidates (2.6), computed at the page (app/api seam). */
   similar?: Profile[];
+  /** Measured reply speed (3.2), computed at the page; null → hidden. */
+  replySpeed?: ReplySpeed | null;
 }
-const { profile: p, similar = [] } = Astro.props;
+const { profile: p, similar = [], replySpeed } = Astro.props;
 
 const description = localizedDescription(p);
 const serviceGroups = SERVICE_CATEGORIES.map((cat) => ({
@@ -47,8 +51,13 @@ function hoursLabel(h: (typeof hours)[keyof typeof hours]): string {
 <div data-profile-root data-lightbox-group data-profile-slug={p.slug}>
   <!-- Mobile: immersive full-viewport hero (tap → lightbox). -->
   <div class="md:hidden">
-    <ProfileHero profile={p} />
+    <ProfileHero profile={p} {replySpeed} />
   </div>
+
+  <!-- One shared trust receipt for this profile (3.1): opened by delegation
+       from every verified mark (hero, desktop h1, deal-card link). Lives inside
+       [data-profile-root] so the mobile ProfileSheet lifts it with the page. -->
+  <ReceiptSheet profile={p} {replySpeed} />
 
   <!-- Desktop: title + Airbnb-style photo mosaic (no big hero, no gallery below). -->
   <div class="mx-auto hidden max-w-7xl px-6 pt-8 md:block">
@@ -56,7 +65,7 @@ function hoursLabel(h: (typeof hours)[keyof typeof hours]): string {
       <div>
         <h1 class="flex items-center gap-2.5 font-condensed text-3xl font-bold tracking-tight lg:text-4xl">
           {p.name}, {profileAge(p.birthDate)}
-          <VerifiedBadge class="size-6" />
+          <VerifiedBadge receiptFor={p.id} class="size-6" />
         </h1>
         <p class="mt-1.5 flex items-center gap-2 text-sm text-muted-foreground">
           <!-- One availability truth line (2.3), shared component. -->
@@ -65,6 +74,14 @@ function hoursLabel(h: (typeof hours)[keyof typeof hours]): string {
           {cityName(p.city)}
           <span aria-hidden="true">·</span>
           {p.photos.length} {m.photos_title().toLowerCase()}
+          {
+            replySpeed && (
+              <>
+                <span aria-hidden="true">·</span>
+                <span class="font-medium text-foreground">{m.receipt_reply_speed({ min: replySpeed.medianMinutes })}</span>
+              </>
+            )
+          }
         </p>
       </div>
       <button
@@ -83,7 +100,7 @@ function hoursLabel(h: (typeof hours)[keyof typeof hours]): string {
 
   <div class="mx-auto max-w-7xl px-4 py-8 md:px-6 md:py-12" id="profile-details">
     <div class="grid items-start gap-8 lg:grid-cols-[1fr_22rem] lg:gap-12">
-      <ProfileFacts profile={p} class="order-first w-full lg:order-last" />
+      <ProfileFacts profile={p} {replySpeed} class="order-first w-full lg:order-last" />
 
       <div class="min-w-0 space-y-10">
         <section>

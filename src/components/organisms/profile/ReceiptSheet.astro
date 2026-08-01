@@ -1,0 +1,112 @@
+---
+/**
+ * Trust receipt (UX-PLAN 3.1–3.3): tapping ANY verified mark — on a card or the
+ * profile — opens this sheet of DATED trust facts. Dated proof beats badges:
+ * the receipt should read like real evidence, calm and credible.
+ *
+ * One shared organism, opened by delegation (`data-sheet-open="receipt-{id}"`)
+ * from every verified mark for this profile. Zero-JS until tapped — the sheet is
+ * the island (molecules/ActionSheet). All dates come from STORED state
+ * (profile.idVerifiedAt / photoVerifiedAt / createdAt) — nothing hardcoded.
+ *
+ * Order = strongest first, weakest last: identity → photos → reply speed →
+ * retention → watermark, and member-since demoted to the final, weakest line
+ * (3.3). Reply speed shows ONLY when the sample is honest (≥5), computed at the
+ * page via messagingApi.replySpeedFor and passed in — never fabricated (3.2).
+ */
+import * as m from '@/paraglide/messages';
+import { getLocale } from '@/paraglide/runtime';
+import type { Profile } from '@/app/models/profile';
+import type { ReplySpeed } from '@/app/models/messaging';
+import ActionSheet from '@/components/molecules/ActionSheet.astro';
+import VerifiedBadge from '@/components/atoms/VerifiedBadge.astro';
+
+interface Props {
+  profile: Profile;
+  /** Measured reply speed (3.2), or null/undefined when below the honest sample. */
+  replySpeed?: ReplySpeed | null;
+}
+const { profile: p, replySpeed } = Astro.props;
+
+const monthYear = (iso: string) =>
+  new Intl.DateTimeFormat(getLocale(), { month: 'short', year: 'numeric' }).format(new Date(iso));
+
+const id = `receipt-${p.id}`;
+const row = 'flex gap-3 py-4 border-b border-border last:border-b-0';
+const dot = 'mt-0.5 flex-none';
+---
+
+<ActionSheet id={id} label={m.receipt_title()}>
+  <div class="p-6">
+    <div class="flex items-center gap-2">
+      <VerifiedBadge class="size-5" />
+      <h3 class="display text-2xl">{m.receipt_title()}</h3>
+    </div>
+    <p class="mt-1.5 text-sm text-muted-foreground">{m.receipt_intro()}</p>
+
+    <div class="mt-4">
+      <!-- Strongest proof first: dated identity + photo checks. -->
+      {
+        p.idVerifiedAt && (
+          <div class={row}>
+            <VerifiedBadge class={`${dot} size-4.5`} />
+            <div>
+              <p class="text-sm font-semibold">{m.receipt_id_checked({ date: monthYear(p.idVerifiedAt) })}</p>
+              <p class="mt-0.5 text-sm text-muted-foreground">{m.receipt_id_desc()}</p>
+            </div>
+          </div>
+        )
+      }
+      {
+        p.photoVerifiedAt && (
+          <div class={row}>
+            <VerifiedBadge class={`${dot} size-4.5`} />
+            <div>
+              <p class="text-sm font-semibold">{m.receipt_photos_checked({ date: monthYear(p.photoVerifiedAt) })}</p>
+              <p class="mt-0.5 text-sm text-muted-foreground">{m.receipt_photos_desc()}</p>
+            </div>
+          </div>
+        )
+      }
+
+      <!-- Measured reply speed (3.2): only present when the sample is honest. -->
+      {
+        replySpeed && (
+          <div class={row}>
+            <svg class={`${dot} size-4.5 text-brand`} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="9" />
+              <path d="M12 7v5l3 2" />
+            </svg>
+            <div>
+              <p class="text-sm font-semibold">{m.receipt_reply_speed({ min: replySpeed.medianMinutes })}</p>
+              <p class="mt-0.5 text-sm text-muted-foreground">{m.receipt_reply_desc()}</p>
+            </div>
+          </div>
+        )
+      }
+
+      <!-- Honest retention (amendment §0.2): bounded window, then purged. -->
+      <div class={row}>
+        <svg class={`${dot} size-4.5 text-muted-foreground`} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="4" y="10" width="16" height="10" rx="2" />
+          <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+        </svg>
+        <p class="text-sm text-muted-foreground">{m.receipt_retention()}</p>
+      </div>
+
+      <!-- Professional-protection: deterrence made visible. -->
+      <div class={row}>
+        <svg class={`${dot} size-4.5 text-muted-foreground`} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 3 4 6v6c0 5 3.4 7.7 8 9 4.6-1.3 8-4 8-9V6Z" />
+        </svg>
+        <p class="text-sm text-muted-foreground">{m.receipt_watermark()}</p>
+      </div>
+
+      <!-- Member-since demoted to the weakest, last line (3.3). -->
+      <div class={row}>
+        <span class={`${dot} eyebrow text-2xs text-muted-foreground`} aria-hidden="true">·</span>
+        <p class="text-sm text-muted-foreground">{m.receipt_member_since({ date: monthYear(p.createdAt) })}</p>
+      </div>
+    </div>
+  </div>
+</ActionSheet>

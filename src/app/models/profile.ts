@@ -73,6 +73,13 @@ export const ProfileSchema = z.object({
   gender: z.enum(GENDERS),
   city: z.enum(CITY_SLUGS),
   verified: z.boolean(),
+  /**
+   * Trust-receipt dates (UX-PLAN 3.1) — the public projection of the account's
+   * verification state (hard rule 3). ISO datetimes; absent = that check hasn't
+   * happened. Optional so an unverified/legacy profile simply omits the line.
+   */
+  idVerifiedAt: z.iso.datetime().optional(),
+  photoVerifiedAt: z.iso.datetime().optional(),
   online: z.boolean(),
   featured: z.boolean(),
   /**

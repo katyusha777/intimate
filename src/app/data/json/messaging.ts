@@ -14,12 +14,14 @@ import {
   ConversationSettingsSchema,
   ManualContactSchema,
   ThreadSchema,
+  replySpeed,
   type ContactItem,
   type ConversationSettings,
   type ManualContact,
   type Message,
   type MessagingApi,
   type Party,
+  type ReplySpeed,
   type Thread,
   type ThreadSummary,
 } from '@/app/models/messaging';
@@ -54,6 +56,38 @@ const makeThreadId = (profileId: string, email: string) => `${profileId}__${emai
 
 const now = () => new Date().toISOString();
 const rid = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
+
+/**
+ * Demo reply-latency samples (minutes) per profile, so the trust receipt has
+ * honest data to show for public visitors — real KV threads only exist for
+ * profiles someone actually messaged. A profile absent here (or below 5
+ * samples) yields null → the stat is hidden, exactly the honest-sample rule.
+ * The SQL view replaces this with a real median over `messages`.
+ * ponytail: static table over a KV seed trigger — the mock has no per-profile
+ * message history to compute from, and a synthetic median is the point.
+ */
+const DEMO_REPLY_MINUTES: Record<string, number[]> = {
+  p01: [4, 8, 11, 6, 15, 9, 7], // Eva → ~8 min, sample 7 (shown)
+  p02: [22, 35, 18, 41, 27, 30], // ~28 min, sample 6 (shown)
+  p03: [12, 9], // sample 2 → null (hidden — below threshold)
+};
+
+/** Synthetic threads from a latency table, fed through the pure helper. */
+function demoThreadsFor(profileId: string): Pick<Thread, 'messages'>[] {
+  const mins = DEMO_REPLY_MINUTES[profileId];
+  if (!mins) return [];
+  const base = Date.now() - 5 * 86_400_000; // inside the 30d window
+  return mins.map((m, i) => {
+    const clientAt = new Date(base + i * 3_600_000).toISOString();
+    const replyAt = new Date(base + i * 3_600_000 + m * 60_000).toISOString();
+    return {
+      messages: [
+        { id: `d${i}c`, sender: 'client' as const, kind: 'text' as const, body: 'hi', createdAt: clientAt },
+        { id: `d${i}p`, sender: 'professional' as const, kind: 'text' as const, body: 'hey', createdAt: replyAt },
+      ],
+    };
+  });
+}
 
 async function readThread(id: string): Promise<Thread | null> {
   const raw = await kv()?.get(threadKey(id));
@@ -411,6 +445,19 @@ export const messagingApi: MessagingApi = {
 
   async adminGetThread(threadId) {
     return readThread(threadId);
+  },
+
+  async replySpeedFor(profileId): Promise<ReplySpeed | null> {
+    const ids = await readIndex(profIndexKey(profileId));
+    const threads: Pick<Thread, 'messages'>[] = [];
+    for (const id of ids) {
+      const t = await readThread(id);
+      if (t) threads.push(t);
+    }
+    // Real KV threads only exist for messaged profiles; fall back to the demo
+    // latency table so the receipt is explorable for public visitors.
+    if (threads.length === 0) threads.push(...demoThreadsFor(profileId));
+    return replySpeed(threads);
   },
 
   async seedDemo(session) {
