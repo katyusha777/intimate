@@ -17,14 +17,17 @@ import Button from '@/components/atoms/Button.astro';
 import VerifiedBadge from '@/components/atoms/VerifiedBadge.astro';
 import AvailabilityLine from '@/components/molecules/AvailabilityLine.astro';
 import RatesTable from '@/components/organisms/profile/RatesTable.astro';
+import RequestSheet from '@/components/organisms/profile/RequestSheet.astro';
 
 interface Props {
   profile: Profile;
   /** Measured reply speed (3.2); null → hidden. */
   replySpeed?: ReplySpeed | null;
+  /** Her screening question (UX-PLAN 4.x), asked as the last step of a request. */
+  screeningQuestion?: string;
   class?: string;
 }
-const { profile: p, replySpeed, class: className } = Astro.props;
+const { profile: p, replySpeed, screeningQuestion, class: className } = Astro.props;
 
 const visitLabel = p.meetingTypes
   .map((t) => (t === 'incall' ? m.cat_private() : m.cat_escort()))
@@ -32,6 +35,7 @@ const visitLabel = p.meetingTypes
 const factRow = 'flex items-center justify-between gap-4 border-b border-white/10 py-2.5 text-sm';
 const factLabel = 'eyebrow text-2xs text-white/50';
 const hasRates = (p.rates ?? []).length > 0;
+const privateCount = (p.privatePhotos ?? []).length;
 ---
 
 <aside class:list={['lg:sticky lg:top-24', className]}>
@@ -56,10 +60,33 @@ const hasRates = (p.rates ?? []).length > 0;
       )
     }
 
+    {
+      privateCount > 0 && (
+        // Private set teaser (UX-PLAN 4.4): count only, never the images —
+        // shared per-thread when she accepts a request. Her photo control as a
+        // visible feature + the client's reason to send a real request.
+        <div class="mt-5 flex items-center gap-2.5 rounded-xl border border-white/15 bg-white/5 px-3.5 py-2.5">
+          <svg class="size-4 flex-none text-white/70" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          <span class="text-sm text-white/80">{m.private_set_teaser({ count: privateCount })}</span>
+        </div>
+      )
+    }
+
     <div class="mt-5 space-y-3">
-      <Button class="w-full" href={localizePath(`/messages/?to=${p.slug}`)}>
+      <!-- The flagship (UX-PLAN 4.2): SEND MESSAGE opens the three-tap request
+           sheet. A plain zero-JS fallback link (message her cold) rides under
+           it for the no-JS/island-fail case. -->
+      <Button type="button" class="w-full" data-sheet-open={`request-${p.id}`}>
         {m.profile_message()}
       </Button>
+      <noscript>
+        <a
+          href={localizePath(`/messages/?to=${p.slug}`)}
+          class="block text-center text-xs text-white/60 underline underline-offset-4"
+        >
+          {m.profile_message()}
+        </a>
+      </noscript>
       <!-- Trust-receipt opener (3.1): the whole row opens the dated receipt. -->
       <button
         type="button"
@@ -91,4 +118,7 @@ const hasRates = (p.rates ?? []).length > 0;
       </div>
     </div>
   </div>
+
+  <!-- The request sheet the SEND MESSAGE button opens (UX-PLAN 4.2). -->
+  <RequestSheet profile={p} {screeningQuestion} />
 </aside>

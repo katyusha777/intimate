@@ -257,7 +257,12 @@ const { id, class: className, label, flush } = Astro.props;
       (e) => {
         const t = e.target as HTMLElement;
         if (!t.closest) return;
-        const opener = t.closest<HTMLElement>('[data-sheet-open]');
+        // Only a NON-EMPTY data-sheet-open is an opener. `open()` also stamps an
+        // EMPTY `data-sheet-open` on <html> (the iOS push-back state); without
+        // this guard every click inside an open sheet walks up to that marker,
+        // gets preventDefault + stopPropagation, and never reaches its own
+        // controls (e.g. the RequestSheet's step chips).
+        const opener = t.closest<HTMLElement>('[data-sheet-open]:not([data-sheet-open=""])');
         if (opener) {
           e.preventDefault();
           e.stopPropagation();

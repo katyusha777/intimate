@@ -23,6 +23,11 @@ function utcTime(iso: string): string {
     timeZone: 'UTC',
   });
 }
+
+/** Snippet key → localized copy (the data layer emits keys for request cards). */
+function snippet(s: string): string {
+  return s === 'msg_snippet_request' ? m.msg_snippet_request() : s;
+}
 ---
 
 {
@@ -55,9 +60,15 @@ function utcTime(iso: string): string {
                 <span class="truncate font-condensed text-base font-bold">
                   {viewer === 'professional' ? t.clientName : t.profileName}
                 </span>
+                {/* A pending request wants her decision — flag it (UX-PLAN 4.3). */}
+                {t.state === 'pending' && (
+                  <span class="flex-none rounded-full bg-brand/15 px-1.5 py-0.5 text-2xs font-bold uppercase tracking-wide text-brand">
+                    {m.request_badge()}
+                  </span>
+                )}
               </span>
               <span class="mt-0.5 flex items-center gap-1.5 text-sm text-muted-foreground">
-                <span class="truncate">{t.snippet || m.msg_snippet_empty()}</span>
+                <span class="truncate">{snippet(t.snippet) || m.msg_snippet_empty()}</span>
               </span>
             </span>
             <span class="flex flex-none flex-col items-end gap-1.5">

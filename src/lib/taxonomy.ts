@@ -38,10 +38,21 @@ export const MEDIA_TYPES = ['photo'] as const; // 'video' post-MVP (requires Clo
 // --- Messaging (docs/MESSAGING.md) ---------------------------------------
 /** Who may message a professional. Product law: default OFF (0.1). */
 export const CONVERSATION_MODES = ['off', 'everyone', 'verified_only'] as const;
-/** Message kinds. 'video'/'call_request'/'call_event' are post-MVP (Phase C). */
-export const MESSAGE_KINDS = ['text', 'photo', 'system'] as const;
-/** Thread lifecycle. frozen = professional paused messaging; blocked = mutual cut. */
-export const THREAD_STATES = ['open', 'frozen', 'blocked'] as const;
+/**
+ * Message kinds. 'request' (UX-PLAN 4.1) = the pre-qualified contact card a
+ * client sends instead of composing cold. 'video'/'call_request'/'call_event'
+ * are post-MVP (Phase C).
+ */
+export const MESSAGE_KINDS = ['text', 'photo', 'system', 'request'] as const;
+/**
+ * Thread lifecycle. pending (UX-PLAN 4.1) = a request awaiting the
+ * professional's accept/decline; accept → open, decline → closed silently.
+ * frozen = professional paused messaging; blocked = mutual cut.
+ */
+export const THREAD_STATES = ['pending', 'open', 'frozen', 'blocked'] as const;
+
+/** Request timing (UX-PLAN 4.2): now, tonight, or a specific opening-hours slot. */
+export const REQUEST_WHEN = ['now', 'tonight', 'slot'] as const;
 
 export const MEDIA_STATES = ['pending_review', 'approved', 'rejected'] as const;
 
@@ -496,6 +507,7 @@ export type MediaType = (typeof MEDIA_TYPES)[number];
 export type ConversationMode = (typeof CONVERSATION_MODES)[number];
 export type MessageKind = (typeof MESSAGE_KINDS)[number];
 export type ThreadState = (typeof THREAD_STATES)[number];
+export type RequestWhen = (typeof REQUEST_WHEN)[number];
 export type MediaState = (typeof MEDIA_STATES)[number];
 export type RejectionReason = (typeof REJECTION_REASONS)[number];
 export type ReportReason = (typeof REPORT_REASONS)[number];

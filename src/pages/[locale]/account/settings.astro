@@ -73,6 +73,26 @@ const heading = 'font-condensed text-sm font-bold uppercase tracking-wide text-m
                 </Select>
               </div>
               <p class="mt-2 text-xs text-muted-foreground">{m.settings_messaging_note()}</p>
+
+              {/* Screening question (UX-PLAN 4.3): asked as the last step of a
+                  request; her answer rides in the request card. Empty = no screening. */}
+              <div class="mt-4">
+                <label class="text-sm font-medium" for="screening-q">{m.settings_screening()}</label>
+                <span class="slab-field mt-1.5 block">
+                  <span class="slab-field__face block">
+                    <input
+                      id="screening-q"
+                      type="text"
+                      data-screening-q
+                      maxlength="140"
+                      value={convo.screeningQuestion}
+                      placeholder={m.settings_screening_ph()}
+                      class="w-full bg-transparent p-2.5 text-sm caret-brand outline-none placeholder:text-muted-foreground"
+                    />
+                  </span>
+                </span>
+                <p class="mt-2 text-xs text-muted-foreground">{m.settings_screening_note()}</p>
+              </div>
             </section>
           )}
 
@@ -126,6 +146,13 @@ const heading = 'font-condensed text-sm font-bold uppercase tracking-wide text-m
       mode.dataset.init = '1';
       mode.addEventListener('change', () =>
         actions.messaging.setMode({ mode: mode.value as 'off' | 'everyone' | 'verified_only' }),
+      );
+    }
+    const screening = document.querySelector('[data-screening-q]') as HTMLInputElement | null;
+    if (screening && !screening.dataset.init) {
+      screening.dataset.init = '1';
+      screening.addEventListener('blur', () =>
+        actions.messaging.setScreeningQuestion({ question: screening.value }),
       );
     }
     document.querySelectorAll<HTMLElement>('[data-unblock]').forEach((btn) => {

@@ -9,11 +9,41 @@
  * prod schema splits into a separate `contacts` table.
  */
 import { z } from 'zod';
-import { CONVERSATION_MODES, MESSAGE_KINDS, THREAD_STATES } from '@/lib/taxonomy';
+import {
+  ALL_SERVICES,
+  CONVERSATION_MODES,
+  MESSAGE_KINDS,
+  RATE_DURATIONS,
+  REQUEST_WHEN,
+  THREAD_STATES,
+  type Service,
+} from '@/lib/taxonomy';
 import type { Session } from '@/app/models/session';
 
 /** Which side of a thread the viewer is — decided from the session, never trusted from input. */
 export type Party = 'professional' | 'client';
+
+/**
+ * A request-message payload (UX-PLAN 4.1): the three-tap pre-qualified contact
+ * card. Every field is picked from HER data (service chips, rates table,
+ * opening hours) so the client never composes cold. `priceAtRequest` is a
+ * SNAPSHOT of the agreed price at send time — immutable once the card exists
+ * (the rate table changing later must not rewrite a sent card).
+ */
+export const RequestPayloadSchema = z.object({
+  service: z.enum(ALL_SERVICES as unknown as [Service, ...Service[]]),
+  duration: z.enum(RATE_DURATIONS),
+  /** Snapshotted price (EUR) for that service/duration, frozen at send. */
+  priceAtRequest: z.number().int().nonnegative(),
+  when: z.enum(REQUEST_WHEN),
+  /** slot label ("Fri 21:00") when `when === 'slot'`. */
+  slot: z.string().max(40).optional(),
+  /** Optional one-line note from the client (≤140). */
+  note: z.string().max(140).optional(),
+  /** Answer to her screening question, when she set one (≤140). */
+  screeningAnswer: z.string().max(140).optional(),
+});
+export type RequestPayload = z.infer<typeof RequestPayloadSchema>;
 
 export const MessageSchema = z.object({
   id: z.string(),
@@ -23,6 +53,8 @@ export const MessageSchema = z.object({
   body: z.string().default(''),
   /** photo kind: data-URL in the mock; signed Cloudflare Images ref in prod. */
   photo: z.string().optional(),
+  /** request kind: the immutable pre-qualified contact card (UX-PLAN 4.1). */
+  request: RequestPayloadSchema.optional(),
   createdAt: z.string(),
   readAt: z.string().optional(),
 });
@@ -31,6 +63,11 @@ export type Message = z.infer<typeof MessageSchema>;
 export const ConversationSettingsSchema = z.object({
   mode: z.enum(CONVERSATION_MODES).default('off'),
   allowCallRequests: z.boolean().default(true),
+  /**
+   * Optional screening question (UX-PLAN 4.1, ≤140) shown as the last step of a
+   * request; her answer rides along in the request card. Empty = no screening.
+   */
+  screeningQuestion: z.string().max(140).default(''),
 });
 export type ConversationSettings = z.infer<typeof ConversationSettingsSchema>;
 
@@ -52,6 +89,12 @@ export const ThreadSchema = z.object({
   note: z.string().max(500).default(''),
   /** Her per-client photo grant (MESSAGING.md 0.3 / §4). */
   clientMediaAllowed: z.boolean().default(false),
+  /**
+   * Her private photo set shown to THIS client (UX-PLAN 4.4) — the same grant
+   * machinery as clientMediaAllowed but reversed direction (her media → him),
+   * flipped true on accepting his request. Locked (false) until then.
+   */
+  privateSetUnlocked: z.boolean().default(false),
   messages: z.array(MessageSchema).default([]),
 });
 export type Thread = z.infer<typeof ThreadSchema>;
@@ -178,10 +221,30 @@ export interface MessagingApi {
     messages: Message[];
     readUpTo: string | null;
     clientMediaAllowed: boolean;
+    privateSetUnlocked: boolean;
     state: Thread['state'];
   } | null>;
   /** Client-only, idempotent get-or-create for (profile, client). */
   startThread(session: Session, input: { profileSlug: string }): Promise<Thread | null>;
+  /**
+   * Client-only (UX-PLAN 4.2): send a pre-qualified request. Creates (or reuses)
+   * the thread and puts it in `pending` with the request card as its first
+   * message. Denied when her mode is off or the pair is blocked → null.
+   */
+  startRequest(
+    session: Session,
+    input: { profileSlug: string; request: RequestPayload },
+  ): Promise<Thread | null>;
+  /**
+   * Professional-only (UX-PLAN 4.3): respond to a pending request. accept →
+   * thread opens, a system card is posted, the private set unlocks for this
+   * client; decline → thread closes SILENTLY (no card, no penalty), with an
+   * optional quick-reply text the client sees.
+   */
+  respondRequest(
+    session: Session,
+    input: { threadId: string; accept: boolean; reply?: string },
+  ): Promise<boolean>;
   send(
     session: Session,
     input: { threadId: string; kind: 'text' | 'photo'; body?: string; photo?: string },
@@ -192,6 +255,8 @@ export interface MessagingApi {
   setNote(session: Session, input: { threadId: string; note: string }): Promise<void>;
   setPinned(session: Session, input: { threadId: string; pinned: boolean }): Promise<void>;
   setMediaAllowed(session: Session, input: { threadId: string; allowed: boolean }): Promise<void>;
+  /** Professional-only (UX-PLAN 4.3): set (or clear) her screening question. */
+  setScreeningQuestion(session: Session, input: { question: string }): Promise<void>;
 
   // blocking — either side, bidirectional effect
   setBlocked(session: Session, input: { threadId: string; blocked: boolean }): Promise<void>;

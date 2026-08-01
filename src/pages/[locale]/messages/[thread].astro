@@ -4,6 +4,7 @@
  * participant-only: getThread returns null for anyone but the two parties.
  */
 import { messagingApi } from '@/app/api/messaging';
+import { profilesApi } from '@/app/api/profiles';
 import { sessionApi } from '@/app/api/session';
 import { isLocale, localizePath } from '@/lib/i18n';
 import Thread from '@/components/organisms/messaging/Thread.astro';
@@ -24,8 +25,17 @@ const viewer: 'professional' | 'client' =
 const paused =
   viewer === 'client' && (await messagingApi.settings(thread.profileId)).mode === 'off';
 const other = viewer === 'professional' ? thread.clientName : thread.profileName;
+
+// Her private set (UX-PLAN 4.4): revealed to the client ONLY once she accepted
+// his request (privateSetUnlocked). Fetched at the page (app/api seam); the
+// unlock is per-thread, so a locked thread never sees the images.
+let privatePhotos: string[] = [];
+if (viewer === 'client' && thread.privateSetUnlocked) {
+  const profile = await profilesApi.bySlug(thread.profileSlug);
+  privatePhotos = profile?.privatePhotos ?? [];
+}
 ---
 
 <Layout bare noindex title={`${other} | Intimate`}>
-  <Thread {thread} {viewer} {paused} />
+  <Thread {thread} {viewer} {paused} {privatePhotos} />
 </Layout>

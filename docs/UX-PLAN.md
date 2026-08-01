@@ -77,6 +77,8 @@ Client's zero-effort contact = professional's pre-qualification. Nobody else in 
 
 DoD: MESSAGING.md updated in the same PR · deny tests: free-compose blocked pre-accept, request blocked when mode=off / blocked pair, price snapshot immutable in the card · full flow passes MOBILE.md checks (sheet physics, keyboard) · decline is silent and unpunished.
 
+**Status: ✅ landed.** Taxonomy gains `request` (MESSAGE_KINDS), `pending` (THREAD_STATES) and `REQUEST_WHEN`. `models/messaging.ts`: `RequestPayloadSchema` (immutable `priceAtRequest` snapshot), `Message.request`, `ConversationSettings.screeningQuestion`, `Thread.privateSetUnlocked`; new api methods `startRequest`/`respondRequest`/`setScreeningQuestion`. Enforcement lives in `data/json/messaging.ts` (the mock stand-in for RLS): `send` now gates free-compose on `state === 'open'` (a `pending` thread blocks both sides = the new-thread throttle); `startRequest` denies when mode=off or the pair is blocked and creates the thread `pending`; `respondRequest` (professional-only) accept → `open` + system card + `privateSetUnlocked`, decline → `frozen` silently (optional quick reply only). Profile gains `privatePhotos` (public pages show only the count). UI: `organisms/profile/RequestSheet` (deal card SEND MESSAGE → three-tap ActionSheet), `organisms/messaging/RequestCard` (card + Accept/Decline in the thread), private-set teaser in the deal card + unlocked set in the thread, screening-question editor in settings. Deny tests in `tests/messaging.test.ts`. Kitchen-sink shows the sheet + both card views.
+
 ## Phase 5 — The discretion kit (safe mode graduates from dev skin)
 
 Discretion is a client feature too — a wall of bright anime draws the glance it should deflect.

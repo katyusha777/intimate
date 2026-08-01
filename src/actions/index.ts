@@ -21,6 +21,8 @@ import {
   GENDERS,
   LOCALES,
   MEETING_TYPES,
+  RATE_DURATIONS,
+  REQUEST_WHEN,
 } from "@/lib/taxonomy";
 
 /** Actions run with the request's cookie jar — sessions resolve per request. */
@@ -335,6 +337,49 @@ export const server = {
       },
     }),
 
+    // The flagship (UX-PLAN 4.2): a client sends a pre-qualified request card.
+    // Every field is a taxonomy value or a snapshotted price — data, never
+    // free text she must read. Creates a pending thread; the throttle (data
+    // layer) then blocks free-compose until she accepts.
+    startRequest: defineAction({
+      input: z.object({
+        profileSlug: z.string().max(120),
+        locale: z.enum(LOCALES),
+        service: z.enum(ALL_SERVICES as unknown as [string, ...string[]]),
+        duration: z.enum(RATE_DURATIONS),
+        priceAtRequest: z.number().int().nonnegative(),
+        when: z.enum(REQUEST_WHEN),
+        slot: z.string().max(40).optional(),
+        note: z.string().max(140).optional(),
+        screeningAnswer: z.string().max(140).optional(),
+      }),
+      handler: async ({ profileSlug, locale, ...request }, context) => {
+        const session = await requireSession(context);
+        const thread = await messagingApi.startRequest(session, {
+          profileSlug,
+          request: request as Parameters<typeof messagingApi.startRequest>[1]["request"],
+        });
+        if (!thread) return { href: null as string | null };
+        return { href: `/${locale}/messages/${thread.id}/` };
+      },
+    }),
+
+    // Professional accepts/declines a pending request (UX-PLAN 4.3). Accept
+    // opens the chat + unlocks her private set; decline closes silently.
+    respondRequest: defineAction({
+      input: z.object({
+        threadId: z.string().max(200),
+        accept: z.boolean(),
+        reply: z.string().max(4000).optional(),
+      }),
+      handler: async ({ threadId, accept, reply }, context) => {
+        const session = await requireSession(context);
+        const ok = await messagingApi.respondRequest(session, { threadId, accept, reply });
+        if (!ok) throw new ActionError({ code: "BAD_REQUEST" });
+        return { ok: true };
+      },
+    }),
+
     // Realtime poll (§5) + "viewing = read": marks the other party's messages
     // read, returns only messages newer than `after` + read watermark + flags.
     // Never the professional's private note (client-safe payload).
@@ -374,6 +419,17 @@ export const server = {
       handler: async ({ mode }, context) => {
         const session = await requireSession(context);
         await messagingApi.setMode(session, mode);
+        return { ok: true };
+      },
+    }),
+
+    // Her screening question (UX-PLAN 4.3) — professional-only, enforced in the
+    // data layer. Empty string clears it.
+    setScreeningQuestion: defineAction({
+      input: z.object({ question: z.string().max(140) }),
+      handler: async ({ question }, context) => {
+        const session = await requireSession(context);
+        await messagingApi.setScreeningQuestion(session, { question });
         return { ok: true };
       },
     }),

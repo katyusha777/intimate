@@ -13,6 +13,7 @@ import { env } from 'cloudflare:workers';
 import {
   ConversationSettingsSchema,
   ManualContactSchema,
+  RequestPayloadSchema,
   ThreadSchema,
   replySpeed,
   type ContactItem,
@@ -22,6 +23,7 @@ import {
   type MessagingApi,
   type Party,
   type ReplySpeed,
+  type RequestPayload,
   type Thread,
   type ThreadSummary,
 } from '@/app/models/messaging';
@@ -130,7 +132,10 @@ function unreadFor(t: Thread, party: Party): number {
 function snippetFor(t: Thread): string {
   const last = [...t.messages].reverse().find((msg) => msg.kind !== 'system');
   if (!last) return '';
-  return last.kind === 'photo' ? '📷' : last.body;
+  if (last.kind === 'photo') return '📷';
+  // Request cards carry no body — the Inbox localizes this key (like system cards).
+  if (last.kind === 'request') return 'msg_snippet_request';
+  return last.body;
 }
 
 function toSummary(t: Thread, party: Party): ThreadSummary {
@@ -200,6 +205,16 @@ export const messagingApi: MessagingApi = {
     await kv()?.put(settingsKey(session.profileId), JSON.stringify(next));
   },
 
+  async setScreeningQuestion(session, { question }) {
+    if (!session.profileId) return; // professionals only
+    const current = await this.settings(session.profileId);
+    const next: ConversationSettings = ConversationSettingsSchema.parse({
+      ...current,
+      screeningQuestion: question.slice(0, 140),
+    });
+    await kv()?.put(settingsKey(session.profileId), JSON.stringify(next));
+  },
+
   async listThreads(session) {
     const all = await threadsFor(indexKeyFor(session), session);
     return all
@@ -228,7 +243,13 @@ export const messagingApi: MessagingApi = {
     // latest of my read messages = how far the other side has read.
     const mine = t.messages.filter((msg) => msg.sender === party && msg.readAt);
     const readUpTo = mine.length ? mine[mine.length - 1]!.createdAt : null;
-    return { messages, readUpTo, clientMediaAllowed: t.clientMediaAllowed, state: t.state };
+    return {
+      messages,
+      readUpTo,
+      clientMediaAllowed: t.clientMediaAllowed,
+      privateSetUnlocked: t.privateSetUnlocked,
+      state: t.state,
+    };
   },
 
   async startThread(session, { profileSlug }) {
@@ -261,12 +282,109 @@ export const messagingApi: MessagingApi = {
     return t;
   },
 
+  async startRequest(session, { profileSlug, request }) {
+    if (session.profileId) return null; // clients only initiate
+    const profile = await profilesApi.bySlug(profileSlug);
+    if (!profile) return null;
+    const settings = await this.settings(profile.id);
+    if (settings.mode === 'off') return null; // her inbox, her rules
+
+    // Re-validate the payload here too (the action Zod-parses, but the data
+    // layer is the wall — UGC is data, never trusted from input).
+    const parsed = RequestPayloadSchema.safeParse(request);
+    if (!parsed.success) return null;
+
+    const id = makeThreadId(profile.id, session.email);
+    const existing = await readThread(id);
+    // Blocked pair → no new request path (matches send/call deny).
+    if (existing?.state === 'blocked') return null;
+
+    const ts = now();
+    const requestMsg: Message = {
+      id: rid(),
+      sender: 'client',
+      kind: 'request',
+      body: '',
+      request: parsed.data,
+      createdAt: ts,
+    };
+
+    // Reuse an existing thread (idempotent per pair); a fresh one starts pending.
+    const t: Thread = existing
+      ? { ...existing, state: 'pending', lastMessageAt: ts, messages: [...existing.messages, requestMsg] }
+      : ThreadSchema.parse({
+          id,
+          profileId: profile.id,
+          profileSlug: profile.slug,
+          profileName: profile.name,
+          clientEmail: session.email,
+          clientName: session.name,
+          state: 'pending',
+          createdAt: ts,
+          lastMessageAt: ts,
+          messages: [requestMsg],
+        });
+    await writeThread(t);
+    if (!existing) {
+      await addToIndex(profIndexKey(profile.id), id);
+      await addToIndex(clientIndexKey(session.email), id);
+    }
+    return t;
+  },
+
+  async respondRequest(session, { threadId, accept, reply }) {
+    const t = await readThread(threadId);
+    if (!t || partyOf(session, t) !== 'professional') return false;
+    if (t.state !== 'pending') return false; // only a live request can be answered
+
+    if (accept) {
+      t.state = 'open';
+      // Accept unlocks her private set for THIS client (UX-PLAN 4.4) and posts a
+      // system card that opens the chat.
+      t.privateSetUnlocked = true;
+      t.messages.push({
+        id: rid(),
+        sender: 'system',
+        kind: 'system',
+        body: 'msg_system_request_accepted',
+        createdAt: now(),
+      });
+      t.lastMessageAt = now();
+    } else {
+      // Decline closes SILENTLY (UX-PLAN 4.1): no penalty, no system-card drama.
+      // The optional quick reply is the ONLY thing the client sees; without it,
+      // nothing. `frozen` keeps the pair's history without an open composer and
+      // is invisible in listThreads (like blocked), so the client just sees the
+      // thread quietly go idle.
+      const clean = (reply ?? '').trim().slice(0, 4000);
+      if (clean) {
+        t.messages.push({
+          id: rid(),
+          sender: 'professional',
+          kind: 'text',
+          body: clean,
+          createdAt: now(),
+        });
+        t.lastMessageAt = now();
+      }
+      t.state = 'frozen';
+    }
+    await writeThread(t);
+    return true;
+  },
+
   async send(session, { threadId, kind, body = '', photo }) {
     const t = await readThread(threadId);
     if (!t) return null;
     const party = partyOf(session, t);
     if (!party) return null;
     if (t.state === 'blocked') return null;
+    // Free-compose is gated on the thread being open. A pending thread (a
+    // request awaiting accept) blocks BOTH sides from composing — the client
+    // can't spam before qualification, and she answers via accept/decline, not
+    // a bubble. This is the UX-PLAN 4.1 throttle: no free-compose on a new
+    // thread until an accepted request. Existing open threads are unaffected.
+    if (t.state !== 'open') return null;
 
     if (party === 'client') {
       const settings = await this.settings(t.profileId);

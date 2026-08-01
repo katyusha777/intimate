@@ -16,22 +16,33 @@ import * as m from '@/paraglide/messages';
 import type { Thread } from '@/app/models/messaging';
 import { localizePath } from '@/lib/i18n';
 import SafeImage from '@/components/atoms/SafeImage.astro';
+import RequestCard from '@/components/organisms/messaging/RequestCard.astro';
 
 interface Props {
   thread: Thread;
   viewer: 'professional' | 'client';
   /** Client + professional's mode is off → text composer disabled. */
   paused: boolean;
+  /** Her private set (UX-PLAN 4.4), non-empty only for a client on an unlocked thread. */
+  privatePhotos?: string[];
 }
-const { thread, viewer, paused } = Astro.props;
+const { thread, viewer, paused, privatePhotos = [] } = Astro.props;
 
 const otherName = viewer === 'professional' ? thread.clientName : thread.profileName;
 const canPhoto = viewer === 'professional' || thread.clientMediaAllowed;
 const blocked = thread.state === 'blocked';
+// A pending thread (request awaiting accept) or a declined (frozen) one has no
+// live composer — she answers via the request card, and free-compose is gated
+// on the thread being open (data layer). The DoD throttle made visible.
+const composerLocked = thread.state !== 'open';
 
 /** System card copy by key (data-layer stores keys — MESSAGING.md §6). */
 const systemText = (key: string): string =>
-  key === 'msg_system_media_on' ? m.msg_system_media_on() : key;
+  key === 'msg_system_media_on'
+    ? m.msg_system_media_on()
+    : key === 'msg_system_request_accepted'
+      ? m.msg_system_request_accepted()
+      : key;
 
 /** UTC fallback; the client script localizes to the user's timezone on load. */
 const utcTime = (iso: string): string =>
@@ -44,7 +55,9 @@ const utcTime = (iso: string): string =>
   data-thread-id={thread.id}
   data-viewer={viewer}
   data-can-photo={canPhoto ? '1' : ''}
+  data-state={thread.state}
   data-sys-media-on={m.msg_system_media_on()}
+  data-sys-request-accepted={m.msg_system_request_accepted()}
 >
   <!-- Header -->
   <header class="flex flex-none items-center gap-2 border-b border-border px-3 py-2.5">
@@ -129,12 +142,35 @@ const utcTime = (iso: string): string =>
   <!-- Messages -->
   <div data-msg-scroll class="flex-1 space-y-2 overflow-y-auto overscroll-contain px-3 py-4">
     {
+      privatePhotos.length > 0 && (
+        // Her private set, unlocked for this client on accept (UX-PLAN 4.4).
+        // Tap → shared lightbox (chat photos are private, not safe-mode gated).
+        <div class="mx-auto my-2 w-full max-w-sm rounded-2xl border border-brand/40 bg-card p-3">
+          <p class="eyebrow mb-2 text-2xs text-brand">{m.private_set_unlocked()}</p>
+          <div class="grid grid-cols-3 gap-1.5">
+            {privatePhotos.map((photo) => (
+              <img
+                src={photo}
+                alt=""
+                data-chat-photo
+                class="aspect-square w-full cursor-pointer rounded-lg object-cover"
+              />
+            ))}
+          </div>
+        </div>
+      )
+    }
+    {
       thread.messages.map((msg) =>
         msg.kind === 'system' ? (
           <div class="flex justify-center py-1" data-msg-id={msg.id} data-created={msg.createdAt}>
             <span class="rounded-full bg-muted px-3 py-1 text-center text-2xs font-medium text-muted-foreground">
               {systemText(msg.body)}
             </span>
+          </div>
+        ) : msg.kind === 'request' && msg.request ? (
+          <div data-msg-id={msg.id} data-created={msg.createdAt}>
+            <RequestCard request={msg.request} {viewer} state={thread.state} threadId={thread.id} />
           </div>
         ) : (
           <div
@@ -177,6 +213,12 @@ const utcTime = (iso: string): string =>
     blocked ? (
       <div class="flex-none border-t border-border px-4 py-4 text-center text-sm text-muted-foreground">
         {m.msg_blocked_note()}
+      </div>
+    ) : composerLocked ? (
+      // No free-compose until an accepted request (UX-PLAN 4.1). Pending →
+      // waiting on her; frozen (declined) → quietly closed.
+      <div class="flex-none border-t border-border px-4 py-4 text-center text-sm text-muted-foreground">
+        {thread.state === 'pending' ? m.request_pending_note() : m.request_closed_note()}
       </div>
     ) : paused ? (
       <div class="flex-none border-t border-border px-4 py-4 text-center text-sm text-muted-foreground">
@@ -230,7 +272,7 @@ const utcTime = (iso: string): string =>
   type Msg = {
     id: string;
     sender: 'professional' | 'client' | 'system';
-    kind: 'text' | 'photo' | 'system';
+    kind: 'text' | 'photo' | 'system' | 'request';
     body: string;
     photo?: string;
     createdAt: string;
@@ -262,6 +304,8 @@ const utcTime = (iso: string): string =>
     const threadId = root.dataset.threadId!;
     const viewer = root.dataset.viewer as 'professional' | 'client';
     const sysMediaOn = root.dataset.sysMediaOn || '';
+    const sysRequestAccepted = root.dataset.sysRequestAccepted || '';
+    const initialState = root.dataset.state || 'open';
     const scroll = root.querySelector<HTMLElement>('[data-msg-scroll]')!;
 
     const seen = new Set<string>();
@@ -290,9 +334,21 @@ const utcTime = (iso: string): string =>
         const chip = document.createElement('span');
         chip.className =
           'rounded-full bg-muted px-3 py-1 text-center text-2xs font-medium text-muted-foreground';
-        chip.textContent = msg.body === 'msg_system_media_on' ? sysMediaOn : msg.body;
+        chip.textContent =
+          msg.body === 'msg_system_media_on'
+            ? sysMediaOn
+            : msg.body === 'msg_system_request_accepted'
+              ? sysRequestAccepted
+              : msg.body;
         row.appendChild(chip);
         return row;
+      }
+      // A request card streaming in is rare (a request navigates/reloads) — a
+      // full re-render of the card in JS isn't worth it, so reload to pick up
+      // the SSR card. Return an empty placeholder; the reload replaces it.
+      if (msg.kind === 'request') {
+        location.reload();
+        return document.createElement('div');
       }
       const own = msg.sender === viewer;
       const row = document.createElement('div');
@@ -436,11 +492,17 @@ const utcTime = (iso: string): string =>
 
     // Realtime (§5): incremental poll — new messages only, plus read watermark
     // and the photo-grant flag. Never re-downloads existing photos or the note.
-    let reloadedOnBlock = false;
+    let reloadedOnState = false;
     subscribe(async () => {
       const { data } = await actions.messaging.thread({ threadId, after: lastCreatedAt });
       const view = data?.view as
-        | { messages: Msg[]; readUpTo: string | null; clientMediaAllowed: boolean; state: string }
+        | {
+            messages: Msg[];
+            readUpTo: string | null;
+            clientMediaAllowed: boolean;
+            privateSetUnlocked: boolean;
+            state: string;
+          }
         | null
         | undefined;
       if (!view) return;
@@ -448,9 +510,11 @@ const utcTime = (iso: string): string =>
       applyRead(view.readUpTo);
       const canPhoto = viewer === 'professional' || view.clientMediaAllowed;
       if (photoBtn) photoBtn.classList.toggle('hidden', !canPhoto);
-      // Blocked while viewing → reload once into the read-only blocked view.
-      if (view.state === 'blocked' && form && !reloadedOnBlock) {
-        reloadedOnBlock = true;
+      // The thread's state moved while viewing (accepted → open, declined →
+      // frozen, or blocked) → reload once so the composer + request card reflect
+      // it (SSR renders the correct locked/open state).
+      if (view.state !== initialState && !reloadedOnState) {
+        reloadedOnState = true;
         location.reload();
       }
     });

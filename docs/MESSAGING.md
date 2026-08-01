@@ -112,16 +112,27 @@ the eventual Postgres shape), same discipline as `profile.ts`.
 
 ```
 conversation_settings  (professional_profile_id PK, mode: off|everyone|verified_only,
-                        allow_call_requests bool default true, updated_at)
+                        allow_call_requests bool default true,
+                        screening_question text (≤140, optional),   -- ★ UX-PLAN 4.1: asked as the last request step
+                        updated_at)
 
 threads                (id, profile_id, client_account_id, created_at, last_message_at,
-                        professional_unread, client_unread, state: open|frozen|blocked)
+                        professional_unread, client_unread, state: pending|open|frozen|blocked,
+                        private_set_unlocked bool default false)   -- ★ UX-PLAN 4.4: her set shown to THIS client on accept
                         UNIQUE(profile_id, client_account_id)   -- one thread per pair = anti-spam bedrock
+                        -- pending (UX-PLAN 4.1) = a request awaiting accept/decline;
+                        --   accept → open, decline → frozen (silent, no penalty)
 
 messages               (id, thread_id, sender: professional|client,
-                        kind: text|media|call_request|call_event|system,
-                        body text NULL, media_id NULL, created_at, read_at NULL, expires_at)
+                        kind: text|media|request|call_request|call_event|system,
+                        body text NULL, media_id NULL,
+                        request jsonb NULL,   -- ★ UX-PLAN 4.1 request payload (see below)
+                        created_at, read_at NULL, expires_at)
                         -- expires_at = created_at + 90d; purge job hard-deletes
+                        -- request payload: { service, duration, price_at_request (SNAPSHOT,
+                        --   immutable), when: now|tonight|slot, slot?, note? (≤140),
+                        --   screening_answer? } — every field a taxonomy value or a frozen
+                        --   price, so she reads a card, never "hi"
 
 chat_media             (id, thread_id, sender_account_id, type: photo|video,
                         storage_ref, bytes, duration_s NULL, state: active|reported|removed,
@@ -167,11 +178,32 @@ are enforced in the action layer as a placeholder; they are **not** the wall.
 - **Send-message policy** enforces, in SQL:
   - sender is a participant · thread `state = open` · settings mode permits the
     client (`verified_only` ⇒ client phone-verified) ·
-  - **client throttle:** ≤3 messages before the first professional reply; ≤1
-    thread-create per client per profile ·
+  - **client throttle (UX-PLAN 4.1 — replaces the old "3 messages before first
+    reply" for new threads): no free-compose on a NEW thread until an accepted
+    request.** A new thread is created by a `request` (state `pending`), and the
+    `state = open` gate above already blocks BOTH sides from composing while
+    pending — the professional answers with accept/decline, not a bubble.
+    Existing `open` threads compose freely (the old behaviour, unchanged).
+    Still ≤1 thread per (client, profile) — the UNIQUE row is the anti-spam
+    bedrock, and a request reuses that same row. ·
+  - **request rule:** a client may insert `kind=request` **iff** the pair is not
+    blocked **and** settings mode permits the client; it flips the thread to
+    `pending`. `price_at_request` is snapshotted at insert and never rewritten
+    (immutable). Decline sets `state = frozen` silently (no card, no penalty);
+    accept sets `state = open`, posts a system card, and sets
+    `private_set_unlocked = true` (§7 / UX-PLAN 4.4). ·
   - **client media rule:** a client may insert `kind=media` **iff** `type=photo`
     **and** `contacts.client_media_allowed = true` for (thread.profile_id,
     client). Professionals may insert photo or video. (This is rule 0.3 in SQL.)
+- **conversation_settings.screening_question** (UX-PLAN 4.1): professional-only
+  write, ≤140; PUBLIC-readable (it is the question a prospective client answers
+  in the request sheet, so the profile page reads it) — but the *answer* lives
+  only inside the request card in the thread (participant-only, like any
+  message). Never leaks her mode or inbox contents.
+- **private set (UX-PLAN 4.4):** her `privatePhotos` set is revealed to a client
+  ONLY when `threads.private_set_unlocked = true` for his thread — the same
+  per-contact grant machinery as `client_media_allowed`, reversed direction (her
+  media → him), flipped on accept. Public pages expose only the COUNT.
 - **conversation_settings / contacts (incl. note + client_media_allowed):**
   professional (or org member) only. A client can never read that a note or a
   grant-state row about him exists. The client learns his *own* media permission
@@ -372,8 +404,10 @@ migration path documented. This unblocks A.
 
 **Phase A (messaging + blocking + contacts):** RLS policy tests *prove*:
 non-participant denied · mode=off denied · verified_only denied for unverified ·
-throttle enforced · **client media denied unless granted** · blocked-pair denied ·
-call_sessions insert by client denied. Inbox/thread pass the `MOBILE.md`
+throttle enforced (no free-compose on a new thread until an accepted request,
+UX-PLAN 4.1) · request denied when mode=off / blocked pair · request price
+snapshot immutable · decline leaves no penalty · **client media denied unless
+granted** · blocked-pair denied · call_sessions insert by client denied. Inbox/thread pass the `MOBILE.md`
 automated checklist. Email fallback fires. Purge job verified. Contacts
 auto-create; note + media-grant private to her; the client learns his own grant
 via system card + `can_client_send_media` only. Block/unblock round-trips.
