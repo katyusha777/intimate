@@ -238,6 +238,24 @@ export function availabilityState(p: Profile, now: Date = new Date()): Availabil
   return { kind: 'back_at', lastActiveToday };
 }
 
+/**
+ * Availability sort/filter (this file's ADD): one rank derived from the shared
+ * availabilityState helper — online first, then open-today, then back-later.
+ * The listing sorts by this BEFORE the chosen sort so available professionals
+ * always float to the top; `availableNow` is the "available now" filter.
+ */
+const AVAILABILITY_RANK: Record<AvailabilityKind, number> = {
+  online: 0,
+  today_until: 1,
+  back_at: 2,
+};
+export function availabilityRank(p: Profile, now: Date = new Date()): number {
+  return AVAILABILITY_RANK[availabilityState(p, now).kind];
+}
+export function availableNow(p: Profile, now: Date = new Date()): boolean {
+  return availabilityRank(p, now) < AVAILABILITY_RANK.back_at;
+}
+
 export const PAGE_SIZE = 24;
 
 export const ProfileListParamsSchema = z.object({
@@ -256,6 +274,8 @@ export const ProfileListParamsSchema = z.object({
   priceMin: z.number().int().min(0).optional(),
   priceMax: z.number().int().min(0).optional(),
   onlineOnly: z.boolean().default(false),
+  /** "Available now" filter (this file's ADD): online OR open today. */
+  availableNow: z.boolean().default(false),
   featuredOnly: z.boolean().default(false),
   verifiedOnly: z.boolean().default(false),
   sort: z.enum(SORT_OPTIONS).default('newest'),
@@ -299,6 +319,7 @@ export function profileListParamsFromUrl(url: URL): ProfileListParams {
     priceMin: num('priceMin'),
     priceMax: num('priceMax'),
     onlineOnly: sp.has('online'),
+    availableNow: sp.has('available'),
     verifiedOnly: sp.has('verified'),
     sort: opt('sort'),
     offset: (page - 1) * PAGE_SIZE,

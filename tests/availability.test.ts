@@ -4,7 +4,12 @@
  * timezone (Europe/Amsterdam). If this drifts, every card lies.
  */
 import { expect, test } from 'bun:test';
-import { availabilityState, ProfileSchema } from '@/app/models/profile';
+import {
+  availabilityRank,
+  availableNow,
+  availabilityState,
+  ProfileSchema,
+} from '@/app/models/profile';
 
 const base = ProfileSchema.parse({
   id: 'pT',
@@ -74,4 +79,18 @@ test('no hours at all → back_at with no nextDay', () => {
   const a = availabilityState(base, wedNoon);
   expect(a.kind).toBe('back_at');
   expect(a.nextDay).toBeUndefined();
+});
+
+// Listing sort/filter helpers (fix/search): rank online < open-today < back.
+test('availabilityRank orders online < today < back', () => {
+  const online = { ...base, online: true };
+  const today = { ...base, openingHours: { wed: { closed: false, allDay: false, from: '09:00', to: '23:00' } } };
+  expect(availabilityRank(online, wedNoon)).toBeLessThan(availabilityRank(today, wedNoon));
+  expect(availabilityRank(today, wedNoon)).toBeLessThan(availabilityRank(base, wedNoon));
+});
+
+test('availableNow: online or open-today true, back-later false', () => {
+  expect(availableNow({ ...base, online: true }, wedNoon)).toBe(true);
+  expect(availableNow({ ...base, openingHours: { wed: { closed: false, allDay: true, from: '', to: '' } } }, wedNoon)).toBe(true);
+  expect(availableNow(base, wedNoon)).toBe(false);
 });

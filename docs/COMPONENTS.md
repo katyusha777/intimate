@@ -138,3 +138,28 @@ Folders appear when their first organism lands:
   reveals saved profiles (localStorage `intimate_favs`, synced by
   `FavoritesController`) as `ProfileCard variant="compact"`. Pool passed from
   the page via `buildListing().savedPool`.
+- **Clean filter chips** (`.filter-chip` / `.filter-chip__box` tokens in
+  `global.css`): the listing gender + quick filters. Full even keyline border,
+  normal radius, an obvious mini-checkbox — replaced the old `.slab-cut` chips
+  that read as noise. SELECTED = ink-fill + a slight `skewX` shear (suppressed
+  under `prefers-reduced-motion`), driven by CSS `.peer:checked + .filter-chip`
+  (the input is a sibling `peer sr-only`). Used in `SearchListing` and shown on
+  `/kitchen-sink`. The FilterSidebar service/city rows keep the plain `.cbx-box`
+  print checkbox (already clean).
+- **Mobile filter sheet**: `SearchListing` renders the FilterSidebar TWICE —
+  once as the desktop `data-filters-desktop` sidebar (`hidden lg:block`), once
+  inside an `ActionSheet id="filters-sheet"` (`data-filters-mobile`, `lg:hidden`)
+  opened by the mobile Filters button (`data-sheet-open`). Only the visible set
+  submits (the hidden set's inputs are `disabled` per viewport, same trick as
+  the gender dupe). Sheet filters DON'T auto-navigate — the user picks freely
+  and taps "Show results" (a real submit); visit-nav tab switches still
+  navigate immediately. This replaced the inline `<details>` panel that hijacked
+  page scroll on mobile.
+- **SearchControl** (molecule): two unmistakable targets, not one ambiguous bar
+  — a labelled search field (`City: <name>` + placeholder) beside a separate
+  Filters button, both plain `<a>` to the canonical listing (`?q=` rides the
+  field once real search lands). Takes an optional `city` prop.
+- **Home stays national**: the `/{locale}/` middleware no longer 302s to the
+  saved city. The `city` cookie is surfaced client-side on the fold as a
+  one-tap "Back to <city>" chip (`[data-city-pref]`), keeping the home a single
+  cached page.

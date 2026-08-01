@@ -216,9 +216,36 @@ const swatches = [
     </section>
 
     <section class="space-y-4">
+      <h2 class="text-xl font-semibold">Filter chips (clean — selected skews + fills)</h2>
+      <p class="text-sm text-muted-foreground">
+        The listing gender/quick filters. Full even border, normal radius, obvious
+        mini-checkbox. Toggle one — selected shears slightly and ink-fills.
+      </p>
+      <div class="flex flex-wrap items-center gap-2">
+        {['Woman', 'Man', 'Trans woman'].map((label, i) => (
+          <label class="flex-none">
+            <input type="checkbox" checked={i === 0} class="peer sr-only" />
+            <span class="filter-chip flex text-sm active:scale-[0.96]">
+              <span class="filter-chip__box" aria-hidden="true" />
+              {label}
+            </span>
+          </label>
+        ))}
+        <label class="flex-none">
+          <input type="checkbox" class="peer sr-only" />
+          <span class="filter-chip flex text-sm active:scale-[0.96]">
+            <span class="size-1.5 flex-none rounded-full bg-online" aria-hidden="true" />
+            Available now
+          </span>
+        </label>
+      </div>
+    </section>
+
+    <section class="space-y-4">
       <h2 class="text-xl font-semibold">Search, forms & toggles</h2>
       <div class="flex flex-wrap items-center gap-6">
-        <SearchControl />
+        <div class="w-full max-w-md"><SearchControl /></div>
+        <div class="w-full max-w-md"><SearchControl city="rotterdam" /></div>
         <SafeModeToggle />
         <div class="w-56"><Select><option>Select atom</option><option>Option B</option></Select></div>
         <div class="w-56"><Input placeholder="Input atom" /></div>

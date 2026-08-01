@@ -427,3 +427,74 @@
     overscroll-behavior-y: none;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   APPENDED (fix/search): clean filter chips.
+   The old inline filter chips used `.slab-cut` (a slab corner-cut) which read as
+   visual noise, not "these are filters". This is the calm replacement: a full,
+   even keyline border with a normal radius and an obvious mini-checkbox. SELECTED
+   skews slightly (a small shear) + ink-fills — the wanted "active" feel. Paired
+   with `.peer-checked:*` utilities where the input is a sibling `peer` (gender/
+   quick chips). Legible, unmistakably a control.
+   --------------------------------------------------------------------------- */
+@layer components {
+  .filter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    height: 2.25rem;
+    padding-inline: 0.75rem;
+    border-radius: 0.5rem;
+    border: 1px solid color-mix(in oklch, var(--foreground) 22%, transparent);
+    font-weight: 500;
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+    transition:
+      border-color 0.15s ease,
+      background-color 0.15s ease,
+      color 0.15s ease,
+      transform 0.15s ease;
+  }
+  .filter-chip:hover {
+    border-color: color-mix(in oklch, var(--foreground) 55%, transparent);
+  }
+  /* SELECTED = fill + a slight shear (the "nicer selected" the user asked for). */
+  .peer:checked + .filter-chip {
+    border-color: var(--foreground);
+    background: var(--foreground);
+    color: var(--background);
+    transform: skewX(-4deg);
+  }
+  /* Mini checkbox glyph inside the chip — signals multi-select, fills when on. */
+  .filter-chip__box {
+    width: 0.85rem;
+    height: 0.85rem;
+    flex: none;
+    display: grid;
+    place-items: center;
+    border: 1.5px solid currentColor;
+    border-radius: 0.1875rem;
+    opacity: 0.5;
+  }
+  .filter-chip__box::after {
+    content: '';
+    width: 0.4rem;
+    height: 0.4rem;
+    border-radius: 0.0625rem;
+    background: currentColor;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+  }
+  .peer:checked + .filter-chip .filter-chip__box {
+    opacity: 1;
+  }
+  .peer:checked + .filter-chip .filter-chip__box::after {
+    opacity: 1;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .peer:checked + .filter-chip {
+      transform: none;
+    }
+  }
+}

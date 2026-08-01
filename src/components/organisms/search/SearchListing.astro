@@ -13,6 +13,7 @@ import { LISTING_CATEGORIES, type Locale } from '@/lib/taxonomy';
 import { getLocale } from '@/paraglide/runtime';
 import { PAGE_SIZE, type Profile, type ProfileList, type ProfileListParams } from '@/app/models/profile';
 import Icon from '@/components/atoms/Icon.astro';
+import ActionSheet from '@/components/molecules/ActionSheet.astro';
 import FilterSidebar from '@/components/organisms/search/FilterSidebar.astro';
 import ProfileCard from '@/components/organisms/profile/ProfileCard.astro';
 
@@ -63,9 +64,11 @@ function pageHref(p: number): string {
   return qs ? `${basePath}?${qs}` : basePath;
 }
 
-/* Misprint chip: cut keyline slab on bare canvas; checked = ink flip. */
+/* Clean filter chip (fix/search): full even keyline, normal radius — calm,
+   unmistakably a filter. `.filter-chip` owns border/radius/height; here we add
+   the tap feedback. Selected state (skew + ink fill) is CSS via peer:checked. */
 const chip =
-  'slab-cut flex h-9 cursor-pointer select-none items-center gap-2 border border-foreground/20 px-3 text-sm font-medium transition-colors hover:border-foreground/60 active:scale-[0.96]';
+  'filter-chip flex text-sm active:scale-[0.96]';
 ---
 
 <form
@@ -143,7 +146,7 @@ const chip =
         {CITIES.map((c) => <option value={c.slug} selected={params.city === c.slug} />)}
       </select>
 
-      <button type="button" data-toggle-filters class:list={[chip, 'flex-none lg:hidden']}>
+      <button type="button" data-sheet-open="filters-sheet" class:list={[chip, 'flex-none lg:hidden']}>
         <Icon name="sliders" class="text-muted-foreground" />
         {m.filter_title()}
       </button>
@@ -161,8 +164,8 @@ const chip =
                 checked={selectedGenders.has(g)}
                 class="peer sr-only"
               />
-              <span class:list={[chip, 'peer-checked:border-foreground peer-checked:bg-foreground peer-checked:text-background']}>
-                <span class="chip-box" aria-hidden="true" />
+              <span class={chip}>
+                <span class="filter-chip__box" aria-hidden="true" />
                 {genderLabel(g)}
               </span>
             </label>
@@ -180,6 +183,16 @@ const chip =
           )
         }
       </div>
+
+      <!-- Available-now quick filter (fix/search): online OR open today. The
+           listing already SORTS available-first; this narrows to only them. -->
+      <label class="flex-none">
+        <input type="checkbox" name="available" checked={params.availableNow} class="peer sr-only" />
+        <span class:list={[chip, 'flex']}>
+          <span class="size-1.5 flex-none rounded-full bg-online" aria-hidden="true"></span>
+          {m.filter_available()}
+        </span>
+      </label>
 
       <label class="flex h-9 flex-none cursor-pointer select-none items-center gap-2.5 whitespace-nowrap px-2 text-sm font-medium">
         <input type="checkbox" name="online" checked={params.onlineOnly} class="sr-only" />
@@ -207,15 +220,16 @@ const chip =
       </label>
     </div>
 
-    <!-- Filter panel: opens under the rail on mobile; the always-open sidebar
-         column on lg (placed into column 1 across both rows). -->
-    <details
-      data-filter-panel
-      class="min-w-0 lg:col-start-1 lg:row-span-2 lg:row-start-1"
+    <!-- Filter panel — DESKTOP: the always-open sidebar column on lg (col 1,
+         both rows). Hidden on mobile, where the sheet below owns filters.
+         `data-filters-desktop` inputs are disabled on mobile so they never
+         double-submit against the sheet's copy (same trick as the gender dupe). -->
+    <aside
+      data-filters-desktop
+      class="hidden min-w-0 lg:col-start-1 lg:row-span-2 lg:row-start-1 lg:block"
     >
-      <summary class="hidden"></summary>
       <FilterSidebar params={params} resetHref={basePath} {visitMode} {openCategory} />
-    </details>
+    </aside>
 
     <div class="lg:col-start-2">
       {
@@ -261,6 +275,31 @@ const chip =
       }
     </div>
   </div>
+
+  <!-- Filter panel — MOBILE: a proper ActionSheet (its own scroll, backdrop,
+       drag-dismiss) so opening filters no longer hijacks the page scroll. Its
+       FilterSidebar inputs are disabled on lg (desktop uses the sidebar copy).
+       Changes here DON'T auto-navigate (the form skips sheet-origin changes);
+       APPLY submits once, closing the sheet with the new results. -->
+  <ActionSheet id="filters-sheet" label={m.filter_title()} class="lg:hidden">
+    <div data-filters-mobile class="px-4 pb-4 pt-1">
+      <FilterSidebar params={params} resetHref={basePath} {visitMode} {openCategory} />
+    </div>
+    <div class="sticky bottom-0 flex gap-2 border-t border-border bg-card px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+      <a
+        href={basePath}
+        class="filter-chip flex h-11 flex-1 justify-center text-sm text-muted-foreground"
+      >
+        {m.filter_reset()}
+      </a>
+      <button
+        type="submit"
+        class="slab-cut flex h-11 flex-[2] items-center justify-center bg-foreground px-4 text-sm font-semibold text-background transition-colors hover:bg-brand active:scale-[0.98]"
+      >
+        {m.filter_apply()}
+      </button>
+    </div>
+  </ActionSheet>
 </form>
 
 <script>
@@ -284,31 +323,33 @@ const chip =
   function initListingForm() {
     restoreScroll();
 
-    // Gender lives twice (mobile chips / desktop sidebar) — only the visible
-    // set may submit, so the hidden one is disabled.
+    // Filters live in two places at once: the DESKTOP sidebar and the MOBILE
+    // filter sheet (plus gender also lives in the quick chips). Only the visible
+    // set may submit, so the hidden set's inputs are disabled per viewport —
+    // otherwise city/services/visit/price/gender would double up in the query.
     const mqLg = matchMedia('(min-width: 64rem)');
-    const syncGender = () => {
-      document
-        .querySelectorAll<HTMLInputElement>('[data-gender-mobile] input')
-        .forEach((i) => (i.disabled = mqLg.matches));
-      document
-        .querySelectorAll<HTMLInputElement>('[data-gender-desktop] input')
-        .forEach((i) => (i.disabled = !mqLg.matches));
+    const syncSets = () => {
+      const lg = mqLg.matches;
+      const dis = (sel: string, off: boolean) =>
+        document
+          .querySelectorAll<HTMLInputElement>(sel)
+          .forEach((i) => (i.disabled = off));
+      dis('[data-gender-mobile] input', lg); // desktop: quick chips off
+      dis('[data-filters-desktop] input', !lg); // mobile: whole sidebar copy off
+      dis('[data-filters-mobile] input', lg); // desktop: whole sheet copy off
+      // Gender inside the sheet is never the source (quick chips own mobile,
+      // the sidebar owns desktop) — keep it disabled so it can't double-submit.
+      dis('[data-filters-mobile] [data-gender-desktop] input', true);
     };
-    if (!(window as any).__genderMq) {
-      (window as any).__genderMq = true;
-      mqLg.addEventListener('change', syncGender);
+    if (!(window as any).__filterSetsMq) {
+      (window as any).__filterSetsMq = true;
+      mqLg.addEventListener('change', syncSets);
     }
-    syncGender();
+    syncSets();
 
     document.querySelectorAll<HTMLFormElement>('form[data-listing-form]').forEach((form) => {
       if (form.dataset.init) return;
       form.dataset.init = '1';
-
-      form.querySelector('[data-toggle-filters]')?.addEventListener('click', () => {
-        const panel = form.querySelector<HTMLDetailsElement>('[data-filter-panel]');
-        if (panel) panel.open = !panel.open;
-      });
 
       form.querySelector('[data-clear-genders]')?.addEventListener('click', () => {
         form
@@ -319,8 +360,15 @@ const chip =
       });
 
       form.addEventListener('change', (e) => {
-        sessionStorage.setItem('listing-scroll', String(window.scrollY));
         const t = e.target as HTMLElement;
+
+        // Filter changes inside the mobile SHEET don't auto-navigate — the user
+        // picks freely and taps "Show results" (a real submit) to apply once.
+        // Exception: a visit-nav radio is a TAB switch (a page), so it still
+        // navigates immediately even from the sheet.
+        if (t.closest('[data-filters-mobile]') && !t.closest('[data-visit-nav]')) return;
+
+        sessionStorage.setItem('listing-scroll', String(window.scrollY));
         const citySeg = () => (form.dataset.city ? `${form.dataset.city}/` : '');
 
         const cityNav = t.closest('[data-city-nav]') as HTMLSelectElement | null;
@@ -342,18 +390,15 @@ const chip =
 
         form.requestSubmit();
       });
-    });
 
-    const mq = matchMedia('(min-width: 64rem)');
-    const sync = () =>
-      document.querySelectorAll<HTMLDetailsElement>('[data-filter-panel]').forEach((d) => {
-        if (mq.matches) d.open = true;
-      });
-    if (!(window as any).__filterPanelMq) {
-      (window as any).__filterPanelMq = true;
-      mq.addEventListener('change', sync);
-    }
-    sync();
+      // Sheet "Show results" submit: save scroll like any filter navigation.
+      form
+        .querySelector('[data-filters-mobile]')
+        ?.closest('form')
+        ?.addEventListener('submit', () => {
+          sessionStorage.setItem('listing-scroll', String(window.scrollY));
+        });
+    });
   }
   initListingForm();
   document.addEventListener('astro:page-load', initListingForm);

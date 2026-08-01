@@ -410,5 +410,10 @@
   "private_set_unlocked": "Ihr privates Set",
   "settings_screening": "Screening-Frage",
   "settings_screening_ph": "z. B. Wie hast du mich gefunden?",
-  "settings_screening_note": "Wird als letzter Schritt einer Anfrage gestellt. Leer lassen für keine."
+  "settings_screening_note": "Wird als letzter Schritt einer Anfrage gestellt. Leer lassen für keine.",
+  "filter_available": "Jetzt verfügbar",
+  "filter_apply": "Ergebnisse anzeigen",
+  "search_find_ph": "Professionals suchen",
+  "search_open": "Suche öffnen",
+  "home_your_city": "Zurück nach {city}"
 }

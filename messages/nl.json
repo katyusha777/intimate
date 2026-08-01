@@ -410,5 +410,10 @@
   "private_set_unlocked": "Haar privéset",
   "settings_screening": "Screeningsvraag",
   "settings_screening_ph": "bijv. Hoe heb je me gevonden?",
-  "settings_screening_note": "Gesteld als laatste stap van een verzoek. Laat leeg voor geen."
+  "settings_screening_note": "Gesteld als laatste stap van een verzoek. Laat leeg voor geen.",
+  "filter_available": "Nu beschikbaar",
+  "filter_apply": "Toon resultaten",
+  "search_find_ph": "Zoek professionals",
+  "search_open": "Zoeken openen",
+  "home_your_city": "Terug naar {city}"
 }
