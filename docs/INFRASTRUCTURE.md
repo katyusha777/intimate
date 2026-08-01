@@ -97,16 +97,21 @@ context7, shadcn (→ `@fulldev` registry), playwright.
 
 - [ ] **Prod Supabase project** (Frankfurt) — then: prod Hyperdrive config,
       fill prod `vars` in `wrangler.jsonc`, wire `db:migrate:prod`, keep MCP
-      read-only.
+      read-only, **enable PITR/daily backups + run one restore drill before
+      first real data** (SECURITY.md §4).
 - [ ] Cloudflare Images (paid — ToS requirement for media), KV, Queues, Cron,
       Turnstile.
 - [ ] coturn VPS (EU, e.g. Hetzner) for video-call TURN fallback
       (ARCHITECTURE §10) — `TURN_URLS`/`TURN_SECRET` env.
-- [ ] Twilio Verify service (SMS verification, ARCHITECTURE §11) — account +
-      Verify service SID; secrets server-side only.
+- [ ] Twilio Verify service (SMS verification, VERIFICATION.md §1) — API key
+      already in `.dev.vars` + staging secrets; still needed: Verify Service
+      SID (create in console, confirm key scope covers Verify), prod secrets.
 - [ ] Dedicated R2 bucket for verification documents (ARCHITECTURE §11):
-      jurisdiction EU, public access OFF, no r2.dev/custom domain, lifecycle
-      sweeper as deletion backstop.
+      jurisdiction EU, public access OFF, no r2.dev/custom domain, Workers
+      Cron purge per the bounded-retention window (hard rule 3).
+- [ ] PostHog EU project ×2 (prod/staging) + `/relay` proxy route + billing
+      caps + replay off at project level (ANALYTICS.md; self-host decision
+      re-checked before launch).
 - [ ] Email provider — check adult-content policy first (Resend/Postmark).
 - [ ] Supabase written confirmation for adult content (ToS posture,
       ARCHITECTURE §8.10).

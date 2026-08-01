@@ -248,7 +248,8 @@ Structure: `src/components/ui/` (primitives, mostly Fulldev/shadcn) ·
 Button (solid/gradient · outline · ghost · pill · icon), Input, Select, Badge,
 Chip/Tag, Avatar (with verified tick + presence dot), Card, Sheet (bottom on
 mobile), Dialog, Dropdown, Tabs, Tooltip, Toast, Skeleton, Switch, Segmented
-control, GlassBar (§5), Icon (lucide). All theme-aware, all on the token scale.
+control, GlassBar (§5), Icon (Font Awesome 8 Pro self-hosted, always via
+`atoms/Icon.astro` — INFRASTRUCTURE.md §4). All theme-aware, all on the token scale.
 
 **The anaglyph Button is unique.** Its skewed face, chromatic offset layers and
 italic uppercase label belong to the Button atom and nothing else. Never apply
@@ -261,7 +262,7 @@ rest.
 
 ### 3.2 App components — the load-bearing ones
 
-**ProfileCard** — *one component, three variants* (per PLAN):
+**ProfileCard** — *one component, three variants* (CLAUDE.md convention):
 - `grid` — the default. Portrait media (`aspect-[3/4]`), name · age · city,
   verified tick, presence dot, price-from, favorite heart. OpenSea-grade
   uniformity: identical dimensions, quiet hover (`scale-[1.01]` + `shadow-md`),
@@ -323,11 +324,11 @@ without its noise.
 ### Mobile
 - **Top:** minimal glass bar — wordmark + search icon (opens SearchControl
   sheet). Nothing else up top.
-- **Bottom:** `BottomTabBar` (exists in `Layout.astro`, to be upgraded) — glass,
-  `backdrop-blur`, safe-area inset, 3 tabs per PLAN: **Search · Favorites ·
-  Account**. Active tab = crimson icon + label. iOS-style: floats over content,
-  translucent, never a hard opaque slab. (Spaces can graduate to a 4th tab if it
-  earns its place.)
+- **Bottom:** `BottomTabBar` — glass, `backdrop-blur`, safe-area inset,
+  **role-driven tab sets** (matrix: MESSAGING.md §10; visitor default
+  **Search · Favorites · Account**, max 4 ever per MOBILE.md §2). Active tab =
+  crimson icon + label. iOS-style: floats over content, translucent, never a
+  hard opaque slab.
 
 View transitions make the bottom bar persist across navigation (no flash), and
 card→profile uses a shared-element morph.
@@ -395,7 +396,7 @@ operator explicitly wants per-load shuffling.
 
 ## 7. Imagery
 
-- All photos via **Cloudflare Images** (PLAN non-negotiable), EXIF stripped.
+- All photos via **Cloudflare Images** (hard rule 2), EXIF stripped.
   Variants: `card` (portrait 3:4), `thumb`, `full`, `blur` (LQIP placeholder).
 - Fixed `width`/`height` or `aspect-ratio` on every image → **CLS 0**.
 - Blur placeholder → sharp; lazy-load below the fold; `fetchpriority=high` on
@@ -461,4 +462,3 @@ they're wrong, not the page.
 5. Every profile image goes through `<ProfileImage>` (safe-mode + CLS + variants).
 6. If the kitchen-sink can't render it in both themes with safe mode toggled,
    it's not done.
-</content>

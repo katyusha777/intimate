@@ -5,7 +5,7 @@
  * facts column beside the content.
  */
 import { profilesApi } from '@/app/api/profiles';
-import { localizedDescription } from '@/app/models/profile';
+import { localizedDescription, profileAge } from '@/app/models/profile';
 import { isLocale, samePathAlternates } from '@/lib/i18n';
 import { breadcrumbJsonLd, cityName } from '@/lib/seo';
 import ProfileDetail from '@/components/organisms/profile/ProfileDetail.astro';
@@ -19,7 +19,7 @@ if (!p) return new Response(null, { status: 404 });
 
 const description = localizedDescription(p);
 const city = cityName(p.city);
-const title = `${p.name}, ${p.age} — ${city} | Intimate`;
+const title = `${p.name}, ${profileAge(p.birthDate)} — ${city} | Intimate`;
 const metaDescription = `${description.slice(0, 140)}${description.length > 140 ? '…' : ''}`;
 const canonical = new URL(`/${locale}/profile/${p.slug}/`, Astro.url.origin).href;
 

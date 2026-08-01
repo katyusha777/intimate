@@ -1,6 +1,6 @@
 # MOBILE.md — The Entry Document
 
-**Read this before everything else.** Then `docs/PLAN.md` (Foundation) and `docs/SEO.md`. Where documents conflict, this one wins.
+**Read this before everything else.** Then `docs/ARCHITECTURE.md` and `docs/SEO.md`. Where documents conflict, this one wins.
 
 **The prime directive: this is a mobile app that happens to be a website.** 87% of our real traffic is mobile (iOS ~60% alone). The product must look, feel, and behave like an incredible native iOS app — installed on the home screen, indistinguishable from native in daily use — while remaining a fast, crawlable website. Desktop must also be beautiful, but desktop *adapts from* mobile, never the reverse.
 
@@ -21,7 +21,7 @@ The bar: a professional puts our icon next to WhatsApp and Telegram on her home 
 ## 2. App shell architecture
 
 - **Fixed bottom tab bar** (mobile only, hidden ≥md): the app's spine.
-  - Tabs: **Zoeken (Search) · Favorieten · Account**. Max 4 ever. Icon + small label (11px) — icon-only is ambiguous, label-only is web-like.
+  - Tabs are **role-driven** (visitor/client: Search · Favorites · Account; professional: Dashboard-centric; full matrix incl. Messages: MESSAGING.md §10). Max 4 ever. Icon + small label (11px) — icon-only is ambiguous, label-only is web-like. The set only ever changes at login/logout, never mid-browse.
   - Height: 56px content + `env(safe-area-inset-bottom)` padding beneath — the bar's background extends to the physical screen edge, content sits above the home indicator. Never let the indicator overlap tappable area.
   - Active tab: filled icon variant + accent color; inactive: outline + muted. State change is instant (<100ms), no transition lag.
   - The bar persists across navigation (Astro View Transitions `transition:persist`) — it must never flicker, reload, or reflow during page changes. This single behavior is half of "feels native."

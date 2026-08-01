@@ -12,6 +12,7 @@ import Combobox from '@/components/molecules/Combobox.astro';
 import ActionSheet from '@/components/molecules/ActionSheet.astro';
 import ProfilePhotoMosaic from '@/components/organisms/profile/ProfilePhotoMosaic.astro';
 import { CITIES } from '@/lib/taxonomy';
+import { profileAge } from '@/app/models/profile';
 import SafeModeToggle from '@/components/molecules/SafeModeToggle.astro';
 import Section from '@/components/molecules/Section.astro';
 import Select from '@/components/atoms/Select.astro';
@@ -162,7 +163,7 @@ const swatches = [
             Scroll the content; a downward drag from the top also dismisses.
           </p>
           {profiles.slice(0, 6).map((prof) => (
-            <p class="border-b border-border py-3 text-sm">{prof.name}, {prof.age} — {prof.city}</p>
+            <p class="border-b border-border py-3 text-sm">{prof.name}, {profileAge(prof.birthDate)} — {prof.city}</p>
           ))}
           <Button data-sheet-close class="w-full">Close</Button>
         </div>

@@ -1,0 +1,51 @@
+---
+/**
+ * Inbox (docs/MESSAGING.md §6). `?to={slug}` starts/opens a client's thread with
+ * that professional and redirects in — the "Message" button on a profile is a
+ * plain link, so it works logged-out (→ sign-in prompt) with zero JS.
+ */
+import * as m from '@/paraglide/messages';
+import { messagingApi } from '@/app/api/messaging';
+import { sessionApi } from '@/app/api/session';
+import { isLocale, localizePath } from '@/lib/i18n';
+import Inbox from '@/components/organisms/messaging/Inbox.astro';
+import SignInPrompt from '@/components/organisms/dashboard/SignInPrompt.astro';
+import Layout from '@/layouts/Layout.astro';
+
+const locale = Astro.params.locale;
+if (!isLocale(locale)) return new Response(null, { status: 404 });
+
+const session = await sessionApi.fromCookies(Astro.cookies);
+
+let unavailable = false;
+if (session && !session.profileId) {
+  const to = Astro.url.searchParams.get('to');
+  if (to) {
+    const thread = await messagingApi.startThread(session, { profileSlug: to });
+    if (thread) return Astro.redirect(localizePath(`/messages/${thread.id}/`));
+    unavailable = true; // her inbox is closed
+  }
+}
+
+const viewer: 'professional' | 'client' = session?.profileId ? 'professional' : 'client';
+const threads = session ? await messagingApi.listThreads(session) : [];
+---
+
+<Layout noindex title={`${m.msg_title()} | Intimate`}>
+  {!session && <SignInPrompt />}
+  {
+    session && (
+      <div class="mx-auto max-w-2xl px-4 py-6 pb-24 md:py-10 md:pb-10">
+        <h1 class="display text-3xl md:text-4xl">{m.msg_title()}</h1>
+        {unavailable && (
+          <p class="slab-cut mt-3 border border-brand/40 bg-brand/5 px-3 py-2 text-sm">
+            {m.msg_unavailable()}
+          </p>
+        )}
+        <div class="mt-4">
+          <Inbox {threads} {viewer} />
+        </div>
+      </div>
+    )
+  }
+</Layout>

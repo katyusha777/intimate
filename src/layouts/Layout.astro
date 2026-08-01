@@ -4,6 +4,7 @@ import * as m from '@/paraglide/messages';
 import { getLocale } from '@/paraglide/runtime';
 import type { Locale } from '@/lib/taxonomy';
 import { accountApi } from '@/app/api/account';
+import { messagingApi } from '@/app/api/messaging';
 import { sessionApi } from '@/app/api/session';
 import Header from '@/components/organisms/layout/Header.astro';
 import Footer from '@/components/organisms/layout/Footer.astro';
@@ -33,9 +34,11 @@ interface Props {
   jsonLd?: unknown[];
   /** Utility pages (account, favorites): keep out of the index. */
   noindex?: boolean;
+  /** Immersive full-screen page (chat thread): drop header/footer/dock chrome. */
+  bare?: boolean;
 }
 
-const { title = m.app_name(), description, canonical, alternates, jsonLd = [], noindex } = Astro.props;
+const { title = m.app_name(), description, canonical, alternates, jsonLd = [], noindex, bare } = Astro.props;
 const locale = getLocale();
 
 /* Session-aware chrome: layouts may read the seam (docs/API.md). */
@@ -44,6 +47,12 @@ const idVerified =
   session?.role === 'advertiser'
     ? (await accountApi.get(session)).idVerification === 'approved'
     : true;
+// Dock unread badge. ponytail: reads all thread docs per page (mock); the
+// Supabase backend replaces this with a realtime per-account count subscription.
+const unread =
+  session && !bare
+    ? (await messagingApi.listThreads(session)).reduce((n, t) => n + t.unread, 0)
+    : 0;
 ---
 
 <!doctype html>
@@ -96,15 +105,15 @@ const idVerified =
     <!-- .page-zoom = the iOS push-back target when a sheet opens; fixed
          chrome (dock, dialogs) lives outside it. -->
     <div class="page-zoom">
-      <Header {session} />
+      {!bare && <Header {session} />}
 
       <main>
         <slot />
       </main>
 
-      <Footer />
+      {!bare && <Footer />}
     </div>
-    <BottomTabBar {session} {idVerified} />
+    {!bare && <BottomTabBar {session} {idVerified} {unread} />}
     <AuthModal />
     <ProfileSheet />
     <Lightbox />

@@ -3,10 +3,12 @@
  * Labelled Misprint slab input (DESIGN §1.1): the P5-style cut ink frame with
  * a paper face. One component for every auth/account form field.
  */
+import type { HTMLAttributes } from 'astro/types';
+
 interface Props {
   label: string;
   name: string;
-  type?: string;
+  type?: HTMLAttributes<'input'>['type'];
   value?: string | number;
   placeholder?: string;
   required?: boolean;

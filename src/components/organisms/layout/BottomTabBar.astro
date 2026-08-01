@@ -7,8 +7,10 @@ interface Props {
   session?: Session | null;
   /** Advertiser ID verification approved → Verify tab loses its crimson dot. */
   idVerified?: boolean;
+  /** Unread messages across all threads → Messages tab dot. */
+  unread?: number;
 }
-const { session = null, idVerified = true } = Astro.props;
+const { session = null, idVerified = true, unread = 0 } = Astro.props;
 
 const path = Astro.url.pathname;
 const tab = (href: string, label: string, icon: string, exact = false) => ({
@@ -19,12 +21,19 @@ const tab = (href: string, label: string, icon: string, exact = false) => ({
   dot: false,
 });
 
-/* Role tab matrix (per spec). The bar only ever swaps at login/logout, never
+/* Role tab matrix (MESSAGING.md §10). The bar only swaps at login/logout, never
    mid-browse, so nobody sees it transform.
-   - Professional: Dashboard · My profile · Account (her workspace)
-   - Visitor & Client: Search · Favorites · Account (favorites work logged out) */
+   - Professional: Dashboard · Messages · Contacts · Account (My profile → account hub)
+   - Client (logged in): Search · Favorites · Messages · Account
+   - Visitor: Search · Favorites · Account (favorites work logged out) */
 const search = tab('/search/', m.nav_search(), '<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>');
 const favorites = tab('/favorites/', m.nav_favorites(), '<path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7Z"/>');
+const account = tab('/account/', m.nav_account(), '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/>');
+const messages = {
+  ...tab('/messages/', m.msg_title(), '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/>'),
+  dot: unread > 0,
+};
+const contacts = tab('/contacts/', m.contacts_title(), '<circle cx="9" cy="8" r="3.2"/><path d="M3.5 20c0-3.3 2.5-5.4 5.5-5.4s5.5 2.1 5.5 5.4"/><path d="M16 5.2a3 3 0 0 1 0 5.6"/><path d="M18.5 20c0-2.6-1-4.4-2.6-5.2"/>');
 
 const tabs =
   session?.role === 'advertiser'
@@ -33,10 +42,13 @@ const tabs =
           ...tab('/account/', m.nav_dashboard(), '<path d="M4 13a8 8 0 1 1 16 0"/><path d="M12 13l4-4"/><path d="M2 17h20"/>', true),
           dot: !idVerified,
         },
-        tab('/account/profile/', m.nav_my_profile(), '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/>'),
-        tab('/account/settings/', m.nav_account(), '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 7 19.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 3 13.6H3a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 4.7 7l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 10.4 3V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0 1.2 2.9H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/>'),
+        messages,
+        contacts,
+        account,
       ]
-    : [search, favorites, tab('/account/', m.nav_account(), '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/>')];
+    : session
+      ? [search, favorites, messages, account]
+      : [search, favorites, account];
 ---
 
 <!-- Floating liquid-glass dock (iOS 26 material, DESIGN §5): fits its content,

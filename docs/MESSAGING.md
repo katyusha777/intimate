@@ -1,10 +1,12 @@
 # MESSAGING.md — Messaging, Contacts, Blocking, Media & Calls
 
-**Status: post-MVP, and gated.** This is the surface that forces the platform's
-biggest architectural step (§1). Build order: **Phase 0 (Supabase real-time +
-Auth backend)** → **Phase A (messaging + blocking + contacts)** → **Phase B
-(chat media)** → **Phase C (calls)**. Never start a later phase before the
-earlier one is in production.
+**Status: UI + mock backend BUILT (Phase A UX on the mock, per §1's
+build-strategy); the security and liveness guarantees below do NOT hold until
+the Supabase swap.** This is the surface that forces the platform's biggest
+architectural step (§1). Build order: **Phase 0 (Supabase real-time + Auth
+backend)** → **Phase A productionization (RLS + realtime behind the seam)** →
+**Phase B (chat media)** → **Phase C (calls)**. Never start a later phase
+before the earlier one is in production.
 
 Follows: `MOBILE.md` (this is the most app-like surface we have — WhatsApp-grade
 native feel is the bar), `ARCHITECTURE.md` (§3 Supabase/two access paths, §10

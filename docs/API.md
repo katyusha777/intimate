@@ -128,8 +128,11 @@ and the filter stay one dimension.
 
 | Module | Functions | Backed by |
 |---|---|---|
-| `api/profiles` | `list(params)` → `{items,total}` · `bySlug(slug)` | `data/json/profiles.json` (12 dummy profiles) |
+| `api/profiles` | `list(params)` → `{items,total}` · `bySlug(slug)` | `data/json/profiles.json` (30 mock profiles) |
 | `api/articles` | `list({limit})` · `bySlug(slug)` | `data/json/articles.json` (4 dummy articles) |
+| `api/session` | `fromCookies` · `register` · `signIn` · `signOut` | mock cookie + KV (Supabase Auth later — same interface) |
+| `api/account` | `get` · `save` · `myProfile` | KV-backed mock (`data/json/session.ts`) |
+| `api/messaging` | threads/messages/contacts/settings (MESSAGING.md §2) | KV-backed mock; enforcement in the action layer until the RLS swap |
 
 `list` params: `city · gender · service · onlineOnly · featuredOnly ·
 verifiedOnly · sort (taxonomy SORT_OPTIONS) · limit · offset`. Counts via

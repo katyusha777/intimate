@@ -9,7 +9,9 @@ import { env } from "cloudflare:workers";
 import { getAiSearchConfig, OPENROUTER_URL } from "@/lib/ai";
 import { ProfileEditSchema } from "@/app/models/account";
 import { accountApi } from "@/app/api/account";
+import { messagingApi } from "@/app/api/messaging";
 import { sessionApi } from "@/app/api/session";
+import { CONVERSATION_MODES } from "@/lib/taxonomy";
 import {
   ALL_SERVICES,
   CITIES,
@@ -306,6 +308,103 @@ export const server = {
         const session = await requireSession(context);
         // Demo-only shortcut for the moderation queue that doesn't exist yet.
         await accountApi.save(session, { idVerification: "approved" });
+        return { ok: true };
+      },
+    }),
+  },
+
+  // Messaging (docs/MESSAGING.md). Participation + the client photo-grant rule
+  // are enforced in the data layer (mock stand-in for RLS): a caller who isn't
+  // a participant gets null back, never another user's thread.
+  messaging: {
+    // Client taps "Message" on a profile → get-or-create the thread, navigate.
+    start: defineAction({
+      input: z.object({ profileSlug: z.string().max(120), locale: z.enum(LOCALES) }),
+      handler: async ({ profileSlug, locale }, context) => {
+        const session = await requireSession(context);
+        const thread = await messagingApi.startThread(session, { profileSlug });
+        if (!thread) return { href: null as string | null };
+        return { href: `/${locale}/messages/${thread.id}/` };
+      },
+    }),
+
+    // Realtime poll (§5) + "viewing = read": marks the other party's messages
+    // read, returns only messages newer than `after` + read watermark + flags.
+    // Never the professional's private note (client-safe payload).
+    thread: defineAction({
+      input: z.object({ threadId: z.string().max(200), after: z.string().max(40).optional() }),
+      handler: async ({ threadId, after }, context) => {
+        const session = await requireSession(context);
+        await messagingApi.markRead(session, threadId);
+        const view = await messagingApi.poll(session, threadId, after);
+        return { view };
+      },
+    }),
+
+    send: defineAction({
+      input: z.object({
+        threadId: z.string().max(200),
+        kind: z.enum(["text", "photo"]),
+        body: z.string().max(4000).optional(),
+        // client downscales + re-encodes (EXIF stripped by the canvas re-encode,
+        // hard rule 2) — same pipeline as account.addPhoto.
+        photo: z
+          .string()
+          .regex(/^data:image\/jpeg;base64,/)
+          .max(900_000)
+          .optional(),
+      }),
+      handler: async (input, context) => {
+        const session = await requireSession(context);
+        const message = await messagingApi.send(session, input);
+        if (!message) throw new ActionError({ code: "BAD_REQUEST" });
+        return { message };
+      },
+    }),
+
+    setMode: defineAction({
+      input: z.object({ mode: z.enum(CONVERSATION_MODES) }),
+      handler: async ({ mode }, context) => {
+        const session = await requireSession(context);
+        await messagingApi.setMode(session, mode);
+        return { ok: true };
+      },
+    }),
+
+    setNote: defineAction({
+      input: z.object({ threadId: z.string().max(200), note: z.string().max(500) }),
+      handler: async ({ threadId, note }, context) => {
+        const session = await requireSession(context);
+        await messagingApi.setNote(session, { threadId, note });
+        return { ok: true };
+      },
+    }),
+
+    setPinned: defineAction({
+      input: z.object({ threadId: z.string().max(200), pinned: z.boolean() }),
+      handler: async ({ threadId, pinned }, context) => {
+        const session = await requireSession(context);
+        await messagingApi.setPinned(session, { threadId, pinned });
+        return { ok: true };
+      },
+    }),
+
+    // Her per-client photo grant (MESSAGING.md 0.3). Professional-only, silent
+    // on revoke, system card on grant — all enforced in the data layer.
+    setMediaAllowed: defineAction({
+      input: z.object({ threadId: z.string().max(200), allowed: z.boolean() }),
+      handler: async ({ threadId, allowed }, context) => {
+        const session = await requireSession(context);
+        await messagingApi.setMediaAllowed(session, { threadId, allowed });
+        return { ok: true };
+      },
+    }),
+
+    setBlocked: defineAction({
+      input: z.object({ threadId: z.string().max(200), blocked: z.boolean() }),
+      handler: async ({ threadId, blocked }, context) => {
+        const session = await requireSession(context);
+        await messagingApi.setBlocked(session, { threadId, blocked });
         return { ok: true };
       },
     }),

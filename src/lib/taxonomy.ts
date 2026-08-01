@@ -31,6 +31,14 @@ export const VERIFICATION_STATES = ['unverified', 'pending', 'approved', 'reject
 
 export const MEDIA_TYPES = ['photo'] as const; // 'video' post-MVP (requires Cloudflare Stream)
 
+// --- Messaging (docs/MESSAGING.md) ---------------------------------------
+/** Who may message a professional. Product law: default OFF (0.1). */
+export const CONVERSATION_MODES = ['off', 'everyone', 'verified_only'] as const;
+/** Message kinds. 'video'/'call_request'/'call_event' are post-MVP (Phase C). */
+export const MESSAGE_KINDS = ['text', 'photo', 'system'] as const;
+/** Thread lifecycle. frozen = professional paused messaging; blocked = mutual cut. */
+export const THREAD_STATES = ['open', 'frozen', 'blocked'] as const;
+
 export const MEDIA_STATES = ['pending_review', 'approved', 'rejected'] as const;
 
 export const REJECTION_REASONS = [
@@ -462,6 +470,9 @@ export type AccountType = (typeof ACCOUNT_TYPES)[number];
 export type ProfileState = (typeof PROFILE_STATES)[number];
 export type VerificationState = (typeof VERIFICATION_STATES)[number];
 export type MediaType = (typeof MEDIA_TYPES)[number];
+export type ConversationMode = (typeof CONVERSATION_MODES)[number];
+export type MessageKind = (typeof MESSAGE_KINDS)[number];
+export type ThreadState = (typeof THREAD_STATES)[number];
 export type MediaState = (typeof MEDIA_STATES)[number];
 export type RejectionReason = (typeof REJECTION_REASONS)[number];
 export type ReportReason = (typeof REPORT_REASONS)[number];
