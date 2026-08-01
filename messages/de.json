@@ -93,5 +93,10 @@
   "stats_avg": "Durchschnitt",
   "stats_online": "Jetzt online",
   "seo_intro_generic": "{count} verifizierte Professionelle in {where}. Preise ab €{min} · {online} jetzt online. Jedes Profil auf Intimate ist verifiziert.",
-  "filter_clear": "Löschen"
+  "filter_clear": "Löschen",
+  "profile_about": "Über",
+  "profile_gallery": "Galerie",
+  "profile_message": "Nachricht senden",
+  "member_since": "Mitglied seit",
+  "profile_verified_note": "Identität von Intimate verifiziert"
 }

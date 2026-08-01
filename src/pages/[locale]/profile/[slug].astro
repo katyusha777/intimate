@@ -1,0 +1,107 @@
+---
+/**
+ * Profile page (hard rule 8: full SEO treatment). Mobile-first: immersive
+ * swipeable hero → facts slab → about → services → gallery. Desktop: sticky
+ * facts column beside the content.
+ */
+import * as m from '@/paraglide/messages';
+import { profilesApi } from '@/app/api/profiles';
+import { localizedDescription } from '@/app/models/profile';
+import { isLocale, samePathAlternates } from '@/lib/i18n';
+import { serviceCategoryLabel, serviceLabel } from '@/lib/labels';
+import { breadcrumbJsonLd, cityName } from '@/lib/seo';
+import { SERVICES, SERVICE_CATEGORIES } from '@/lib/taxonomy';
+import ProfileFacts from '@/components/organisms/profile/ProfileFacts.astro';
+import ProfileGallery from '@/components/organisms/profile/ProfileGallery.astro';
+import ProfileHero from '@/components/organisms/profile/ProfileHero.astro';
+import Layout from '@/layouts/Layout.astro';
+
+const { locale, slug } = Astro.params;
+if (!isLocale(locale) || !slug) return new Response(null, { status: 404 });
+
+const p = await profilesApi.bySlug(slug);
+if (!p) return new Response(null, { status: 404 });
+
+const description = localizedDescription(p);
+const city = cityName(p.city);
+const title = `${p.name}, ${p.age} — ${city} | Intimate`;
+const metaDescription = `${description.slice(0, 140)}${description.length > 140 ? '…' : ''}`;
+const canonical = new URL(`/${locale}/profile/${p.slug}/`, Astro.url.origin).href;
+
+const serviceGroups = SERVICE_CATEGORIES.map((cat) => ({
+  cat,
+  items: SERVICES[cat].filter((s) => (p.services as readonly string[]).includes(s)),
+})).filter((g) => g.items.length > 0);
+
+const jsonLd = [
+  breadcrumbJsonLd([
+    { name: 'Intimate', url: `${Astro.url.origin}/${locale}/` },
+    { name: city, url: `${Astro.url.origin}/${locale}/${p.city}/` },
+    { name: p.name, url: canonical },
+  ]),
+  {
+    '@context': 'https://schema.org',
+    '@type': 'ProfilePage',
+    mainEntity: {
+      '@type': 'Person',
+      name: p.name,
+      description: metaDescription,
+      image: new URL(p.photos[0] ?? '', Astro.url.origin).href,
+      address: { '@type': 'PostalAddress', addressLocality: city, addressCountry: 'NL' },
+    },
+  },
+];
+---
+
+<Layout
+  {title}
+  description={metaDescription}
+  {canonical}
+  alternates={samePathAlternates(Astro.url.origin, `/profile/${p.slug}/`)}
+  {jsonLd}
+>
+  <ProfileHero profile={p} />
+
+  <div class="mx-auto max-w-7xl px-4 py-8 md:px-6 md:py-12" id="profile-details">
+    <div class="grid items-start gap-8 lg:grid-cols-[1fr_22rem] lg:gap-12">
+      <ProfileFacts profile={p} class="order-first w-full lg:order-last" />
+
+      <div class="min-w-0 space-y-10">
+        <section>
+          <h2 class="display text-2xl md:text-3xl">{m.profile_about()}</h2>
+          <p class="mt-4 max-w-2xl leading-relaxed">{description}</p>
+        </section>
+
+        <section>
+          <h2 class="display text-2xl md:text-3xl">{m.filter_services()}</h2>
+          <!-- label left, quiet ink-wash pills right — compact, no keyline noise -->
+          <div class="mt-4 space-y-3">
+            {
+              serviceGroups.map((g) => (
+                <div class="flex gap-4">
+                  <h3 class="w-28 flex-none pt-1.5 font-condensed text-sm font-bold uppercase tracking-wide text-muted-foreground">
+                    {serviceCategoryLabel(g.cat)}
+                  </h3>
+                  <div class="flex flex-wrap items-start gap-1.5">
+                    {g.items.map((s) => (
+                      <span class="rounded-full bg-muted px-3 py-1 text-xs font-medium text-foreground/80">
+                        {serviceLabel(s)}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ))
+            }
+          </div>
+        </section>
+
+        <section>
+          <h2 class="display text-2xl md:text-3xl">{m.profile_gallery()}</h2>
+          <div class="mt-4">
+            <ProfileGallery photos={p.photos} keyBase={p.id} alt={p.name} />
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+</Layout>

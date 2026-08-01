@@ -85,88 +85,93 @@ const chip =
     {updated && <p class="eyebrow mt-1.5">{updated}</p>}
   </div>
 
-  <div class="grid items-start gap-4 lg:grid-cols-[17rem_1fr] lg:gap-6">
-    <details data-filter-panel class="min-w-0">
-      <summary
-        class:list={[chip, 'w-fit select-none list-none lg:hidden [&::-webkit-details-marker]:hidden']}
-      >
+  <div class="grid items-start gap-x-6 gap-y-4 lg:grid-cols-[17rem_1fr]">
+    <!-- Control rail: single scrollable line on mobile (app-style), wraps on lg.
+         The combobox in the header drives the hidden data-city-nav select
+         (path navigation); it is the MAIN location state. -->
+    <div
+      class="-mx-4 flex items-center gap-2 overflow-x-auto px-4 [scrollbar-width:none] lg:col-start-2 lg:mx-0 lg:flex-wrap lg:overflow-visible lg:px-0 [&::-webkit-scrollbar]:hidden"
+    >
+      <select data-city-nav aria-hidden="true" tabindex="-1" class="sr-only">
+        <option value="" selected={!params.city} />
+        {CITIES.map((c) => <option value={c.slug} selected={params.city === c.slug} />)}
+      </select>
+
+      <button type="button" data-toggle-filters class:list={[chip, 'flex-none lg:hidden']}>
         <Icon name="sliders" class="text-muted-foreground" />
         {m.filter_title()}
-      </summary>
-      <div class="pt-4 lg:pt-0">
-        <FilterSidebar params={params} resetHref={basePath} {visitMode} {openCategory} />
+      </button>
+
+      <!-- Gender chips: mobile only — on lg the sidebar group owns gender
+           (the script disables whichever set is hidden, so values never double). -->
+      <div class="flex flex-none items-center gap-2 lg:hidden" data-gender-mobile>
+        {
+          GENDERS.map((g) => (
+            <label class="flex-none">
+              <input
+                type="checkbox"
+                name="genders"
+                value={g}
+                checked={selectedGenders.has(g)}
+                class="peer sr-only"
+              />
+              <span class:list={[chip, 'peer-checked:border-foreground peer-checked:bg-foreground peer-checked:text-background']}>
+                <span class="chip-box" aria-hidden="true" />
+                {genderLabel(g)}
+              </span>
+            </label>
+          ))
+        }
+        {
+          selectedGenders.size > 0 && (
+            <button
+              type="button"
+              data-clear-genders
+              class="flex-none cursor-pointer px-1 text-xs text-muted-foreground underline-offset-2 transition-colors hover:text-foreground hover:underline"
+            >
+              {m.filter_clear()}
+            </button>
+          )
+        }
       </div>
+
+      <label class="flex h-9 flex-none cursor-pointer select-none items-center gap-2.5 whitespace-nowrap px-2 text-sm font-medium">
+        <input type="checkbox" name="online" checked={params.onlineOnly} class="sr-only" />
+        <span class="switch-track" aria-hidden="true"></span>
+        {m.filter_online()}
+      </label>
+
+      <label class="flex flex-none items-center text-sm lg:ml-auto">
+        <span class="slab-cut relative inline-flex h-9 items-center border border-foreground/20 transition-colors hover:border-foreground/60">
+          <select
+            name="sort"
+            aria-label={m.sort_by()}
+            class="h-full cursor-pointer appearance-none bg-transparent pl-3.5 pr-8 text-base font-medium outline-none md:text-sm"
+          >
+            {
+              SORT_OPTIONS.map((s) => (
+                <option value={s} selected={(params.sort ?? 'newest') === s}>
+                  {sortLabel(s)}
+                </option>
+              ))
+            }
+          </select>
+          <Icon name="chevron-down" class="pointer-events-none absolute right-3 text-xs text-muted-foreground" />
+        </span>
+      </label>
+    </div>
+
+    <!-- Filter panel: opens under the rail on mobile; the always-open sidebar
+         column on lg (placed into column 1 across both rows). -->
+    <details
+      data-filter-panel
+      class="min-w-0 lg:col-start-1 lg:row-span-2 lg:row-start-1"
+    >
+      <summary class="hidden"></summary>
+      <FilterSidebar params={params} resetHref={basePath} {visitMode} {openCategory} />
     </details>
 
-    <div>
-      <!-- One control line above the results: genders · online ·· city · sort.
-           The combobox drives the hidden data-city-nav select (path navigation);
-           it is the MAIN location state — sidebar cities only add to it. -->
-      <div class="mb-4 flex flex-wrap items-center gap-2">
-        <select data-city-nav aria-hidden="true" tabindex="-1" class="sr-only">
-          <option value="" selected={!params.city} />
-          {CITIES.map((c) => <option value={c.slug} selected={params.city === c.slug} />)}
-        </select>
-
-        <!-- Gender chips: mobile only — on lg the sidebar group owns gender
-             (the script disables whichever set is hidden, so values never double). -->
-        <div class="flex flex-wrap items-center gap-2 lg:hidden" data-gender-mobile>
-          {
-            GENDERS.map((g) => (
-              <label>
-                <input
-                  type="checkbox"
-                  name="genders"
-                  value={g}
-                  checked={selectedGenders.has(g)}
-                  class="peer sr-only"
-                />
-                <span class:list={[chip, 'peer-checked:border-foreground peer-checked:bg-foreground peer-checked:text-background']}>
-                  <span class="chip-box" aria-hidden="true" />
-                  {genderLabel(g)}
-                </span>
-              </label>
-            ))
-          }
-          {
-            selectedGenders.size > 0 && (
-              <button
-                type="button"
-                data-clear-genders
-                class="cursor-pointer px-1 text-xs text-muted-foreground underline-offset-2 transition-colors hover:text-foreground hover:underline"
-              >
-                {m.filter_clear()}
-              </button>
-            )
-          }
-        </div>
-
-        <label class="flex h-9 cursor-pointer select-none items-center gap-2.5 px-2 text-sm font-medium">
-          <input type="checkbox" name="online" checked={params.onlineOnly} class="sr-only" />
-          <span class="switch-track" aria-hidden="true"></span>
-          {m.filter_online()}
-        </label>
-
-        <label class="ml-auto flex items-center text-sm max-sm:ml-0 max-sm:w-full">
-          <span class="slab-cut relative inline-flex h-9 items-center border border-foreground/20 transition-colors hover:border-foreground/60 max-sm:w-full">
-            <select
-              name="sort"
-              aria-label={m.sort_by()}
-              class="h-full cursor-pointer appearance-none bg-transparent pl-3.5 pr-8 text-base font-medium outline-none md:text-sm"
-            >
-              {
-                SORT_OPTIONS.map((s) => (
-                  <option value={s} selected={(params.sort ?? 'newest') === s}>
-                    {sortLabel(s)}
-                  </option>
-                ))
-              }
-            </select>
-            <Icon name="chevron-down" class="pointer-events-none absolute right-3 text-xs text-muted-foreground" />
-          </span>
-        </label>
-      </div>
-
+    <div class="lg:col-start-2">
       {
         result.items.length > 0 ? (
           <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">
@@ -253,6 +258,11 @@ const chip =
     document.querySelectorAll<HTMLFormElement>('form[data-listing-form]').forEach((form) => {
       if (form.dataset.init) return;
       form.dataset.init = '1';
+
+      form.querySelector('[data-toggle-filters]')?.addEventListener('click', () => {
+        const panel = form.querySelector<HTMLDetailsElement>('[data-filter-panel]');
+        if (panel) panel.open = !panel.open;
+      });
 
       form.querySelector('[data-clear-genders]')?.addEventListener('click', () => {
         form

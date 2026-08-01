@@ -1,0 +1,79 @@
+---
+/**
+ * The booking/info slab: an ink sticker (dark-scoped so the anaglyph CTA
+ * renders white-faced) with price, quick facts and the contact CTA. Sticky
+ * side column on desktop; first block under the hero on mobile.
+ */
+import * as m from '@/paraglide/messages';
+import type { Profile } from '@/app/models/profile';
+import { genderLabel } from '@/lib/labels';
+import { cityName } from '@/lib/seo';
+import Button from '@/components/atoms/Button.astro';
+import VerifiedBadge from '@/components/atoms/VerifiedBadge.astro';
+
+interface Props {
+  profile: Profile;
+  class?: string;
+}
+const { profile: p, class: className } = Astro.props;
+
+const visitLabel = p.meetingTypes
+  .map((t) => (t === 'incall' ? m.cat_private() : m.cat_escort()))
+  .join(' · ');
+const factRow = 'flex items-center justify-between gap-4 border-b border-white/10 py-2.5 text-sm';
+const factLabel = 'eyebrow text-2xs text-white/50';
+---
+
+<aside class:list={['lg:sticky lg:top-24', className]}>
+  <div class="facts-slab dark bg-neutral-950 p-6 text-white">
+    <p class="flex items-baseline gap-2">
+      <span class="font-condensed text-3xl font-bold">€{p.priceFrom}</span>
+      <span class="text-sm text-white/60">{m.price_from()}</span>
+      {
+        p.online && (
+          <span class="ml-auto flex items-center gap-1.5 text-xs font-medium text-white/80">
+            <span class="size-1.5 rounded-full bg-online" />
+            {m.online_now()}
+          </span>
+        )
+      }
+    </p>
+
+    <div class="mt-4">
+      <div class={factRow}>
+        <span class={factLabel}>{m.filter_gender()}</span>
+        {genderLabel(p.gender)}
+      </div>
+      <div class={factRow}>
+        <span class={factLabel}>{m.filter_visit()}</span>
+        {visitLabel}
+      </div>
+      <div class={factRow}>
+        <span class={factLabel}>{m.filter_city()}</span>
+        {cityName(p.city)}
+      </div>
+      <div class:list={[factRow, 'border-b-0']}>
+        <span class={factLabel}>{m.member_since()}</span>
+        {p.createdAt.slice(0, 10)}
+      </div>
+    </div>
+
+    <div class="mt-5 space-y-4">
+      <Button class="w-full" data-modal-open="auth" data-auth-tab="login">
+        {m.profile_message()}
+      </Button>
+      <p class="flex items-center justify-center gap-1.5 text-xs text-white/60">
+        <VerifiedBadge class="size-3.5" />
+        {m.profile_verified_note()}
+      </p>
+    </div>
+  </div>
+</aside>
+
+<style>
+  /* Ink sticker: gentle Misprint cut + a whisper of tilt. */
+  .facts-slab {
+    clip-path: polygon(0 10px, 100% 0, 100% calc(100% - 6px), 0 100%);
+    transform: rotate(-0.4deg);
+  }
+</style>

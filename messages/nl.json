@@ -93,5 +93,10 @@
   "stats_avg": "Gemiddeld",
   "stats_online": "Nu online",
   "seo_intro_generic": "{count} geverifieerde professionals in {where}. Tarieven vanaf €{min} · {online} nu online. Elk profiel op Intimate is geverifieerd.",
-  "filter_clear": "Wissen"
+  "filter_clear": "Wissen",
+  "profile_about": "Over",
+  "profile_gallery": "Galerij",
+  "profile_message": "Stuur bericht",
+  "member_since": "Lid sinds",
+  "profile_verified_note": "Identiteit geverifieerd door Intimate"
 }

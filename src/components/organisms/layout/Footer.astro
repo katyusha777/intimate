@@ -7,10 +7,10 @@ import ThemeToggle from '@/components/molecules/ThemeToggle.astro';
 
 <!-- Footer — always dark (intimate.nl style); `dark` class scopes tokens so
      children (safe-mode toggle, text colors) render on dark correctly. -->
-<footer class="dark mt-16 overflow-hidden bg-neutral-950 text-foreground">
+<footer class="dark mt-10 overflow-hidden bg-neutral-950 text-foreground md:mt-16">
   <div class="mx-auto max-w-7xl px-4 md:px-6">
     <!-- Top: claim + logo -->
-    <div class="grid gap-10 border-b border-white/10 py-12 lg:grid-cols-2 lg:items-center">
+    <div class="grid gap-8 border-b border-white/10 py-8 md:py-12 lg:grid-cols-2 lg:items-center">
       <div>
         <span class="inline-flex items-center gap-2 border border-brand/40 px-3.5 py-1.5 eyebrow text-2xs font-semibold text-white/80">
           <span class="size-1.5 rounded-full bg-brand"></span>
@@ -19,7 +19,7 @@ import ThemeToggle from '@/components/molecules/ThemeToggle.astro';
         <p class="display mt-5 text-3xl md:text-5xl">Where connections begin</p>
       </div>
       <div class="space-y-3 lg:text-right">
-        <img src="/img/logo-light.svg" alt={m.app_name()} class="h-14 w-auto lg:ml-auto" />
+        <img src="/img/logo-light.svg" alt={m.app_name()} class="h-10 w-auto md:h-14 lg:ml-auto" />
         <p class="max-w-xs text-sm text-white/50 lg:ml-auto">
           A new platform, in active development. We're building Intimate together with you.
         </p>
@@ -27,7 +27,7 @@ import ThemeToggle from '@/components/molecules/ThemeToggle.astro';
     </div>
 
     <!-- Link columns + contact card -->
-    <div class="grid gap-10 py-12 sm:grid-cols-2 lg:grid-cols-4">
+    <div class="grid grid-cols-2 gap-8 py-8 md:py-12 lg:grid-cols-4">
       {
         [
           {
@@ -74,7 +74,7 @@ import ThemeToggle from '@/components/molecules/ThemeToggle.astro';
         ))
       }
 
-      <div class="border border-white/15 p-5">
+      <div class="col-span-2 border border-white/15 p-5 lg:col-span-1">
         <p class="eyebrow flex items-center gap-3 text-white/50">
           <span class="h-px w-5 bg-white/30" aria-hidden="true"></span>
           Questions?

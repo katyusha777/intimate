@@ -1,0 +1,51 @@
+---
+/**
+ * All photos as a grid (the slideshow shows them too — this is the browsing
+ * alternative). Tapping a photo jumps the hero slideshow to it.
+ */
+import SafeImage from '@/components/atoms/SafeImage.astro';
+
+interface Props {
+  photos: string[];
+  keyBase: string;
+  alt: string;
+}
+const { photos, keyBase, alt } = Astro.props;
+---
+
+<div class="grid grid-cols-2 gap-2 md:grid-cols-3">
+  {
+    photos.map((photo, i) => (
+      <button
+        type="button"
+        data-gallery-item={i}
+        class="group relative aspect-[3/4] cursor-pointer overflow-hidden bg-neutral-950"
+      >
+        <SafeImage
+          imageKey={`${keyBase}-${i}`}
+          src={photo}
+          alt={`${alt} — ${i + 1}`}
+          class="h-full w-full transition-transform duration-200 group-hover:scale-[1.03]"
+        />
+      </button>
+    ))
+  }
+</div>
+
+<script>
+  // Tap a gallery photo → hero slideshow jumps to it and scrolls into view.
+  function initGallery() {
+    document.querySelectorAll<HTMLElement>('[data-gallery-item]').forEach((item) => {
+      if (item.dataset.init) return;
+      item.dataset.init = '1';
+      item.addEventListener('click', () => {
+        const track = document.querySelector<HTMLElement>('[data-profile-hero] .pc-track');
+        if (!track) return;
+        track.scrollTo({ left: Number(item.dataset.galleryItem) * track.clientWidth });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+    });
+  }
+  initGallery();
+  document.addEventListener('astro:page-load', initGallery);
+</script>

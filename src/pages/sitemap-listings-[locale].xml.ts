@@ -29,6 +29,11 @@ export const GET: APIRoute = async ({ params, url }) => {
     { path: `/${locale}/stats/`, lastmod: globalLastmod },
   ];
 
+  // Profile pages (hard rule 8: every public page type is in the sitemap).
+  for (const p of profiles) {
+    entries.push({ path: `/${locale}/profile/${p.slug}/`, lastmod: p.createdAt.slice(0, 10) });
+  }
+
   for (const city of CITIES) {
     const lastmod = lastmodOf((p) => p.city === city.slug);
     if (lastmod) entries.push({ path: `/${locale}/${city.slug}/`, lastmod });

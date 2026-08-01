@@ -1,8 +1,9 @@
 ---
-/** Photo carousel, arrow-driven only (featured card, gallery). Direct swipe/
- * pan is disabled everywhere — it fights the page and rail scrolling; the
- * track only moves via the arrow buttons (programmatic scroll works on
- * overflow-hidden). */
+/** Photo carousel (cards, profile hero, gallery). Inside cards direct swipe
+ * is disabled — it fights the rail/page scroll and the arrows drive it
+ * (programmatic scroll works on overflow-hidden). On the profile hero
+ * `swipe` turns real swiping back on and `bars` adds story-style progress
+ * segments. */
 import SafeImage from '@/components/atoms/SafeImage.astro';
 
 interface Props {
@@ -12,14 +13,23 @@ interface Props {
   class?: string;
   /** Loading strategy for the first frame; the rest are always lazy. */
   loading?: 'lazy' | 'eager';
+  /** Allow direct touch/trackpad swiping (profile hero). */
+  swipe?: boolean;
+  /** Story-style progress segments across the top. */
+  bars?: boolean;
 }
 
-const { photos, keyBase, alt, class: className, loading = 'lazy' } = Astro.props;
+const { photos, keyBase, alt, class: className, loading = 'lazy', swipe, bars } = Astro.props;
 ---
 
 <div class:list={['pc group relative isolate overflow-hidden', className]}>
   <div
-    class="pc-track flex h-full overflow-x-hidden"
+    class:list={[
+      'pc-track flex h-full',
+      swipe
+        ? 'snap-x snap-mandatory overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
+        : 'overflow-x-hidden',
+    ]}
   >
     {
       photos.map((p, i) => (
@@ -33,6 +43,16 @@ const { photos, keyBase, alt, class: className, loading = 'lazy' } = Astro.props
       ))
     }
   </div>
+
+  {
+    bars && photos.length > 1 && (
+      <div class="pc-bars pointer-events-none absolute inset-x-3 top-3 z-10 flex gap-1">
+        {photos.map((_, i) => (
+          <span class:list={['h-0.5 flex-1 bg-white/40 transition-colors', i === 0 && 'bg-white']} />
+        ))}
+      </div>
+    )
+  }
 
   {
     photos.length > 1 && (
@@ -64,6 +84,18 @@ const { photos, keyBase, alt, class: className, loading = 'lazy' } = Astro.props
       if (pc.dataset.init) return;
       pc.dataset.init = '1';
       const track = pc.querySelector<HTMLElement>('.pc-track')!;
+
+      const bars = [...pc.querySelectorAll<HTMLElement>('.pc-bars > span')];
+      if (bars.length) {
+        track.addEventListener(
+          'scroll',
+          () => {
+            const i = Math.round(track.scrollLeft / track.clientWidth);
+            bars.forEach((b, j) => b.classList.toggle('bg-white', j === i));
+          },
+          { passive: true },
+        );
+      }
 
       pc.querySelectorAll<HTMLElement>('.pc-btn').forEach((btn) => {
         btn.addEventListener('click', (e) => {

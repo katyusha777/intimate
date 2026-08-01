@@ -55,7 +55,7 @@ const row = 'flex cursor-pointer select-none items-center gap-2.5 text-sm hover:
   <div class="mt-4 px-1">
     <!-- Gender (desktop home; on mobile the quick chips above the grid own it —
          the listing script disables whichever set is hidden). -->
-    <div class={group} data-gender-desktop>
+    <div class:list={[group, 'hidden lg:block']} data-gender-desktop>
       <h3 class={heading}>{m.filter_gender()}</h3>
       <div class="space-y-2">
         {

@@ -141,5 +141,10 @@
   "stats_avg": "Average",
   "stats_online": "Online now",
   "seo_intro_generic": "{count} verified professionals in {where}. Rates from €{min} · {online} online now. Every profile on Intimate is verified.",
-  "filter_clear": "Clear"
+  "filter_clear": "Clear",
+  "profile_about": "About",
+  "profile_gallery": "Gallery",
+  "profile_message": "Send message",
+  "member_since": "Member since",
+  "profile_verified_note": "Identity verified by Intimate"
 }
