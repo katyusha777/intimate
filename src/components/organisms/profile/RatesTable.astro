@@ -1,0 +1,94 @@
+---
+/**
+ * Rates table (UX-PLAN 2.1/2.2/2.4): duration × price, with incall/outcall
+ * columns only where the profile offers them. `priceFrom` derives from this
+ * table (models/profile.ratesMinPrice) — the table is the source of truth, the
+ * number is the shadow. Closing line under every table: "the listed price is
+ * the price." A complete table (≥4 durations) earns the CLEAR PRICING mark.
+ *
+ * Variants:
+ *  - `full`    — profile body, above ABOUT on mobile (headers + closing line).
+ *  - `compact` — the desktop deal card (dark-scoped, tighter, same truth line).
+ */
+import * as m from '@/paraglide/messages';
+import type { Profile } from '@/app/models/profile';
+import { rateDurationLabel } from '@/lib/labels';
+import VerifiedBadge from '@/components/atoms/VerifiedBadge.astro';
+
+interface Props {
+  profile: Profile;
+  variant?: 'full' | 'compact';
+  class?: string;
+}
+const { profile: p, variant = 'full', class: className } = Astro.props;
+
+const rates = p.rates ?? [];
+const hasIncall = rates.some((r) => r.incall !== undefined);
+const hasOutcall = rates.some((r) => r.outcall !== undefined);
+// One price column when only one meeting type is priced; two when both.
+const twoCols = hasIncall && hasOutcall;
+// CLEAR PRICING: a table earns the mark when it covers a real range (≥4 rows).
+const isClear = rates.length >= 4;
+
+const dark = variant === 'compact';
+const fmt = (n?: number) => (n === undefined ? '–' : `€${n}`);
+const rowLine = dark ? 'border-white/10' : 'border-border';
+const headInk = dark ? 'text-white/50' : 'text-muted-foreground';
+const muted = dark ? 'text-white/60' : 'text-muted-foreground';
+---
+
+{
+  rates.length > 0 && (
+    <div class:list={[className]}>
+      {isClear && (
+        <p
+          class:list={[
+            'eyebrow mb-2 flex items-center gap-1.5 text-2xs',
+            dark ? 'text-white/70' : 'text-brand',
+          ]}
+        >
+          <VerifiedBadge class="size-3.5" />
+          {m.rates_clear_pricing()}
+        </p>
+      )}
+
+      <div class:list={['divide-y', rowLine, dark ? 'border-t border-white/10' : '']}>
+        {/* header row — only shown when two price columns exist */}
+        {twoCols && (
+          <div class:list={['flex items-center gap-4 py-2 text-2xs', headInk]}>
+            <span class="flex-1" />
+            <span class="w-16 text-right uppercase tracking-wide">{m.rates_incall()}</span>
+            <span class="w-16 text-right uppercase tracking-wide">{m.rates_outcall()}</span>
+          </div>
+        )}
+        {rates.map((r) => (
+          <div class:list={['flex items-center gap-4 py-2.5', dark ? 'text-sm' : 'text-sm md:text-base']}>
+            <span class="flex-1 font-medium">{rateDurationLabel(r.duration)}</span>
+            {twoCols ? (
+              <>
+                <span class="w-16 text-right font-semibold tabular-nums">{fmt(r.incall)}</span>
+                <span class="w-16 text-right font-semibold tabular-nums">{fmt(r.outcall)}</span>
+              </>
+            ) : (
+              <span class="text-right font-semibold tabular-nums">
+                {fmt(hasIncall ? r.incall : r.outcall)}
+              </span>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {(p.depositPolicy || p.extrasNote) && (
+        <div class:list={['mt-2.5 space-y-1 text-xs', muted]}>
+          {p.depositPolicy && <p>{p.depositPolicy}</p>}
+          {p.extrasNote && <p>{p.extrasNote}</p>}
+        </div>
+      )}
+
+      {/* The line the whole feature exists for. */}
+      <p class:list={['mt-3 text-xs font-medium', dark ? 'text-white/70' : 'text-foreground/70']}>
+        {m.rates_listed_is_price()}
+      </p>
+    </div>
+  )
+}

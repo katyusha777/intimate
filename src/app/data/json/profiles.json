@@ -75,7 +75,52 @@
       "/nsfwimg/brian-lawson-MRRgFUt3V0Q-unsplash.jpg",
       "/nsfwimg/gold-touch-nutrition-895Q_xZU4js-unsplash.jpg"
     ],
-    "createdAt": "2026-06-01T08:00:00.000Z"
+    "createdAt": "2026-06-01T08:00:00.000Z",
+    "rates": [
+      {
+        "duration": "min_30",
+        "incall": 100
+      },
+      {
+        "duration": "hour_1",
+        "incall": 160
+      },
+      {
+        "duration": "hour_2",
+        "incall": 280
+      },
+      {
+        "duration": "hour_3",
+        "incall": 390
+      },
+      {
+        "duration": "overnight",
+        "incall": 800
+      }
+    ],
+    "depositPolicy": "20% deposit to confirm, deducted from the total.",
+    "extrasNote": "Any extras are agreed in advance — no surprises.",
+    "languages": [
+      "nl",
+      "en",
+      "de"
+    ],
+    "incallLocations": [
+      "private_apartment",
+      "hotel"
+    ],
+    "amenities": [
+      "shower_available",
+      "discreet_entrance",
+      "parking_available",
+      "drinks_available"
+    ],
+    "paymentMethods": [
+      "cash",
+      "pin",
+      "bank_transfer",
+      "crypto"
+    ]
   },
   {
     "id": "p02",
@@ -156,7 +201,46 @@
       "/nsfwimg/brian-lawson-P0w6oSpzYv0-unsplash.jpg",
       "/nsfwimg/jeferson-gomes-9crthglc2ZE-unsplash.jpg"
     ],
-    "createdAt": "2026-06-07T09:00:00.000Z"
+    "createdAt": "2026-06-07T09:00:00.000Z",
+    "rates": [
+      {
+        "duration": "min_30",
+        "incall": 110,
+        "outcall": 130
+      },
+      {
+        "duration": "hour_1",
+        "incall": 175,
+        "outcall": 195
+      },
+      {
+        "duration": "hour_2",
+        "incall": 310,
+        "outcall": 330
+      },
+      {
+        "duration": "hour_3",
+        "incall": 430,
+        "outcall": 450
+      }
+    ],
+    "languages": [
+      "nl",
+      "en",
+      "it",
+      "pt"
+    ],
+    "incallLocations": [
+      "private_house"
+    ],
+    "amenities": [
+      "shower_available",
+      "discreet_entrance",
+      "air_conditioning"
+    ],
+    "paymentMethods": [
+      "cash"
+    ]
   },
   {
     "id": "p03",
@@ -235,7 +319,37 @@
       "/nsfwimg/brian-wangenheim-wX-LgYYQXXA-unsplash.jpg",
       "/nsfwimg/jeferson-gomes-GYaEMfwk5pM-unsplash.jpg"
     ],
-    "createdAt": "2026-06-13T10:00:00.000Z"
+    "createdAt": "2026-06-13T10:00:00.000Z",
+    "rates": [
+      {
+        "duration": "min_30",
+        "outcall": 120
+      },
+      {
+        "duration": "hour_1",
+        "outcall": 190
+      },
+      {
+        "duration": "hour_2",
+        "outcall": 335
+      },
+      {
+        "duration": "hour_3",
+        "outcall": 470
+      }
+    ],
+    "languages": [
+      "nl",
+      "en",
+      "ru",
+      "tr"
+    ],
+    "incallLocations": [],
+    "amenities": [],
+    "paymentMethods": [
+      "cash",
+      "pin"
+    ]
   },
   {
     "id": "p04",
@@ -317,7 +431,43 @@
       "/nsfwimg/caique-nascimento-Ij24Uq1sMwM-unsplash.jpg",
       "/nsfwimg/josh-pereira-MMCbN2qBEJM-unsplash.jpg"
     ],
-    "createdAt": "2026-06-19T11:00:00.000Z"
+    "createdAt": "2026-06-19T11:00:00.000Z",
+    "rates": [
+      {
+        "duration": "min_30",
+        "incall": 130,
+        "outcall": 150
+      },
+      {
+        "duration": "hour_1",
+        "incall": 210,
+        "outcall": 230
+      },
+      {
+        "duration": "hour_2",
+        "incall": 365,
+        "outcall": 385
+      }
+    ],
+    "depositPolicy": "20% deposit to confirm, deducted from the total.",
+    "languages": [
+      "nl",
+      "en",
+      "tr",
+      "de"
+    ],
+    "incallLocations": [
+      "private_house",
+      "hotel"
+    ],
+    "amenities": [
+      "shower_available",
+      "discreet_entrance"
+    ],
+    "paymentMethods": [
+      "cash",
+      "bank_transfer"
+    ]
   },
   {
     "id": "p05",
@@ -397,7 +547,53 @@
       "/nsfwimg/cucu-marius-daniel-KYr4v51hRqU-unsplash.jpg",
       "/nsfwimg/joshua-rawson-harris-0SRum07agS0-unsplash.jpg"
     ],
-    "createdAt": "2026-06-25T12:00:00.000Z"
+    "createdAt": "2026-06-25T12:00:00.000Z",
+    "rates": [
+      {
+        "duration": "min_30",
+        "incall": 140,
+        "outcall": 160
+      },
+      {
+        "duration": "hour_1",
+        "incall": 225,
+        "outcall": 245
+      },
+      {
+        "duration": "hour_2",
+        "incall": 390,
+        "outcall": 410
+      },
+      {
+        "duration": "hour_3",
+        "incall": 545,
+        "outcall": 565
+      },
+      {
+        "duration": "overnight",
+        "incall": 1120,
+        "outcall": 1140
+      }
+    ],
+    "extrasNote": "Any extras are agreed in advance — no surprises.",
+    "languages": [
+      "nl",
+      "en",
+      "ro"
+    ],
+    "incallLocations": [
+      "private_apartment"
+    ],
+    "amenities": [
+      "shower_available",
+      "discreet_entrance",
+      "parking_available",
+      "air_conditioning"
+    ],
+    "paymentMethods": [
+      "cash",
+      "pin"
+    ]
   },
   {
     "id": "p06",
@@ -477,7 +673,42 @@
       "/nsfwimg/ernest-tarasov-fNuQAdvynBQ-unsplash.jpg",
       "/nsfwimg/logan-weaver-lgnwvr-DFOqZDsIaUA-unsplash.jpg"
     ],
-    "createdAt": "2026-07-01T13:00:00.000Z"
+    "createdAt": "2026-07-01T13:00:00.000Z",
+    "rates": [
+      {
+        "duration": "min_30",
+        "incall": 150
+      },
+      {
+        "duration": "hour_1",
+        "incall": 240
+      },
+      {
+        "duration": "hour_2",
+        "incall": 420
+      },
+      {
+        "duration": "hour_3",
+        "incall": 585
+      }
+    ],
+    "languages": [
+      "nl",
+      "en",
+      "fr",
+      "ar"
+    ],
+    "incallLocations": [
+      "private_house"
+    ],
+    "amenities": [
+      "shower_available",
+      "discreet_entrance",
+      "drinks_available"
+    ],
+    "paymentMethods": [
+      "cash"
+    ]
   },
   {
     "id": "p07",
@@ -557,7 +788,41 @@
       "/nsfwimg/felix-uresti-ZPOZsEuNhgo-unsplash.jpg",
       "/nsfwimg/marlon-alves-XIPHPLurLWc-unsplash.jpg"
     ],
-    "createdAt": "2026-07-07T14:00:00.000Z"
+    "createdAt": "2026-07-07T14:00:00.000Z",
+    "rates": [
+      {
+        "duration": "min_30",
+        "incall": 160,
+        "outcall": 180
+      },
+      {
+        "duration": "hour_1",
+        "incall": 255,
+        "outcall": 275
+      }
+    ],
+    "depositPolicy": "20% deposit to confirm, deducted from the total.",
+    "languages": [
+      "nl",
+      "en",
+      "pt",
+      "fr"
+    ],
+    "incallLocations": [
+      "private_apartment",
+      "hotel"
+    ],
+    "amenities": [
+      "shower_available",
+      "discreet_entrance",
+      "parking_available"
+    ],
+    "paymentMethods": [
+      "cash",
+      "pin",
+      "bank_transfer",
+      "crypto"
+    ]
   },
   {
     "id": "p08",
@@ -637,7 +902,42 @@
       "/nsfwimg/garin-chadwick-XNf_s_upjso-unsplash.jpg",
       "/nsfwimg/martin-martz-Mii2BAuPADw-unsplash.jpg"
     ],
-    "createdAt": "2026-07-13T15:00:00.000Z"
+    "createdAt": "2026-07-13T15:00:00.000Z",
+    "rates": [
+      {
+        "duration": "min_30",
+        "outcall": 170
+      },
+      {
+        "duration": "hour_1",
+        "outcall": 270
+      },
+      {
+        "duration": "hour_2",
+        "outcall": 475
+      },
+      {
+        "duration": "hour_3",
+        "outcall": 665
+      },
+      {
+        "duration": "overnight",
+        "outcall": 1360
+      }
+    ],
+    "languages": [
+      "nl",
+      "en",
+      "pl",
+      "ru"
+    ],
+    "incallLocations": [],
+    "amenities": [
+      "discreet_entrance"
+    ],
+    "paymentMethods": [
+      "cash"
+    ]
   },
   {
     "id": "p09",
@@ -717,7 +1017,48 @@
       "/nsfwimg/gold-touch-nutrition-895Q_xZU4js-unsplash.jpg",
       "/nsfwimg/mihaela-claudia-puscas-P6ug7DiWzZ8-unsplash.jpg"
     ],
-    "createdAt": "2026-07-19T16:00:00.000Z"
+    "createdAt": "2026-07-19T16:00:00.000Z",
+    "rates": [
+      {
+        "duration": "min_30",
+        "incall": 180,
+        "outcall": 200
+      },
+      {
+        "duration": "hour_1",
+        "incall": 290,
+        "outcall": 310
+      },
+      {
+        "duration": "hour_2",
+        "incall": 505,
+        "outcall": 525
+      },
+      {
+        "duration": "hour_3",
+        "incall": 700,
+        "outcall": 720
+      }
+    ],
+    "extrasNote": "Any extras are agreed in advance — no surprises.",
+    "languages": [
+      "nl",
+      "en",
+      "ar",
+      "es"
+    ],
+    "incallLocations": [
+      "private_apartment"
+    ],
+    "amenities": [
+      "shower_available",
+      "discreet_entrance",
+      "parking_available"
+    ],
+    "paymentMethods": [
+      "cash",
+      "pin"
+    ]
   },
   {
     "id": "p10",
@@ -798,7 +1139,47 @@
       "/nsfwimg/jeferson-gomes-9crthglc2ZE-unsplash.jpg",
       "/nsfwimg/mukul-kumar-oWfo8H7wvWo-unsplash.jpg"
     ],
-    "createdAt": "2026-07-25T17:00:00.000Z"
+    "createdAt": "2026-07-25T17:00:00.000Z",
+    "rates": [
+      {
+        "duration": "min_30",
+        "incall": 190,
+        "outcall": 210
+      },
+      {
+        "duration": "hour_1",
+        "incall": 305,
+        "outcall": 325
+      },
+      {
+        "duration": "hour_2",
+        "incall": 530,
+        "outcall": 550
+      },
+      {
+        "duration": "hour_3",
+        "incall": 740,
+        "outcall": 760
+      }
+    ],
+    "depositPolicy": "20% deposit to confirm, deducted from the total.",
+    "languages": [
+      "nl",
+      "en",
+      "es"
+    ],
+    "incallLocations": [
+      "private_house",
+      "hotel"
+    ],
+    "amenities": [
+      "shower_available",
+      "discreet_entrance"
+    ],
+    "paymentMethods": [
+      "cash",
+      "bank_transfer"
+    ]
   },
   {
     "id": "p11",
@@ -879,7 +1260,49 @@
       "/nsfwimg/jeferson-gomes-GYaEMfwk5pM-unsplash.jpg",
       "/nsfwimg/ph-m-duy-quang-8JJVTvNh4Cs-unsplash.jpg"
     ],
-    "createdAt": "2026-06-06T08:00:00.000Z"
+    "createdAt": "2026-06-06T08:00:00.000Z",
+    "rates": [
+      {
+        "duration": "min_30",
+        "incall": 200
+      },
+      {
+        "duration": "hour_1",
+        "incall": 320
+      },
+      {
+        "duration": "hour_2",
+        "incall": 560
+      },
+      {
+        "duration": "hour_3",
+        "incall": 780
+      },
+      {
+        "duration": "overnight",
+        "incall": 1600
+      }
+    ],
+    "languages": [
+      "nl",
+      "en",
+      "es",
+      "pl"
+    ],
+    "incallLocations": [
+      "private_apartment"
+    ],
+    "amenities": [
+      "shower_available",
+      "discreet_entrance",
+      "parking_available",
+      "air_conditioning",
+      "drinks_available"
+    ],
+    "paymentMethods": [
+      "cash",
+      "pin"
+    ]
   },
   {
     "id": "p12",
@@ -960,7 +1383,44 @@
       "/nsfwimg/josh-pereira-MMCbN2qBEJM-unsplash.jpg",
       "/nsfwimg/siednji-leon-VKGNDoJXNQY-unsplash.jpg"
     ],
-    "createdAt": "2026-06-12T09:00:00.000Z"
+    "createdAt": "2026-06-12T09:00:00.000Z",
+    "rates": [
+      {
+        "duration": "min_30",
+        "incall": 210,
+        "outcall": 230
+      },
+      {
+        "duration": "hour_1",
+        "incall": 335,
+        "outcall": 355
+      },
+      {
+        "duration": "hour_2",
+        "incall": 590,
+        "outcall": 610
+      },
+      {
+        "duration": "hour_3",
+        "incall": 820,
+        "outcall": 840
+      }
+    ],
+    "languages": [
+      "nl",
+      "en",
+      "ro"
+    ],
+    "incallLocations": [
+      "private_house"
+    ],
+    "amenities": [
+      "shower_available",
+      "discreet_entrance"
+    ],
+    "paymentMethods": [
+      "cash"
+    ]
   },
   {
     "id": "p13",
@@ -1039,7 +1499,41 @@
       "/nsfwimg/joshua-rawson-harris-0SRum07agS0-unsplash.jpg",
       "/nsfwimg/vadim-yefremov-PZJAYsy4Uao-unsplash.jpg"
     ],
-    "createdAt": "2026-06-18T10:00:00.000Z"
+    "createdAt": "2026-06-18T10:00:00.000Z",
+    "rates": [
+      {
+        "duration": "min_30",
+        "outcall": 220
+      },
+      {
+        "duration": "hour_1",
+        "outcall": 350
+      },
+      {
+        "duration": "hour_2",
+        "outcall": 615
+      },
+      {
+        "duration": "hour_3",
+        "outcall": 860
+      }
+    ],
+    "depositPolicy": "20% deposit to confirm, deducted from the total.",
+    "extrasNote": "Any extras are agreed in advance — no surprises.",
+    "languages": [
+      "nl",
+      "en",
+      "uk",
+      "it"
+    ],
+    "incallLocations": [],
+    "amenities": [],
+    "paymentMethods": [
+      "cash",
+      "pin",
+      "bank_transfer",
+      "crypto"
+    ]
   },
   {
     "id": "p14",
@@ -1120,7 +1614,41 @@
       "/nsfwimg/logan-weaver-lgnwvr-DFOqZDsIaUA-unsplash.jpg",
       "/nsfwimg/vasi-AfcSlj6c0pU-unsplash.jpg"
     ],
-    "createdAt": "2026-06-24T11:00:00.000Z"
+    "createdAt": "2026-06-24T11:00:00.000Z",
+    "rates": [
+      {
+        "duration": "min_30",
+        "incall": 230,
+        "outcall": 250
+      },
+      {
+        "duration": "hour_1",
+        "incall": 370,
+        "outcall": 390
+      },
+      {
+        "duration": "hour_2",
+        "incall": 645,
+        "outcall": 665
+      }
+    ],
+    "languages": [
+      "nl",
+      "en",
+      "es",
+      "uk"
+    ],
+    "incallLocations": [
+      "private_house"
+    ],
+    "amenities": [
+      "shower_available",
+      "discreet_entrance",
+      "air_conditioning"
+    ],
+    "paymentMethods": [
+      "cash"
+    ]
   },
   {
     "id": "p15",
@@ -1200,7 +1728,51 @@
       "/nsfwimg/marlon-alves-XIPHPLurLWc-unsplash.jpg",
       "/nsfwimg/viktor-hesse-AIa89vmqZSA-unsplash.jpg"
     ],
-    "createdAt": "2026-06-30T12:00:00.000Z"
+    "createdAt": "2026-06-30T12:00:00.000Z",
+    "rates": [
+      {
+        "duration": "min_30",
+        "incall": 240,
+        "outcall": 260
+      },
+      {
+        "duration": "hour_1",
+        "incall": 385,
+        "outcall": 405
+      },
+      {
+        "duration": "hour_2",
+        "incall": 670,
+        "outcall": 690
+      },
+      {
+        "duration": "hour_3",
+        "incall": 935,
+        "outcall": 955
+      },
+      {
+        "duration": "overnight",
+        "incall": 1920,
+        "outcall": 1940
+      }
+    ],
+    "languages": [
+      "nl",
+      "en",
+      "de"
+    ],
+    "incallLocations": [
+      "private_apartment"
+    ],
+    "amenities": [
+      "shower_available",
+      "discreet_entrance",
+      "parking_available"
+    ],
+    "paymentMethods": [
+      "cash",
+      "pin"
+    ]
   },
   {
     "id": "p16",
@@ -1280,7 +1852,45 @@
       "/nsfwimg/martin-martz-Mii2BAuPADw-unsplash.jpg",
       "/nsfwimg/agung-setiawan-uqIQkQE0gtM-unsplash.jpg"
     ],
-    "createdAt": "2026-07-06T13:00:00.000Z"
+    "createdAt": "2026-07-06T13:00:00.000Z",
+    "rates": [
+      {
+        "duration": "min_30",
+        "incall": 250
+      },
+      {
+        "duration": "hour_1",
+        "incall": 400
+      },
+      {
+        "duration": "hour_2",
+        "incall": 700
+      },
+      {
+        "duration": "hour_3",
+        "incall": 975
+      }
+    ],
+    "depositPolicy": "20% deposit to confirm, deducted from the total.",
+    "languages": [
+      "nl",
+      "en",
+      "it",
+      "pt"
+    ],
+    "incallLocations": [
+      "private_house",
+      "hotel"
+    ],
+    "amenities": [
+      "shower_available",
+      "discreet_entrance",
+      "drinks_available"
+    ],
+    "paymentMethods": [
+      "cash",
+      "bank_transfer"
+    ]
   },
   {
     "id": "p17",
@@ -1360,7 +1970,39 @@
       "/nsfwimg/mihaela-claudia-puscas-P6ug7DiWzZ8-unsplash.jpg",
       "/nsfwimg/andrey-zvyagintsev-PsreHGlHZJ8-unsplash.jpg"
     ],
-    "createdAt": "2026-07-12T14:00:00.000Z"
+    "createdAt": "2026-07-12T14:00:00.000Z",
+    "rates": [
+      {
+        "duration": "min_30",
+        "incall": 260,
+        "outcall": 280
+      },
+      {
+        "duration": "hour_1",
+        "incall": 415,
+        "outcall": 435
+      }
+    ],
+    "extrasNote": "Any extras are agreed in advance — no surprises.",
+    "languages": [
+      "nl",
+      "en",
+      "ru",
+      "tr"
+    ],
+    "incallLocations": [
+      "private_apartment"
+    ],
+    "amenities": [
+      "shower_available",
+      "discreet_entrance",
+      "parking_available",
+      "air_conditioning"
+    ],
+    "paymentMethods": [
+      "cash",
+      "pin"
+    ]
   },
   {
     "id": "p18",
@@ -1441,7 +2083,42 @@
       "/nsfwimg/mukul-kumar-oWfo8H7wvWo-unsplash.jpg",
       "/nsfwimg/anil-sharma-bzjVTQMMm-U-unsplash.jpg"
     ],
-    "createdAt": "2026-07-18T15:00:00.000Z"
+    "createdAt": "2026-07-18T15:00:00.000Z",
+    "rates": [
+      {
+        "duration": "min_30",
+        "outcall": 270
+      },
+      {
+        "duration": "hour_1",
+        "outcall": 430
+      },
+      {
+        "duration": "hour_2",
+        "outcall": 755
+      },
+      {
+        "duration": "hour_3",
+        "outcall": 1055
+      },
+      {
+        "duration": "overnight",
+        "outcall": 2160
+      }
+    ],
+    "languages": [
+      "nl",
+      "en",
+      "tr",
+      "de"
+    ],
+    "incallLocations": [],
+    "amenities": [
+      "discreet_entrance"
+    ],
+    "paymentMethods": [
+      "cash"
+    ]
   },
   {
     "id": "p19",
@@ -1520,7 +2197,50 @@
       "/nsfwimg/ph-m-duy-quang-8JJVTvNh4Cs-unsplash.jpg",
       "/nsfwimg/ayo-ogunseinde-LX_nAdJQpAQ-unsplash.jpg"
     ],
-    "createdAt": "2026-07-24T16:00:00.000Z"
+    "createdAt": "2026-07-24T16:00:00.000Z",
+    "rates": [
+      {
+        "duration": "min_30",
+        "incall": 100,
+        "outcall": 120
+      },
+      {
+        "duration": "hour_1",
+        "incall": 160,
+        "outcall": 180
+      },
+      {
+        "duration": "hour_2",
+        "incall": 280,
+        "outcall": 300
+      },
+      {
+        "duration": "hour_3",
+        "incall": 390,
+        "outcall": 410
+      }
+    ],
+    "depositPolicy": "20% deposit to confirm, deducted from the total.",
+    "languages": [
+      "nl",
+      "en",
+      "ro"
+    ],
+    "incallLocations": [
+      "private_apartment",
+      "hotel"
+    ],
+    "amenities": [
+      "shower_available",
+      "discreet_entrance",
+      "parking_available"
+    ],
+    "paymentMethods": [
+      "cash",
+      "pin",
+      "bank_transfer",
+      "crypto"
+    ]
   },
   {
     "id": "p20",
@@ -1600,7 +2320,46 @@
       "/nsfwimg/siednji-leon-VKGNDoJXNQY-unsplash.jpg",
       "/nsfwimg/babi-JztG86OFVKo-unsplash.jpg"
     ],
-    "createdAt": "2026-06-05T17:00:00.000Z"
+    "createdAt": "2026-06-05T17:00:00.000Z",
+    "rates": [
+      {
+        "duration": "min_30",
+        "incall": 110,
+        "outcall": 130
+      },
+      {
+        "duration": "hour_1",
+        "incall": 175,
+        "outcall": 195
+      },
+      {
+        "duration": "hour_2",
+        "incall": 310,
+        "outcall": 330
+      },
+      {
+        "duration": "hour_3",
+        "incall": 430,
+        "outcall": 450
+      }
+    ],
+    "languages": [
+      "nl",
+      "en",
+      "fr",
+      "ar"
+    ],
+    "incallLocations": [
+      "private_house"
+    ],
+    "amenities": [
+      "shower_available",
+      "discreet_entrance",
+      "air_conditioning"
+    ],
+    "paymentMethods": [
+      "cash"
+    ]
   },
   {
     "id": "p21",
@@ -1678,7 +2437,49 @@
       "/nsfwimg/vadim-yefremov-PZJAYsy4Uao-unsplash.jpg",
       "/nsfwimg/babi-Lf9JpqXS--0-unsplash.jpg"
     ],
-    "createdAt": "2026-06-11T08:00:00.000Z"
+    "createdAt": "2026-06-11T08:00:00.000Z",
+    "rates": [
+      {
+        "duration": "min_30",
+        "incall": 120
+      },
+      {
+        "duration": "hour_1",
+        "incall": 190
+      },
+      {
+        "duration": "hour_2",
+        "incall": 335
+      },
+      {
+        "duration": "hour_3",
+        "incall": 470
+      },
+      {
+        "duration": "overnight",
+        "incall": 960
+      }
+    ],
+    "extrasNote": "Any extras are agreed in advance — no surprises.",
+    "languages": [
+      "nl",
+      "en",
+      "pt",
+      "fr"
+    ],
+    "incallLocations": [
+      "private_apartment"
+    ],
+    "amenities": [
+      "shower_available",
+      "discreet_entrance",
+      "parking_available",
+      "drinks_available"
+    ],
+    "paymentMethods": [
+      "cash",
+      "pin"
+    ]
   },
   {
     "id": "p22",
@@ -1758,7 +2559,48 @@
       "/nsfwimg/vasi-AfcSlj6c0pU-unsplash.jpg",
       "/nsfwimg/brian-lawson-GHFQL3sLfyQ-unsplash.jpg"
     ],
-    "createdAt": "2026-06-17T09:00:00.000Z"
+    "createdAt": "2026-06-17T09:00:00.000Z",
+    "rates": [
+      {
+        "duration": "min_30",
+        "incall": 130,
+        "outcall": 150
+      },
+      {
+        "duration": "hour_1",
+        "incall": 210,
+        "outcall": 230
+      },
+      {
+        "duration": "hour_2",
+        "incall": 365,
+        "outcall": 385
+      },
+      {
+        "duration": "hour_3",
+        "incall": 505,
+        "outcall": 525
+      }
+    ],
+    "depositPolicy": "20% deposit to confirm, deducted from the total.",
+    "languages": [
+      "nl",
+      "en",
+      "pl",
+      "ru"
+    ],
+    "incallLocations": [
+      "private_house",
+      "hotel"
+    ],
+    "amenities": [
+      "shower_available",
+      "discreet_entrance"
+    ],
+    "paymentMethods": [
+      "cash",
+      "bank_transfer"
+    ]
   },
   {
     "id": "p23",
@@ -1836,7 +2678,37 @@
       "/nsfwimg/viktor-hesse-AIa89vmqZSA-unsplash.jpg",
       "/nsfwimg/brian-lawson-MRRgFUt3V0Q-unsplash.jpg"
     ],
-    "createdAt": "2026-06-23T10:00:00.000Z"
+    "createdAt": "2026-06-23T10:00:00.000Z",
+    "rates": [
+      {
+        "duration": "min_30",
+        "outcall": 140
+      },
+      {
+        "duration": "hour_1",
+        "outcall": 225
+      },
+      {
+        "duration": "hour_2",
+        "outcall": 390
+      },
+      {
+        "duration": "hour_3",
+        "outcall": 545
+      }
+    ],
+    "languages": [
+      "nl",
+      "en",
+      "ar",
+      "es"
+    ],
+    "incallLocations": [],
+    "amenities": [],
+    "paymentMethods": [
+      "cash",
+      "pin"
+    ]
   },
   {
     "id": "p24",
@@ -1916,7 +2788,39 @@
       "/nsfwimg/agung-setiawan-uqIQkQE0gtM-unsplash.jpg",
       "/nsfwimg/brian-lawson-P0w6oSpzYv0-unsplash.jpg"
     ],
-    "createdAt": "2026-06-29T11:00:00.000Z"
+    "createdAt": "2026-06-29T11:00:00.000Z",
+    "rates": [
+      {
+        "duration": "min_30",
+        "incall": 150,
+        "outcall": 170
+      },
+      {
+        "duration": "hour_1",
+        "incall": 240,
+        "outcall": 260
+      },
+      {
+        "duration": "hour_2",
+        "incall": 420,
+        "outcall": 440
+      }
+    ],
+    "languages": [
+      "nl",
+      "en",
+      "es"
+    ],
+    "incallLocations": [
+      "private_house"
+    ],
+    "amenities": [
+      "shower_available",
+      "discreet_entrance"
+    ],
+    "paymentMethods": [
+      "cash"
+    ]
   },
   {
     "id": "p25",
@@ -1997,7 +2901,57 @@
       "/nsfwimg/andrey-zvyagintsev-PsreHGlHZJ8-unsplash.jpg",
       "/nsfwimg/brian-wangenheim-wX-LgYYQXXA-unsplash.jpg"
     ],
-    "createdAt": "2026-07-05T12:00:00.000Z"
+    "createdAt": "2026-07-05T12:00:00.000Z",
+    "rates": [
+      {
+        "duration": "min_30",
+        "incall": 160,
+        "outcall": 180
+      },
+      {
+        "duration": "hour_1",
+        "incall": 255,
+        "outcall": 275
+      },
+      {
+        "duration": "hour_2",
+        "incall": 450,
+        "outcall": 470
+      },
+      {
+        "duration": "hour_3",
+        "incall": 625,
+        "outcall": 645
+      },
+      {
+        "duration": "overnight",
+        "incall": 1280,
+        "outcall": 1300
+      }
+    ],
+    "depositPolicy": "20% deposit to confirm, deducted from the total.",
+    "extrasNote": "Any extras are agreed in advance — no surprises.",
+    "languages": [
+      "nl",
+      "en",
+      "es",
+      "pl"
+    ],
+    "incallLocations": [
+      "private_apartment",
+      "hotel"
+    ],
+    "amenities": [
+      "shower_available",
+      "discreet_entrance",
+      "parking_available"
+    ],
+    "paymentMethods": [
+      "cash",
+      "pin",
+      "bank_transfer",
+      "crypto"
+    ]
   },
   {
     "id": "p26",
@@ -2076,7 +3030,42 @@
       "/nsfwimg/anil-sharma-bzjVTQMMm-U-unsplash.jpg",
       "/nsfwimg/caique-nascimento-Ij24Uq1sMwM-unsplash.jpg"
     ],
-    "createdAt": "2026-07-11T13:00:00.000Z"
+    "createdAt": "2026-07-11T13:00:00.000Z",
+    "rates": [
+      {
+        "duration": "min_30",
+        "incall": 170
+      },
+      {
+        "duration": "hour_1",
+        "incall": 270
+      },
+      {
+        "duration": "hour_2",
+        "incall": 475
+      },
+      {
+        "duration": "hour_3",
+        "incall": 665
+      }
+    ],
+    "languages": [
+      "nl",
+      "en",
+      "ro"
+    ],
+    "incallLocations": [
+      "private_house"
+    ],
+    "amenities": [
+      "shower_available",
+      "discreet_entrance",
+      "air_conditioning",
+      "drinks_available"
+    ],
+    "paymentMethods": [
+      "cash"
+    ]
   },
   {
     "id": "p27",
@@ -2155,7 +3144,37 @@
       "/nsfwimg/ayo-ogunseinde-LX_nAdJQpAQ-unsplash.jpg",
       "/nsfwimg/cucu-marius-daniel-KYr4v51hRqU-unsplash.jpg"
     ],
-    "createdAt": "2026-07-17T14:00:00.000Z"
+    "createdAt": "2026-07-17T14:00:00.000Z",
+    "rates": [
+      {
+        "duration": "min_30",
+        "incall": 180,
+        "outcall": 200
+      },
+      {
+        "duration": "hour_1",
+        "incall": 290,
+        "outcall": 310
+      }
+    ],
+    "languages": [
+      "nl",
+      "en",
+      "uk",
+      "it"
+    ],
+    "incallLocations": [
+      "private_apartment"
+    ],
+    "amenities": [
+      "shower_available",
+      "discreet_entrance",
+      "parking_available"
+    ],
+    "paymentMethods": [
+      "cash",
+      "pin"
+    ]
   },
   {
     "id": "p28",
@@ -2234,7 +3253,44 @@
       "/nsfwimg/babi-JztG86OFVKo-unsplash.jpg",
       "/nsfwimg/ernest-tarasov-fNuQAdvynBQ-unsplash.jpg"
     ],
-    "createdAt": "2026-07-23T15:00:00.000Z"
+    "createdAt": "2026-07-23T15:00:00.000Z",
+    "rates": [
+      {
+        "duration": "min_30",
+        "outcall": 190
+      },
+      {
+        "duration": "hour_1",
+        "outcall": 305
+      },
+      {
+        "duration": "hour_2",
+        "outcall": 530
+      },
+      {
+        "duration": "hour_3",
+        "outcall": 740
+      },
+      {
+        "duration": "overnight",
+        "outcall": 1520
+      }
+    ],
+    "depositPolicy": "20% deposit to confirm, deducted from the total.",
+    "languages": [
+      "nl",
+      "en",
+      "es",
+      "uk"
+    ],
+    "incallLocations": [],
+    "amenities": [
+      "discreet_entrance"
+    ],
+    "paymentMethods": [
+      "cash",
+      "bank_transfer"
+    ]
   },
   {
     "id": "p29",
@@ -2313,7 +3369,48 @@
       "/nsfwimg/babi-Lf9JpqXS--0-unsplash.jpg",
       "/nsfwimg/felix-uresti-ZPOZsEuNhgo-unsplash.jpg"
     ],
-    "createdAt": "2026-06-04T16:00:00.000Z"
+    "createdAt": "2026-06-04T16:00:00.000Z",
+    "rates": [
+      {
+        "duration": "min_30",
+        "incall": 200,
+        "outcall": 220
+      },
+      {
+        "duration": "hour_1",
+        "incall": 320,
+        "outcall": 340
+      },
+      {
+        "duration": "hour_2",
+        "incall": 560,
+        "outcall": 580
+      },
+      {
+        "duration": "hour_3",
+        "incall": 780,
+        "outcall": 800
+      }
+    ],
+    "extrasNote": "Any extras are agreed in advance — no surprises.",
+    "languages": [
+      "nl",
+      "en",
+      "de"
+    ],
+    "incallLocations": [
+      "private_apartment"
+    ],
+    "amenities": [
+      "shower_available",
+      "discreet_entrance",
+      "parking_available",
+      "air_conditioning"
+    ],
+    "paymentMethods": [
+      "cash",
+      "pin"
+    ]
   },
   {
     "id": "p30",
@@ -2393,6 +3490,44 @@
       "/nsfwimg/brian-lawson-GHFQL3sLfyQ-unsplash.jpg",
       "/nsfwimg/garin-chadwick-XNf_s_upjso-unsplash.jpg"
     ],
-    "createdAt": "2026-06-10T17:00:00.000Z"
+    "createdAt": "2026-06-10T17:00:00.000Z",
+    "rates": [
+      {
+        "duration": "min_30",
+        "incall": 210,
+        "outcall": 230
+      },
+      {
+        "duration": "hour_1",
+        "incall": 335,
+        "outcall": 355
+      },
+      {
+        "duration": "hour_2",
+        "incall": 590,
+        "outcall": 610
+      },
+      {
+        "duration": "hour_3",
+        "incall": 820,
+        "outcall": 840
+      }
+    ],
+    "languages": [
+      "nl",
+      "en",
+      "it",
+      "pt"
+    ],
+    "incallLocations": [
+      "private_house"
+    ],
+    "amenities": [
+      "shower_available",
+      "discreet_entrance"
+    ],
+    "paymentMethods": [
+      "cash"
+    ]
   }
 ]

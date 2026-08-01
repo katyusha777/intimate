@@ -7,12 +7,17 @@ import { z } from 'zod';
 import { getLocale } from '@/paraglide/runtime';
 import {
   ALL_SERVICES,
+  AMENITIES,
   CITIES,
   DAYS,
   GENDERS,
+  INCALL_LOCATIONS,
+  LANGUAGES,
   LOCALES,
   MEETING_TYPES,
+  PAYMENT_METHODS,
   PROFILE_STATES,
+  RATE_DURATIONS,
   SERVICE_CATEGORIES,
   SORT_OPTIONS,
   type CitySlug,
@@ -35,6 +40,28 @@ export type OpeningHours = z.infer<typeof OpeningHoursSchema>;
 const CITY_SLUGS = CITIES.map((c) => c.slug) as unknown as [CitySlug, ...CitySlug[]];
 const SERVICE_VALUES = ALL_SERVICES as unknown as [Service, ...Service[]];
 
+/**
+ * One rate row (UX-PLAN 2.1): a duration with an incall and/or outcall price.
+ * At least one of the two prices must be set — a row with no price is noise.
+ * `priceFrom` is DERIVED from the min of these (ratesMinPrice), never authored.
+ */
+export const RateRowSchema = z
+  .object({
+    duration: z.enum(RATE_DURATIONS),
+    incall: z.number().int().positive().optional(),
+    outcall: z.number().int().positive().optional(),
+  })
+  .refine((r) => r.incall !== undefined || r.outcall !== undefined, {
+    message: 'rate row needs an incall or outcall price',
+  });
+export type RateRow = z.infer<typeof RateRowSchema>;
+
+/** Minimum price across a rates table (both columns) — the derived `priceFrom`. */
+export function ratesMinPrice(rates: readonly RateRow[]): number | undefined {
+  const all = rates.flatMap((r) => [r.incall, r.outcall].filter((n): n is number => n !== undefined));
+  return all.length ? Math.min(...all) : undefined;
+}
+
 export const ProfileSchema = z.object({
   id: z.string(),
   slug: z.string(),
@@ -48,9 +75,26 @@ export const ProfileSchema = z.object({
   verified: z.boolean(),
   online: z.boolean(),
   featured: z.boolean(),
-  priceFrom: z.number().int().positive(), // EUR
+  /**
+   * DERIVED (UX-PLAN 2.1): the min of the rates table. Input is optional and
+   * only used as a fallback for profiles that carry no table yet — the transform
+   * below overwrites it whenever `rates` is non-empty, so every reader (search,
+   * cards, admin) keeps reading one honest number.
+   */
+  priceFrom: z.number().int().positive().optional(), // EUR — derived from rates
+  /** First-class rate table (UX-PLAN 2.1); `priceFrom` derives from it. */
+  rates: z.array(RateRowSchema).default([]),
+  /** Optional deposit policy shown under the table + in good-to-know. */
+  depositPolicy: z.string().optional(),
+  /** Optional free note under the table ("extras discussed in person"). */
+  extrasNote: z.string().optional(),
   services: z.array(z.enum(SERVICE_VALUES)),
   meetingTypes: z.array(z.enum(MEETING_TYPES)),
+  // --- Good-to-know facts (UX-PLAN 2.5): taxonomy keys, labels via i18n. ---
+  languages: z.array(z.enum(LANGUAGES)).default([]),
+  incallLocations: z.array(z.enum(INCALL_LOCATIONS)).default([]),
+  amenities: z.array(z.enum(AMENITIES)).default([]),
+  paymentMethods: z.array(z.enum(PAYMENT_METHODS)).default([]),
   /** Availability per weekday (optional — absent = not specified). */
   openingHours: OpeningHoursSchema.default({}),
   /**
@@ -65,7 +109,13 @@ export const ProfileSchema = z.object({
   descriptionTranslations: z.partialRecord(z.enum(LOCALES), z.string()).default({}),
   photos: z.array(z.string()),
   createdAt: z.iso.datetime(),
-});
+}).transform((p) => ({
+  // priceFrom is derived: the rates table wins; the authored number is only a
+  // fallback for tableless profiles. `?? 0` keeps the type a plain number even
+  // in the (invalid seed) case of neither — callers never see undefined.
+  ...p,
+  priceFrom: ratesMinPrice(p.rates) ?? p.priceFrom ?? 0,
+}));
 export type Profile = z.infer<typeof ProfileSchema>;
 
 /** Age in whole years from a YYYY-MM-DD birth date (the DB stores the date). */

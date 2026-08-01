@@ -68,7 +68,7 @@ Folders appear when their first organism lands:
 
 | Domain | Organisms |
 |---|---|
-| `profile/` | ✓ ProfileCard, ProfileDetail, ProfileHero, ProfileGallery, ProfilePhotoMosaic, ProfileSheet, ProfileFacts, ReportControl — anticipated: RatesTable, ContactCard, SimilarProfiles |
+| `profile/` | ✓ ProfileCard, ProfileDetail, ProfileHero, ProfileGallery, ProfilePhotoMosaic, ProfileSheet, ProfileFacts (the deal card), RatesTable, GoodToKnow, SimilarProfiles, ReportControl — anticipated: ContactCard |
 | `search/` | ✓ SearchListing, FilterSidebar |
 | `auth/` | ✓ AuthModal — anticipated: PasswordReset, OtpForm |
 | `dashboard/` | ✓ AccountShell, SignInPrompt, ProfileEditorForm, MediaManager, VerificationFlow — anticipated: ImportWizard steps, StatsTiles |

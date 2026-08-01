@@ -54,6 +54,8 @@ The two questions the profile never answers — the real price, and what contact
 
 DoD: rates render in first viewport on 390 · derived `priceFrom` consistent everywhere · good-to-know values are taxonomy keys (labels via i18n) · deal card carries rates/availability/CTA in every scroll position (Playwright).
 
+**Status: ✅ landed.** `rates`/`depositPolicy`/`extrasNote` + good-to-know fields (`languages`/`incallLocations`/`amenities`/`paymentMethods`) added to the profile model; `priceFrom` is derived via `ratesMinPrice()` (schema transform + `myProfile` re-derive) so every reader keeps its number. Components: `organisms/profile/RatesTable` (full/compact), `GoodToKnow`, `SimilarProfiles`; `ProfileFacts` reworked into the deal card; `AvailabilityLine` reused under name + in the card. Editor gains a rates table + good-to-know editor. Seed: all 30 profiles carry a table (min = old `priceFrom`, so nothing shifted).
+
 ## Phase 3 — Trust receipts
 
 Dated proof beats badges in a market where everyone has been burned.

@@ -1,5 +1,23 @@
 import * as m from '@/paraglide/messages';
-import type { Day, Gender, ListingCategorySlug, Service, ServiceCategory, SortOption } from './taxonomy';
+import type {
+  Amenity,
+  Day,
+  Gender,
+  IncallLocation,
+  Language,
+  ListingCategorySlug,
+  PaymentMethod,
+  RateDuration,
+  Service,
+  ServiceCategory,
+  SortOption,
+} from './taxonomy';
+
+/** Dynamic taxonomy-key → i18n label (taxonomy = law: labels only via i18n). */
+function taxonomyLabel(key: string, fallback: string): string {
+  const fn = (m as Record<string, unknown>)[key];
+  return typeof fn === 'function' ? (fn as () => string)() : fallback;
+}
 
 /** Localized weekday name; `short` gives the 3-letter form for tight chrome. */
 export function dayLabel(d: Day, short = false): string {
@@ -45,6 +63,25 @@ export function listingCategoryLabel(slug: ListingCategorySlug): string {
     case 'bdsm':
       return m.cat_bdsm();
   }
+}
+
+/** Rate-table duration (UX-PLAN 2.1) → localized label. */
+export function rateDurationLabel(d: RateDuration): string {
+  return taxonomyLabel(`taxonomy_rate_durations_${d}`, d);
+}
+
+/** Good-to-know taxonomy labels (UX-PLAN 2.5). */
+export function languageLabel(l: Language): string {
+  return taxonomyLabel(`taxonomy_languages_${l}`, l);
+}
+export function incallLocationLabel(l: IncallLocation): string {
+  return taxonomyLabel(`taxonomy_incall_locations_${l}`, l);
+}
+export function amenityLabel(a: Amenity): string {
+  return taxonomyLabel(`taxonomy_amenities_${a}`, a);
+}
+export function paymentMethodLabel(pm: PaymentMethod): string {
+  return taxonomyLabel(`taxonomy_payment_methods_${pm}`, pm);
 }
 
 export function sortLabel(s: SortOption): string {

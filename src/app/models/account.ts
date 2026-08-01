@@ -4,8 +4,8 @@
  * verification fields).
  */
 import { z } from 'zod';
-import { CITIES, GENDERS, MEETING_TYPES, ALL_SERVICES, VERIFICATION_STATES, type CitySlug, type Service } from '@/lib/taxonomy';
-import { OpeningHoursSchema, type Profile } from '@/app/models/profile';
+import { AMENITIES, CITIES, GENDERS, INCALL_LOCATIONS, LANGUAGES, MEETING_TYPES, PAYMENT_METHODS, RATE_DURATIONS, ALL_SERVICES, VERIFICATION_STATES, type CitySlug, type Service } from '@/lib/taxonomy';
+import { OpeningHoursSchema, RateRowSchema, type Profile } from '@/app/models/profile';
 import type { Session } from '@/app/models/session';
 
 const CITY_SLUGS = CITIES.map((c) => c.slug) as unknown as [CitySlug, ...CitySlug[]];
@@ -17,9 +17,16 @@ export const ProfileEditSchema = z.object({
   birthDate: z.iso.date(), // 18+ enforced at the input + server (ARCHITECTURE §8.4)
   gender: z.enum(GENDERS),
   city: z.enum(CITY_SLUGS),
-  priceFrom: z.number().int().min(0).max(10_000),
+  // priceFrom is derived from `rates` (UX-PLAN 2.1) — not directly editable.
+  rates: z.array(RateRowSchema).max(RATE_DURATIONS.length),
+  depositPolicy: z.string().trim().max(200).optional(),
+  extrasNote: z.string().trim().max(200).optional(),
   services: z.array(z.enum(SERVICE_VALUES)).max(20),
   meetingTypes: z.array(z.enum(MEETING_TYPES)).min(1),
+  languages: z.array(z.enum(LANGUAGES)).max(12),
+  incallLocations: z.array(z.enum(INCALL_LOCATIONS)),
+  amenities: z.array(z.enum(AMENITIES)),
+  paymentMethods: z.array(z.enum(PAYMENT_METHODS)),
   openingHours: OpeningHoursSchema,
   description: z.string().trim().max(1000),
 });

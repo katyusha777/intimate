@@ -11,6 +11,7 @@ import { serviceLabel } from '@/lib/labels';
 import { cityName } from '@/lib/seo';
 import SafeImage from '@/components/atoms/SafeImage.astro';
 import VerifiedBadge from '@/components/atoms/VerifiedBadge.astro';
+import AvailabilityLine from '@/components/molecules/AvailabilityLine.astro';
 
 interface Props {
   profile: Profile;
@@ -67,13 +68,10 @@ const { profile: p } = Astro.props;
         <VerifiedBadge class="size-6" />
       </h1>
       <p class="mt-1.5 flex items-center gap-2 text-sm text-white/80">
-        {p.online && (
-          <span class="flex items-center gap-1.5">
-            <span class="size-1.5 rounded-full bg-online"></span>
-            {m.online_now()}
-          </span>
-        )}
-        {p.online && <span aria-hidden="true">·</span>}
+        <!-- One availability truth line (2.3), shared component (card variant
+             reads white-on-ink, matching the scrim). -->
+        <AvailabilityLine profile={p} variant="card" class="text-sm text-white/90" />
+        <span aria-hidden="true">·</span>
         {cityName(p.city)}
         <span aria-hidden="true">·</span>
         {m.price_from()} <span class="font-semibold text-white">€{p.priceFrom}</span>

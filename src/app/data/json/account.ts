@@ -8,6 +8,7 @@
  */
 import { env } from 'cloudflare:workers';
 import { AccountSchema, type Account, type AccountApi, type AccountRecord } from '@/app/models/account';
+import { ratesMinPrice } from '@/app/models/profile';
 import type { Session } from '@/app/models/session';
 import { profilesApi } from '@/app/data/json/profiles';
 
@@ -76,9 +77,12 @@ export const accountApi: AccountApi = {
     if (!base) return null;
     const acct = await readAccount(session.email);
     const removed = new Set(acct.removedPhotos);
+    const merged = { ...base, ...acct.profileOverride };
     return {
-      ...base,
-      ...acct.profileOverride,
+      ...merged,
+      // priceFrom is derived (UX-PLAN 2.1) — recompute after the override may
+      // have changed the rates table, else the base's stale number would show.
+      priceFrom: ratesMinPrice(merged.rates) ?? merged.priceFrom,
       photos: [...base.photos.filter((_, i) => !removed.has(i)), ...acct.extraPhotos],
     };
   },

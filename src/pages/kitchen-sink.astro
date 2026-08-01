@@ -14,6 +14,10 @@ import AvailabilityLine from '@/components/molecules/AvailabilityLine.astro';
 import LinkChips from '@/components/molecules/LinkChips.astro';
 import CitySheet from '@/components/molecules/CitySheet.astro';
 import ProfilePhotoMosaic from '@/components/organisms/profile/ProfilePhotoMosaic.astro';
+import RatesTable from '@/components/organisms/profile/RatesTable.astro';
+import GoodToKnow from '@/components/organisms/profile/GoodToKnow.astro';
+import ProfileFacts from '@/components/organisms/profile/ProfileFacts.astro';
+import SimilarProfiles from '@/components/organisms/profile/SimilarProfiles.astro';
 import { CITIES } from '@/lib/taxonomy';
 import { profileAge } from '@/app/models/profile';
 import SafeModeToggle from '@/components/molecules/SafeModeToggle.astro';
@@ -56,6 +60,10 @@ const availFixtures = [
   },
 ] as const;
 const mosaicPhotos = profiles.flatMap((pr) => pr.photos).slice(0, 5);
+
+/* Offline-fallback demo (2.6): an away profile + three online candidates. */
+const awayProfile = { ...p, online: false, openingHours: {} };
+const similarDemo = profiles.filter((pr) => pr.id !== p.id).slice(0, 3);
 const swatches = [
   ['primary', 'bg-primary'],
   ['brand', 'bg-brand'],
@@ -276,6 +284,52 @@ const swatches = [
             ))
           }
         </div>
+      </div>
+    </section>
+
+    <section class="space-y-4">
+      <h2 class="text-xl font-semibold">RatesTable — duration × price (2.1/2.2)</h2>
+      <p class="text-sm text-muted-foreground">
+        The source of truth for <code>priceFrom</code>. Full table earns the CLEAR PRICING mark;
+        closing line is always "the listed price is the price".
+      </p>
+      <div class="grid gap-6 sm:grid-cols-2">
+        <div class="space-y-2">
+          <p class="eyebrow">full variant</p>
+          <RatesTable profile={p} variant="full" class="max-w-sm" />
+        </div>
+        <div class="space-y-2 rounded-xl bg-neutral-950 p-6 text-white">
+          <p class="eyebrow text-white/50">compact variant (deal card)</p>
+          <RatesTable profile={p} variant="compact" />
+        </div>
+      </div>
+    </section>
+
+    <section class="space-y-4">
+      <h2 class="text-xl font-semibold">GoodToKnow — structured facts (2.5)</h2>
+      <p class="text-sm text-muted-foreground">
+        Two-column list; values are taxonomy keys, labels via i18n; empty rows dropped.
+      </p>
+      <GoodToKnow profile={p} class="max-w-2xl" />
+    </section>
+
+    <section class="space-y-4">
+      <h2 class="text-xl font-semibold">ProfileFacts — the deal card (2.4)</h2>
+      <p class="text-sm text-muted-foreground">
+        Compact rates + availability truth line + CTA + trust-receipt link; metadata demoted.
+      </p>
+      <div class="max-w-sm">
+        <ProfileFacts profile={p} />
+      </div>
+    </section>
+
+    <section class="space-y-4">
+      <h2 class="text-xl font-semibold">SimilarProfiles — offline fallback (2.6)</h2>
+      <p class="text-sm text-muted-foreground">
+        Shown ONLY when she's away; never on a live/online profile. Fixed away fixture.
+      </p>
+      <div class="max-w-xl">
+        <SimilarProfiles profile={awayProfile} similar={similarDemo} now={availNow} />
       </div>
     </section>
 

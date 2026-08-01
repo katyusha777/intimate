@@ -6,8 +6,30 @@
  */
 import * as m from '@/paraglide/messages';
 import { birthDateForAge, type Profile } from '@/app/models/profile';
-import { dayLabel, genderLabel, serviceCategoryLabel, serviceLabel } from '@/lib/labels';
-import { CITIES, DAYS, GENDERS, MEETING_TYPES, SERVICES, SERVICE_CATEGORIES } from '@/lib/taxonomy';
+import {
+  amenityLabel,
+  dayLabel,
+  genderLabel,
+  incallLocationLabel,
+  languageLabel,
+  paymentMethodLabel,
+  rateDurationLabel,
+  serviceCategoryLabel,
+  serviceLabel,
+} from '@/lib/labels';
+import {
+  AMENITIES,
+  CITIES,
+  DAYS,
+  GENDERS,
+  INCALL_LOCATIONS,
+  LANGUAGES,
+  MEETING_TYPES,
+  PAYMENT_METHODS,
+  RATE_DURATIONS,
+  SERVICES,
+  SERVICE_CATEGORIES,
+} from '@/lib/taxonomy';
 import Button from '@/components/atoms/Button.astro';
 import Icon from '@/components/atoms/Icon.astro';
 import Select from '@/components/atoms/Select.astro';
@@ -23,6 +45,14 @@ const selectedServices = new Set(p.services as readonly string[]);
 const max18 = birthDateForAge(18);
 const heading = 'font-condensed text-sm font-bold uppercase tracking-wide';
 const row = 'flex cursor-pointer select-none items-center gap-2.5 text-sm hover:text-foreground/70';
+
+// Existing rate rows keyed by duration for quick prefill of the table editor.
+const rateByDuration = new Map((p.rates ?? []).map((r) => [r.duration, r]));
+const setOf = (arr: readonly string[]) => new Set(arr as readonly string[]);
+const selLanguages = setOf(p.languages ?? []);
+const selIncall = setOf(p.incallLocations ?? []);
+const selAmenities = setOf(p.amenities ?? []);
+const selPayments = setOf(p.paymentMethods ?? []);
 ---
 
 <form data-profile-editor class="max-w-2xl space-y-8">
@@ -48,16 +78,6 @@ const row = 'flex cursor-pointer select-none items-center gap-2.5 text-sm hover:
         {CITIES.map((c) => <option value={c.slug} selected={p.city === c.slug}>{c.name}</option>)}
       </Select>
     </label>
-    <SlabField
-      label={m.editor_price()}
-      name="priceFrom"
-      type="number"
-      inputmode="numeric"
-      value={p.priceFrom}
-      min="0"
-      step="5"
-      required
-    />
   </div>
 
   <div class="space-y-2">
@@ -77,6 +97,106 @@ const row = 'flex cursor-pointer select-none items-center gap-2.5 text-sm hover:
           </label>
         ))
       }
+    </div>
+  </div>
+
+  <!-- Rates table (UX-PLAN 2.1): the source of truth for priceFrom. Tick a
+       duration, fill an incall and/or outcall price. Empty rows are dropped. -->
+  <div class="space-y-2">
+    <h3 class={heading}>{m.editor_rates()}</h3>
+    <p class="text-xs text-muted-foreground">{m.editor_rates_hint()}</p>
+    <div data-rates>
+      <div class="flex items-center gap-3 border-b border-border pb-1.5 text-2xs uppercase tracking-wide text-muted-foreground">
+        <span class="w-40 flex-none">{m.editor_rates_duration()}</span>
+        <span class="w-24 text-right">{m.rates_incall()}</span>
+        <span class="w-24 text-right">{m.rates_outcall()}</span>
+      </div>
+      {
+        RATE_DURATIONS.map((dur) => {
+          const r = rateByDuration.get(dur);
+          return (
+            <label class="flex flex-wrap items-center gap-3 border-b border-border py-2" data-rate-row data-duration={dur}>
+              <span class="flex w-40 flex-none cursor-pointer items-center gap-2.5 text-sm">
+                <input type="checkbox" class="cbx-box" data-rate-on checked={r !== undefined} />
+                {rateDurationLabel(dur)}
+              </span>
+              <input
+                type="number"
+                inputmode="numeric"
+                min="0"
+                step="5"
+                placeholder="€"
+                data-rate-incall
+                value={r?.incall ?? ''}
+                class="w-24 border border-foreground/20 bg-transparent px-2 py-1 text-right text-sm outline-none transition-colors focus:border-foreground"
+              />
+              <input
+                type="number"
+                inputmode="numeric"
+                min="0"
+                step="5"
+                placeholder="€"
+                data-rate-outcall
+                value={r?.outcall ?? ''}
+                class="w-24 border border-foreground/20 bg-transparent px-2 py-1 text-right text-sm outline-none transition-colors focus:border-foreground"
+              />
+            </label>
+          );
+        })
+      }
+    </div>
+    <div class="grid gap-4 pt-2 sm:grid-cols-2">
+      <SlabField label={m.gtk_deposit()} name="depositPolicy" value={p.depositPolicy ?? ''} maxlength="200" />
+      <SlabField label={m.editor_extras()} name="extrasNote" value={p.extrasNote ?? ''} maxlength="200" />
+    </div>
+  </div>
+
+  <!-- Good-to-know (UX-PLAN 2.5): taxonomy-keyed facts filled once. -->
+  <div class="space-y-4">
+    <h3 class={heading}>{m.gtk_title()}</h3>
+    <div class="space-y-1.5">
+      <span class="eyebrow text-2xs text-muted-foreground">{m.gtk_languages()}</span>
+      <div class="flex flex-wrap gap-x-5 gap-y-2">
+        {LANGUAGES.map((l) => (
+          <label class={row}>
+            <input type="checkbox" name="languages" value={l} checked={selLanguages.has(l)} class="cbx-box" />
+            {languageLabel(l)}
+          </label>
+        ))}
+      </div>
+    </div>
+    <div class="space-y-1.5">
+      <span class="eyebrow text-2xs text-muted-foreground">{m.gtk_place()}</span>
+      <div class="flex flex-wrap gap-x-5 gap-y-2">
+        {INCALL_LOCATIONS.map((l) => (
+          <label class={row}>
+            <input type="checkbox" name="incallLocations" value={l} checked={selIncall.has(l)} class="cbx-box" />
+            {incallLocationLabel(l)}
+          </label>
+        ))}
+      </div>
+    </div>
+    <div class="space-y-1.5">
+      <span class="eyebrow text-2xs text-muted-foreground">{m.editor_amenities()}</span>
+      <div class="flex flex-wrap gap-x-5 gap-y-2">
+        {AMENITIES.map((a) => (
+          <label class={row}>
+            <input type="checkbox" name="amenities" value={a} checked={selAmenities.has(a)} class="cbx-box" />
+            {amenityLabel(a)}
+          </label>
+        ))}
+      </div>
+    </div>
+    <div class="space-y-1.5">
+      <span class="eyebrow text-2xs text-muted-foreground">{m.gtk_payment()}</span>
+      <div class="flex flex-wrap gap-x-5 gap-y-2">
+        {PAYMENT_METHODS.map((pm) => (
+          <label class={row}>
+            <input type="checkbox" name="paymentMethods" value={pm} checked={selPayments.has(pm)} class="cbx-box" />
+            {paymentMethodLabel(pm)}
+          </label>
+        ))}
+      </div>
     </div>
   </div>
 
@@ -218,14 +338,41 @@ const row = 'flex cursor-pointer select-none items-center gap-2.5 text-sm hover:
             to: r.querySelector<HTMLInputElement>('[data-hours-to]')!.value,
           };
         });
+        // Rates: one row per ticked duration with at least one price. The
+        // derived priceFrom (min of the table) is computed server-side.
+        const rates: Array<Record<string, unknown>> = [];
+        form.querySelectorAll<HTMLElement>('[data-rate-row]').forEach((r) => {
+          if (!r.querySelector<HTMLInputElement>('[data-rate-on]')!.checked) return;
+          const num = (sel: string) => {
+            const v = r.querySelector<HTMLInputElement>(sel)!.value.trim();
+            return v === '' ? undefined : Number(v);
+          };
+          const incall = num('[data-rate-incall]');
+          const outcall = num('[data-rate-outcall]');
+          if (incall === undefined && outcall === undefined) return;
+          const row: Record<string, unknown> = { duration: r.dataset.duration };
+          if (incall !== undefined) row.incall = incall;
+          if (outcall !== undefined) row.outcall = outcall;
+          rates.push(row);
+        });
+        const optStr = (k: string) => {
+          const v = String(fd.get(k) ?? '').trim();
+          return v === '' ? undefined : v;
+        };
         const patch = {
           name: String(fd.get('name') ?? ''),
           birthDate: String(fd.get('birthDate') ?? ''),
           gender: String(fd.get('gender')),
           city: String(fd.get('city')),
-          priceFrom: Number(fd.get('priceFrom')),
+          rates,
+          depositPolicy: optStr('depositPolicy'),
+          extrasNote: optStr('extrasNote'),
           meetingTypes: fd.getAll('meetingTypes').map(String),
           services: fd.getAll('services').map(String),
+          languages: fd.getAll('languages').map(String),
+          incallLocations: fd.getAll('incallLocations').map(String),
+          amenities: fd.getAll('amenities').map(String),
+          paymentMethods: fd.getAll('paymentMethods').map(String),
           openingHours,
           description: String(fd.get('description') ?? ''),
         };

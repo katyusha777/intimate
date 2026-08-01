@@ -24,6 +24,8 @@ interface Props {
 const { profile: p, variant = 'grid', loading = 'lazy' } = Astro.props;
 const cityName = CITIES.find((c) => c.slug === p.city)?.name ?? p.city;
 const href = localizePath(`/profile/${p.slug}/`);
+// CLEAR PRICING (UX-PLAN 2.1): a complete rate table (≥4 rows) earns the mark.
+const clearPricing = (p.rates ?? []).length >= 4;
 
 /* Misprint "randomness": each card's ink slab gets its own position, tilt and
  * cut — deterministic from the profile id, so it's stable across renders. */
@@ -69,7 +71,15 @@ const slab = SLABS[[...p.id].reduce((s, c) => s + c.charCodeAt(0), 0) % SLABS.le
             </p>
             <p class="truncate text-sm text-white/60">{cityName}</p>
           </div>
-          <p class="flex-none pt-0.5 text-base font-semibold">€{p.priceFrom}</p>
+          <div class="flex-none pt-0.5 text-right">
+            <p class="text-base font-semibold">€{p.priceFrom}</p>
+            {clearPricing && (
+              <p class="eyebrow mt-0.5 flex items-center justify-end gap-1 text-2xs text-white/60">
+                <VerifiedBadge class="size-3" />
+                {m.rates_clear_pricing()}
+              </p>
+            )}
+          </div>
         </div>
         <!-- Honest availability (1.3): one line, one claim, no fake liveness. -->
         <AvailabilityLine profile={p} variant="card" class="mt-2" />

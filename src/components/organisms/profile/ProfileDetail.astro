@@ -12,16 +12,21 @@ import { dayLabel, serviceCategoryLabel, serviceLabel } from '@/lib/labels';
 import { cityName } from '@/lib/seo';
 import { DAYS, SERVICES, SERVICE_CATEGORIES } from '@/lib/taxonomy';
 import VerifiedBadge from '@/components/atoms/VerifiedBadge.astro';
+import AvailabilityLine from '@/components/molecules/AvailabilityLine.astro';
+import GoodToKnow from '@/components/organisms/profile/GoodToKnow.astro';
 import ProfileFacts from '@/components/organisms/profile/ProfileFacts.astro';
 import ProfileGallery from '@/components/organisms/profile/ProfileGallery.astro';
 import ProfileHero from '@/components/organisms/profile/ProfileHero.astro';
 import ProfilePhotoMosaic from '@/components/organisms/profile/ProfilePhotoMosaic.astro';
 import ReportControl from '@/components/organisms/profile/ReportControl.astro';
+import SimilarProfiles from '@/components/organisms/profile/SimilarProfiles.astro';
 
 interface Props {
   profile: Profile;
+  /** Offline-fallback candidates (2.6), computed at the page (app/api seam). */
+  similar?: Profile[];
 }
-const { profile: p } = Astro.props;
+const { profile: p, similar = [] } = Astro.props;
 
 const description = localizedDescription(p);
 const serviceGroups = SERVICE_CATEGORIES.map((cat) => ({
@@ -54,13 +59,9 @@ function hoursLabel(h: (typeof hours)[keyof typeof hours]): string {
           <VerifiedBadge class="size-6" />
         </h1>
         <p class="mt-1.5 flex items-center gap-2 text-sm text-muted-foreground">
-          {p.online && (
-            <span class="flex items-center gap-1.5 font-medium text-foreground">
-              <span class="size-1.5 rounded-full bg-online" />
-              {m.online_now()}
-            </span>
-          )}
-          {p.online && <span aria-hidden="true">·</span>}
+          <!-- One availability truth line (2.3), shared component. -->
+          <AvailabilityLine profile={p} variant="line" class="font-medium text-foreground" />
+          <span aria-hidden="true">·</span>
           {cityName(p.city)}
           <span aria-hidden="true">·</span>
           {p.photos.length} {m.photos_title().toLowerCase()}
@@ -113,6 +114,12 @@ function hoursLabel(h: (typeof hours)[keyof typeof hours]): string {
           </div>
         </section>
 
+        <!-- Good-to-know rows (2.5): structured facts after SERVICES. -->
+        <section>
+          <h2 class="display text-2xl md:text-3xl">{m.gtk_title()}</h2>
+          <GoodToKnow profile={p} class="mt-4 max-w-2xl" />
+        </section>
+
         {
           hasHours && (
             <section>
@@ -150,6 +157,11 @@ function hoursLabel(h: (typeof hours)[keyof typeof hours]): string {
           <ReportControl profileId={p.id} profileSlug={p.slug} profileName={p.name} />
         </div>
       </div>
+    </div>
+
+    <!-- Offline fallback (2.6): keeps the loop alive ONLY when she's away. -->
+    <div class="mt-10">
+      <SimilarProfiles profile={p} {similar} />
     </div>
   </div>
 </div>
