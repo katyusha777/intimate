@@ -25,10 +25,11 @@ Pages = `src/pages/` (compose organisms; own no reusable markup).
 **Level definitions:**
 - **Atom** — renders essentially one element; knows nothing about profiles,
   search, or auth. Two kinds:
-  - *wrappers* over `ui/` (Button — which renders the internal AnaglyphButton
-    atom, DESIGN.md §3.1 — Input, Select, Badge, Avatar, Switch, Skeleton) —
-    the app-facing API. **Swapping the UI library = re-implementing these
-    files; nothing above atoms changes.**
+  - *wrappers* over `ui/` (Button — `variant="default"` renders the internal
+    AnaglyphButton atom (DESIGN.md §3.1); `variant="secondary"` is the clean
+    bordered anti-anaglyph for non-primary actions — Input, Select, Badge,
+    Avatar, Switch, Skeleton) — the app-facing API. **Swapping the UI library =
+    re-implementing these files; nothing above atoms changes.**
   - *own primitives*: Icon (Font Awesome abstraction — icon lib swap is this
     one file), SafeImage (safe-mode image contract), VerifiedBadge.
 - **Molecule** — a self-contained control from atoms + markup, reusable in any

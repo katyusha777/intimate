@@ -410,5 +410,6 @@
   "private_set_unlocked": "Ihr privates Set",
   "settings_screening": "Screening-Frage",
   "settings_screening_ph": "z. B. Wie hast du mich gefunden?",
-  "settings_screening_note": "Wird als letzter Schritt einer Anfrage gestellt. Leer lassen für keine."
+  "settings_screening_note": "Wird als letzter Schritt einer Anfrage gestellt. Leer lassen für keine.",
+  "avail_drives_visibility": "Deine Verfügbarkeit bestimmt deine Sichtbarkeit: Je öfter du online und geöffnet bist, desto häufiger und höher erscheinst du in den Listen."
 }

@@ -151,6 +151,20 @@ const swatches = [
         <Button>Default</Button>
         <Button size="lg">Large</Button>
         <Badge>Badge</Badge>
+      </div>
+      <p class="text-sm text-muted-foreground">Secondary variant — clean bordered button (the anti-anaglyph) for non-primary actions:</p>
+      <div class="flex flex-wrap items-center gap-3">
+        <Button variant="secondary" size="sm">Small</Button>
+        <Button variant="secondary">More info</Button>
+        <Button variant="secondary" size="lg">Large</Button>
+      </div>
+      <p class="text-sm text-muted-foreground">Secondary on an ink slab (renders white-outlined):</p>
+      <div class="flex flex-wrap items-center gap-3 rounded-lg bg-neutral-950 p-4 text-white dark">
+        <Button variant="secondary">On ink</Button>
+        <span class="flex items-center gap-1.5 text-sm text-white">Name <VerifiedBadge class="size-4" /> <span class="online-dot size-2 rounded-full bg-online"></span> online dot</span>
+      </div>
+      <div class="flex flex-wrap items-center gap-3">
+        <Badge>Badge</Badge>
         <Badge variant="secondary">Secondary</Badge>
         <Badge variant="outline">Outline</Badge>
         <span class="flex items-center gap-1 text-sm font-medium"><VerifiedBadge /> Verified</span>

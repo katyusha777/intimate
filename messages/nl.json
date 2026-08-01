@@ -410,5 +410,6 @@
   "private_set_unlocked": "Haar privéset",
   "settings_screening": "Screeningsvraag",
   "settings_screening_ph": "bijv. Hoe heb je me gevonden?",
-  "settings_screening_note": "Gesteld als laatste stap van een verzoek. Laat leeg voor geen."
+  "settings_screening_note": "Gesteld als laatste stap van een verzoek. Laat leeg voor geen.",
+  "avail_drives_visibility": "Je beschikbaarheid bepaalt je zichtbaarheid: hoe vaker je online en geopend bent, hoe vaker en hoger je in de lijsten verschijnt."
 }

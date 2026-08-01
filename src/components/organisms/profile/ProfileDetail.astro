@@ -112,7 +112,8 @@ function hoursLabel(h: (typeof hours)[keyof typeof hours]): string {
 
         <section>
           <h2 class="display text-2xl md:text-3xl">{m.filter_services()}</h2>
-          <!-- label left, quiet ink-wash pills right — compact, no keyline noise -->
+          <!-- label left, clean white chips right — plain, legible, no slab
+               (Task 4): white fill, dark text, subtle border, normal radius. -->
           <div class="mt-4 space-y-3">
             {
               serviceGroups.map((g) => (
@@ -122,7 +123,7 @@ function hoursLabel(h: (typeof hours)[keyof typeof hours]): string {
                   </h3>
                   <div class="flex flex-wrap items-start gap-1.5">
                     {g.items.map((s) => (
-                      <span class="rounded-full bg-muted px-3 py-1 text-xs font-medium text-foreground/80">
+                      <span class="rounded-md border border-border bg-white px-3 py-1 text-xs font-medium text-neutral-900">
                         {serviceLabel(s)}
                       </span>
                     ))}
@@ -158,6 +159,10 @@ function hoursLabel(h: (typeof hours)[keyof typeof hours]): string {
                   </div>
                 ))}
               </div>
+              <!-- Professional context (Task 5): availability drives ranking, so
+                   there's no need for a "back at" line — being online + open is
+                   what surfaces the profile higher in listings. -->
+              <p class="mt-3 max-w-md text-xs text-muted-foreground">{m.avail_drives_visibility()}</p>
             </section>
           )
         }

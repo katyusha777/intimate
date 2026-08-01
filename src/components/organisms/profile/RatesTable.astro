@@ -4,7 +4,7 @@
  * columns only where the profile offers them. `priceFrom` derives from this
  * table (models/profile.ratesMinPrice) — the table is the source of truth, the
  * number is the shadow. Closing line under every table: "the listed price is
- * the price." A complete table (≥4 durations) earns the CLEAR PRICING mark.
+ * the price."
  *
  * Variants:
  *  - `full`    — profile body, above ABOUT on mobile (headers + closing line).
@@ -13,7 +13,6 @@
 import * as m from '@/paraglide/messages';
 import type { Profile } from '@/app/models/profile';
 import { rateDurationLabel } from '@/lib/labels';
-import VerifiedBadge from '@/components/atoms/VerifiedBadge.astro';
 
 interface Props {
   profile: Profile;
@@ -27,8 +26,6 @@ const hasIncall = rates.some((r) => r.incall !== undefined);
 const hasOutcall = rates.some((r) => r.outcall !== undefined);
 // One price column when only one meeting type is priced; two when both.
 const twoCols = hasIncall && hasOutcall;
-// CLEAR PRICING: a table earns the mark when it covers a real range (≥4 rows).
-const isClear = rates.length >= 4;
 
 const dark = variant === 'compact';
 const fmt = (n?: number) => (n === undefined ? '–' : `€${n}`);
@@ -40,18 +37,6 @@ const muted = dark ? 'text-white/60' : 'text-muted-foreground';
 {
   rates.length > 0 && (
     <div class:list={[className]}>
-      {isClear && (
-        <p
-          class:list={[
-            'eyebrow mb-2 flex items-center gap-1.5 text-2xs',
-            dark ? 'text-white/70' : 'text-brand',
-          ]}
-        >
-          <VerifiedBadge class="size-3.5" />
-          {m.rates_clear_pricing()}
-        </p>
-      )}
-
       <div class:list={['divide-y', rowLine, dark ? 'border-t border-white/10' : '']}>
         {/* header row — only shown when two price columns exist */}
         {twoCols && (

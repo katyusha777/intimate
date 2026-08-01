@@ -12,7 +12,6 @@ import { CITIES } from '@/lib/taxonomy';
 import SafeImage from '@/components/atoms/SafeImage.astro';
 import PhotoCarousel from '@/components/molecules/PhotoCarousel.astro';
 import VerifiedBadge from '@/components/atoms/VerifiedBadge.astro';
-import AvailabilityLine from '@/components/molecules/AvailabilityLine.astro';
 import Badge from '@/components/atoms/Badge.astro';
 import ReceiptSheet from '@/components/organisms/profile/ReceiptSheet.astro';
 
@@ -25,8 +24,6 @@ interface Props {
 const { profile: p, variant = 'grid', loading = 'lazy' } = Astro.props;
 const cityName = CITIES.find((c) => c.slug === p.city)?.name ?? p.city;
 const href = localizePath(`/profile/${p.slug}/`);
-// CLEAR PRICING (UX-PLAN 2.1): a complete rate table (≥4 rows) earns the mark.
-const clearPricing = (p.rates ?? []).length >= 4;
 
 /* Misprint "randomness": each card's ink slab gets its own position, tilt and
  * cut — deterministic from the profile id, so it's stable across renders. */
@@ -70,22 +67,23 @@ const slab = SLABS[[...p.id].reduce((s, c) => s + c.charCodeAt(0), 0) % SLABS.le
             <p class="flex items-center gap-1 font-condensed text-lg font-semibold leading-snug">
               <span class="truncate">{p.name}, {profileAge(p.birthDate)}</span>
               <VerifiedBadge receiptFor={p.id} class="size-4" />
+              {p.online && (
+                // Clean pulsing green "online now" dot beside the verified badge
+                // (Task 3): replaces the photo-covering availability slab.
+                <span class="online-dot size-2 flex-none rounded-full bg-online" title={m.online_now()}>
+                  <span class="sr-only">{m.online_now()}</span>
+                </span>
+              )}
             </p>
             <p class="truncate text-sm text-white/60">{cityName}</p>
           </div>
           <div class="flex-none pt-0.5 text-right">
             <p class="text-base font-semibold">€{p.priceFrom}</p>
-            {clearPricing && (
-              <p class="eyebrow mt-0.5 flex items-center justify-end gap-1 text-2xs text-white/60">
-                <VerifiedBadge class="size-3" />
-                {m.rates_clear_pricing()}
-              </p>
-            )}
           </div>
         </div>
-        <!-- Honest availability (1.3): one line, one claim, no fake liveness. -->
-        <AvailabilityLine profile={p} variant="card" class="mt-2" />
-        <p class="mt-1 truncate text-xs text-white/50">
+        <!-- Availability on cards is the online dot beside the name (Task 3) —
+             no slab, no "back at" text. -->
+        <p class="mt-2 truncate text-xs text-white/50">
           {genderLabel(p.gender)}
           {p.services[0] && ` · ${serviceLabel(p.services[0])}`}
           {p.services.length > 1 && ` · +${p.services.length - 1}`}
@@ -110,7 +108,11 @@ const slab = SLABS[[...p.id].reduce((s, c) => s + c.charCodeAt(0), 0) % SLABS.le
           <h3 class="flex items-center gap-1.5 font-condensed text-xl font-semibold tracking-tight">
             <a href={href} class="after:absolute after:inset-0">{p.name}, {profileAge(p.birthDate)}</a>
             <VerifiedBadge receiptFor={p.id} class="relative z-10 size-4.5" />
-            <AvailabilityLine profile={p} variant="line" class="ml-auto text-xs font-medium" />
+            {p.online && (
+              <span class="online-dot size-2 flex-none rounded-full bg-online" title={m.online_now()}>
+                <span class="sr-only">{m.online_now()}</span>
+              </span>
+            )}
           </h3>
           <p class="text-sm text-muted-foreground">{cityName}</p>
           <p class="text-sm leading-relaxed">{localizedDescription(p)}</p>
@@ -138,9 +140,13 @@ const slab = SLABS[[...p.id].reduce((s, c) => s + c.charCodeAt(0), 0) % SLABS.le
         <p class="flex items-center gap-1 truncate font-condensed text-base font-semibold">
           {p.name}, {profileAge(p.birthDate)}
           <VerifiedBadge receiptFor={p.id} class="size-3.5" />
+          {p.online && (
+            <span class="online-dot size-2 flex-none rounded-full bg-online" title={m.online_now()}>
+              <span class="sr-only">{m.online_now()}</span>
+            </span>
+          )}
         </p>
         <p class="truncate text-xs text-muted-foreground">{cityName}</p>
-        <AvailabilityLine profile={p} variant="line" class="text-xs" />
       </div>
       <p class="flex-none text-sm font-semibold">€{p.priceFrom}</p>
     </a>

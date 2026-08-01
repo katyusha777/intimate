@@ -410,5 +410,6 @@
   "private_set_unlocked": "Her private set",
   "settings_screening": "Screening question",
   "settings_screening_ph": "e.g. How did you find me?",
-  "settings_screening_note": "Asked as the last step of a request. Leave empty for none."
+  "settings_screening_note": "Asked as the last step of a request. Leave empty for none.",
+  "avail_drives_visibility": "Your availability drives your visibility: the more you're online and open, the more often and higher you appear in listings."
 }

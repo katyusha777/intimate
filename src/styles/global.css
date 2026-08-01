@@ -427,3 +427,55 @@
     overscroll-behavior-y: none;
   }
 }
+
+/* --- Secondary Button (Button.astro variant="secondary") -------------------
+ * The anti-anaglyph: a clean, obvious button — full border + subtle solid fill
+ * + normal radius, no slab-cut corners. For non-primary actions the anaglyph
+ * made confusing. Colours ride theme tokens, so it flips light/dark on its own
+ * and renders as a white-outlined button inside a `.dark` ink slab. */
+@layer components {
+  .btn-secondary {
+    border-color: var(--border);
+    background: var(--muted);
+    color: var(--foreground);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn-secondary:hover {
+    background: var(--accent, var(--muted));
+    border-color: var(--foreground);
+  }
+  .btn-secondary:active {
+    transform: scale(0.98);
+  }
+  .btn-secondary:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+}
+
+/* --- Online dot (ProfileCard, Task 3) --------------------------------------
+ * A calm pulsing green dot beside the verified badge = "online now". Replaces
+ * the photo-covering availability slab. Pulse via a fading halo (box-shadow
+ * ring) so the dot itself never jitters; stilled for reduced-motion. */
+@layer components {
+  .online-dot {
+    position: relative;
+    box-shadow: 0 0 0 0 color-mix(in oklch, var(--online) 70%, transparent);
+    animation: online-pulse 2s ease-out infinite;
+  }
+  @keyframes online-pulse {
+    0% {
+      box-shadow: 0 0 0 0 color-mix(in oklch, var(--online) 70%, transparent);
+    }
+    70%,
+    100% {
+      box-shadow: 0 0 0 5px color-mix(in oklch, var(--online) 0%, transparent);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .online-dot {
+      animation: none;
+    }
+  }
+}
