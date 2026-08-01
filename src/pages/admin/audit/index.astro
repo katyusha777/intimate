@@ -36,8 +36,24 @@ const when = (iso: string) => iso.replace('T', ' ').slice(0, 16) + 'Z';
             </label>
             <button type="submit" class="slab-cut border border-foreground/20 px-3 py-2 text-sm font-medium">Filter</button>
             <a href="/admin/audit" class="px-2 py-2 text-sm text-muted-foreground hover:text-foreground">Reset</a>
+            <button type="button" data-export-csv class="slab-cut border border-foreground/20 px-3 py-2 text-sm font-medium">Export CSV</button>
           </form>
         </div>
+        <script type="application/json" data-audit-json set:html={JSON.stringify(entries.map((e) => ({ at: e.at, admin: e.adminEmail, role: e.adminRole, action: e.action, entity: `${e.entityType}:${e.entityId}`, reason: e.reason ?? '' })))} />
+        <script is:inline>
+          document.querySelector('[data-export-csv]')?.addEventListener('click', () => {
+            const rows = JSON.parse(document.querySelector('[data-audit-json]').textContent);
+            const head = ['at', 'admin', 'role', 'action', 'entity', 'reason'];
+            const esc = (v) => `"${String(v).replace(/"/g, '""')}"`;
+            const csv = [head.join(','), ...rows.map((r) => head.map((k) => esc(r[k])).join(','))].join('\n');
+            const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'audit-log.csv';
+            a.click();
+            URL.revokeObjectURL(url);
+          });
+        </script>
 
         <div class="mt-6 overflow-x-auto border border-border">
           <table class="w-full min-w-[720px] text-left text-sm">

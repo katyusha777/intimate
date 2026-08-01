@@ -1,0 +1,80 @@
+---
+/**
+ * Calls metadata log (docs/ADMIN.md §11). Metadata only — participants,
+ * initiator (always professional), mode, state, duration. Used for report
+ * corroboration + abuse patterns. No content exists: P2P, never recorded.
+ */
+import { getAdmin } from '@/actions/admin/lib';
+import { listCalls } from '@/actions/admin/calls';
+import AdminShell from '@/components/organisms/admin/AdminShell.astro';
+
+const session = await getAdmin({ cookies: Astro.cookies });
+const mode = Astro.url.searchParams.get('mode') ?? '';
+const state = Astro.url.searchParams.get('state') ?? '';
+const calls = session ? await listCalls({ mode, state }) : [];
+
+const dur = (s: number) => (s === 0 ? '—' : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`);
+const when = (iso: string) => iso.replace('T', ' ').slice(5, 16);
+const stateClass = (s: string) =>
+  ({ active: 'text-online', ended: 'text-muted-foreground', declined: 'text-brand', timeout: 'text-amber-500' })[s] ?? 'text-muted-foreground';
+---
+
+<AdminShell title="Calls" section="calls">
+  {
+    session && (
+      <div>
+        <h1 class="display text-3xl">Calls</h1>
+        <p class="mt-1 border-l-2 border-online pl-2 text-sm text-muted-foreground">
+          Calls are peer-to-peer and never recorded; no content exists. Metadata only.
+        </p>
+
+        <form method="get" class="mt-4 flex items-center gap-2 text-sm">
+          <select name="mode" class="slab-cut border border-foreground/20 bg-background px-2 py-1.5">
+            <option value="">All modes</option>
+            <option value="voice" selected={mode === 'voice'}>Voice</option>
+            <option value="video" selected={mode === 'video'}>Video</option>
+          </select>
+          <select name="state" class="slab-cut border border-foreground/20 bg-background px-2 py-1.5">
+            <option value="">All states</option>
+            {['active', 'ended', 'declined', 'timeout'].map((s) => <option value={s} selected={state === s}>{s}</option>)}
+          </select>
+          <button type="submit" class="slab-cut border border-foreground/20 px-3 py-1.5 font-medium">Filter</button>
+          <a href="/admin/calls" class="px-2 py-1.5 text-muted-foreground hover:text-foreground">Reset</a>
+        </form>
+
+        <div class="mt-5 overflow-x-auto border border-border">
+          <table class="w-full min-w-[720px] text-left text-sm">
+            <thead class="border-b border-border bg-muted text-2xs uppercase tracking-wide text-muted-foreground">
+              <tr>
+                <th class="px-3 py-2 font-semibold">Professional</th>
+                <th class="px-3 py-2 font-semibold">Client</th>
+                <th class="px-3 py-2 font-semibold">Initiated by</th>
+                <th class="px-3 py-2 font-semibold">Mode</th>
+                <th class="px-3 py-2 font-semibold">State</th>
+                <th class="px-3 py-2 font-semibold">Duration</th>
+                <th class="px-3 py-2 font-semibold">When</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-border">
+              {calls.length === 0 ? (
+                <tr><td colspan="7" class="px-3 py-10 text-center text-muted-foreground">No calls.</td></tr>
+              ) : (
+                calls.map((c) => (
+                  <tr class="hover:bg-muted">
+                    <td class="px-3 py-2 font-medium">{c.profileName}</td>
+                    <td class="px-3 py-2 text-muted-foreground">{c.clientName}</td>
+                    <td class="px-3 py-2 text-2xs text-muted-foreground">professional</td>
+                    <td class="px-3 py-2">{c.mode}</td>
+                    <td class:list={['px-3 py-2 font-medium', stateClass(c.state)]}>{c.state}</td>
+                    <td class="px-3 py-2 tabular-nums">{dur(c.durationS)}</td>
+                    <td class="px-3 py-2 text-2xs text-muted-foreground">{when(c.startedAt)}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    )
+  }
+</AdminShell>
