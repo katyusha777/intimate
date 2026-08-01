@@ -9,11 +9,13 @@ import PhotoCarousel from '@/components/molecules/PhotoCarousel.astro';
 import SafeImage from '@/components/atoms/SafeImage.astro';
 import SearchControl from '@/components/molecules/SearchControl.astro';
 import Combobox from '@/components/molecules/Combobox.astro';
+import ActionSheet from '@/components/molecules/ActionSheet.astro';
 import { CITIES } from '@/lib/taxonomy';
 import SafeModeToggle from '@/components/molecules/SafeModeToggle.astro';
 import Section from '@/components/molecules/Section.astro';
 import Select from '@/components/atoms/Select.astro';
 import Input from '@/components/atoms/Input.astro';
+import SlabField from '@/components/molecules/SlabField.astro';
 import FilterSidebar from '@/components/organisms/search/FilterSidebar.astro';
 import VerifiedBadge from '@/components/atoms/VerifiedBadge.astro';
 import Button from '@/components/atoms/Button.astro';
@@ -136,6 +138,7 @@ const swatches = [
         <SafeModeToggle />
         <div class="w-56"><Select><option>Select atom</option><option>Option B</option></Select></div>
         <div class="w-56"><Input placeholder="Input atom" /></div>
+        <div class="w-56"><SlabField label="Slab field" name="demo" placeholder="Type here…" /></div>
         <Combobox
           options={CITIES.map((c) => ({ value: c.slug, label: c.name }))}
           placeholder="City"
@@ -144,6 +147,38 @@ const swatches = [
           target="[data-none]"
         />
       </div>
+    </section>
+
+    <section class="space-y-4">
+      <h2 class="text-xl font-semibold">ActionSheet (drag the handle · flick to close)</h2>
+      <Button data-sheet-open="sink-sheet">Open action sheet</Button>
+      <ActionSheet id="sink-sheet" label="Demo sheet">
+        <div class="space-y-4 p-6">
+          <h3 class="display text-2xl">Action sheet</h3>
+          <p class="text-sm text-muted-foreground">
+            Drag the handle down to dismiss, or flick it — a fast swipe closes even a short drag.
+            Scroll the content; a downward drag from the top also dismisses.
+          </p>
+          {profiles.slice(0, 6).map((prof) => (
+            <p class="border-b border-border py-3 text-sm">{prof.name}, {prof.age} — {prof.city}</p>
+          ))}
+          <Button data-sheet-close class="w-full">Close</Button>
+        </div>
+      </ActionSheet>
+    </section>
+
+    <section class="space-y-4" data-lightbox-group>
+      <h2 class="text-xl font-semibold">Lightbox (tap a photo · swipe · tap to close)</h2>
+      <div class="grid max-w-md grid-cols-3 gap-2" data-lightbox-photos>
+        {
+          profiles.slice(0, 6).map((prof, i) => (
+            <button type="button" data-lightbox data-lightbox-index={i} class="aspect-[3/4] cursor-pointer overflow-hidden bg-neutral-950">
+              <SafeImage imageKey={`sink-lb-${prof.id}`} src={prof.photos[0]} alt={prof.name} class="h-full w-full" />
+            </button>
+          ))
+        }
+      </div>
+      <p class="text-sm text-muted-foreground">Uses the global lightbox from the layout.</p>
     </section>
 
     <section class="space-y-4">

@@ -1,7 +1,8 @@
 ---
 /**
- * All photos as a grid (the slideshow shows them too — this is the browsing
- * alternative). Tapping a photo jumps the hero slideshow to it.
+ * All photos as a grid — the browsing alternative to the hero. This grid is
+ * ALSO the canonical photo source for the lightbox ([data-lightbox-photos]);
+ * tapping any photo opens the lightbox at that index.
  */
 import SafeImage from '@/components/atoms/SafeImage.astro';
 
@@ -13,12 +14,13 @@ interface Props {
 const { photos, keyBase, alt } = Astro.props;
 ---
 
-<div class="grid grid-cols-2 gap-2 md:grid-cols-3">
+<div class="grid grid-cols-2 gap-2 md:grid-cols-3" data-lightbox-photos>
   {
     photos.map((photo, i) => (
       <button
         type="button"
-        data-gallery-item={i}
+        data-lightbox
+        data-lightbox-index={i}
         class="group relative aspect-[3/4] cursor-pointer overflow-hidden bg-neutral-950"
       >
         <SafeImage
@@ -31,21 +33,3 @@ const { photos, keyBase, alt } = Astro.props;
     ))
   }
 </div>
-
-<script>
-  // Tap a gallery photo → hero slideshow jumps to it and scrolls into view.
-  function initGallery() {
-    document.querySelectorAll<HTMLElement>('[data-gallery-item]').forEach((item) => {
-      if (item.dataset.init) return;
-      item.dataset.init = '1';
-      item.addEventListener('click', () => {
-        const track = document.querySelector<HTMLElement>('[data-profile-hero] .pc-track');
-        if (!track) return;
-        track.scrollTo({ left: Number(item.dataset.galleryItem) * track.clientWidth });
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      });
-    });
-  }
-  initGallery();
-  document.addEventListener('astro:page-load', initGallery);
-</script>

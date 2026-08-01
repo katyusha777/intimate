@@ -1,140 +1,88 @@
 ---
 /**
- * Register / Login modal. Tabs + advertiser/client role choice.
- * Forms are visual stubs until Supabase Auth flows land.
- * Open via data-modal-open="auth" (+ optional data-auth-tab="login|register").
+ * Register / Login modal. Misprint: underline tabs (the category-tab
+ * language), sharp slab role tiles with prefillable demo identities, slab
+ * fields, anaglyph CTA. Submits via the auth.* actions (mock backend behind
+ * the seam) and hard-navigates so the role-aware chrome re-renders.
+ * Open with data-modal-open="auth" (+ optional data-auth-tab="login|register").
  */
 import * as m from '@/paraglide/messages';
 import { localizePath } from '@/lib/i18n';
-import Modal from '@/components/molecules/Modal.astro';
 import Button from '@/components/atoms/Button.astro';
+import Modal from '@/components/molecules/Modal.astro';
+import SlabField from '@/components/molecules/SlabField.astro';
+
+const tabBtn =
+  'auth-tab relative cursor-pointer pb-2.5 pt-1 font-condensed text-sm font-bold uppercase tracking-wide transition-colors';
 ---
 
-<Modal id="auth">
+<Modal id="auth" class="max-w-md">
   <div class="relative p-6 md:p-8">
     <button
       type="button"
       data-modal-close
       aria-label="Close"
-      class="absolute right-4 top-4 grid size-9 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+      class="absolute right-4 top-4 grid size-9 cursor-pointer place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
     >
       <i class="fa-thin fa-xmark text-lg" aria-hidden="true"></i>
     </button>
 
-    <p class="text-lg font-semibold tracking-tight">{m.auth_welcome()}</p>
+    <p class="font-condensed text-xl font-semibold tracking-tight">{m.auth_welcome()}</p>
 
-    <!-- Tabs -->
-    <div class="mt-5 grid grid-cols-2 gap-1 border border-foreground/15 p-1" role="tablist">
-      <button
-        type="button"
-        role="tab"
-        data-tab-btn="register"
-        data-active="true"
-        class="py-2 text-sm font-medium text-muted-foreground transition-colors data-[active=true]:bg-foreground data-[active=true]:text-background"
-      >
+    <!-- Tabs: underline language, like the header categories -->
+    <div class="mt-4 flex gap-6 border-b border-border" role="tablist">
+      <button type="button" role="tab" data-tab-btn="register" data-active="true" class:list={[tabBtn, 'data-[active=true]:text-foreground data-[active=false]:text-foreground/50']}>
         {m.nav_register()}
+        <span class="auth-underline absolute bottom-0 left-1/2 h-0.5 w-6 -translate-x-1/2 bg-foreground opacity-0 transition-opacity"></span>
       </button>
-      <button
-        type="button"
-        role="tab"
-        data-tab-btn="login"
-        data-active="false"
-        class="py-2 text-sm font-medium text-muted-foreground transition-colors data-[active=true]:bg-foreground data-[active=true]:text-background"
-      >
+      <button type="button" role="tab" data-tab-btn="login" data-active="false" class:list={[tabBtn, 'data-[active=true]:text-foreground data-[active=false]:text-foreground/50']}>
         {m.nav_login()}
+        <span class="auth-underline absolute bottom-0 left-1/2 h-0.5 w-6 -translate-x-1/2 bg-foreground opacity-0 transition-opacity"></span>
       </button>
     </div>
 
     <!-- Register -->
-    <form data-tab-panel="register" class="mt-6 space-y-4">
+    <form data-tab-panel="register" data-auth-form="register" class="mt-6 space-y-4">
       <div class="grid grid-cols-2 gap-3">
         <button
           type="button"
           data-role-btn="advertiser"
           data-active="true"
-          class="flex flex-col items-center gap-2 border border-foreground/15 py-4 text-sm font-medium text-muted-foreground transition-colors data-[active=true]:border-foreground data-[active=true]:bg-foreground/5 data-[active=true]:text-foreground"
+          class="slab-cut group flex cursor-pointer flex-col items-center gap-1.5 border border-foreground/20 px-3 py-4 transition-colors data-[active=true]:border-foreground data-[active=true]:bg-foreground data-[active=true]:text-background"
         >
-          <i class="fa-thin fa-camera-retro text-2xl" aria-hidden="true"></i>
-          {m.role_advertiser()}
+          <svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-2h6l2 2h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>
+          <span class="font-condensed text-sm font-bold uppercase tracking-wide">{m.role_advertiser()}</span>
+          <span class="text-2xs text-muted-foreground group-data-[active=true]:text-background/70">{m.role_advertiser_desc()}</span>
         </button>
         <button
           type="button"
           data-role-btn="client"
           data-active="false"
-          class="flex flex-col items-center gap-2 border border-foreground/15 py-4 text-sm font-medium text-muted-foreground transition-colors data-[active=true]:border-foreground data-[active=true]:bg-foreground/5 data-[active=true]:text-foreground"
+          class="slab-cut group flex cursor-pointer flex-col items-center gap-1.5 border border-foreground/20 px-3 py-4 transition-colors data-[active=true]:border-foreground data-[active=true]:bg-foreground data-[active=true]:text-background"
         >
-          <i class="fa-thin fa-user text-2xl" aria-hidden="true"></i>
-          {m.role_client()}
+          <svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/></svg>
+          <span class="font-condensed text-sm font-bold uppercase tracking-wide">{m.role_client()}</span>
+          <span class="text-2xs text-muted-foreground group-data-[active=true]:text-background/70">{m.role_client_desc()}</span>
         </button>
       </div>
 
-      <label class="block space-y-1.5">
-        <span class="text-sm font-medium">{m.auth_email()}</span>
-        <span class="slab-field block">
-          <span class="slab-field__face flex h-11 items-center">
-            <input
-              type="email"
-              name="email"
-              autocomplete="email"
-              required
-              class="h-full w-full bg-transparent px-4 text-base caret-brand outline-none md:text-sm"
-            />
-          </span>
-        </span>
-      </label>
-      <label class="block space-y-1.5">
-        <span class="text-sm font-medium">{m.auth_password()}</span>
-        <span class="slab-field block">
-          <span class="slab-field__face flex h-11 items-center">
-            <input
-              type="password"
-              name="password"
-              autocomplete="new-password"
-              required
-              class="h-full w-full bg-transparent px-4 text-base caret-brand outline-none md:text-sm"
-            />
-          </span>
-        </span>
-      </label>
+      <SlabField label={m.auth_email()} name="email" type="email" autocomplete="email" required />
+      <SlabField label={m.auth_password()} name="password" type="password" autocomplete="new-password" required />
 
+      <p data-auth-error class="hidden text-sm font-medium text-brand">{m.auth_error()}</p>
       <Button type="submit" size="lg" class="w-full">{m.auth_create_account()}</Button>
       <p class="text-center text-xs leading-relaxed text-muted-foreground">{m.auth_terms()}</p>
     </form>
 
     <!-- Login -->
-    <form data-tab-panel="login" class="mt-6 hidden space-y-4">
-      <label class="block space-y-1.5">
-        <span class="text-sm font-medium">{m.auth_email()}</span>
-        <span class="slab-field block">
-          <span class="slab-field__face flex h-11 items-center">
-            <input
-              type="email"
-              name="email"
-              autocomplete="email"
-              required
-              class="h-full w-full bg-transparent px-4 text-base caret-brand outline-none md:text-sm"
-            />
-          </span>
-        </span>
-      </label>
-      <label class="block space-y-1.5">
-        <span class="text-sm font-medium">{m.auth_password()}</span>
-        <span class="slab-field block">
-          <span class="slab-field__face flex h-11 items-center">
-            <input
-              type="password"
-              name="password"
-              autocomplete="current-password"
-              required
-              class="h-full w-full bg-transparent px-4 text-base caret-brand outline-none md:text-sm"
-            />
-          </span>
-        </span>
-      </label>
+    <form data-tab-panel="login" data-auth-form="login" class="mt-6 hidden space-y-4">
+      <SlabField label={m.auth_email()} name="email" type="email" autocomplete="email" required />
+      <SlabField label={m.auth_password()} name="password" type="password" autocomplete="current-password" required />
 
+      <p data-auth-error class="hidden text-sm font-medium text-brand">{m.auth_error()}</p>
       <Button type="submit" size="lg" class="w-full">{m.nav_login()}</Button>
       <p class="text-center text-xs">
-        <a href={localizePath("/account/")} class="text-muted-foreground underline-offset-2 hover:underline">
+        <a href={localizePath('/account/')} class="text-muted-foreground underline-offset-2 hover:underline">
           {m.auth_forgot()}
         </a>
       </p>
@@ -142,7 +90,21 @@ import Button from '@/components/atoms/Button.astro';
   </div>
 </Modal>
 
+<style>
+  [data-active='true'] > .auth-underline {
+    opacity: 1;
+  }
+</style>
+
 <script>
+  import { actions } from 'astro:actions';
+
+  /** Demo identities the role tiles pre-fill (mock backend maps them to /data). */
+  const PREFILL = {
+    advertiser: { email: 'eva@intimate.nl', password: 'demo-password' },
+    client: { email: 'marco@example.com', password: 'demo-password' },
+  } as const;
+
   function selectTab(scope: HTMLElement, name: string) {
     scope.querySelectorAll<HTMLElement>('[data-tab-btn]').forEach((b) => {
       b.dataset.active = String(b.dataset.tabBtn === name);
@@ -152,30 +114,78 @@ import Button from '@/components/atoms/Button.astro';
     });
   }
 
-  function initAuth() {
-    const dlg = document.getElementById('auth');
-    if (!dlg || dlg.dataset.authInit) return;
-    dlg.dataset.authInit = '1';
+  function initAuthModal() {
+    const modal = document.querySelector<HTMLElement>('dialog#auth');
+    if (!modal || modal.dataset.authInit) return;
+    modal.dataset.authInit = '1';
 
-    dlg.addEventListener('modal:open', (e) => {
-      const tab = (e as CustomEvent).detail?.authTab;
-      if (tab) selectTab(dlg, tab);
+    modal.querySelectorAll<HTMLElement>('[data-tab-btn]').forEach((btn) => {
+      btn.addEventListener('click', () => selectTab(modal, btn.dataset.tabBtn!));
     });
-    dlg.addEventListener('click', (e) => {
-      const t = e.target as HTMLElement;
-      const tabBtn = t.closest<HTMLElement>('[data-tab-btn]');
-      if (tabBtn) return selectTab(dlg, tabBtn.dataset.tabBtn!);
-      const roleBtn = t.closest<HTMLElement>('[data-role-btn]');
-      if (roleBtn) {
-        dlg.querySelectorAll<HTMLElement>('[data-role-btn]').forEach((b) => {
-          b.dataset.active = String(b === roleBtn);
+
+    // Openers may request a specific tab. One delegated listener for the whole
+    // session — resolves the CURRENT dialog at click time (pages swap the DOM).
+    if (!(window as any).__authTabDelegation) {
+      (window as any).__authTabDelegation = true;
+      document.addEventListener('click', (e) => {
+        const opener = (e.target as HTMLElement).closest?.('[data-modal-open="auth"]');
+        const current = document.querySelector<HTMLElement>('dialog#auth');
+        if (opener instanceof HTMLElement && opener.dataset.authTab && current)
+          selectTab(current, opener.dataset.authTab);
+      });
+    }
+
+    // Role tiles: select + pre-fill the demo identity (never overwrite the
+    // user's own typing — only empty or previously-prefilled values).
+    const regForm = modal.querySelector<HTMLFormElement>('[data-auth-form="register"]')!;
+    const prefills = Object.values(PREFILL).map((p) => p.email);
+    modal.querySelectorAll<HTMLElement>('[data-role-btn]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        modal.querySelectorAll<HTMLElement>('[data-role-btn]').forEach((b) => {
+          b.dataset.active = String(b === btn);
         });
-      }
+        const role = btn.dataset.roleBtn as keyof typeof PREFILL;
+        const email = regForm.elements.namedItem('email') as HTMLInputElement;
+        const password = regForm.elements.namedItem('password') as HTMLInputElement;
+        if (!email.value || prefills.includes(email.value)) {
+          email.value = PREFILL[role].email;
+          password.value = PREFILL[role].password;
+        }
+      });
     });
-    // stub: no backend yet
-    dlg.querySelectorAll('form').forEach((f) => f.addEventListener('submit', (e) => e.preventDefault()));
-  }
 
-  initAuth();
-  document.addEventListener('astro:page-load', initAuth);
+    // Submit via actions; hard navigation so role-aware chrome re-renders.
+    modal.querySelectorAll<HTMLFormElement>('[data-auth-form]').forEach((form) => {
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (form.dataset.loading) return;
+        form.dataset.loading = '1';
+        const err = form.querySelector<HTMLElement>('[data-auth-error]')!;
+        err.classList.add('hidden');
+        const fd = new FormData(form);
+        const locale = (document.documentElement.lang || 'en') as 'nl' | 'en' | 'de';
+        const email = String(fd.get('email') ?? '');
+        const password = String(fd.get('password') ?? '');
+        try {
+          const result =
+            form.dataset.authForm === 'register'
+              ? await actions.auth.register({
+                  email,
+                  password,
+                  role: (modal.querySelector<HTMLElement>('[data-role-btn][data-active="true"]')
+                    ?.dataset.roleBtn ?? 'client') as 'advertiser' | 'client',
+                  locale,
+                })
+              : await actions.auth.login({ email, password, locale });
+          if (result.error || !result.data?.href) throw result.error ?? new Error();
+          location.href = result.data.href;
+        } catch {
+          err.classList.remove('hidden');
+          delete form.dataset.loading;
+        }
+      });
+    });
+  }
+  initAuthModal();
+  document.addEventListener('astro:page-load', initAuthModal);
 </script>

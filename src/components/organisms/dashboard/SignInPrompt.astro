@@ -1,0 +1,16 @@
+---
+/** Shown on account pages without a session — opens the auth modal. */
+import * as m from '@/paraglide/messages';
+import Button from '@/components/atoms/Button.astro';
+---
+
+<div class="mx-auto grid max-w-7xl place-items-center px-4 py-24 md:px-6">
+  <div class="space-y-5 text-center">
+    <h1 class="display text-3xl">{m.nav_account()}</h1>
+    <p class="text-sm text-muted-foreground">{m.account_signin_prompt()}</p>
+    <div class="flex justify-center gap-3">
+      <Button data-modal-open="auth" data-auth-tab="login">{m.nav_login()}</Button>
+      <Button data-modal-open="auth" data-auth-tab="register">{m.nav_register()}</Button>
+    </div>
+  </div>
+</div>

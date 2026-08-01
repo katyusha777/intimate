@@ -1,0 +1,90 @@
+---
+/**
+ * Account area shell: condensed heading + role eyebrow + sign-out, and a
+ * keyline side-nav on desktop (mobile navigation is the role-aware dock).
+ * Receives everything as props — organisms never touch the data seam.
+ */
+import * as m from '@/paraglide/messages';
+import type { Session } from '@/app/models/session';
+import { localizePath } from '@/lib/i18n';
+
+interface Props {
+  session: Session;
+  title: string;
+  /** Current path for side-nav active state. */
+  path: string;
+}
+const { session, title, path } = Astro.props;
+
+const nav =
+  session.role === 'advertiser'
+    ? [
+        { href: localizePath('/account/'), label: m.nav_dashboard() },
+        { href: localizePath('/account/profile/'), label: m.editor_title() },
+        { href: localizePath('/account/photos/'), label: m.photos_title() },
+        { href: localizePath('/account/verification/'), label: m.verify_title() },
+      ]
+    : [{ href: localizePath('/account/'), label: m.nav_account() }];
+---
+
+<div class="mx-auto max-w-7xl px-4 py-8 md:px-6 md:py-12">
+  <div class="flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <p class="eyebrow">
+        {session.role === 'advertiser' ? m.role_advertiser() : m.role_client()} · {session.email}
+      </p>
+      <h1 class="display mt-1 text-3xl md:text-4xl">{title}</h1>
+    </div>
+    <button
+      type="button"
+      data-signout
+      class="slab-cut flex h-9 cursor-pointer items-center border border-foreground/20 px-3.5 text-sm font-medium transition-colors hover:border-foreground/60"
+    >
+      {m.account_signout()}
+    </button>
+  </div>
+
+  <div class="mt-8 grid items-start gap-8 lg:grid-cols-[14rem_1fr]">
+    <nav class="hidden lg:block" aria-label={m.nav_account()}>
+      <ul class="space-y-1 border-l border-border">
+        {
+          nav.map((n) => (
+            <li>
+              <a
+                href={n.href}
+                class:list={[
+                  '-ml-px block border-l-2 py-1.5 pl-4 text-sm transition-colors',
+                  path === n.href
+                    ? 'border-foreground font-semibold text-foreground'
+                    : 'border-transparent text-muted-foreground hover:text-foreground',
+                ]}
+              >
+                {n.label}
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+      <p class="mt-6 pl-4 text-xs text-muted-foreground">{m.account_demo_note()}</p>
+    </nav>
+
+    <div class="min-w-0"><slot /></div>
+  </div>
+</div>
+
+<script>
+  import { actions } from 'astro:actions';
+  function initSignout() {
+    document.querySelectorAll<HTMLElement>('[data-signout]').forEach((btn) => {
+      if (btn.dataset.init) return;
+      btn.dataset.init = '1';
+      btn.addEventListener('click', async () => {
+        const locale = (document.documentElement.lang || 'en') as 'nl' | 'en' | 'de';
+        const { data } = await actions.auth.logout({ locale });
+        location.href = data?.href ?? '/';
+      });
+    });
+  }
+  initSignout();
+  document.addEventListener('astro:page-load', initSignout);
+</script>

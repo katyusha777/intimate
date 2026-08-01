@@ -1,0 +1,33 @@
+---
+/** Advertiser photo manager (clients → dashboard). */
+import * as m from '@/paraglide/messages';
+import { accountApi } from '@/app/api/account';
+import { profilesApi } from '@/app/api/profiles';
+import { sessionApi } from '@/app/api/session';
+import { isLocale, localizePath } from '@/lib/i18n';
+import AccountShell from '@/components/organisms/dashboard/AccountShell.astro';
+import MediaManager from '@/components/organisms/dashboard/MediaManager.astro';
+import SignInPrompt from '@/components/organisms/dashboard/SignInPrompt.astro';
+import Layout from '@/layouts/Layout.astro';
+
+const locale = Astro.params.locale;
+if (!isLocale(locale)) return new Response(null, { status: 404 });
+
+const session = await sessionApi.fromCookies(Astro.cookies);
+if (session && session.role !== 'advertiser') return Astro.redirect(localizePath('/account/'));
+const account = session ? await accountApi.get(session) : null;
+// MediaManager needs the BASE profile (original photo indexes).
+const { items } = await profilesApi.list({ limit: 60 });
+const base = session?.profileId ? items.find((p) => p.id === session.profileId) : null;
+---
+
+<Layout noindex title={`${m.photos_title()} | Intimate`}>
+  {!session && <SignInPrompt />}
+  {
+    session && account && base && (
+      <AccountShell {session} title={m.photos_title()} path={localizePath('/account/photos/')}>
+        <MediaManager profile={base} {account} />
+      </AccountShell>
+    )
+  }
+</Layout>

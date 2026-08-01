@@ -1,0 +1,172 @@
+---
+/**
+ * The advertiser's profile editor: taxonomy-driven fields, Misprint controls
+ * (slab fields, print checkboxes, service chip-rows), saved via
+ * account.saveProfile. Receives the MERGED profile (base + her edits).
+ */
+import * as m from '@/paraglide/messages';
+import type { Profile } from '@/app/models/profile';
+import { genderLabel, serviceCategoryLabel, serviceLabel } from '@/lib/labels';
+import { CITIES, GENDERS, MEETING_TYPES, SERVICES, SERVICE_CATEGORIES } from '@/lib/taxonomy';
+import Button from '@/components/atoms/Button.astro';
+import Icon from '@/components/atoms/Icon.astro';
+import Select from '@/components/atoms/Select.astro';
+import SlabField from '@/components/molecules/SlabField.astro';
+
+interface Props {
+  profile: Profile;
+}
+const { profile: p } = Astro.props;
+
+const selectedServices = new Set(p.services as readonly string[]);
+const heading = 'font-condensed text-sm font-bold uppercase tracking-wide';
+const row = 'flex cursor-pointer select-none items-center gap-2.5 text-sm hover:text-foreground/70';
+---
+
+<form data-profile-editor class="max-w-2xl space-y-8">
+  <div class="grid gap-4 sm:grid-cols-2">
+    <SlabField label={m.editor_name()} name="name" value={p.name} required />
+    <SlabField
+      label={m.editor_age()}
+      name="age"
+      type="number"
+      inputmode="numeric"
+      value={p.age}
+      min="18"
+      max="99"
+      required
+    />
+    <label class="block space-y-1.5">
+      <span class="text-sm font-medium">{m.filter_gender()}</span>
+      <Select name="gender">
+        {GENDERS.map((g) => <option value={g} selected={p.gender === g}>{genderLabel(g)}</option>)}
+      </Select>
+    </label>
+    <label class="block space-y-1.5">
+      <span class="text-sm font-medium">{m.filter_city()}</span>
+      <Select name="city">
+        {CITIES.map((c) => <option value={c.slug} selected={p.city === c.slug}>{c.name}</option>)}
+      </Select>
+    </label>
+    <SlabField
+      label={m.editor_price()}
+      name="priceFrom"
+      type="number"
+      inputmode="numeric"
+      value={p.priceFrom}
+      min="0"
+      step="5"
+      required
+    />
+  </div>
+
+  <div class="space-y-2">
+    <h3 class={heading}>{m.filter_visit()}</h3>
+    <div class="flex gap-6">
+      {
+        MEETING_TYPES.map((t) => (
+          <label class={row}>
+            <input
+              type="checkbox"
+              name="meetingTypes"
+              value={t}
+              checked={(p.meetingTypes as readonly string[]).includes(t)}
+              class="cbx-box"
+            />
+            {t === 'incall' ? m.cat_private() : m.cat_escort()}
+          </label>
+        ))
+      }
+    </div>
+  </div>
+
+  <div class="space-y-2">
+    <h3 class={heading}>{m.filter_services()}</h3>
+    <div>
+      {
+        SERVICE_CATEGORIES.map((cat) => {
+          const services = SERVICES[cat];
+          const count = services.filter((s) => selectedServices.has(s)).length;
+          return (
+            <details class="group/cat" open={count > 0 || undefined}>
+              <summary class="flex cursor-pointer list-none items-center justify-between gap-2 py-2 text-sm font-medium transition-colors hover:text-foreground/70 [&::-webkit-details-marker]:hidden">
+                <span class="flex items-center gap-2">
+                  {serviceCategoryLabel(cat)}
+                  {count > 0 && (
+                    <span class="grid size-5 place-items-center bg-foreground text-2xs font-semibold text-background">
+                      {count}
+                    </span>
+                  )}
+                </span>
+                <Icon name="chevron-down" class="text-xs text-muted-foreground transition-transform group-open/cat:rotate-180" />
+              </summary>
+              <div class="space-y-2 pb-3 pt-1">
+                {services.map((s) => (
+                  <label class={row}>
+                    <input
+                      type="checkbox"
+                      name="services"
+                      value={s}
+                      checked={selectedServices.has(s)}
+                      class="cbx-box"
+                    />
+                    {serviceLabel(s)}
+                  </label>
+                ))}
+              </div>
+            </details>
+          );
+        })
+      }
+    </div>
+  </div>
+
+  <label class="block space-y-1.5">
+    <span class="text-sm font-medium">{m.editor_description()}</span>
+    <textarea
+      name="description"
+      rows="5"
+      maxlength="1000"
+      class="w-full border border-foreground/20 bg-transparent p-3 text-base caret-brand outline-none transition-colors focus:border-foreground md:text-sm"
+    >{p.description}</textarea>
+  </label>
+
+  <div class="flex items-center gap-4">
+    <Button type="submit">{m.editor_save()}</Button>
+    <p data-editor-saved class="hidden text-sm font-medium text-online">{m.editor_saved()} ✓</p>
+    <p data-editor-error class="hidden text-sm font-medium text-brand">{m.auth_error()}</p>
+  </div>
+</form>
+
+<script>
+  import { actions } from 'astro:actions';
+
+  function initEditor() {
+    document.querySelectorAll<HTMLFormElement>('[data-profile-editor]').forEach((form) => {
+      if (form.dataset.init) return;
+      form.dataset.init = '1';
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const fd = new FormData(form);
+        const patch = {
+          name: String(fd.get('name') ?? ''),
+          age: Number(fd.get('age')),
+          gender: String(fd.get('gender')),
+          city: String(fd.get('city')),
+          priceFrom: Number(fd.get('priceFrom')),
+          meetingTypes: fd.getAll('meetingTypes').map(String),
+          services: fd.getAll('services').map(String),
+          description: String(fd.get('description') ?? ''),
+        };
+        const saved = form.querySelector<HTMLElement>('[data-editor-saved]')!;
+        const error = form.querySelector<HTMLElement>('[data-editor-error]')!;
+        saved.classList.add('hidden');
+        error.classList.add('hidden');
+        const { error: err } = await actions.account.saveProfile({ patch });
+        (err ? error : saved).classList.remove('hidden');
+      });
+    });
+  }
+  initEditor();
+  document.addEventListener('astro:page-load', initEditor);
+</script>

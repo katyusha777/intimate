@@ -1,0 +1,114 @@
+---
+/** Account dashboard — role-aware. */
+import * as m from '@/paraglide/messages';
+import { accountApi } from '@/app/api/account';
+import { sessionApi } from '@/app/api/session';
+import { isLocale, localizePath } from '@/lib/i18n';
+import AccountShell from '@/components/organisms/dashboard/AccountShell.astro';
+import SignInPrompt from '@/components/organisms/dashboard/SignInPrompt.astro';
+import Layout from '@/layouts/Layout.astro';
+
+const locale = Astro.params.locale;
+if (!isLocale(locale)) return new Response(null, { status: 404 });
+
+const session = await sessionApi.fromCookies(Astro.cookies);
+const account = session ? await accountApi.get(session) : null;
+const profile = session ? await accountApi.myProfile(session) : null;
+
+const card = 'facts-card dark bg-neutral-950 p-6 text-white';
+const stateChip =
+  'slab-cut inline-block border border-white/30 px-2.5 py-1 font-condensed text-xs font-bold uppercase tracking-wide';
+---
+
+<Layout noindex title={`${m.nav_account()} | Intimate`}>
+  {!session && <SignInPrompt />}
+  {
+    session && account && (
+      <AccountShell {session} title={m.nav_dashboard()} path={localizePath('/account/')}>
+        <div class="grid gap-5 md:grid-cols-2">
+          {profile && (
+            <div class={card}>
+              <p class="eyebrow text-2xs text-white/50">{m.account_state()}</p>
+              <p class="mt-2 flex items-center gap-3 font-condensed text-2xl font-bold">
+                {profile.name}, {profile.age}
+                <span class={stateChip}>{profile.state}</span>
+              </p>
+              <p class="mt-1 text-sm text-white/60">
+                €{profile.priceFrom} · {profile.services.length} {m.account_services_count()} ·{' '}
+                {profile.photos.length} {m.photos_title().toLowerCase()}
+              </p>
+              <label class="mt-4 flex cursor-pointer select-none items-center gap-2.5 text-sm font-medium">
+                <input type="checkbox" checked={profile.online} class="sr-only" />
+                <span class="switch-track" aria-hidden="true" />
+                {m.online_toggle()}
+              </label>
+              <a
+                href={localizePath(`/profile/${profile.slug}/`)}
+                class="mt-5 inline-block text-sm font-semibold underline-offset-4 hover:underline"
+              >
+                {m.account_view_public()} →
+              </a>
+            </div>
+          )}
+
+          {session.role === 'advertiser' && (
+            <div class={card}>
+              <p class="eyebrow text-2xs text-white/50">{m.account_verification()}</p>
+              <div class="mt-3 space-y-2.5 text-sm">
+                <p class="flex items-center justify-between gap-4 border-b border-white/10 pb-2.5">
+                  <span class="text-white/70">{m.account_sms()}</span>
+                  <span class:list={account.phoneVerifiedAt ? 'font-medium text-online' : 'text-white/50'}>
+                    {account.phoneVerifiedAt ? m.verify_verified() : '—'}
+                  </span>
+                </p>
+                <p class="flex items-center justify-between gap-4">
+                  <span class="text-white/70">{m.account_id()}</span>
+                  <span
+                    class:list={
+                      account.idVerification === 'approved' ? 'font-medium text-online' : 'text-white/50'
+                    }
+                  >
+                    {account.idVerification === 'approved'
+                      ? m.verify_verified()
+                      : account.idVerification === 'pending'
+                        ? m.verify_pending()
+                        : '—'}
+                  </span>
+                </p>
+              </div>
+              <a
+                href={localizePath('/account/verification/')}
+                class="mt-5 inline-block text-sm font-semibold underline-offset-4 hover:underline"
+              >
+                {m.verify_title()} →
+              </a>
+            </div>
+          )}
+
+          {session.role === 'client' && (
+            <div class={card}>
+              <p class="eyebrow text-2xs text-white/50">{m.nav_account()}</p>
+              <div class="mt-3 space-y-2.5 text-sm">
+                <p class="flex items-center justify-between gap-4 border-b border-white/10 pb-2.5">
+                  <span class="text-white/70">{m.auth_email()}</span>
+                  {session.email}
+                </p>
+                <p class="flex items-center justify-between gap-4">
+                  <span class="text-white/70">{m.filter_gender()}</span>
+                  {m.role_client()}
+                </p>
+              </div>
+              <p class="mt-5 text-xs text-white/50">{m.account_demo_note()}</p>
+            </div>
+          )}
+        </div>
+      </AccountShell>
+    )
+  }
+</Layout>
+
+<style>
+  .facts-card {
+    clip-path: polygon(0 8px, 100% 0, 100% calc(100% - 5px), 0 100%);
+  }
+</style>

@@ -1,12 +1,19 @@
 ---
 import * as m from '@/paraglide/messages';
+import type { Session } from '@/app/models/session';
 import AiSearchInput from '@/components/molecules/AiSearchInput.astro';
 import Button from '@/components/atoms/Button.astro';
 import Combobox from '@/components/molecules/Combobox.astro';
+import SafeImage from '@/components/atoms/SafeImage.astro';
 import { getLocale } from '@/paraglide/runtime';
 import { listingCategoryLabel } from '@/lib/labels';
 import { localizePath } from '@/lib/i18n';
 import { CITIES, LISTING_CATEGORIES, type Locale } from '@/lib/taxonomy';
+
+interface Props {
+  session?: Session | null;
+}
+const { session = null } = Astro.props;
 
 /** Site languages — native names, no flags. */
 const LANGUAGES = [
@@ -58,17 +65,41 @@ const categories = [
     </nav>
 
     <div class="ml-auto flex flex-none items-center gap-4 md:ml-0">
-      <button
-        type="button"
-        data-modal-open="auth"
-        data-auth-tab="login"
-        class="text-sm font-semibold transition-colors hover:text-primary"
-      >
-        {m.nav_login()}
-      </button>
-      <Button size="sm" data-modal-open="auth" data-auth-tab="register">
-        {m.nav_register()}
-      </Button>
+      {
+        session ? (
+          <a
+            href={localizePath('/account/')}
+            class="flex items-center gap-2.5 text-sm font-semibold transition-colors hover:text-brand"
+          >
+            {session.profileId ? (
+              <SafeImage
+                imageKey={session.profileId}
+                alt={session.name}
+                class="size-8 rounded-full"
+              />
+            ) : (
+              <span class="grid size-8 place-items-center rounded-full bg-foreground font-condensed text-sm font-bold text-background">
+                {session.name.charAt(0)}
+              </span>
+            )}
+            <span class="hidden sm:block">{session.name}</span>
+          </a>
+        ) : (
+          <>
+            <button
+              type="button"
+              data-modal-open="auth"
+              data-auth-tab="login"
+              class="cursor-pointer text-sm font-semibold transition-colors hover:text-primary"
+            >
+              {m.nav_login()}
+            </button>
+            <Button size="sm" data-modal-open="auth" data-auth-tab="register">
+              {m.nav_register()}
+            </Button>
+          </>
+        )
+      }
     </div>
   </div>
 

@@ -1,0 +1,49 @@
+---
+/**
+ * Labelled Misprint slab input (DESIGN §1.1): the P5-style cut ink frame with
+ * a paper face. One component for every auth/account form field.
+ */
+interface Props {
+  label: string;
+  name: string;
+  type?: string;
+  value?: string | number;
+  placeholder?: string;
+  required?: boolean;
+  autocomplete?: string;
+  inputmode?: 'text' | 'numeric' | 'tel' | 'email' | 'decimal';
+  class?: string;
+  [key: string]: unknown;
+}
+const {
+  label,
+  name,
+  type = 'text',
+  value = '',
+  placeholder,
+  required,
+  autocomplete,
+  inputmode,
+  class: className,
+  ...rest
+} = Astro.props;
+---
+
+<label class:list={['block space-y-1.5', className]}>
+  <span class="text-sm font-medium">{label}</span>
+  <span class="slab-field block">
+    <span class="slab-field__face flex h-11 items-center">
+      <input
+        {type}
+        {name}
+        value={value === undefined ? '' : String(value)}
+        {placeholder}
+        {required}
+        {autocomplete}
+        {inputmode}
+        class="h-full w-full bg-transparent px-4 text-base caret-brand outline-none placeholder:text-muted-foreground md:text-sm"
+        {...rest}
+      />
+    </span>
+  </span>
+</label>

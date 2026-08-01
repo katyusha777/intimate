@@ -1,0 +1,32 @@
+---
+/** Favorites — empty state for now (persistence comes with real accounts). */
+import * as m from '@/paraglide/messages';
+import { isLocale, localizePath } from '@/lib/i18n';
+import Button from '@/components/atoms/Button.astro';
+import Layout from '@/layouts/Layout.astro';
+
+const locale = Astro.params.locale;
+if (!isLocale(locale)) return new Response(null, { status: 404 });
+---
+
+<Layout noindex title={`${m.nav_favorites()} | Intimate`}>
+  <div class="mx-auto grid max-w-7xl place-items-center px-4 py-24 md:px-6">
+    <div class="space-y-5 text-center">
+      <svg
+        class="mx-auto size-10 text-muted-foreground"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.5"
+        stroke-linejoin="round"
+        aria-hidden="true"
+        ><path
+          d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7Z"
+        /></svg
+      >
+      <h1 class="display text-3xl">{m.fav_empty_title()}</h1>
+      <p class="mx-auto max-w-sm text-sm text-muted-foreground">{m.fav_empty_body()}</p>
+      <Button as="a" href={localizePath('/search/')}>{m.nav_search()}</Button>
+    </div>
+  </div>
+</Layout>

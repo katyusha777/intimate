@@ -1,0 +1,185 @@
+---
+/**
+ * Two-step verification (ARCHITECTURE §11): SMS via Twilio Verify (mocked)
+ * and ID + selfie-with-code review (documents are NEVER stored in the mock —
+ * hard rule 3: they are toxic waste; only the state transition is recorded).
+ */
+import * as m from '@/paraglide/messages';
+import type { Account } from '@/app/models/account';
+import type { Session } from '@/app/models/session';
+import Button from '@/components/atoms/Button.astro';
+import SlabField from '@/components/molecules/SlabField.astro';
+
+interface Props {
+  session: Session;
+  account: Account;
+}
+const { session, account } = Astro.props;
+
+/* Per-request handwritten code, derived from the email (stable for the demo). */
+const code =
+  'INT-' +
+  Math.abs([...session.email].reduce((h, c) => (h * 31 + c.charCodeAt(0)) | 0, 7))
+    .toString(36)
+    .slice(0, 4)
+    .toUpperCase();
+
+const smsDone = Boolean(account.phoneVerifiedAt);
+const idState = account.idVerification;
+
+const stepNo = 'grid size-8 flex-none place-items-center bg-foreground font-condensed text-sm font-bold text-background';
+const stepDone = 'grid size-8 flex-none place-items-center bg-online font-condensed text-sm font-bold text-neutral-950';
+---
+
+<div class="max-w-xl space-y-10" data-verification>
+  <!-- Step 1 · SMS -->
+  <section class="space-y-4">
+    <div class="flex items-center gap-3">
+      <span class={smsDone ? stepDone : stepNo}>{smsDone ? '✓' : '1'}</span>
+      <h2 class="font-condensed text-xl font-semibold">{m.verify_step_sms()}</h2>
+      {smsDone && <span class="text-sm font-medium text-online">{m.verify_verified()}</span>}
+    </div>
+
+    {
+      !smsDone && (
+        <div class="space-y-3 border-l border-border pl-7">
+          <div class="flex items-end gap-2" data-sms-start>
+            <SlabField
+              label={m.verify_phone_label()}
+              name="phone"
+              type="tel"
+              inputmode="tel"
+              placeholder="+31 6 12345678"
+              class="flex-1"
+            />
+            <Button size="sm" type="button" data-sms-send class="mb-1">
+              {m.verify_send_code()}
+            </Button>
+          </div>
+          <div class="hidden items-end gap-2" data-sms-check>
+            <SlabField
+              label={m.verify_code_label()}
+              name="code"
+              inputmode="numeric"
+              placeholder="000000"
+              maxlength="6"
+              class="flex-1"
+            />
+            <Button size="sm" type="button" data-sms-verify class="mb-1">
+              {m.verify_check_code()}
+            </Button>
+          </div>
+          <p data-sms-error class="hidden text-sm font-medium text-brand">{m.auth_error()}</p>
+        </div>
+      )
+    }
+  </section>
+
+  <!-- Step 2 · ID -->
+  <section class="space-y-4">
+    <div class="flex items-center gap-3">
+      <span class={idState === 'approved' ? stepDone : stepNo}>{idState === 'approved' ? '✓' : '2'}</span>
+      <h2 class="font-condensed text-xl font-semibold">{m.verify_step_id()}</h2>
+      {idState === 'approved' && <span class="text-sm font-medium text-online">{m.verify_verified()}</span>}
+      {idState === 'pending' && <span class="text-sm font-medium text-muted-foreground">{m.verify_pending()}…</span>}
+    </div>
+
+    {
+      idState === 'unverified' && (
+        <div class="space-y-4 border-l border-border pl-7">
+          <p class="text-sm leading-relaxed">{m.verify_id_intro()}</p>
+          <p class="slab-cut inline-block bg-foreground px-4 py-2 font-condensed text-xl font-bold tracking-widest text-background">
+            {code}
+          </p>
+          <div class="grid gap-3 sm:grid-cols-2">
+            <label class="flex cursor-pointer flex-col items-center gap-2 border border-dashed border-foreground/30 px-3 py-6 text-center text-sm text-muted-foreground transition-colors hover:border-foreground/70 hover:text-foreground">
+              <input type="file" accept="image/*" data-id-doc class="sr-only" />
+              <svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2" /><circle cx="9" cy="11" r="2" /><path d="M14 9h4M14 13h4M6 17h12" /></svg>
+              <span data-file-label>{m.verify_id_doc()}</span>
+            </label>
+            <label class="flex cursor-pointer flex-col items-center gap-2 border border-dashed border-foreground/30 px-3 py-6 text-center text-sm text-muted-foreground transition-colors hover:border-foreground/70 hover:text-foreground">
+              <input type="file" accept="image/*" capture="user" data-id-selfie class="sr-only" />
+              <svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4" /><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6" /></svg>
+              <span data-file-label>{m.verify_id_selfie()}</span>
+            </label>
+          </div>
+          <p class="text-xs leading-relaxed text-muted-foreground">{m.verify_privacy()}</p>
+          <Button type="button" data-id-submit disabled>{m.verify_submit()}</Button>
+        </div>
+      )
+    }
+    {
+      idState === 'pending' && (
+        <div class="space-y-4 border-l border-border pl-7">
+          <p class="max-w-md text-sm leading-relaxed text-muted-foreground">{m.verify_privacy()}</p>
+          <button
+            type="button"
+            data-id-approve
+            class="slab-cut cursor-pointer border border-foreground/20 px-3.5 py-2 text-xs font-medium text-muted-foreground transition-colors hover:border-foreground/60 hover:text-foreground"
+          >
+            {m.verify_demo_approve()}
+          </button>
+        </div>
+      )
+    }
+  </section>
+</div>
+
+<script>
+  import { actions } from 'astro:actions';
+
+  function initVerification() {
+    document.querySelectorAll<HTMLElement>('[data-verification]').forEach((root) => {
+      if (root.dataset.init) return;
+      root.dataset.init = '1';
+      const err = root.querySelector<HTMLElement>('[data-sms-error]');
+
+      root.querySelector<HTMLElement>('[data-sms-send]')?.addEventListener('click', async () => {
+        err?.classList.add('hidden');
+        const phone = root
+          .querySelector<HTMLInputElement>('[data-sms-start] input[name="phone"]')!
+          .value.replace(/[\s-]/g, '');
+        const { error } = await actions.account.startSms({ phone });
+        if (error) return err?.classList.remove('hidden');
+        root.querySelector('[data-sms-start]')?.classList.add('hidden');
+        const check = root.querySelector<HTMLElement>('[data-sms-check]')!;
+        check.classList.remove('hidden');
+        check.classList.add('flex');
+      });
+
+      root.querySelector<HTMLElement>('[data-sms-verify]')?.addEventListener('click', async () => {
+        err?.classList.add('hidden');
+        const code = root.querySelector<HTMLInputElement>('[data-sms-check] input[name="code"]')!.value;
+        const { error } = await actions.account.checkSms({ code });
+        if (error) return err?.classList.remove('hidden');
+        location.reload();
+      });
+
+      // ID step: both files chosen → enable submit. Files are read only to be
+      // discarded — the mock never uploads them (toxic waste rule).
+      const doc = root.querySelector<HTMLInputElement>('[data-id-doc]');
+      const selfie = root.querySelector<HTMLInputElement>('[data-id-selfie]');
+      const submit = root.querySelector<HTMLButtonElement>('[data-id-submit]');
+      const sync = () => {
+        [doc, selfie].forEach((inp) => {
+          const label = inp?.closest('label')?.querySelector('[data-file-label]');
+          if (inp?.files?.[0] && label) label.textContent = `✓ ${inp.files[0].name}`;
+        });
+        if (submit) submit.disabled = !(doc?.files?.[0] && selfie?.files?.[0]);
+      };
+      doc?.addEventListener('change', sync);
+      selfie?.addEventListener('change', sync);
+      submit?.addEventListener('click', async () => {
+        await actions.account.submitId({});
+        location.reload();
+      });
+
+      root.querySelector<HTMLElement>('[data-id-approve]')?.addEventListener('click', async () => {
+        await actions.account.demoApproveId({});
+        location.reload();
+      });
+    });
+  }
+  initVerification();
+  document.addEventListener('astro:page-load', initVerification);
+</script>

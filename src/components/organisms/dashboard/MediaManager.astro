@@ -1,0 +1,122 @@
+---
+/**
+ * Photo manager: current photos (base + uploaded), remove per photo, add via
+ * file input (mobile camera capture). Files are downscaled and RE-ENCODED to
+ * JPEG on-device via canvas — which strips EXIF/GPS (hard rule 2) — then sent
+ * as a small data-URL to the mock store.
+ */
+import * as m from '@/paraglide/messages';
+import type { Account } from '@/app/models/account';
+import type { Profile } from '@/app/models/profile';
+import SafeImage from '@/components/atoms/SafeImage.astro';
+
+interface Props {
+  /** Base (unmerged) profile — indexes must match the original photos array. */
+  profile: Profile;
+  account: Account;
+}
+const { profile: p, account } = Astro.props;
+const removed = new Set(account.removedPhotos);
+---
+
+<div class="max-w-3xl space-y-5" data-media-manager>
+  <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
+    {
+      p.photos.map((photo, i) =>
+        removed.has(i) ? null : (
+          <div class="group relative aspect-[3/4] overflow-hidden bg-neutral-950">
+            <SafeImage imageKey={`${p.id}-${i}`} src={photo} alt={`${p.name} ${i + 1}`} class="h-full w-full" />
+            <button
+              type="button"
+              data-remove-photo
+              data-kind="base"
+              data-index={i}
+              aria-label="Remove"
+              class="card-heart absolute right-2 top-2 grid size-8 cursor-pointer place-items-center bg-neutral-950 text-white transition-transform active:scale-90"
+            >
+              <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+            </button>
+          </div>
+        ),
+      )
+    }
+    {
+      account.extraPhotos.map((dataUrl, i) => (
+        <div class="group relative aspect-[3/4] overflow-hidden bg-neutral-950">
+          <img src={dataUrl} alt={`Upload ${i + 1}`} class="h-full w-full object-cover" />
+          <button
+            type="button"
+            data-remove-photo
+            data-kind="extra"
+            data-index={i}
+            aria-label="Remove"
+            class="card-heart absolute right-2 top-2 grid size-8 cursor-pointer place-items-center bg-neutral-950 text-white transition-transform active:scale-90"
+          >
+            <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+          </button>
+        </div>
+      ))
+    }
+
+    <label
+      class="flex aspect-[3/4] cursor-pointer flex-col items-center justify-center gap-2 border border-dashed border-foreground/30 text-muted-foreground transition-colors hover:border-foreground/70 hover:text-foreground"
+    >
+      <input type="file" accept="image/*" capture="environment" data-add-photo class="sr-only" />
+      <svg class="size-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+      <span class="text-sm font-medium" data-add-label>{m.photos_add()}</span>
+    </label>
+  </div>
+
+  <p class="max-w-md text-xs text-muted-foreground">{m.photos_note()}</p>
+</div>
+
+<script>
+  import { actions } from 'astro:actions';
+
+  /** Downscale + re-encode to JPEG (strips ALL metadata incl. GPS). */
+  async function reencode(file: File): Promise<string> {
+    const bmp = await createImageBitmap(file);
+    const scale = Math.min(1, 1000 / Math.max(bmp.width, bmp.height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(bmp.width * scale);
+    canvas.height = Math.round(bmp.height * scale);
+    canvas.getContext('2d')!.drawImage(bmp, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL('image/jpeg', 0.8);
+  }
+
+  function initMedia() {
+    document.querySelectorAll<HTMLElement>('[data-media-manager]').forEach((root) => {
+      if (root.dataset.init) return;
+      root.dataset.init = '1';
+
+      root.querySelectorAll<HTMLElement>('[data-remove-photo]').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          await actions.account.removePhoto({
+            kind: btn.dataset.kind as 'base' | 'extra',
+            index: Number(btn.dataset.index),
+          });
+          location.reload();
+        });
+      });
+
+      const input = root.querySelector<HTMLInputElement>('[data-add-photo]');
+      input?.addEventListener('change', async () => {
+        const file = input.files?.[0];
+        if (!file) return;
+        const label = root.querySelector<HTMLElement>('[data-add-label]')!;
+        label.textContent = '…';
+        try {
+          const dataUrl = await reencode(file);
+          const { error } = await actions.account.addPhoto({ dataUrl });
+          if (error) throw error;
+          location.reload();
+        } catch {
+          label.textContent = '✕';
+          setTimeout(() => location.reload(), 800);
+        }
+      });
+    });
+  }
+  initMedia();
+  document.addEventListener('astro:page-load', initMedia);
+</script>

@@ -3,6 +3,7 @@ node_modules/
 dist/
 .astro/
 .wrangler/
+.playwright-mcp
 
 # generated
 src/paraglide/

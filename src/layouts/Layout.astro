@@ -3,10 +3,14 @@ import { ClientRouter } from 'astro:transitions';
 import * as m from '@/paraglide/messages';
 import { getLocale } from '@/paraglide/runtime';
 import type { Locale } from '@/lib/taxonomy';
+import { accountApi } from '@/app/api/account';
+import { sessionApi } from '@/app/api/session';
 import Header from '@/components/organisms/layout/Header.astro';
 import Footer from '@/components/organisms/layout/Footer.astro';
 import BottomTabBar from '@/components/organisms/layout/BottomTabBar.astro';
 import AuthModal from '@/components/organisms/auth/AuthModal.astro';
+import ProfileSheet from '@/components/organisms/profile/ProfileSheet.astro';
+import Lightbox from '@/components/molecules/Lightbox.astro';
 import '@fontsource/barlow/400.css';
 import '@fontsource/barlow/500.css';
 import '@fontsource/barlow/600.css';
@@ -26,10 +30,19 @@ interface Props {
   alternates?: Record<Locale, string>;
   /** JSON-LD objects to embed (SEO.md §4). */
   jsonLd?: unknown[];
+  /** Utility pages (account, favorites): keep out of the index. */
+  noindex?: boolean;
 }
 
-const { title = m.app_name(), description, canonical, alternates, jsonLd = [] } = Astro.props;
+const { title = m.app_name(), description, canonical, alternates, jsonLd = [], noindex } = Astro.props;
 const locale = getLocale();
+
+/* Session-aware chrome: layouts may read the seam (docs/API.md). */
+const session = await sessionApi.fromCookies(Astro.cookies);
+const idVerified =
+  session?.role === 'advertiser'
+    ? (await accountApi.get(session)).idVerification === 'approved'
+    : true;
 ---
 
 <!doctype html>
@@ -38,6 +51,7 @@ const locale = getLocale();
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
     <title>{title}</title>
+    {noindex && <meta name="robots" content="noindex, follow" />}
     {description && <meta name="description" content={description} />}
     {canonical && <link rel="canonical" href={canonical} />}
     {
@@ -78,15 +92,21 @@ const locale = getLocale();
     </script>
   </head>
   <body class="min-h-dvh bg-background font-sans text-foreground antialiased">
-    <Header />
+    <!-- .page-zoom = the iOS push-back target when a sheet opens; fixed
+         chrome (dock, dialogs) lives outside it. -->
+    <div class="page-zoom">
+      <Header {session} />
 
-    <main>
-      <slot />
-    </main>
+      <main>
+        <slot />
+      </main>
 
-    <Footer />
-    <BottomTabBar />
+      <Footer />
+    </div>
+    <BottomTabBar {session} {idVerified} />
     <AuthModal />
+    <ProfileSheet />
+    <Lightbox />
 
     <script is:inline>
       // Safe mode (DESIGN.md §6): fail-closed. Server HTML always ships safe

@@ -1,0 +1,74 @@
+---
+/**
+ * The full profile content (hero → facts → about → services → gallery) —
+ * shared by the profile page and the mobile ActionSheet, which fetches the
+ * page and lifts out [data-profile-root]. The `sheet` flag adapts chrome that
+ * differs between a full page and a sheet (e.g. the back control).
+ */
+import * as m from '@/paraglide/messages';
+import type { Profile } from '@/app/models/profile';
+import { localizedDescription } from '@/app/models/profile';
+import { serviceCategoryLabel, serviceLabel } from '@/lib/labels';
+import { SERVICES, SERVICE_CATEGORIES } from '@/lib/taxonomy';
+import ProfileFacts from '@/components/organisms/profile/ProfileFacts.astro';
+import ProfileGallery from '@/components/organisms/profile/ProfileGallery.astro';
+import ProfileHero from '@/components/organisms/profile/ProfileHero.astro';
+
+interface Props {
+  profile: Profile;
+}
+const { profile: p } = Astro.props;
+
+const description = localizedDescription(p);
+const serviceGroups = SERVICE_CATEGORIES.map((cat) => ({
+  cat,
+  items: SERVICES[cat].filter((s) => (p.services as readonly string[]).includes(s)),
+})).filter((g) => g.items.length > 0);
+---
+
+<div data-profile-root data-lightbox-group data-profile-slug={p.slug}>
+  <ProfileHero profile={p} />
+
+  <div class="mx-auto max-w-7xl px-4 py-8 md:px-6 md:py-12" id="profile-details">
+    <div class="grid items-start gap-8 lg:grid-cols-[1fr_22rem] lg:gap-12">
+      <ProfileFacts profile={p} class="order-first w-full lg:order-last" />
+
+      <div class="min-w-0 space-y-10">
+        <section>
+          <h2 class="display text-2xl md:text-3xl">{m.profile_about()}</h2>
+          <p class="mt-4 max-w-2xl leading-relaxed">{description}</p>
+        </section>
+
+        <section>
+          <h2 class="display text-2xl md:text-3xl">{m.filter_services()}</h2>
+          <!-- label left, quiet ink-wash pills right — compact, no keyline noise -->
+          <div class="mt-4 space-y-3">
+            {
+              serviceGroups.map((g) => (
+                <div class="flex gap-4">
+                  <h3 class="w-28 flex-none pt-1.5 font-condensed text-sm font-bold uppercase tracking-wide text-muted-foreground">
+                    {serviceCategoryLabel(g.cat)}
+                  </h3>
+                  <div class="flex flex-wrap items-start gap-1.5">
+                    {g.items.map((s) => (
+                      <span class="rounded-full bg-muted px-3 py-1 text-xs font-medium text-foreground/80">
+                        {serviceLabel(s)}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ))
+            }
+          </div>
+        </section>
+
+        <section>
+          <h2 class="display text-2xl md:text-3xl">{m.profile_gallery()}</h2>
+          <div class="mt-4">
+            <ProfileGallery photos={p.photos} keyBase={p.id} alt={p.name} />
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+</div>

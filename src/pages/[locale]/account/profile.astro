@@ -1,0 +1,29 @@
+---
+/** Advertiser profile editor (clients → dashboard). */
+import * as m from '@/paraglide/messages';
+import { accountApi } from '@/app/api/account';
+import { sessionApi } from '@/app/api/session';
+import { isLocale, localizePath } from '@/lib/i18n';
+import AccountShell from '@/components/organisms/dashboard/AccountShell.astro';
+import ProfileEditorForm from '@/components/organisms/dashboard/ProfileEditorForm.astro';
+import SignInPrompt from '@/components/organisms/dashboard/SignInPrompt.astro';
+import Layout from '@/layouts/Layout.astro';
+
+const locale = Astro.params.locale;
+if (!isLocale(locale)) return new Response(null, { status: 404 });
+
+const session = await sessionApi.fromCookies(Astro.cookies);
+if (session && session.role !== 'advertiser') return Astro.redirect(localizePath('/account/'));
+const profile = session ? await accountApi.myProfile(session) : null;
+---
+
+<Layout noindex title={`${m.editor_title()} | Intimate`}>
+  {!session && <SignInPrompt />}
+  {
+    session && profile && (
+      <AccountShell {session} title={m.editor_title()} path={localizePath('/account/profile/')}>
+        <ProfileEditorForm {profile} />
+      </AccountShell>
+    )
+  }
+</Layout>

@@ -1,0 +1,139 @@
+---
+/**
+ * Fullscreen image lightbox (native <dialog>, top-layer so it stacks over the
+ * profile sheet). Swipe between photos, tap to dismiss, counter, close button.
+ * Opened by delegation: any [data-lightbox] trigger inside a
+ * [data-lightbox-group] opens the group's [data-lightbox-photos] images at the
+ * trigger's data-lightbox-index. Reads live <img> src so safe-mode is honored.
+ */
+interface Props {
+  id?: string;
+}
+const { id = 'lightbox' } = Astro.props;
+---
+
+<dialog
+  id={id}
+  data-lightbox-dialog
+  aria-label="Photos"
+  class="lightbox m-0 h-dvh max-h-dvh w-dvw max-w-none bg-black/0 p-0 backdrop:bg-transparent"
+>
+  <div class="lightbox-scrim fixed inset-0 bg-black"></div>
+  <div class="relative flex h-dvh w-dvw flex-col">
+    <div
+      class="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-center justify-between px-4 py-3"
+      style="padding-top: calc(0.75rem + env(safe-area-inset-top))"
+    >
+      <span
+        data-lightbox-counter
+        class="rounded-full bg-white/15 px-3 py-1 text-sm font-medium text-white backdrop-blur"
+      ></span>
+      <button
+        type="button"
+        data-lightbox-close
+        aria-label="Close"
+        class="pointer-events-auto grid size-10 cursor-pointer place-items-center rounded-full bg-white/15 text-white backdrop-blur transition-transform active:scale-90"
+      >
+        <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+      </button>
+    </div>
+    <div
+      data-lightbox-track
+      class="flex h-full w-full snap-x snap-mandatory items-center overflow-x-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+    >
+    </div>
+  </div>
+</dialog>
+
+<style>
+  /* Fade the scrim in/out; images just appear (viewer, not a sheet). */
+  .lightbox-scrim {
+    opacity: 0;
+    transition: opacity 0.25s ease;
+  }
+  .lightbox[data-open] .lightbox-scrim {
+    opacity: 1;
+  }
+  @starting-style {
+    .lightbox[data-open] .lightbox-scrim {
+      opacity: 0;
+    }
+  }
+</style>
+
+<script>
+  function initLightbox() {
+    const dialog = document.querySelector<HTMLDialogElement>('[data-lightbox-dialog]');
+    if (!dialog || dialog.dataset.init) return;
+    dialog.dataset.init = '1';
+
+    const track = dialog.querySelector<HTMLElement>('[data-lightbox-track]')!;
+    const counter = dialog.querySelector<HTMLElement>('[data-lightbox-counter]')!;
+    let total = 0;
+
+    const update = () => {
+      const i = track.clientWidth ? Math.round(track.scrollLeft / track.clientWidth) : 0;
+      counter.textContent = total ? `${i + 1} / ${total}` : '';
+    };
+    track.addEventListener('scroll', update, { passive: true });
+
+    const openLightbox = (photos: { src: string; alt: string }[], index: number) => {
+      total = photos.length;
+      track.replaceChildren(
+        ...photos.map((p) => {
+          const img = document.createElement('img');
+          img.src = p.src;
+          img.alt = p.alt;
+          img.draggable = false;
+          img.className = 'h-full w-full flex-none snap-center object-contain select-none';
+          return img;
+        }),
+      );
+      dialog.showModal();
+      dialog.setAttribute('data-open', '');
+      requestAnimationFrame(() => {
+        track.scrollLeft = index * track.clientWidth;
+        update();
+      });
+    };
+    (window as any).__openLightbox = openLightbox;
+
+    const close = () => {
+      dialog.removeAttribute('data-open');
+      dialog.close();
+    };
+    dialog.addEventListener('close', () => dialog.removeAttribute('data-open'));
+    dialog.querySelector('[data-lightbox-close]')!.addEventListener('click', close);
+
+    // Tap (not swipe) on a photo dismisses — the expected viewer gesture.
+    let sx = 0;
+    let sy = 0;
+    let moved = false;
+    track.addEventListener('pointerdown', (e) => {
+      sx = e.clientX;
+      sy = e.clientY;
+      moved = false;
+    });
+    track.addEventListener('pointermove', (e) => {
+      if (Math.abs(e.clientX - sx) > 10 || Math.abs(e.clientY - sy) > 10) moved = true;
+    });
+    track.addEventListener('pointerup', () => {
+      if (!moved) close();
+    });
+
+    // Delegated openers (work on the full page AND inside the profile sheet).
+    document.addEventListener('click', (e) => {
+      const trigger = (e.target as HTMLElement).closest?.('[data-lightbox]') as HTMLElement | null;
+      if (!trigger) return;
+      const group = trigger.closest('[data-lightbox-group]');
+      if (!group) return;
+      e.preventDefault();
+      const imgs = [...group.querySelectorAll<HTMLImageElement>('[data-lightbox-photos] img')];
+      const photos = imgs.map((im) => ({ src: im.currentSrc || im.src, alt: im.alt || '' }));
+      if (!photos.length) return;
+      openLightbox(photos, Number(trigger.dataset.lightboxIndex || 0));
+    });
+  }
+  initLightbox();
+  document.addEventListener('astro:page-load', initLightbox);
+</script>

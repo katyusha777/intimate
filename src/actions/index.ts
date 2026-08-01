@@ -2,11 +2,14 @@
  * Server actions (CLAUDE.md conventions): Zod-validated, run inside the
  * Cloudflare Worker — API keys never reach the client.
  */
-import { defineAction } from "astro:actions";
+import { ActionError, defineAction } from "astro:actions";
 import { z } from "astro:schema";
 import { z as zod } from "zod";
 import { env } from "cloudflare:workers";
 import { getAiSearchConfig, OPENROUTER_URL } from "@/lib/ai";
+import { ProfileEditSchema } from "@/app/models/account";
+import { accountApi } from "@/app/api/account";
+import { sessionApi } from "@/app/api/session";
 import {
   ALL_SERVICES,
   CITIES,
@@ -14,6 +17,13 @@ import {
   LOCALES,
   MEETING_TYPES,
 } from "@/lib/taxonomy";
+
+/** Actions run with the request's cookie jar — sessions resolve per request. */
+async function requireSession(context: { cookies: Parameters<typeof sessionApi.fromCookies>[0] }) {
+  const session = await sessionApi.fromCookies(context.cookies);
+  if (!session) throw new ActionError({ code: "UNAUTHORIZED" });
+  return session;
+}
 
 const CITY_SLUGS = CITIES.map((c) => c.slug);
 
@@ -158,4 +168,133 @@ export const server = {
       return { href, filters };
     },
   }),
+
+  auth: {
+    register: defineAction({
+      input: z.object({
+        email: z.string().email(),
+        password: z.string().min(6), // accepted, unused — mock backend
+        role: z.enum(["advertiser", "client"]),
+        locale: z.enum(LOCALES),
+      }),
+      handler: async ({ email, role, locale }, context) => {
+        await sessionApi.register(context.cookies, { email, role });
+        return { href: `/${locale}/account/` };
+      },
+    }),
+
+    login: defineAction({
+      input: z.object({
+        email: z.string().email(),
+        password: z.string().min(1),
+        locale: z.enum(LOCALES),
+      }),
+      handler: async ({ email, locale }, context) => {
+        await sessionApi.signIn(context.cookies, { email });
+        return { href: `/${locale}/account/` };
+      },
+    }),
+
+    logout: defineAction({
+      input: z.object({ locale: z.enum(LOCALES) }),
+      handler: async ({ locale }, context) => {
+        await sessionApi.signOut(context.cookies);
+        return { href: `/${locale}/` };
+      },
+    }),
+  },
+
+  account: {
+    saveProfile: defineAction({
+      input: z.object({ patch: z.any() }),
+      handler: async ({ patch }, context) => {
+        const session = await requireSession(context);
+        // AI-adjacent rule applies to users too: input is data — strict parse.
+        const parsed = ProfileEditSchema.partial().safeParse(patch);
+        if (!parsed.success) throw new ActionError({ code: "BAD_REQUEST" });
+        await accountApi.save(session, { profileOverride: parsed.data });
+        return { ok: true };
+      },
+    }),
+
+    addPhoto: defineAction({
+      input: z.object({
+        // client downscales + re-encodes (EXIF stripped by the canvas re-encode)
+        dataUrl: z
+          .string()
+          .regex(/^data:image\/jpeg;base64,/)
+          .max(900_000),
+      }),
+      handler: async ({ dataUrl }, context) => {
+        const session = await requireSession(context);
+        const acct = await accountApi.get(session);
+        if (acct.extraPhotos.length >= 8) throw new ActionError({ code: "BAD_REQUEST" });
+        await accountApi.save(session, { extraPhotos: [...acct.extraPhotos, dataUrl] });
+        return { ok: true };
+      },
+    }),
+
+    removePhoto: defineAction({
+      input: z.object({
+        /** base = index in the ORIGINAL profile.photos array; extra = index in extraPhotos. */
+        kind: z.enum(["base", "extra"]),
+        index: z.number().int().min(0),
+      }),
+      handler: async ({ kind, index }, context) => {
+        const session = await requireSession(context);
+        const acct = await accountApi.get(session);
+        if (kind === "base") {
+          await accountApi.save(session, {
+            removedPhotos: [...new Set([...acct.removedPhotos, index])],
+          });
+        } else {
+          const extras = acct.extraPhotos.filter((_, i) => i !== index);
+          await accountApi.save(session, { extraPhotos: extras });
+        }
+        return { ok: true };
+      },
+    }),
+
+    startSms: defineAction({
+      input: z.object({ phone: z.string().regex(/^\+[1-9]\d{6,14}$/) }),
+      handler: async ({ phone }, context) => {
+        const session = await requireSession(context);
+        // Mock: Twilio Verify `start` lands here later (ARCHITECTURE §11).
+        await accountApi.save(session, { phone });
+        return { ok: true };
+      },
+    }),
+
+    checkSms: defineAction({
+      input: z.object({ code: z.string().regex(/^\d{6}$/) }),
+      handler: async (_input, context) => {
+        const session = await requireSession(context);
+        // Mock: any 6-digit code verifies. Twilio `check` replaces this.
+        await accountApi.save(session, { phoneVerifiedAt: new Date().toISOString() });
+        return { ok: true };
+      },
+    }),
+
+    submitId: defineAction({
+      input: z.object({}),
+      handler: async (_input, context) => {
+        const session = await requireSession(context);
+        // Documents are NEVER stored here (hard rule 3: toxic waste). The real
+        // impl streams EXIF-stripped files to the private R2 bucket; the mock
+        // discards them client-side and only records the state transition.
+        await accountApi.save(session, { idVerification: "pending" });
+        return { ok: true };
+      },
+    }),
+
+    demoApproveId: defineAction({
+      input: z.object({}),
+      handler: async (_input, context) => {
+        const session = await requireSession(context);
+        // Demo-only shortcut for the moderation queue that doesn't exist yet.
+        await accountApi.save(session, { idVerification: "approved" });
+        return { ok: true };
+      },
+    }),
+  },
 };

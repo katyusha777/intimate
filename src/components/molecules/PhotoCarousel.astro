@@ -109,13 +109,3 @@ const { photos, keyBase, alt, class: className, loading = 'lazy', swipe, bars } 
   initCarousels();
   document.addEventListener('astro:page-load', initCarousels);
 </script>
-
-<style>
-  /* Arrow buttons are mini ink slabs — cut, slightly sheared like the card slab. */
-  .pc-btn--l {
-    clip-path: polygon(0 3px, 100% 0, 100% 100%, 0 calc(100% - 3px));
-  }
-  .pc-btn--r {
-    clip-path: polygon(0 0, 100% 3px, 100% calc(100% - 3px), 0 100%);
-  }
-</style>

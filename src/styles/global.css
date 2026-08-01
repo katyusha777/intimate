@@ -315,6 +315,22 @@
     clip-path: polygon(0 3px, 100% 0, 100% calc(100% - 3px), 0 100%);
   }
 
+  /* Profile-surface Misprint cuts — global so they survive fetch-and-inject
+     into the mobile ActionSheet (Astro-scoped <style> would not). */
+  .card-heart {
+    clip-path: polygon(0 3px, 100% 0, 100% calc(100% - 3px), 0 100%);
+  }
+  .pc-btn--l {
+    clip-path: polygon(0 3px, 100% 0, 100% 100%, 0 calc(100% - 3px));
+  }
+  .pc-btn--r {
+    clip-path: polygon(0 0, 100% 3px, 100% calc(100% - 3px), 0 100%);
+  }
+  .facts-slab {
+    clip-path: polygon(0 10px, 100% 0, 100% calc(100% - 6px), 0 100%);
+    transform: rotate(-0.4deg);
+  }
+
   /* Print radio: keyline circle; checked = ink dot (inset ring trick). */
   .radio-dot {
     appearance: none;

@@ -1,0 +1,140 @@
+---
+/**
+ * Mobile profile presentation: an ActionSheet that, on phones, intercepts
+ * profile-card links, fetches the profile page, lifts out [data-profile-root]
+ * and shows it in the sheet (URL updated via pushState → shareable, back-button
+ * closes). Desktop and no-JS fall through to the real full-page navigation, so
+ * SEO and deep-links are untouched.
+ */
+import ActionSheet from '@/components/molecules/ActionSheet.astro';
+---
+
+<ActionSheet id="profile-sheet" label="Profile" flush>
+  <div data-profile-sheet-slot></div>
+</ActionSheet>
+
+<script>
+  function initProfileSheet() {
+    if ((window as any).__profileSheet) return;
+    (window as any).__profileSheet = true;
+
+    const mobile = matchMedia('(max-width: 767px)');
+    const isProfileHref = (href: string) => /\/profile\/[^/?#]+\/?$/.test(href);
+
+    const sheet = () => document.getElementById('profile-sheet') as any;
+    const body = () => sheet()?.querySelector('[data-sheet-body]') as HTMLElement | null;
+
+    let open = false;
+    let suppressPop = false;
+    // Astro's ClientRouter (router.js onPopState) bails when the popped entry
+    // has `state === null`. So we null the underlying page's history state
+    // while the sheet is up and restore it on close — the back-navigation that
+    // dismisses the sheet then never triggers a listing re-render (no flash).
+    let savedState: unknown = null;
+    let savedUrl = '';
+
+    const SKELETON = `
+      <div class="animate-pulse">
+        <div class="h-[72dvh] bg-muted"></div>
+        <div class="space-y-3 p-6">
+          <div class="h-6 w-1/3 bg-muted"></div>
+          <div class="h-4 w-2/3 bg-muted"></div>
+          <div class="h-4 w-1/2 bg-muted"></div>
+        </div>
+      </div>`;
+
+    async function openProfile(url: string) {
+      const b = body();
+      const s = sheet();
+      if (!b || !s) {
+        location.href = url;
+        return;
+      }
+      savedState = history.state;
+      savedUrl = location.href;
+      // Strip the listing entry's ClientRouter state so the dismiss-back is a
+      // no-op for the router, then push the profile URL (also null-state).
+      history.replaceState(null, '', savedUrl);
+      history.pushState(null, '', url);
+      open = true;
+      b.innerHTML = SKELETON;
+      b.scrollTop = 0;
+      s.openSheet();
+      try {
+        const res = await fetch(url, { headers: { 'X-Sheet': '1' } });
+        if (!res.ok) throw new Error();
+        const doc = new DOMParser().parseFromString(await res.text(), 'text/html');
+        const root = doc.querySelector('[data-profile-root]');
+        if (!root) throw new Error();
+        b.innerHTML = '';
+        b.appendChild(root);
+        // Re-run component initializers (carousel, safe-mode image swap, hero
+        // back button, gallery) on the injected content — all idempotent.
+        document.dispatchEvent(new Event('astro:page-load'));
+        b.scrollTop = 0;
+      } catch {
+        location.href = url; // graceful fallback: real navigation
+      }
+    }
+
+    const restoreHistory = () => {
+      // Put the listing URL + its original ClientRouter state back.
+      if (savedUrl) history.replaceState(savedState, '', savedUrl);
+      savedUrl = '';
+    };
+
+    // Sheet closed by any gesture (drag/flick/backdrop/Esc): pop our entry so
+    // the URL returns to the listing (ClientRouter no-ops on the null state).
+    document.addEventListener('sheet:closed', (e) => {
+      if ((e.target as HTMLElement)?.id !== 'profile-sheet' || !open) return;
+      open = false;
+      suppressPop = true;
+      history.back();
+    });
+
+    // Browser back / hero back button (history.back) → close the sheet visually.
+    window.addEventListener('popstate', () => {
+      if (suppressPop) {
+        suppressPop = false;
+        restoreHistory();
+        return;
+      }
+      if (open) {
+        open = false;
+        sheet()?.closeSheet();
+        restoreHistory();
+      }
+    });
+
+    // Hero back → history.back (full page: previous page; sheet: pops → closes).
+    // Delegated globally so it works on the full page AND inside the injected
+    // sheet (whose page may not bundle the hero script).
+    document.addEventListener('click', (e) => {
+      if ((e.target as HTMLElement).closest?.('[data-hero-back]')) {
+        e.preventDefault();
+        history.back();
+      }
+    });
+
+    // Intercept profile links on phones only; everything else navigates.
+    // Capture phase + stopImmediatePropagation so we beat Astro's ClientRouter
+    // (which also handles link clicks for SPA navigation).
+    document.addEventListener(
+      'click',
+      (e) => {
+        if (!mobile.matches) return;
+        const me = e as MouseEvent;
+        if (me.button !== 0 || me.metaKey || me.ctrlKey || me.shiftKey || me.altKey) return;
+        const a = (e.target as HTMLElement).closest?.('a[href]') as HTMLAnchorElement | null;
+        if (!a || a.target === '_blank') return;
+        if (!isProfileHref(a.getAttribute('href') || '')) return;
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        openProfile(a.href);
+      },
+      { capture: true },
+    );
+  }
+  initProfileSheet();
+  document.addEventListener('astro:page-load', initProfileSheet);
+</script>
