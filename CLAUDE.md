@@ -16,12 +16,14 @@ Verified marketplace/directory for legal adult services (independent sex workers
 | `docs/COMPONENTS.md` | atomic component rules (machine-tested), domain map | any component work |
 | `docs/API.md` | data layer: models, api seam (json-now/db-later), security, realtime | any data/API work |
 | `docs/INFRASTRUCTURE.md` | environments, deploy, CI, services, assets, gotchas | deploy/config work |
-| `docs/SEO.md` + `docs/SEO-BUILD.md` | AI-search/SEO spec + phased build tracker | any page/URL/meta work |
+| `docs/SEO.md` + `docs/SEO-BUILD.md` | AI-search/SEO spec + its **temporary** build tracker (delete when phases land) | any page/URL/meta work |
 | `docs/UX-PLAN.md` | **temporary** execution tracker from the design review (fold, cards, rates, request sheet, discretion kit) — delete when its phases land | home/listing/profile/messaging UX work, while it exists |
 | `docs/ANALYTICS.md` | PostHog: consent model, event contract, wrapper law, flags | any tracking/flag work |
 | `docs/ADMIN.md` | admin system: roles, queues, governance, isolation | any /admin work |
 | `docs/SECURITY.md` | threat model, data safety, secrets, review discipline for sensitive diffs | auth/RLS/storage/actions/deploy work |
 | `docs/MESSAGING.md` | messaging/contacts/blocking/calls spec — UI+mock built; RLS/realtime guarantees pend the Supabase swap (Phase 0) | comms work only |
+
+**Docs discipline** — enforced by `tests/docs.test.ts` (cross-refs resolve, banned stale strings, component-inventory truth): a session that changes behavior a doc describes updates that doc **in the same change** · when a DoD/checklist item lands, tick it in the owning doc in the same change · docs shrink as they grow — an edit that adds a section deletes what it obsoletes · temporary trackers die on completion.
 
 ## Reuse is law
 
@@ -88,6 +90,6 @@ Three tiers (ARCHITECTURE §9, runbook in INFRASTRUCTURE.md): `dev` = local + lo
 
 ## Conventions
 
-Roles, not genders: code, copy, and i18n say `client`/`professional` (`ACCOUNT_TYPES`) — never gendered pronouns for a role; no copy assumes the client is male · TypeScript strict · server actions in `src/actions/` (Zod-validated) · URLs ALWAYS locale-prefixed (`/{locale}/…`, no locale-less; `/` 302s by Accept-Language): `/{locale}/{city}/`, `/{locale}/{category-slug}/{city}/` (localized slugs), `/{locale}/profile/{slug}/` · one base profile-card component (grid/featured/compact variants) · conventional commits · feature branches + PRs · GitHub Issues is the plan of record.
+Roles, not genders: code, copy, and i18n say `client`/`professional` (`ACCOUNT_TYPES`) — never gendered pronouns for a role; no copy assumes the client is male · TypeScript strict · server actions in `src/actions/` (Zod-validated) · URLs ALWAYS locale-prefixed (`/{locale}/…`, no locale-less; `/` 302s by Accept-Language): `/{locale}/{city}/`, `/{locale}/{category-slug}/{city}/` (localized slugs), `/{locale}/profile/{slug}/` · one base profile-card component (grid/featured/compact variants) · conventional commits with real messages — a commit named "." is a bug · solo flow: the working branch is fine for design churn, but sensitive diffs (auth, RLS, actions, storage, caching, migrations — SECURITY.md §9.2) go through a PR carrying the review ritual · GitHub Issues per tracker item = the plan of record.
 
 **Components: follow `docs/COMPONENTS.md` (atomic design, tested by `tests/architecture.test.ts`)** — levels `ui (vendor) → atoms → molecules → organisms/<domain> → pages`; `ui/` importable only from `atoms/` (UI-library swap = rewrite atoms); Fulldev registry first (`@fulldev` via shadcn CLI/MCP); variants as props; zero-JS default; every component on `/kitchen-sink` (both themes + safe mode) before it ships.

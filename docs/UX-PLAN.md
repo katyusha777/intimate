@@ -11,7 +11,7 @@ Execution plan for the external UX review ("Design review with safe-mode update"
 ## 0. Amendments to the review (decided, not open)
 
 1. **Roles, not genders.** The review's "him/her" is persona shorthand. Clients may be women; professionals span the full `GENDERS` taxonomy. Rule: code, UI copy, i18n keys, and docs say **client / professional** (existing `ACCOUNT_TYPES`), never gendered pronouns for a role. Persona language is allowed only inside analysis documents. No copy may assume the client is male.
-2. **Trust-receipt copy follows hard rule 3 as it is NOW:** documents are held for a bounded legal-retention window, then purged — the receipt says that honestly ("never public, never in the product, purged on schedule"), NOT the review's stale "deleted after review".
+2. **Trust-receipt copy follows hard rule 3 as it is NOW:** documents are held for a bounded legal-retention window, then purged — the receipt says that honestly ("never public, never in the product, purged on schedule"). The review predates this policy and quotes the old instant-deletion wording; that phrasing must not ship.
 3. **"Notify me when she's back" is parked** — it assumes web push; MOBILE.md forbids architecture that depends on push existing. It returns as a progressive enhancement when push ships.
 
 ## 1. Current-state grounding (what the plan builds on)
@@ -62,7 +62,7 @@ Dated proof beats badges in a market where everyone has been burned.
 **3.2 Measured reply speed.** "Usually replies in ~10 min" — system-measured from messaging data (median first-reply time, rolling 30d), shown on profile + receipt. The review-free trust signal this market is allowed to have (we keep NO reviews of people). Mock computation now against KV threads; real SQL view after the swap. Shown only when the sample is honest (≥5 replies) — never fabricated.
 **3.3 Member-since demotes** to weakest-last in the receipt, not headline metadata.
 
-DoD: receipt opens from every verified mark · dates come from stored state (no hardcoding) · reply stat hidden below sample threshold · copy passes amendment §0.2 (no "deleted after review" anywhere — CI grep the string).
+DoD: receipt opens from every verified mark · dates come from stored state (no hardcoding) · reply stat hidden below sample threshold · copy passes amendment §0.2 (the pre-amendment instant-deletion phrasing appears nowhere — `tests/docs.test.ts` enforces the banned string).
 
 ## Phase 4 — The request sheet (flagship)
 

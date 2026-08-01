@@ -1,7 +1,8 @@
 # SEO Build Plan — status & phases
 
-Execution tracker for `SEO.md` (the spec; read it first). Organized by *when*
-each item can be built. Update statuses as phases land.
+**Temporary execution tracker for `SEO.md` (the spec; read it first) — delete
+this file when all phases have landed.** Organized by *when* each item can be
+built. Update statuses as phases land.
 
 ## Phase 1 — skeleton (DONE, this codebase)
 

@@ -97,6 +97,19 @@ export interface ContactItem {
   mediaAllowed?: boolean;
 }
 
+/** Thread metadata for admin oversight (§9) — unrestricted; content is governed. */
+export interface ThreadMeta {
+  id: string;
+  profileName: string;
+  profileSlug: string;
+  clientName: string;
+  clientEmail: string;
+  messageCount: number;
+  lastMessageAt: string;
+  state: Thread['state'];
+  hasMedia: boolean;
+}
+
 export interface MessagingApi {
   settings(profileId: string): Promise<ConversationSettings>;
   setMode(session: Session, mode: ConversationSettings['mode']): Promise<void>;
@@ -148,4 +161,9 @@ export interface MessagingApi {
 
   /** Demo only: seed a professional's empty inbox with sample threads (once). */
   seedDemo(session: Session): Promise<void>;
+
+  // --- admin oversight (ADMIN.md §9). Governance (roles, audit, report-scoping)
+  // is enforced in the admin action; these are the raw reads it guards.
+  adminListThreads(): Promise<ThreadMeta[]>;
+  adminGetThread(threadId: string): Promise<Thread | null>;
 }

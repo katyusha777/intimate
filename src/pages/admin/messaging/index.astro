@@ -1,0 +1,116 @@
+---
+/**
+ * Messaging oversight (docs/ADMIN.md §9). Metadata for every thread is
+ * unrestricted; CONTENT is governed: opening a full thread requires the `super`
+ * role + a stated reason, renders read-only, and writes `thread_viewed_by_admin`
+ * to the audit log. Report-scoped access for moderators is the productionized
+ * path (noted). No editing/deleting of user content here.
+ */
+import { getAdmin, record } from '@/actions/admin/lib';
+import { messagingApi } from '@/app/api/messaging';
+import AdminShell from '@/components/organisms/admin/AdminShell.astro';
+
+const session = await getAdmin({ cookies: Astro.cookies });
+const metas = session ? await messagingApi.adminListThreads() : [];
+
+const threadId = Astro.url.searchParams.get('thread');
+const reason = Astro.url.searchParams.get('reason') ?? '';
+const REASONS = ['report_investigation', 'legal_request', 'safety_escalation'];
+const canContent = session?.adminRole === 'super';
+
+// Governed content read: only super + valid reason, and it is audit-logged.
+let thread = null;
+if (session && threadId && reason && REASONS.includes(reason) && canContent) {
+  thread = await messagingApi.adminGetThread(threadId);
+  if (thread) {
+    await record(session, { action: 'thread_viewed_by_admin', entityType: 'thread', entityId: threadId, reason });
+  }
+}
+const humanize = (s: string) => s.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
+const time = (iso: string) => iso.replace('T', ' ').slice(5, 16);
+---
+
+<AdminShell title="Messaging" section="messaging">
+  {
+    session && (
+      <div>
+        <h1 class="display text-3xl">Messaging</h1>
+        <p class="mt-1 text-sm text-muted-foreground">{metas.length} threads · metadata open · content governed</p>
+
+        <div class="mt-6 grid gap-6 lg:grid-cols-[1fr_24rem]">
+          <div class="overflow-x-auto border border-border">
+            <table class="w-full min-w-[640px] text-left text-sm">
+              <thead class="border-b border-border bg-muted text-2xs uppercase tracking-wide text-muted-foreground">
+                <tr>
+                  <th class="px-3 py-2 font-semibold">Professional</th>
+                  <th class="px-3 py-2 font-semibold">Client</th>
+                  <th class="px-3 py-2 font-semibold">Msgs</th>
+                  <th class="px-3 py-2 font-semibold">Last</th>
+                  <th class="px-3 py-2 font-semibold" />
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-border">
+                {metas.length === 0 ? (
+                  <tr><td colspan="5" class="px-3 py-10 text-center text-muted-foreground">No threads.</td></tr>
+                ) : (
+                  metas.map((m) => (
+                    <tr class:list={['transition-colors hover:bg-muted', m.id === threadId && 'bg-muted']}>
+                      <td class="px-3 py-2 font-medium">{m.profileName}</td>
+                      <td class="px-3 py-2 text-muted-foreground">{m.clientName}</td>
+                      <td class="px-3 py-2 tabular-nums">{m.messageCount}{m.hasMedia && ' 📷'}</td>
+                      <td class="px-3 py-2 text-2xs text-muted-foreground">{time(m.lastMessageAt)}</td>
+                      <td class="px-3 py-2 text-right">
+                        {canContent ? (
+                          <details class="inline-block text-left">
+                            <summary class="cursor-pointer text-2xs font-medium text-brand">Open ▾</summary>
+                            <div class="absolute z-10 mt-1 border border-border bg-background p-1 shadow-soft-lg">
+                              {REASONS.map((r) => (
+                                <a href={`/admin/messaging?thread=${m.id}&reason=${r}`} class="block whitespace-nowrap px-2 py-1 text-2xs hover:bg-muted">{humanize(r)}</a>
+                              ))}
+                            </div>
+                          </details>
+                        ) : (
+                          <span class="text-2xs text-muted-foreground">metadata only</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {threadId && (
+            <aside class="space-y-3 border border-border p-4">
+              {!canContent ? (
+                <p class="text-sm text-muted-foreground">Full-thread content requires the <b>super</b> role. Moderators get report-scoped access (productionized path).</p>
+              ) : !thread ? (
+                <p class="text-sm text-muted-foreground">Pick a reason to open this thread (logged).</p>
+              ) : (
+                <>
+                  <div class="border-b border-border pb-2">
+                    <p class="font-condensed text-lg font-bold">{thread.profileName} · {thread.clientName}</p>
+                    <p class="text-2xs text-brand">Read-only · access logged ({humanize(reason)})</p>
+                  </div>
+                  <div class="max-h-[70vh] space-y-2 overflow-y-auto">
+                    {thread.messages.map((msg) =>
+                      msg.kind === 'system' ? (
+                        <p class="text-center text-2xs text-muted-foreground">— system —</p>
+                      ) : (
+                        <div class:list={['flex', msg.sender === 'professional' ? 'justify-start' : 'justify-end']}>
+                          <div class:list={['max-w-[80%] rounded-lg px-2.5 py-1.5 text-xs', msg.sender === 'professional' ? 'bg-muted' : 'bg-foreground text-background']}>
+                            {msg.kind === 'photo' ? <span class="italic opacity-70">[photo]</span> : msg.body}
+                          </div>
+                        </div>
+                      ),
+                    )}
+                  </div>
+                </>
+              )}
+            </aside>
+          )}
+        </div>
+      </div>
+    )
+  }
+</AdminShell>

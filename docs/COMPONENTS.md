@@ -25,15 +25,16 @@ Pages = `src/pages/` (compose organisms; own no reusable markup).
 **Level definitions:**
 - **Atom** — renders essentially one element; knows nothing about profiles,
   search, or auth. Two kinds:
-  - *wrappers* over `ui/` (Button, Input, Badge, Avatar, Switch, Skeleton) —
+  - *wrappers* over `ui/` (Button — which renders the internal AnaglyphButton
+    atom, DESIGN.md §3.1 — Input, Select, Badge, Avatar, Switch, Skeleton) —
     the app-facing API. **Swapping the UI library = re-implementing these
     files; nothing above atoms changes.**
   - *own primitives*: Icon (Font Awesome abstraction — icon lib swap is this
-    one file), Chip (tag pill), SafeImage (safe-mode image contract),
-    VerifiedBadge.
+    one file), SafeImage (safe-mode image contract), VerifiedBadge.
 - **Molecule** — a self-contained control from atoms + markup, reusable in any
-  domain: Modal, PhotoCarousel, SearchControl, ThemeToggle, SafeModeToggle,
-  Section (owns page rhythm + section headings).
+  domain: Modal, ActionSheet, Lightbox, PhotoCarousel, SearchControl,
+  Combobox, SlabField, AiSearchInput, FavoritesController, UserMenu,
+  ThemeToggle, SafeModeToggle, Section (owns page rhythm + section headings).
 - **Organism** — takes domain data (profile, article, auth state) and composes
   atoms/molecules into a section: ProfileCard, AuthModal, Header, Footer.
   Lives in a domain subfolder; a new folder is created with the domain's first
@@ -59,23 +60,24 @@ Pages = `src/pages/` (compose organisms; own no reusable markup).
 4. **Write new** — at the lowest level that fits its knowledge (domain
    knowledge → organism; generic control → molecule; single element → atom).
 
-## 4. Predicted domain map
+## 4. Domain map (built ✓ · anticipated —)
 
-Folders appear when their first organism lands — this is the map we're
-growing into:
+Folders appear when their first organism lands:
 
-| Domain | Anticipated organisms |
+| Domain | Organisms |
 |---|---|
-| `profile/` | ProfileCard ✓, PhotoGallery, ContactCard, SpecsTable, ServicesList, RatesTable, AvailabilityBlock, SimilarProfiles, ReportButton |
-| `search/` | AISearchBar, FilterSheet/FilterRail, ActiveFilterChips, SortSelect, ResultsGrid, CityNav |
-| `auth/` | AuthModal ✓, PasswordReset, OtpForm |
-| `dashboard/` | ProfileEditor sections, MediaUploader, VerificationUpload, ImportWizard steps, StatsTiles, AvailabilityEditor |
-| `admin/` | ModerationQueue, ReportQueue, AuditLogTable |
-| `call/` | CallWindow (React island), IncomingCallToast, CallControls, AvailabilityToggle |
-| `marketing/` | Hero, CTABanner, CityTicker, ArticleRail, ArticleCard |
-| `layout/` | Header ✓, Footer ✓, BottomTabBar ✓, LocaleSwitcher |
-| realtime (molecules) | OnlineBadge, LiveCounter, NewProfilesToast |
-| feedback (molecules) | Toast, EmptyState, ConfirmDialog, Pagination |
+| `profile/` | ✓ ProfileCard, ProfileDetail, ProfileHero, ProfileGallery, ProfilePhotoMosaic, ProfileSheet, ProfileFacts, ReportControl — anticipated: RatesTable, ContactCard, SimilarProfiles |
+| `search/` | ✓ SearchListing, FilterSidebar |
+| `auth/` | ✓ AuthModal — anticipated: PasswordReset, OtpForm |
+| `dashboard/` | ✓ AccountShell, SignInPrompt, ProfileEditorForm, MediaManager, VerificationFlow — anticipated: ImportWizard steps, StatsTiles |
+| `messaging/` | ✓ Inbox, Thread, ContactList (MESSAGING.md §2 for the rest) |
+| `layout/` | ✓ Header, Footer, BottomTabBar |
+| `admin/` | ✓ AdminShell, QueueList, DocViewer — ModerationQueue, ReportQueue, AuditLogTable (ADMIN.md §2) |
+| `contacts/` | — ContactDetail (MESSAGING.md) |
+| `call/` | — CallWindow (React island), IncomingCallToast, CallControls |
+| `marketing/` | — Hero, CTABanner, CityTicker, ArticleRail |
+| realtime (molecules) | — OnlineBadge, LiveCounter, NewProfilesToast |
+| feedback (molecules) | — Toast, EmptyState, ConfirmDialog, Pagination |
 
 ## 5. Naming & API conventions
 

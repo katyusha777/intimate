@@ -1,0 +1,96 @@
+---
+/**
+ * Settings (docs/ADMIN.md §13, super-only): admin accounts + roles, feature
+ * flags (PostHog in prod), taxonomy snapshot, retention/policy. Read surface in
+ * the mock; mutations arrive with the real backend.
+ */
+import { getAdmin } from '@/actions/admin/lib';
+import { ADMIN_ROLES, ALL_SERVICES, CITIES, GENDERS, REJECTION_REASONS, SERVICE_CATEGORIES } from '@/lib/taxonomy';
+import AdminShell from '@/components/organisms/admin/AdminShell.astro';
+
+const session = await getAdmin({ cookies: Astro.cookies });
+const isSuper = session?.adminRole === 'super';
+
+const admins = [
+  { email: 'admin@intimate.nl', role: 'super' },
+  { email: 'mod@intimate.nl', role: 'moderator' },
+  { email: 'support@intimate.nl', role: 'support' },
+];
+const flags = [
+  { key: 'messaging', label: 'Messaging', on: true },
+  { key: 'ai_search', label: 'AI search', on: true },
+  { key: 'calls', label: 'Video calls', on: false },
+  { key: 'imports', label: 'Self-service imports', on: false },
+];
+const taxo = [
+  ['Account roles', ADMIN_ROLES.length],
+  ['Genders', GENDERS.length],
+  ['Cities', CITIES.length],
+  ['Service categories', SERVICE_CATEGORIES.length],
+  ['Services', ALL_SERVICES.length],
+  ['Rejection reasons', REJECTION_REASONS.length],
+] as const;
+---
+
+<AdminShell title="Settings" section="settings">
+  {
+    session && !isSuper ? (
+      <p class="text-sm text-muted-foreground">Settings are restricted to the <b>super</b> role.</p>
+    ) : (
+      session && (
+        <div class="space-y-8">
+          <h1 class="display text-3xl">Settings</h1>
+
+          <section>
+            <h2 class="font-condensed text-sm font-bold uppercase tracking-wide text-muted-foreground">Admin accounts</h2>
+            <div class="mt-3 max-w-lg divide-y divide-border border border-border">
+              {admins.map((a) => (
+                <div class="flex items-center justify-between px-3 py-2.5 text-sm">
+                  <span>{a.email}</span>
+                  <span class="slab-cut border border-foreground/20 px-2 py-0.5 text-2xs font-bold uppercase tracking-wide">{a.role}</span>
+                </div>
+              ))}
+            </div>
+            <p class="mt-2 text-2xs text-muted-foreground">Real admin management (invite/revoke, MFA enrolment) arrives with Supabase Auth + Cloudflare Access.</p>
+          </section>
+
+          <section>
+            <h2 class="font-condensed text-sm font-bold uppercase tracking-wide text-muted-foreground">Feature flags</h2>
+            <div class="mt-3 grid max-w-lg gap-2 sm:grid-cols-2">
+              {flags.map((f) => (
+                <div class="flex items-center justify-between border border-border px-3 py-2 text-sm">
+                  {f.label}
+                  <span class:list={['text-2xs font-bold uppercase', f.on ? 'text-online' : 'text-muted-foreground']}>{f.on ? 'On' : 'Off'}</span>
+                </div>
+              ))}
+            </div>
+            <p class="mt-2 text-2xs text-muted-foreground">Flags are managed in PostHog in production; shown read-only here.</p>
+          </section>
+
+          <section>
+            <h2 class="font-condensed text-sm font-bold uppercase tracking-wide text-muted-foreground">Taxonomy snapshot</h2>
+            <div class="mt-3 grid max-w-2xl grid-cols-2 gap-px border border-border bg-border sm:grid-cols-3">
+              {taxo.map(([k, v]) => (
+                <div class="bg-card px-3 py-2.5">
+                  <p class="text-2xs uppercase tracking-wide text-muted-foreground">{k}</p>
+                  <p class="mt-0.5 font-condensed text-xl font-bold">{v}</p>
+                </div>
+              ))}
+            </div>
+            <p class="mt-2 text-2xs text-muted-foreground">Taxonomy = law: edited in <code>src/lib/taxonomy.ts</code> + translations + migration, never here.</p>
+          </section>
+
+          <section>
+            <h2 class="font-condensed text-sm font-bold uppercase tracking-wide text-muted-foreground">Retention & policy</h2>
+            <ul class="mt-3 max-w-2xl space-y-1.5 text-sm text-muted-foreground">
+              <li>· Verification docs: private R2, presigned ≤5min, purged on the retention schedule (never public, never in the product).</li>
+              <li>· Messages + chat media: auto-deleted after 90 days.</li>
+              <li>· Audit log: long retention — our defensibility (documented GDPR exception, legitimate interest).</li>
+              <li>· Age floor: 18 at the DB level (configurable to 21 per policy).</li>
+            </ul>
+          </section>
+        </div>
+      )
+    )
+  }
+</AdminShell>

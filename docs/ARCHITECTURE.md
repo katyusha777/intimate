@@ -86,6 +86,8 @@ Site-level: segmented XML sitemaps (real lastmod) · robots.txt allowing GPTBot/
 
 ## 8. Non-negotiables (survive every future plan)
 
+*CLAUDE.md "Hard rules" is the enforced summary of this list (other docs cite items here as §8.N). If the two ever drift, the stricter reading wins and the drift is a bug — fix both in one PR.*
+
 1. **RLS on every table.** Anon key is public. Service role key server-side only.
 2. **EXIF stripped from every uploaded image** before storage (GPS leaks endanger advertisers). All photos via Cloudflare Images only.
 3. **Verification documents are toxic waste — bounded retention, not instant deletion** (CLAUDE.md hard rule 3): dedicated private Cloudflare R2 bucket (EU jurisdiction, zero public access — §11), admin-only via short-TTL signed URLs, every read audit-logged. Retained for the defined window (placeholder: 12 months after profile deactivation, pending legal review — provability requires the document), then **purged automatically**; state/date/reviewer/hash retained forever. Never logged, never cached.

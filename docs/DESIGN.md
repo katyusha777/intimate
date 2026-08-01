@@ -256,7 +256,7 @@ Structure: `src/components/ui/` (primitives, mostly Fulldev/shadcn) ·
 
 ### 3.1 Primitives (`ui/`)
 Button (solid/gradient · outline · ghost · pill · icon), Input, Select, Badge,
-Chip/Tag, Avatar (with verified tick + presence dot), Card, Sheet (bottom on
+Avatar (with verified tick + presence dot), Card, Sheet (bottom on
 mobile), Dialog, Dropdown, Tabs, Tooltip, Toast, Skeleton, Switch, Segmented
 control, GlassBar (§5), Icon (Font Awesome 8 Pro self-hosted, always via
 `atoms/Icon.astro` — INFRASTRUCTURE.md §4). All theme-aware, all on the token scale.
@@ -447,8 +447,9 @@ operator explicitly wants per-load shuffling.
 
 1. **Token layer** — apply §2 to `global.css` (crimson, radius, `--glass-*`),
    preload the one variable font. Nothing else starts until this is in.
-2. **Primitives** — Button, Card, Badge, Avatar, Chip, GlassBar, Sheet, Tabs
-   from Fulldev/shadcn, retuned to tokens.
+2. **Primitives** — Button, Card, Badge, Avatar, GlassBar, Sheet, Tabs
+   from Fulldev/shadcn, retuned to tokens. (Tags/chips are NOT a component —
+   they're the condensed-slab / keyline text treatments, Misprint rule 2.)
 3. **ProfileImage** + **safe mode** plumbing (§6) — before any card/gallery, so
    the privacy default exists from the first image rendered.
 4. **ProfileCard** (all three variants) + **PhotoCarousel**.

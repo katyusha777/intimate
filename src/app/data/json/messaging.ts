@@ -384,6 +384,35 @@ export const messagingApi: MessagingApi = {
     await kv()?.put(contactsKey(session.profileId), JSON.stringify(list.filter((c) => c.id !== id)));
   },
 
+  async adminListThreads() {
+    // Derive from every profile's thread index — no global index needed, picks
+    // up existing threads. Metadata only (no message bodies).
+    const { items } = await profilesApi.list({ limit: 60 });
+    const metas = [];
+    for (const p of items) {
+      for (const id of await readIndex(profIndexKey(p.id))) {
+        const t = await readThread(id);
+        if (!t) continue;
+        metas.push({
+          id: t.id,
+          profileName: t.profileName,
+          profileSlug: t.profileSlug,
+          clientName: t.clientName,
+          clientEmail: t.clientEmail,
+          messageCount: t.messages.length,
+          lastMessageAt: t.lastMessageAt,
+          state: t.state,
+          hasMedia: t.messages.some((m) => m.kind === 'photo'),
+        });
+      }
+    }
+    return metas.sort((a, b) => b.lastMessageAt.localeCompare(a.lastMessageAt));
+  },
+
+  async adminGetThread(threadId) {
+    return readThread(threadId);
+  },
+
   async seedDemo(session) {
     if (!session.profileId) return;
     const flag = `msg:seeded:${session.profileId}`;
