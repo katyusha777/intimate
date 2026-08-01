@@ -4,7 +4,7 @@
  * age (SLA at a glance), today's counters, supply-by-city. Realtime layering
  * (Supabase) comes with the backend; SSR paint is the base.
  */
-import { getAdmin } from '@/actions/admin/lib';
+import { getAdmin, listAudit } from '@/actions/admin/lib';
 import { overview } from '@/actions/admin/queues';
 import { commandStats } from '@/actions/admin/entities';
 import AdminShell from '@/components/organisms/admin/AdminShell.astro';
@@ -12,6 +12,12 @@ import AdminShell from '@/components/organisms/admin/AdminShell.astro';
 const session = await getAdmin({ cookies: Astro.cookies });
 const ov = session ? await overview() : null;
 const stats = session ? await commandStats() : null;
+const activity = session ? (await listAudit()).slice(0, 12) : [];
+const humanizeA = (s: string) => s.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
+const agoShort = (iso: string) => {
+  const m = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+  return m < 60 ? `${m}m` : m < 1440 ? `${Math.round(m / 60)}h` : `${Math.round(m / 1440)}d`;
+};
 const stateColor = (s: string) =>
   ({ live: 'bg-online', pending_review: 'bg-amber-500', paused: 'bg-muted-foreground', blocked: 'bg-brand', deleted: 'bg-muted-foreground', draft: 'bg-muted-foreground' })[s] ?? 'bg-foreground';
 
@@ -134,6 +140,30 @@ const counters = ov
               </div>
             ))}
           </div>
+        </section>
+
+        <section class="mt-8">
+          <div class="flex items-center justify-between">
+            <h2 class="font-condensed text-sm font-bold uppercase tracking-wide text-muted-foreground">Recent activity</h2>
+            <a href="/admin/audit" class="text-2xs font-medium text-muted-foreground hover:text-foreground">Audit log →</a>
+          </div>
+          {activity.length === 0 ? (
+            <p class="mt-3 text-sm text-muted-foreground">No admin activity yet.</p>
+          ) : (
+            <ul class="mt-3 max-w-2xl divide-y divide-border border border-border">
+              {activity.map((e) => (
+                <li class="flex items-center gap-3 px-3 py-2 text-sm">
+                  <span class="w-8 flex-none tabular-nums text-2xs text-muted-foreground">{agoShort(e.at)}</span>
+                  <span class="min-w-0 flex-1 truncate">
+                    <span class="font-medium">{e.adminEmail.split('@')[0]}</span>
+                    <span class="text-muted-foreground"> · {humanizeA(e.action)}</span>
+                    <span class="text-muted-foreground"> · {e.entityType}:{e.entityId.split('@')[0]}</span>
+                  </span>
+                  {e.reason && <span class="flex-none text-2xs text-muted-foreground">{humanizeA(e.reason)}</span>}
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
       </>
     )
