@@ -96,6 +96,40 @@ function fnv(key: string): number {
   return h >>> 0;
 }
 
+/**
+ * NEUTRAL placeholder set (Phase 5 — the discretion kit). Genuinely boring:
+ * muted, abstract, gallery-wall gradients so a wall of them draws no glance.
+ * Generated deterministically as inline SVG data-URIs (no files, no test drift)
+ * — same deterministic-by-key mechanism as the image sets above, so SSR/edge
+ * cache stays stable and toggling never shifts layout.
+ *
+ * Palette = desaturated stone/greige tones that read as neutral wall art in
+ * both themes. The `dev` (anime) set stays the operator's build-in-public skin.
+ */
+const NEUTRAL_TONES: readonly [string, string][] = [
+  ['#d9d6d0', '#b7b2a8'], // warm stone
+  ['#cfd2d4', '#a9adb1'], // cool grey
+  ['#d6d1cc', '#b0a79c'], // greige
+  ['#c9cdcb', '#a3a8a4'], // sage grey
+  ['#d3cfd2', '#aca6ad'], // muted mauve
+  ['#cdd0d6', '#a4a8b2'], // slate
+  ['#d8d4cd', '#bbb3a5'], // sand
+  ['#c8ccce', '#9fa4a7'], // ash
+];
+
+/** Deterministic muted-gradient SVG for a key, as a data-URI. */
+export function neutralImageFor(key: string): string {
+  const h = fnv(key);
+  const [a, b] = NEUTRAL_TONES[h % NEUTRAL_TONES.length]!;
+  const angle = (h >> 3) % 180; // stable per-key gradient direction
+  const svg =
+    `<svg xmlns='http://www.w3.org/2000/svg' width='400' height='533' viewBox='0 0 400 533'>` +
+    `<defs><linearGradient id='g' gradientTransform='rotate(${angle} .5 .5)'>` +
+    `<stop offset='0' stop-color='${a}'/><stop offset='1' stop-color='${b}'/>` +
+    `</linearGradient></defs><rect width='400' height='533' fill='url(#g)'/></svg>`;
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+}
+
 export function safeImageFor(key: string): string {
   return SAFE_IMAGES[fnv(key) % SAFE_IMAGES.length]!;
 }

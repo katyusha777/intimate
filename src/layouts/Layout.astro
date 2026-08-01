@@ -9,6 +9,7 @@ import { sessionApi } from '@/app/api/session';
 import Header from '@/components/organisms/layout/Header.astro';
 import Footer from '@/components/organisms/layout/Footer.astro';
 import BottomTabBar from '@/components/organisms/layout/BottomTabBar.astro';
+import SafeModeBar from '@/components/molecules/SafeModeBar.astro';
 import AuthModal from '@/components/organisms/auth/AuthModal.astro';
 import ProfileSheet from '@/components/organisms/profile/ProfileSheet.astro';
 import Lightbox from '@/components/molecules/Lightbox.astro';
@@ -61,6 +62,9 @@ const unread =
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
     <title>{title}</title>
+    <!-- Real title kept out of <title> so the safe-mode script can restore it
+         after neutralizing the tab, and stays fresh across view transitions. -->
+    <meta name="x-real-title" content={title} />
     {noindex && <meta name="robots" content="noindex, follow" />}
     {description && <meta name="description" content={description} />}
     {canonical && <link rel="canonical" href={canonical} />}
@@ -78,7 +82,7 @@ const unread =
     <!-- Font Awesome 8 Pro (kit: thin + brands), self-hosted from public/fa/.
          Fonts download lazily, only when a fa-* glyph is actually rendered. -->
     <link rel="stylesheet" href="/fa/css/all.min.css" />
-    <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
+    <link rel="icon" data-real-icon href="/icons/icon.svg" type="image/svg+xml" />
     <meta name="theme-color" content="#f7f7f7" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#171717" media="(prefers-color-scheme: dark)" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -114,54 +118,113 @@ const unread =
       {!bare && <Footer />}
     </div>
     {!bare && <BottomTabBar {session} {idVerified} {unread} />}
+    {!bare && <SafeModeBar />}
     <AuthModal />
     <ProfileSheet />
     <Lightbox />
     <FavoritesController />
 
-    <script is:inline>
-      // Safe mode (DESIGN.md §6): fail-closed. Server HTML always ships safe
-      // placeholders; real photos swap in when safe mode is off. An explicit
-      // cookie wins; otherwise: local dev defaults SAFE, deployed defaults NSFW
-      // (it is an adult site — safe mode is the owner's build-in-public tool).
+    <script is:inline data-neutral-title={m.safe_neutral_title()}>
+      // Safe mode (DESIGN.md §6, Phase 5): fail-closed, THREE-valued.
+      //   off     — real photos
+      //   neutral — muted abstract placeholders (default ON for visitors)
+      //   dev     — anime placeholders (the operator's build-in-public skin)
+      // Server HTML always ships the neutral placeholder, so default + uncached
+      // + no-JS all show neutral. An explicit cookie wins; otherwise: local dev
+      // defaults to `dev` (a visible set — the old behavior), deployed → neutral.
       (function () {
-        const isSafe = () => {
-          const c = document.cookie;
-          if (c.includes('safe_mode=off')) return false;
-          if (c.includes('safe_mode=on')) return true;
-          return /^(localhost|127\.|192\.168\.|10\.)/.test(location.hostname);
+        const script = document.currentScript;
+        const NEUTRAL_TITLE = (script && script.dataset.neutralTitle) || 'Search';
+        const NEUTRAL_FAVICON =
+          "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='96' fill='%23888'/%3E%3C/svg%3E";
+        // Real title lives in a meta tag Astro re-renders per page, so it stays
+        // fresh across view transitions even after we neutralize document.title.
+        const realTitle = () => {
+          const m = document.querySelector("meta[name='x-real-title']");
+          return (m && m.getAttribute('content')) || document.title;
         };
+        const STATES = ['off', 'neutral', 'dev'];
+
+        const state = () => {
+          const m = document.cookie.match(/safe_mode=(\w+)/);
+          const v = m && m[1];
+          if (v === 'off' || v === 'neutral' || v === 'dev') return v;
+          if (v === 'on') return 'neutral'; // legacy cookie
+          return /^(localhost|127\.|192\.168\.|10\.)/.test(location.hostname) ? 'dev' : 'neutral';
+        };
+        const setState = (s) => {
+          document.cookie = 'safe_mode=' + s + '; path=/; max-age=31536000; samesite=lax';
+        };
+
         const apply = () => {
-          const on = isSafe();
+          const s = state();
+          const off = s === 'off';
+          const pick = s === 'dev' ? 'dev' : 'safe'; // safe = neutral data-attr
           document.querySelectorAll('img[data-safe]').forEach((el) => {
-            const want = on ? el.dataset.safe : el.dataset.real || el.dataset.safe;
+            const want = off
+              ? el.dataset.real || el.dataset.safe
+              : el.dataset[pick] || el.dataset.safe;
             if (el.getAttribute('src') !== want) el.setAttribute('src', want);
           });
           document.querySelectorAll('[data-safe-video-wrap]').forEach((wrap) => {
             const video = wrap.querySelector('video');
             const fallback = wrap.querySelector('img');
             if (!video) return;
-            video.classList.toggle('hidden', on);
-            if (fallback) fallback.classList.toggle('hidden', !on);
-            if (on) video.pause();
-            else video.play().catch(() => {});
+            video.classList.toggle('hidden', !off);
+            if (fallback) fallback.classList.toggle('hidden', off);
+            if (off) video.play().catch(() => {});
+            else video.pause();
           });
-          document
-            .querySelectorAll('[data-safe-toggle]')
-            .forEach((b) => b.setAttribute('aria-checked', String(on)));
+          // Toggle UI: aria-checked = "is safe mode active at all", data-safe-state
+          // carries the exact value so the label/icon can reflect all three.
+          document.querySelectorAll('[data-safe-toggle]').forEach((b) => {
+            b.setAttribute('aria-checked', String(!off));
+            b.setAttribute('data-safe-state', s);
+          });
+          // Neutral tab chrome (5.3): generic title + monochrome favicon while
+          // safe mode is on (neutral OR dev); restore the real ones when off.
+          const icon = document.querySelector('link[data-real-icon]');
+          if (off) {
+            document.title = realTitle();
+            if (icon) icon.setAttribute('href', '/icons/icon.svg');
+          } else {
+            document.title = NEUTRAL_TITLE;
+            if (icon) icon.setAttribute('href', NEUTRAL_FAVICON);
+          }
         };
+
+        // Toggle cycles off → neutral → dev → off (5.2). Boss key flips on/off.
+        const cycle = () => {
+          setState(STATES[(STATES.indexOf(state()) + 1) % STATES.length]);
+          apply();
+        };
+        const flip = () => {
+          setState(state() === 'off' ? 'neutral' : 'off');
+          apply();
+        };
+
         document.addEventListener('click', (e) => {
           if (!e.target.closest) return;
           if (e.target.closest('[data-scroll-top]')) {
             window.scrollTo({ top: 0, behavior: 'smooth' });
             return;
           }
-          const btn = e.target.closest('[data-safe-toggle]');
-          if (!btn) return;
-          document.cookie =
-            'safe_mode=' + (isSafe() ? 'off' : 'on') + '; path=/; max-age=31536000; samesite=lax';
-          apply();
+          if (e.target.closest('[data-safe-toggle]')) cycle();
         });
+
+        // Boss key (5.4): double-Esc within 500ms flips safe mode, both ways.
+        let lastEsc = 0;
+        document.addEventListener('keydown', (e) => {
+          if (e.key !== 'Escape') return;
+          const now = Date.now();
+          if (now - lastEsc < 500) {
+            flip();
+            lastEsc = 0;
+          } else {
+            lastEsc = now;
+          }
+        });
+
         document.addEventListener('astro:page-load', apply);
         apply();
       })();

@@ -369,13 +369,28 @@ with a subtle top highlight. Rules:
 
 ## 6. Safe mode (privacy feature)
 
-**What:** a toggle so the operator can browse/work in public without explicit
-imagery on screen. When **ON**, every profile/card/gallery image renders a
-neutral placeholder from `public/safeimg/` instead of the real photo. Text is
-unaffected.
+**What:** a control so anyone can browse/work in public without explicit
+imagery on screen. **Three-valued** (Phase 5 — the discretion kit):
+- **`neutral`** — muted, abstract gallery-wall placeholders. **The default for
+  visitors**; a wall of these draws no glance. Generated deterministically as
+  inline SVG data-URIs in `safe-images.ts` (`neutralImageFor`) — no files, no
+  test drift.
+- **`dev`** — the anime set from `public/safeimg/` (`safeImageFor`): the
+  operator's build-in-public skin (local dev defaults here).
+- **`off`** — real photos (deliberate opt-in).
 
-**Default: ON.** Toggle lives in the **footer** (and mirrored in Account
-settings). Off is a deliberate opt-in.
+Text is unaffected. Cookie `safe_mode` = `off | neutral | dev` (legacy `on` →
+`neutral`). The toggle **cycles** off → neutral → dev; the boss key (Esc·Esc,
+desktop) flips off↔neutral instantly.
+
+**Reach (Phase 5.2):** the primary control is the floating glass **SafeModeBar**
+(`molecules/SafeModeBar`) — a mobile pill above the tab dock, a desktop corner
+button — so the panic switch is one thumb away on every screen. The footer +
+Account settings keep a mirror `SafeModeToggle`.
+
+**Neutral tab chrome (Phase 5.3):** while safe mode is on (neutral or dev) the
+tab `<title>` goes generic and the favicon goes monochrome; both restore when
+off. Part of the glance test.
 
 **Design decisions:**
 - **Deterministic, not random-per-render.** Pick the safe image by hashing a
@@ -386,18 +401,18 @@ settings). Off is a deliberate opt-in.
   the cache/CLS cost. Flag if you want true per-load randomness instead.)
 - **Cache-safe & no-JS-safe.** Public HTML is edge-cached and identical for
   everyone, so safe mode can't be baked per-request into the cached page.
-  Approach: the image component renders the **safe placeholder as the default
-  `src`**, carrying the real URL in `data-real-src`. A tiny inline script
-  (runs before paint, like the theme script) reads the `safe_mode` cookie and,
-  only when it's OFF, swaps to the real source. Result: default state, uncached
-  responses, and no-JS all show safe images — **fail-closed**, which is the
-  correct posture for this feature.
-- **One image component owns it.** A single `<ProfileImage>` (Astro) enforces
+  Approach: `SafeImage` renders the **neutral placeholder as the default
+  `src`**, carrying `data-dev` (anime) and `data-real` (photo) alongside. A
+  tiny inline script (runs before paint, like the theme script) reads the
+  `safe_mode` cookie and swaps to the requested skin. Result: default state,
+  uncached responses, and no-JS all show the neutral set — **fail-closed**,
+  which is the correct posture for this feature.
+- **One image component owns it.** A single `SafeImage` (Astro atom) enforces
   the swap, the aspect ratio, the blur placeholder, and the Cloudflare Images
   variant. Nothing renders a profile photo except through it — same discipline
   as everything else here.
-- Toggle sets the cookie (1yr) + flips images live (optimistic, no reload).
-  Also respects a first-visit default of ON.
+- The controls set the cookie (1yr) + flip images live (optimistic, no reload),
+  and respect a first-visit default of `neutral`.
 
 `ponytail:` fail-closed default + deterministic pick; revisit only if the
 operator explicitly wants per-load shuffling.

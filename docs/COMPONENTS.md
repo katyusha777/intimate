@@ -34,7 +34,9 @@ Pages = `src/pages/` (compose organisms; own no reusable markup).
 - **Molecule** — a self-contained control from atoms + markup, reusable in any
   domain: Modal, ActionSheet, Lightbox, PhotoCarousel, SearchControl,
   Combobox, SlabField, AiSearchInput, FavoritesController, UserMenu,
-  ThemeToggle, SafeModeToggle, Section (owns page rhythm + section headings),
+  ThemeToggle, SafeModeToggle, SafeModeBar (floating three-state safe-mode
+  control — mobile pill above the dock, desktop corner button),
+  Section (owns page rhythm + section headings),
   AvailabilityLine (dot + text availability, card/line variants), LinkChips
   (SSR zero-JS fold chips), CitySheet (first-visit city picker).
 - **Organism** — takes domain data (profile, article, auth state) and composes
