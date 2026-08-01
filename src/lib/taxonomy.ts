@@ -174,6 +174,10 @@ export const POLICY_MIN_AGE = 18;
  */
 export const MEETING_TYPES = ['incall', 'outcall'] as const; // profiles may offer both
 
+/** Week days for opening hours (Mon-first, EU). */
+export const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
+export type Day = (typeof DAYS)[number];
+
 export const DELIVERY_METHODS = ['in_person', 'virtual'] as const;
 
 export const INCALL_LOCATIONS = ['private_apartment', 'private_house', 'hotel', 'club'] as const;

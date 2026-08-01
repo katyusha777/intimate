@@ -13,6 +13,7 @@ export const SessionSchema = z.object({
   name: z.string().min(1),
   /** Linked public profile — advertisers only. */
   profileId: z.string().optional(),
+  profileSlug: z.string().optional(),
 });
 export type Session = z.infer<typeof SessionSchema>;
 

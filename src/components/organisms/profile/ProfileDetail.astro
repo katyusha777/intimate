@@ -7,12 +7,15 @@
  */
 import * as m from '@/paraglide/messages';
 import type { Profile } from '@/app/models/profile';
-import { localizedDescription } from '@/app/models/profile';
-import { serviceCategoryLabel, serviceLabel } from '@/lib/labels';
-import { SERVICES, SERVICE_CATEGORIES } from '@/lib/taxonomy';
+import { localizedDescription, profileAge } from '@/app/models/profile';
+import { dayLabel, serviceCategoryLabel, serviceLabel } from '@/lib/labels';
+import { cityName } from '@/lib/seo';
+import { DAYS, SERVICES, SERVICE_CATEGORIES } from '@/lib/taxonomy';
+import VerifiedBadge from '@/components/atoms/VerifiedBadge.astro';
 import ProfileFacts from '@/components/organisms/profile/ProfileFacts.astro';
 import ProfileGallery from '@/components/organisms/profile/ProfileGallery.astro';
 import ProfileHero from '@/components/organisms/profile/ProfileHero.astro';
+import ProfilePhotoMosaic from '@/components/organisms/profile/ProfilePhotoMosaic.astro';
 
 interface Props {
   profile: Profile;
@@ -24,10 +27,57 @@ const serviceGroups = SERVICE_CATEGORIES.map((cat) => ({
   cat,
   items: SERVICES[cat].filter((s) => (p.services as readonly string[]).includes(s)),
 })).filter((g) => g.items.length > 0);
+
+const hours = p.openingHours ?? {};
+const hasHours = DAYS.some((d) => hours[d]);
+const todayKey = (['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const)[new Date().getDay()];
+function hoursLabel(h: (typeof hours)[keyof typeof hours]): string {
+  if (!h || h.closed) return m.hours_closed();
+  if (h.allDay) return m.hours_allday();
+  return h.from && h.to ? `${h.from} – ${h.to}` : m.hours_closed();
+}
 ---
 
 <div data-profile-root data-lightbox-group data-profile-slug={p.slug}>
-  <ProfileHero profile={p} />
+  <!-- Mobile: immersive full-viewport hero (tap → lightbox). -->
+  <div class="md:hidden">
+    <ProfileHero profile={p} />
+  </div>
+
+  <!-- Desktop: title + Airbnb-style photo mosaic (no big hero, no gallery below). -->
+  <div class="mx-auto hidden max-w-7xl px-6 pt-8 md:block">
+    <div class="mb-4 flex items-end justify-between gap-4">
+      <div>
+        <h1 class="flex items-center gap-2.5 font-condensed text-3xl font-bold tracking-tight lg:text-4xl">
+          {p.name}, {profileAge(p.birthDate)}
+          <VerifiedBadge class="size-6" />
+        </h1>
+        <p class="mt-1.5 flex items-center gap-2 text-sm text-muted-foreground">
+          {p.online && (
+            <span class="flex items-center gap-1.5 font-medium text-foreground">
+              <span class="size-1.5 rounded-full bg-online" />
+              {m.online_now()}
+            </span>
+          )}
+          {p.online && <span aria-hidden="true">·</span>}
+          {cityName(p.city)}
+          <span aria-hidden="true">·</span>
+          {p.photos.length} {m.photos_title().toLowerCase()}
+        </p>
+      </div>
+      <button
+        type="button"
+        data-fav-toggle
+        data-fav-slug={p.slug}
+        aria-label={m.nav_favorites()}
+        class="flex flex-none cursor-pointer items-center gap-2 text-sm font-semibold underline-offset-4 transition-colors hover:text-brand hover:underline"
+      >
+        <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7Z" /></svg>
+        {m.profile_save()}
+      </button>
+    </div>
+    <ProfilePhotoMosaic photos={p.photos} keyBase={p.id} alt={p.name} />
+  </div>
 
   <div class="mx-auto max-w-7xl px-4 py-8 md:px-6 md:py-12" id="profile-details">
     <div class="grid items-start gap-8 lg:grid-cols-[1fr_22rem] lg:gap-12">
@@ -62,8 +112,34 @@ const serviceGroups = SERVICE_CATEGORIES.map((cat) => ({
           </div>
         </section>
 
-        <section>
-          <h2 class="display text-2xl md:text-3xl">{m.profile_gallery()}</h2>
+        {
+          hasHours && (
+            <section>
+              <h2 class="display text-2xl md:text-3xl">{m.hours_title()}</h2>
+              <div class="mt-4 max-w-md divide-y divide-border">
+                {DAYS.map((day) => (
+                  <div
+                    class:list={[
+                      'flex items-center justify-between py-2.5 text-sm',
+                      day === todayKey && 'font-semibold',
+                    ]}
+                  >
+                    <span class:list={[day === todayKey ? 'text-foreground' : 'text-muted-foreground']}>
+                      {dayLabel(day)}
+                    </span>
+                    <span>{hoursLabel(hours[day])}</span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )
+        }
+
+        <!-- Gallery grid: mobile browsing alternative + the canonical lightbox
+             photo source. Hidden on desktop (the mosaic replaces it) but kept
+             in the DOM so the lightbox still sources every photo. -->
+        <section class="md:hidden">
+          <h2 class="display text-2xl">{m.profile_gallery()}</h2>
           <div class="mt-4">
             <ProfileGallery photos={p.photos} keyBase={p.id} alt={p.name} />
           </div>

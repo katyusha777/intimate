@@ -10,6 +10,7 @@ import SafeImage from '@/components/atoms/SafeImage.astro';
 import SearchControl from '@/components/molecules/SearchControl.astro';
 import Combobox from '@/components/molecules/Combobox.astro';
 import ActionSheet from '@/components/molecules/ActionSheet.astro';
+import ProfilePhotoMosaic from '@/components/organisms/profile/ProfilePhotoMosaic.astro';
 import { CITIES } from '@/lib/taxonomy';
 import SafeModeToggle from '@/components/molecules/SafeModeToggle.astro';
 import Section from '@/components/molecules/Section.astro';
@@ -25,6 +26,7 @@ import { profilesApi } from '@/app/api/profiles';
 
 const { items: profiles } = await profilesApi.list({ limit: 12 });
 const p = profiles[0]!;
+const mosaicPhotos = profiles.flatMap((pr) => pr.photos).slice(0, 5);
 const swatches = [
   ['primary', 'bg-primary'],
   ['brand', 'bg-brand'],
@@ -186,6 +188,18 @@ const swatches = [
       <div class="max-w-xs">
         <FilterSidebar params={{}} resetHref="#" openCategory="massage" />
       </div>
+    </section>
+
+    <section class="space-y-6">
+      <h2 class="text-xl font-semibold">Photo mosaic (desktop profile header) — 1 → 5+ photos</h2>
+      {
+        [1, 2, 3, 4, 5].map((count) => (
+          <div class="space-y-2">
+            <p class="eyebrow">{count} photo{count > 1 ? 's' : ''}</p>
+            <ProfilePhotoMosaic photos={mosaicPhotos.slice(0, count)} keyBase={`sink-mosaic-${count}`} alt="Demo" />
+          </div>
+        ))
+      }
     </section>
 
     <section class="space-y-4">

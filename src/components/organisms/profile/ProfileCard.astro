@@ -5,7 +5,7 @@
  * compact: horizontal row for favorites/suggestions/similar.
  */
 import * as m from '@/paraglide/messages';
-import { localizedDescription, type Profile } from '@/app/models/profile';
+import { localizedDescription, profileAge, type Profile } from '@/app/models/profile';
 import { localizePath } from '@/lib/i18n';
 import { genderLabel, serviceLabel } from '@/lib/labels';
 import { CITIES } from '@/lib/taxonomy';
@@ -47,8 +47,10 @@ const slab = SLABS[[...p.id].reduce((s, c) => s + c.charCodeAt(0), 0) % SLABS.le
       </div>
       <button
         type="button"
+        data-fav-toggle
+        data-fav-slug={p.slug}
         aria-label={m.nav_favorites()}
-        class="card-heart absolute right-2 top-2 grid size-9 cursor-pointer place-items-center bg-neutral-950 text-white transition-transform active:scale-90"
+        class="card-heart absolute right-2 top-2 z-10 grid size-9 cursor-pointer place-items-center bg-neutral-950 text-white transition-transform active:scale-90"
       >
         <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7Z" /></svg>
       </button>
@@ -67,7 +69,7 @@ const slab = SLABS[[...p.id].reduce((s, c) => s + c.charCodeAt(0), 0) % SLABS.le
         <div class="flex items-start justify-between gap-3">
           <div class="min-w-0">
             <p class="flex items-center gap-1 font-condensed text-lg font-semibold leading-snug">
-              <span class="truncate">{p.name}, {p.age}</span>
+              <span class="truncate">{p.name}, {profileAge(p.birthDate)}</span>
               <VerifiedBadge />
             </p>
             <p class="truncate text-sm text-white/60">{cityName}</p>
@@ -94,7 +96,7 @@ const slab = SLABS[[...p.id].reduce((s, c) => s + c.charCodeAt(0), 0) % SLABS.le
       <div class="flex flex-col justify-between gap-3 p-5">
         <div class="space-y-1.5">
           <h3 class="flex items-center gap-1.5 font-condensed text-xl font-semibold tracking-tight">
-            <a href={href} class="after:absolute after:inset-0">{p.name}, {p.age}</a>
+            <a href={href} class="after:absolute after:inset-0">{p.name}, {profileAge(p.birthDate)}</a>
             <VerifiedBadge class="size-4.5" />
             {p.online && (
               <span class="ml-auto flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
@@ -124,7 +126,7 @@ const slab = SLABS[[...p.id].reduce((s, c) => s + c.charCodeAt(0), 0) % SLABS.le
       <SafeImage imageKey={p.id} src={p.photos[0]} alt={p.name} class="size-14 flex-none rounded-lg" {loading} />
       <div class="min-w-0 flex-1">
         <p class="flex items-center gap-1 truncate font-condensed text-base font-semibold">
-          {p.name}, {p.age}
+          {p.name}, {profileAge(p.birthDate)}
           <VerifiedBadge class="size-3.5" />
         </p>
         <p class="truncate text-xs text-muted-foreground">{cityName}</p>

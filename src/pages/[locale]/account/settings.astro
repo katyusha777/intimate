@@ -1,0 +1,74 @@
+---
+/** Account settings — the "Account" tab. Appearance, language, pause, sign out. */
+import * as m from '@/paraglide/messages';
+import { sessionApi } from '@/app/api/session';
+import { isLocale, localizePath } from '@/lib/i18n';
+import { LOCALES } from '@/lib/taxonomy';
+import AccountShell from '@/components/organisms/dashboard/AccountShell.astro';
+import SignInPrompt from '@/components/organisms/dashboard/SignInPrompt.astro';
+import ThemeToggle from '@/components/molecules/ThemeToggle.astro';
+import SafeModeToggle from '@/components/molecules/SafeModeToggle.astro';
+import Layout from '@/layouts/Layout.astro';
+
+const locale = Astro.params.locale;
+if (!isLocale(locale)) return new Response(null, { status: 404 });
+
+const session = await sessionApi.fromCookies(Astro.cookies);
+const LANGS: Record<(typeof LOCALES)[number], string> = {
+  nl: 'Nederlands',
+  en: 'English',
+  de: 'Deutsch',
+};
+const heading = 'font-condensed text-sm font-bold uppercase tracking-wide text-muted-foreground';
+---
+
+<Layout noindex title={`${m.settings_title()} | Intimate`}>
+  {!session && <SignInPrompt />}
+  {
+    session && (
+      <AccountShell {session} title={m.settings_title()} path={localizePath('/account/settings/')}>
+        <div class="max-w-xl divide-y divide-border">
+          <section class="flex items-center justify-between gap-4 py-5 first:pt-0">
+            <h2 class={heading}>{m.settings_appearance()}</h2>
+            <div class="flex items-center gap-4">
+              <SafeModeToggle />
+              <ThemeToggle />
+            </div>
+          </section>
+
+          <section class="flex flex-wrap items-center justify-between gap-4 py-5">
+            <h2 class={heading}>{m.settings_language()}</h2>
+            <div class="flex gap-1.5">
+              {LOCALES.map((l) => (
+                <a
+                  href={`/${l}/account/settings/`}
+                  class:list={[
+                    'slab-cut border px-3 py-1.5 text-sm font-medium transition-colors',
+                    l === locale
+                      ? 'border-foreground bg-foreground text-background'
+                      : 'border-foreground/20 hover:border-foreground/60',
+                  ]}
+                >
+                  {LANGS[l]}
+                </a>
+              ))}
+            </div>
+          </section>
+
+          {session.role === 'advertiser' && (
+            <section class="py-5">
+              <div class="flex items-center justify-between gap-4">
+                <h2 class={heading}>{m.settings_pause()}</h2>
+                <label class="flex cursor-pointer items-center">
+                  <input type="checkbox" class="sr-only" />
+                  <span class="switch-track" aria-hidden="true" />
+                </label>
+              </div>
+              <p class="mt-2 text-xs text-muted-foreground">{m.settings_pause_note()}</p>
+            </section>
+          )}
+        </div>
+      </AccountShell>
+    )
+  }
+</Layout>

@@ -4,7 +4,7 @@ import type { Session } from '@/app/models/session';
 import AiSearchInput from '@/components/molecules/AiSearchInput.astro';
 import Button from '@/components/atoms/Button.astro';
 import Combobox from '@/components/molecules/Combobox.astro';
-import SafeImage from '@/components/atoms/SafeImage.astro';
+import UserMenu from '@/components/molecules/UserMenu.astro';
 import { getLocale } from '@/paraglide/runtime';
 import { listingCategoryLabel } from '@/lib/labels';
 import { localizePath } from '@/lib/i18n';
@@ -67,23 +67,7 @@ const categories = [
     <div class="ml-auto flex flex-none items-center gap-4 md:ml-0">
       {
         session ? (
-          <a
-            href={localizePath('/account/')}
-            class="flex items-center gap-2.5 text-sm font-semibold transition-colors hover:text-brand"
-          >
-            {session.profileId ? (
-              <SafeImage
-                imageKey={session.profileId}
-                alt={session.name}
-                class="size-8 rounded-full"
-              />
-            ) : (
-              <span class="grid size-8 place-items-center rounded-full bg-foreground font-condensed text-sm font-bold text-background">
-                {session.name.charAt(0)}
-              </span>
-            )}
-            <span class="hidden sm:block">{session.name}</span>
-          </a>
+          <UserMenu {session} />
         ) : (
           <>
             <button

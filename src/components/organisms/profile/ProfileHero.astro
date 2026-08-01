@@ -6,7 +6,7 @@
  * fewer competing elements up top). The chevron leads to the details.
  */
 import * as m from '@/paraglide/messages';
-import type { Profile } from '@/app/models/profile';
+import { profileAge, type Profile } from '@/app/models/profile';
 import { serviceLabel } from '@/lib/labels';
 import { cityName } from '@/lib/seo';
 import SafeImage from '@/components/atoms/SafeImage.astro';
@@ -41,6 +41,8 @@ const { profile: p } = Astro.props;
   </button>
   <button
     type="button"
+    data-fav-toggle
+    data-fav-slug={p.slug}
     aria-label={m.nav_favorites()}
     class="card-heart absolute right-3 top-7 z-10 grid size-10 cursor-pointer place-items-center bg-neutral-950/90 text-white transition-transform active:scale-90"
   >
@@ -61,7 +63,7 @@ const { profile: p } = Astro.props;
   <div class="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent pt-28">
     <div class="mx-auto max-w-7xl px-4 pb-10 text-white md:px-6">
       <h1 class="flex items-center gap-2.5 font-condensed text-4xl font-bold tracking-tight md:text-5xl">
-        {p.name}, {p.age}
+        {p.name}, {profileAge(p.birthDate)}
         <VerifiedBadge class="size-6" />
       </h1>
       <p class="mt-1.5 flex items-center gap-2 text-sm text-white/80">

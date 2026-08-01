@@ -5,9 +5,9 @@
  * account.saveProfile. Receives the MERGED profile (base + her edits).
  */
 import * as m from '@/paraglide/messages';
-import type { Profile } from '@/app/models/profile';
-import { genderLabel, serviceCategoryLabel, serviceLabel } from '@/lib/labels';
-import { CITIES, GENDERS, MEETING_TYPES, SERVICES, SERVICE_CATEGORIES } from '@/lib/taxonomy';
+import { birthDateForAge, type Profile } from '@/app/models/profile';
+import { dayLabel, genderLabel, serviceCategoryLabel, serviceLabel } from '@/lib/labels';
+import { CITIES, DAYS, GENDERS, MEETING_TYPES, SERVICES, SERVICE_CATEGORIES } from '@/lib/taxonomy';
 import Button from '@/components/atoms/Button.astro';
 import Icon from '@/components/atoms/Icon.astro';
 import Select from '@/components/atoms/Select.astro';
@@ -19,6 +19,8 @@ interface Props {
 const { profile: p } = Astro.props;
 
 const selectedServices = new Set(p.services as readonly string[]);
+// Latest DOB an 18-year-old could have (for the date input's max).
+const max18 = birthDateForAge(18);
 const heading = 'font-condensed text-sm font-bold uppercase tracking-wide';
 const row = 'flex cursor-pointer select-none items-center gap-2.5 text-sm hover:text-foreground/70';
 ---
@@ -27,13 +29,11 @@ const row = 'flex cursor-pointer select-none items-center gap-2.5 text-sm hover:
   <div class="grid gap-4 sm:grid-cols-2">
     <SlabField label={m.editor_name()} name="name" value={p.name} required />
     <SlabField
-      label={m.editor_age()}
-      name="age"
-      type="number"
-      inputmode="numeric"
-      value={p.age}
-      min="18"
-      max="99"
+      label={m.editor_birthdate()}
+      name="birthDate"
+      type="date"
+      value={p.birthDate}
+      max={max18}
       required
     />
     <label class="block space-y-1.5">
@@ -76,6 +76,49 @@ const row = 'flex cursor-pointer select-none items-center gap-2.5 text-sm hover:
             {t === 'incall' ? m.cat_private() : m.cat_escort()}
           </label>
         ))
+      }
+    </div>
+  </div>
+
+  <div class="space-y-2">
+    <h3 class={heading}>{m.editor_hours()}</h3>
+    <div>
+      {
+        DAYS.map((day) => {
+          const h = p.openingHours?.[day] ?? { closed: false, allDay: false, from: '10:00', to: '22:00' };
+          return (
+            <div
+              class="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border py-2.5"
+              data-hours-row
+              data-day={day}
+            >
+              <span class="w-24 flex-none text-sm font-medium">{dayLabel(day)}</span>
+              <label class="flex cursor-pointer select-none items-center gap-2 text-sm">
+                <input type="checkbox" checked={h.closed} class="cbx-box" data-hours-closed />
+                {m.hours_closed()}
+              </label>
+              <label class="flex cursor-pointer select-none items-center gap-2 text-sm" data-hours-openonly>
+                <input type="checkbox" checked={h.allDay} class="cbx-box" data-hours-allday />
+                {m.hours_allday()}
+              </label>
+              <div class="flex items-center gap-2" data-hours-times>
+                <input
+                  type="time"
+                  data-hours-from
+                  value={h.from || '10:00'}
+                  class="border border-foreground/20 bg-transparent px-2 py-1 text-sm outline-none transition-colors focus:border-foreground"
+                />
+                <span class="text-muted-foreground" aria-hidden="true">–</span>
+                <input
+                  type="time"
+                  data-hours-to
+                  value={h.to || '22:00'}
+                  class="border border-foreground/20 bg-transparent px-2 py-1 text-sm outline-none transition-colors focus:border-foreground"
+                />
+              </div>
+            </div>
+          );
+        })
       }
     </div>
   </div>
@@ -141,21 +184,49 @@ const row = 'flex cursor-pointer select-none items-center gap-2.5 text-sm hover:
 <script>
   import { actions } from 'astro:actions';
 
+  /** Show/hide a day's controls: closed hides everything, 24h hides the times. */
+  function syncHoursRow(row: HTMLElement) {
+    const closed = row.querySelector<HTMLInputElement>('[data-hours-closed]')!.checked;
+    const allDay = row.querySelector<HTMLInputElement>('[data-hours-allday]')!.checked;
+    row.querySelector<HTMLElement>('[data-hours-openonly]')!.style.display = closed ? 'none' : '';
+    row.querySelector<HTMLElement>('[data-hours-times]')!.style.display =
+      closed || allDay ? 'none' : '';
+  }
+
   function initEditor() {
     document.querySelectorAll<HTMLFormElement>('[data-profile-editor]').forEach((form) => {
       if (form.dataset.init) return;
       form.dataset.init = '1';
+
+      // Opening-hours progressive disclosure.
+      form.querySelectorAll<HTMLElement>('[data-hours-row]').forEach((r) => {
+        syncHoursRow(r);
+        r.querySelectorAll('[data-hours-closed],[data-hours-allday]').forEach((c) =>
+          c.addEventListener('change', () => syncHoursRow(r)),
+        );
+      });
+
       form.addEventListener('submit', async (e) => {
         e.preventDefault();
         const fd = new FormData(form);
+        const openingHours: Record<string, unknown> = {};
+        form.querySelectorAll<HTMLElement>('[data-hours-row]').forEach((r) => {
+          openingHours[r.dataset.day!] = {
+            closed: r.querySelector<HTMLInputElement>('[data-hours-closed]')!.checked,
+            allDay: r.querySelector<HTMLInputElement>('[data-hours-allday]')!.checked,
+            from: r.querySelector<HTMLInputElement>('[data-hours-from]')!.value,
+            to: r.querySelector<HTMLInputElement>('[data-hours-to]')!.value,
+          };
+        });
         const patch = {
           name: String(fd.get('name') ?? ''),
-          age: Number(fd.get('age')),
+          birthDate: String(fd.get('birthDate') ?? ''),
           gender: String(fd.get('gender')),
           city: String(fd.get('city')),
           priceFrom: Number(fd.get('priceFrom')),
           meetingTypes: fd.getAll('meetingTypes').map(String),
           services: fd.getAll('services').map(String),
+          openingHours,
           description: String(fd.get('description') ?? ''),
         };
         const saved = form.querySelector<HTMLElement>('[data-editor-saved]')!;

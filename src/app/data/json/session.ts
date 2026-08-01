@@ -42,7 +42,7 @@ async function advertiserIdentity(email: string): Promise<Session> {
   const { items } = await profilesApi.list({ limit: 60 });
   const lp = localPart(email);
   const match = items.find((p) => p.slug.startsWith(lp)) ?? items[0]!;
-  return { email, role: 'advertiser', name: match.name, profileId: match.id };
+  return { email, role: 'advertiser', name: match.name, profileId: match.id, profileSlug: match.slug };
 }
 
 function clientIdentity(email: string): Session {
@@ -81,7 +81,7 @@ export const sessionApi: SessionApi = {
     const lp = localPart(email);
     const match = items.find((p) => p.slug.startsWith(lp));
     const session = match
-      ? { email, role: 'advertiser' as const, name: match.name, profileId: match.id }
+      ? { email, role: 'advertiser' as const, name: match.name, profileId: match.id, profileSlug: match.slug }
       : clientIdentity(email);
     return write(cookies, session);
   },

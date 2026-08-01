@@ -1,0 +1,109 @@
+---
+/**
+ * Logged-in user menu: avatar/name trigger → dropdown with the account actions
+ * (dashboard, edit/view profile for advertisers, favorites, sign out).
+ * Click-outside + Esc close; sign out runs the auth.logout action.
+ */
+import * as m from '@/paraglide/messages';
+import type { Session } from '@/app/models/session';
+import { localizePath } from '@/lib/i18n';
+import SafeImage from '@/components/atoms/SafeImage.astro';
+
+interface Props {
+  session: Session;
+}
+const { session } = Astro.props;
+const isAdvertiser = session.role === 'advertiser';
+
+const item =
+  'flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm transition-colors hover:bg-muted';
+---
+
+<div class="relative" data-usermenu>
+  <button
+    type="button"
+    data-usermenu-btn
+    aria-haspopup="menu"
+    class="flex cursor-pointer items-center gap-2 rounded-full py-0.5 pl-0.5 pr-2 text-sm font-semibold transition-colors hover:text-brand"
+  >
+    {
+      session.profileId ? (
+        <SafeImage imageKey={session.profileId} alt={session.name} class="size-8 rounded-full" />
+      ) : (
+        <span class="grid size-8 place-items-center rounded-full bg-foreground font-condensed text-sm font-bold text-background">
+          {session.name.charAt(0)}
+        </span>
+      )
+    }
+    <span class="hidden sm:block">{session.name}</span>
+    <svg class="hidden size-3 text-muted-foreground sm:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+  </button>
+
+  <div
+    data-usermenu-panel
+    hidden
+    role="menu"
+    class="absolute right-0 z-40 mt-2 w-56 border border-foreground/20 bg-background py-1 shadow-soft-lg"
+  >
+    <a href={localizePath('/account/')} class={item} role="menuitem">
+      <svg class="size-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 13a8 8 0 1 1 16 0" /><path d="M12 13l4-4" /><path d="M2 17h20" /></svg>
+      {m.nav_dashboard()}
+    </a>
+    {
+      isAdvertiser && (
+        <a href={localizePath('/account/profile/')} class={item} role="menuitem">
+          <svg class="size-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
+          {m.editor_title()}
+        </a>
+      )
+    }
+    {
+      isAdvertiser && session.profileSlug && (
+        <a href={localizePath(`/profile/${session.profileSlug}/`)} class={item} role="menuitem">
+          <svg class="size-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" /><circle cx="12" cy="12" r="3" /></svg>
+          {m.account_view_public()}
+        </a>
+      )
+    }
+    <a href={localizePath('/favorites/')} class={item} role="menuitem">
+      <svg class="size-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7Z" /></svg>
+      {m.nav_favorites()}
+    </a>
+    <div class="my-1 border-t border-border"></div>
+    <button type="button" data-usermenu-signout class:list={[item, 'cursor-pointer text-brand']} role="menuitem">
+      <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><path d="m16 17 5-5-5-5" /><path d="M21 12H9" /></svg>
+      {m.account_signout()}
+    </button>
+  </div>
+</div>
+
+<script>
+  import { actions } from 'astro:actions';
+
+  function initUserMenu() {
+    document.querySelectorAll<HTMLElement>('[data-usermenu]').forEach((menu) => {
+      if (menu.dataset.init) return;
+      menu.dataset.init = '1';
+      const btn = menu.querySelector<HTMLElement>('[data-usermenu-btn]')!;
+      const panel = menu.querySelector<HTMLElement>('[data-usermenu-panel]')!;
+
+      btn.addEventListener('click', () => {
+        panel.hidden = !panel.hidden;
+      });
+      document.addEventListener('click', (e) => {
+        if (!menu.contains(e.target as Node)) panel.hidden = true;
+      });
+      menu.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') panel.hidden = true;
+      });
+
+      menu.querySelector('[data-usermenu-signout]')?.addEventListener('click', async () => {
+        const locale = (document.documentElement.lang || 'en') as 'nl' | 'en' | 'de';
+        const { data } = await actions.auth.logout({ locale });
+        location.href = data?.href ?? '/';
+      });
+    });
+  }
+  initUserMenu();
+  document.addEventListener('astro:page-load', initUserMenu);
+</script>

@@ -1,5 +1,11 @@
 import * as m from '@/paraglide/messages';
-import type { Gender, ListingCategorySlug, Service, ServiceCategory, SortOption } from './taxonomy';
+import type { Day, Gender, ListingCategorySlug, Service, ServiceCategory, SortOption } from './taxonomy';
+
+/** Localized weekday name. */
+export function dayLabel(d: Day): string {
+  const fn = (m as Record<string, unknown>)[`day_${d}`];
+  return typeof fn === 'function' ? (fn as () => string)() : d;
+}
 
 /** Taxonomy value → localized label (taxonomy = law: labels only via i18n). */
 export function genderLabel(g: Gender): string {

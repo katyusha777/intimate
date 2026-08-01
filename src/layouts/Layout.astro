@@ -11,6 +11,7 @@ import BottomTabBar from '@/components/organisms/layout/BottomTabBar.astro';
 import AuthModal from '@/components/organisms/auth/AuthModal.astro';
 import ProfileSheet from '@/components/organisms/profile/ProfileSheet.astro';
 import Lightbox from '@/components/molecules/Lightbox.astro';
+import FavoritesController from '@/components/molecules/FavoritesController.astro';
 import '@fontsource/barlow/400.css';
 import '@fontsource/barlow/500.css';
 import '@fontsource/barlow/600.css';
@@ -107,6 +108,7 @@ const idVerified =
     <AuthModal />
     <ProfileSheet />
     <Lightbox />
+    <FavoritesController />
 
     <script is:inline>
       // Safe mode (DESIGN.md §6): fail-closed. Server HTML always ships safe

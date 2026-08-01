@@ -85,7 +85,9 @@ const chip =
     {updated && <p class="eyebrow mt-1.5">{updated}</p>}
   </div>
 
-  <div class="grid items-start gap-x-6 gap-y-4 lg:grid-cols-[17rem_1fr]">
+  <!-- grid-rows min-content/1fr: the tall row-spanning sidebar (col 1) must not
+       inflate row 1 and push the cards down — row 2 absorbs its extra height. -->
+  <div class="grid items-start gap-x-6 gap-y-4 lg:grid-cols-[17rem_1fr] lg:grid-rows-[min-content_1fr]">
     <!-- Control rail: single scrollable line on mobile (app-style), wraps on lg.
          The combobox in the header drives the hidden data-city-nav select
          (path navigation); it is the MAIN location state. -->

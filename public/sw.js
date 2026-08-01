@@ -1,6 +1,6 @@
 // App-shell service worker: cache-first for hashed/static assets only.
 // SSR pages stay network-served (edge cache does the heavy lifting).
-const STATIC_CACHE = 'static-v1';
+const STATIC_CACHE = 'static-v2';
 
 self.addEventListener('install', () => self.skipWaiting());
 

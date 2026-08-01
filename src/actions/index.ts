@@ -217,6 +217,19 @@ export const server = {
       },
     }),
 
+    // Merge device-local favorites into the account (called on login/register);
+    // returns the merged set so the device can adopt anything synced elsewhere.
+    syncFavorites: defineAction({
+      input: z.object({ favorites: z.array(z.string().max(120)).max(500) }),
+      handler: async ({ favorites }, context) => {
+        const session = await requireSession(context);
+        const acct = await accountApi.get(session);
+        const merged = [...new Set([...acct.favorites, ...favorites])];
+        await accountApi.save(session, { favorites: merged });
+        return { favorites: merged };
+      },
+    }),
+
     addPhoto: defineAction({
       input: z.object({
         // client downscales + re-encodes (EXIF stripped by the canvas re-encode)

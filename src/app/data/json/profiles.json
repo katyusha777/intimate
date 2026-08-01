@@ -4,7 +4,7 @@
     "slug": "eva-amsterdam",
     "state": "live",
     "name": "Eva",
-    "age": 21,
+    "birthDate": "2005-01-01",
     "gender": "female",
     "city": "amsterdam",
     "verified": true,
@@ -19,6 +19,50 @@
     "meetingTypes": [
       "incall"
     ],
+    "openingHours": {
+      "mon": {
+        "closed": true,
+        "allDay": false,
+        "from": "",
+        "to": ""
+      },
+      "tue": {
+        "closed": false,
+        "allDay": false,
+        "from": "09:00",
+        "to": "20:00"
+      },
+      "wed": {
+        "closed": false,
+        "allDay": false,
+        "from": "09:00",
+        "to": "20:00"
+      },
+      "thu": {
+        "closed": false,
+        "allDay": false,
+        "from": "09:00",
+        "to": "20:00"
+      },
+      "fri": {
+        "closed": false,
+        "allDay": false,
+        "from": "09:00",
+        "to": "20:00"
+      },
+      "sat": {
+        "closed": false,
+        "allDay": false,
+        "from": "09:00",
+        "to": "20:00"
+      },
+      "sun": {
+        "closed": false,
+        "allDay": false,
+        "from": "09:00",
+        "to": "20:00"
+      }
+    },
     "description": "Warm, discreet and attentive — I love real connection and taking our time.",
     "descriptionTranslations": {
       "en": "Warm, discreet and attentive — I love real connection and taking our time.",
@@ -37,7 +81,7 @@
     "slug": "mila-rotterdam",
     "state": "live",
     "name": "Mila",
-    "age": 28,
+    "birthDate": "1998-06-04",
     "gender": "female",
     "city": "rotterdam",
     "verified": true,
@@ -55,6 +99,50 @@
       "incall",
       "outcall"
     ],
+    "openingHours": {
+      "mon": {
+        "closed": false,
+        "allDay": false,
+        "from": "10:00",
+        "to": "21:00"
+      },
+      "tue": {
+        "closed": false,
+        "allDay": false,
+        "from": "10:00",
+        "to": "21:00"
+      },
+      "wed": {
+        "closed": false,
+        "allDay": false,
+        "from": "10:00",
+        "to": "21:00"
+      },
+      "thu": {
+        "closed": false,
+        "allDay": false,
+        "from": "10:00",
+        "to": "21:00"
+      },
+      "fri": {
+        "closed": false,
+        "allDay": false,
+        "from": "10:00",
+        "to": "21:00"
+      },
+      "sat": {
+        "closed": false,
+        "allDay": false,
+        "from": "10:00",
+        "to": "21:00"
+      },
+      "sun": {
+        "closed": false,
+        "allDay": false,
+        "from": "10:00",
+        "to": "21:00"
+      }
+    },
     "description": "Playful and open-minded. Expect genuine chemistry and zero rush.",
     "descriptionTranslations": {
       "en": "Playful and open-minded. Expect genuine chemistry and zero rush.",
@@ -73,7 +161,7 @@
     "slug": "sophie-den-haag",
     "state": "live",
     "name": "Sophie",
-    "age": 35,
+    "birthDate": "1991-11-07",
     "gender": "female",
     "city": "den-haag",
     "verified": true,
@@ -89,6 +177,50 @@
     "meetingTypes": [
       "outcall"
     ],
+    "openingHours": {
+      "mon": {
+        "closed": false,
+        "allDay": false,
+        "from": "11:00",
+        "to": "22:00"
+      },
+      "tue": {
+        "closed": false,
+        "allDay": false,
+        "from": "11:00",
+        "to": "22:00"
+      },
+      "wed": {
+        "closed": false,
+        "allDay": false,
+        "from": "11:00",
+        "to": "22:00"
+      },
+      "thu": {
+        "closed": false,
+        "allDay": false,
+        "from": "11:00",
+        "to": "22:00"
+      },
+      "fri": {
+        "closed": false,
+        "allDay": false,
+        "from": "11:00",
+        "to": "22:00"
+      },
+      "sat": {
+        "closed": false,
+        "allDay": false,
+        "from": "11:00",
+        "to": "22:00"
+      },
+      "sun": {
+        "closed": false,
+        "allDay": false,
+        "from": "11:00",
+        "to": "22:00"
+      }
+    },
     "description": "Elegant company for dinners, travel and everything after.",
     "descriptionTranslations": {
       "en": "Elegant company for dinners, travel and everything after.",
@@ -107,7 +239,7 @@
     "slug": "zara-utrecht",
     "state": "live",
     "name": "Zara",
-    "age": 27,
+    "birthDate": "1999-04-10",
     "gender": "female",
     "city": "utrecht",
     "verified": true,
@@ -126,6 +258,50 @@
       "incall",
       "outcall"
     ],
+    "openingHours": {
+      "mon": {
+        "closed": false,
+        "allDay": false,
+        "from": "12:00",
+        "to": "23:00"
+      },
+      "tue": {
+        "closed": false,
+        "allDay": false,
+        "from": "12:00",
+        "to": "23:00"
+      },
+      "wed": {
+        "closed": false,
+        "allDay": false,
+        "from": "12:00",
+        "to": "23:00"
+      },
+      "thu": {
+        "closed": false,
+        "allDay": false,
+        "from": "12:00",
+        "to": "23:00"
+      },
+      "fri": {
+        "closed": false,
+        "allDay": false,
+        "from": "12:00",
+        "to": "23:00"
+      },
+      "sat": {
+        "closed": false,
+        "allDay": false,
+        "from": "12:00",
+        "to": "23:00"
+      },
+      "sun": {
+        "closed": true,
+        "allDay": false,
+        "from": "",
+        "to": ""
+      }
+    },
     "description": "Certified masseuse with a naughty side — relaxing has never felt this good.",
     "descriptionTranslations": {
       "en": "Certified masseuse with a naughty side — relaxing has never felt this good.",
@@ -144,7 +320,7 @@
     "slug": "jade-eindhoven",
     "state": "live",
     "name": "Jade",
-    "age": 34,
+    "birthDate": "1992-09-13",
     "gender": "trans_woman",
     "city": "eindhoven",
     "verified": true,
@@ -161,6 +337,50 @@
       "incall",
       "outcall"
     ],
+    "openingHours": {
+      "mon": {
+        "closed": false,
+        "allDay": false,
+        "from": "09:00",
+        "to": "20:00"
+      },
+      "tue": {
+        "closed": false,
+        "allDay": false,
+        "from": "09:00",
+        "to": "20:00"
+      },
+      "wed": {
+        "closed": false,
+        "allDay": false,
+        "from": "09:00",
+        "to": "20:00"
+      },
+      "thu": {
+        "closed": false,
+        "allDay": false,
+        "from": "09:00",
+        "to": "20:00"
+      },
+      "fri": {
+        "closed": false,
+        "allDay": true,
+        "from": "",
+        "to": ""
+      },
+      "sat": {
+        "closed": true,
+        "allDay": false,
+        "from": "",
+        "to": ""
+      },
+      "sun": {
+        "closed": false,
+        "allDay": false,
+        "from": "09:00",
+        "to": "20:00"
+      }
+    },
     "description": "Warm, discreet and attentive — I love real connection and taking our time.",
     "descriptionTranslations": {
       "en": "Warm, discreet and attentive — I love real connection and taking our time.",
@@ -179,7 +399,7 @@
     "slug": "femke-groningen",
     "state": "live",
     "name": "Femke",
-    "age": 26,
+    "birthDate": "2000-02-16",
     "gender": "female",
     "city": "groningen",
     "verified": true,
@@ -196,6 +416,50 @@
     "meetingTypes": [
       "incall"
     ],
+    "openingHours": {
+      "mon": {
+        "closed": false,
+        "allDay": false,
+        "from": "10:00",
+        "to": "21:00"
+      },
+      "tue": {
+        "closed": false,
+        "allDay": false,
+        "from": "10:00",
+        "to": "21:00"
+      },
+      "wed": {
+        "closed": false,
+        "allDay": false,
+        "from": "10:00",
+        "to": "21:00"
+      },
+      "thu": {
+        "closed": false,
+        "allDay": false,
+        "from": "10:00",
+        "to": "21:00"
+      },
+      "fri": {
+        "closed": true,
+        "allDay": false,
+        "from": "",
+        "to": ""
+      },
+      "sat": {
+        "closed": false,
+        "allDay": false,
+        "from": "10:00",
+        "to": "21:00"
+      },
+      "sun": {
+        "closed": false,
+        "allDay": false,
+        "from": "10:00",
+        "to": "21:00"
+      }
+    },
     "description": "Playful and open-minded. Expect genuine chemistry and zero rush.",
     "descriptionTranslations": {
       "en": "Playful and open-minded. Expect genuine chemistry and zero rush.",
@@ -214,7 +478,7 @@
     "slug": "isa-tilburg",
     "state": "live",
     "name": "Isa",
-    "age": 33,
+    "birthDate": "1993-07-19",
     "gender": "female",
     "city": "tilburg",
     "verified": true,
@@ -231,6 +495,50 @@
       "incall",
       "outcall"
     ],
+    "openingHours": {
+      "mon": {
+        "closed": false,
+        "allDay": false,
+        "from": "11:00",
+        "to": "22:00"
+      },
+      "tue": {
+        "closed": false,
+        "allDay": false,
+        "from": "11:00",
+        "to": "22:00"
+      },
+      "wed": {
+        "closed": false,
+        "allDay": false,
+        "from": "11:00",
+        "to": "22:00"
+      },
+      "thu": {
+        "closed": true,
+        "allDay": false,
+        "from": "",
+        "to": ""
+      },
+      "fri": {
+        "closed": false,
+        "allDay": false,
+        "from": "11:00",
+        "to": "22:00"
+      },
+      "sat": {
+        "closed": false,
+        "allDay": false,
+        "from": "11:00",
+        "to": "22:00"
+      },
+      "sun": {
+        "closed": false,
+        "allDay": false,
+        "from": "11:00",
+        "to": "22:00"
+      }
+    },
     "description": "Elegant company for dinners, travel and everything after.",
     "descriptionTranslations": {
       "en": "Elegant company for dinners, travel and everything after.",
@@ -249,7 +557,7 @@
     "slug": "noa-almere",
     "state": "live",
     "name": "Noa",
-    "age": 25,
+    "birthDate": "2001-12-22",
     "gender": "female",
     "city": "almere",
     "verified": true,
@@ -266,6 +574,50 @@
     "meetingTypes": [
       "outcall"
     ],
+    "openingHours": {
+      "mon": {
+        "closed": false,
+        "allDay": false,
+        "from": "12:00",
+        "to": "23:00"
+      },
+      "tue": {
+        "closed": false,
+        "allDay": false,
+        "from": "12:00",
+        "to": "23:00"
+      },
+      "wed": {
+        "closed": true,
+        "allDay": false,
+        "from": "",
+        "to": ""
+      },
+      "thu": {
+        "closed": false,
+        "allDay": false,
+        "from": "12:00",
+        "to": "23:00"
+      },
+      "fri": {
+        "closed": false,
+        "allDay": false,
+        "from": "12:00",
+        "to": "23:00"
+      },
+      "sat": {
+        "closed": false,
+        "allDay": false,
+        "from": "12:00",
+        "to": "23:00"
+      },
+      "sun": {
+        "closed": false,
+        "allDay": false,
+        "from": "12:00",
+        "to": "23:00"
+      }
+    },
     "description": "Certified masseuse with a naughty side — relaxing has never felt this good.",
     "descriptionTranslations": {
       "en": "Certified masseuse with a naughty side — relaxing has never felt this good.",
@@ -284,7 +636,7 @@
     "slug": "yasmin-breda",
     "state": "live",
     "name": "Yasmin",
-    "age": 32,
+    "birthDate": "1994-05-25",
     "gender": "female",
     "city": "breda",
     "verified": true,
@@ -301,6 +653,50 @@
       "incall",
       "outcall"
     ],
+    "openingHours": {
+      "mon": {
+        "closed": false,
+        "allDay": false,
+        "from": "09:00",
+        "to": "20:00"
+      },
+      "tue": {
+        "closed": true,
+        "allDay": false,
+        "from": "",
+        "to": ""
+      },
+      "wed": {
+        "closed": false,
+        "allDay": false,
+        "from": "09:00",
+        "to": "20:00"
+      },
+      "thu": {
+        "closed": false,
+        "allDay": false,
+        "from": "09:00",
+        "to": "20:00"
+      },
+      "fri": {
+        "closed": false,
+        "allDay": false,
+        "from": "09:00",
+        "to": "20:00"
+      },
+      "sat": {
+        "closed": false,
+        "allDay": false,
+        "from": "09:00",
+        "to": "20:00"
+      },
+      "sun": {
+        "closed": false,
+        "allDay": false,
+        "from": "09:00",
+        "to": "20:00"
+      }
+    },
     "description": "Warm, discreet and attentive — I love real connection and taking our time.",
     "descriptionTranslations": {
       "en": "Warm, discreet and attentive — I love real connection and taking our time.",
@@ -319,7 +715,7 @@
     "slug": "lena-nijmegen",
     "state": "live",
     "name": "Lena",
-    "age": 24,
+    "birthDate": "2002-10-01",
     "gender": "female",
     "city": "nijmegen",
     "verified": true,
@@ -337,6 +733,50 @@
       "incall",
       "outcall"
     ],
+    "openingHours": {
+      "mon": {
+        "closed": true,
+        "allDay": false,
+        "from": "",
+        "to": ""
+      },
+      "tue": {
+        "closed": false,
+        "allDay": false,
+        "from": "10:00",
+        "to": "21:00"
+      },
+      "wed": {
+        "closed": false,
+        "allDay": false,
+        "from": "10:00",
+        "to": "21:00"
+      },
+      "thu": {
+        "closed": false,
+        "allDay": false,
+        "from": "10:00",
+        "to": "21:00"
+      },
+      "fri": {
+        "closed": false,
+        "allDay": false,
+        "from": "10:00",
+        "to": "21:00"
+      },
+      "sat": {
+        "closed": false,
+        "allDay": false,
+        "from": "10:00",
+        "to": "21:00"
+      },
+      "sun": {
+        "closed": false,
+        "allDay": false,
+        "from": "10:00",
+        "to": "21:00"
+      }
+    },
     "description": "Playful and open-minded. Expect genuine chemistry and zero rush.",
     "descriptionTranslations": {
       "en": "Playful and open-minded. Expect genuine chemistry and zero rush.",
@@ -355,7 +795,7 @@
     "slug": "kim-apeldoorn",
     "state": "live",
     "name": "Kim",
-    "age": 31,
+    "birthDate": "1995-03-04",
     "gender": "female",
     "city": "apeldoorn",
     "verified": true,
@@ -373,6 +813,50 @@
     "meetingTypes": [
       "incall"
     ],
+    "openingHours": {
+      "mon": {
+        "closed": false,
+        "allDay": false,
+        "from": "11:00",
+        "to": "22:00"
+      },
+      "tue": {
+        "closed": false,
+        "allDay": false,
+        "from": "11:00",
+        "to": "22:00"
+      },
+      "wed": {
+        "closed": false,
+        "allDay": false,
+        "from": "11:00",
+        "to": "22:00"
+      },
+      "thu": {
+        "closed": false,
+        "allDay": false,
+        "from": "11:00",
+        "to": "22:00"
+      },
+      "fri": {
+        "closed": false,
+        "allDay": false,
+        "from": "11:00",
+        "to": "22:00"
+      },
+      "sat": {
+        "closed": false,
+        "allDay": false,
+        "from": "11:00",
+        "to": "22:00"
+      },
+      "sun": {
+        "closed": false,
+        "allDay": false,
+        "from": "11:00",
+        "to": "22:00"
+      }
+    },
     "description": "Elegant company for dinners, travel and everything after.",
     "descriptionTranslations": {
       "en": "Elegant company for dinners, travel and everything after.",
@@ -391,7 +875,7 @@
     "slug": "anouk-haarlem",
     "state": "live",
     "name": "Anouk",
-    "age": 23,
+    "birthDate": "2003-08-07",
     "gender": "female",
     "city": "haarlem",
     "verified": true,
@@ -409,6 +893,50 @@
       "incall",
       "outcall"
     ],
+    "openingHours": {
+      "mon": {
+        "closed": false,
+        "allDay": false,
+        "from": "12:00",
+        "to": "23:00"
+      },
+      "tue": {
+        "closed": false,
+        "allDay": false,
+        "from": "12:00",
+        "to": "23:00"
+      },
+      "wed": {
+        "closed": false,
+        "allDay": false,
+        "from": "12:00",
+        "to": "23:00"
+      },
+      "thu": {
+        "closed": false,
+        "allDay": false,
+        "from": "12:00",
+        "to": "23:00"
+      },
+      "fri": {
+        "closed": false,
+        "allDay": false,
+        "from": "12:00",
+        "to": "23:00"
+      },
+      "sat": {
+        "closed": false,
+        "allDay": false,
+        "from": "12:00",
+        "to": "23:00"
+      },
+      "sun": {
+        "closed": false,
+        "allDay": false,
+        "from": "12:00",
+        "to": "23:00"
+      }
+    },
     "description": "Certified masseuse with a naughty side — relaxing has never felt this good.",
     "descriptionTranslations": {
       "en": "Certified masseuse with a naughty side — relaxing has never felt this good.",
@@ -427,7 +955,7 @@
     "slug": "luna-arnhem",
     "state": "live",
     "name": "Luna",
-    "age": 30,
+    "birthDate": "1996-01-10",
     "gender": "trans_man",
     "city": "arnhem",
     "verified": true,
@@ -443,6 +971,50 @@
     "meetingTypes": [
       "outcall"
     ],
+    "openingHours": {
+      "mon": {
+        "closed": false,
+        "allDay": false,
+        "from": "09:00",
+        "to": "20:00"
+      },
+      "tue": {
+        "closed": false,
+        "allDay": false,
+        "from": "09:00",
+        "to": "20:00"
+      },
+      "wed": {
+        "closed": false,
+        "allDay": false,
+        "from": "09:00",
+        "to": "20:00"
+      },
+      "thu": {
+        "closed": false,
+        "allDay": false,
+        "from": "09:00",
+        "to": "20:00"
+      },
+      "fri": {
+        "closed": false,
+        "allDay": false,
+        "from": "09:00",
+        "to": "20:00"
+      },
+      "sat": {
+        "closed": false,
+        "allDay": true,
+        "from": "",
+        "to": ""
+      },
+      "sun": {
+        "closed": true,
+        "allDay": false,
+        "from": "",
+        "to": ""
+      }
+    },
     "description": "Warm, discreet and attentive — I love real connection and taking our time.",
     "descriptionTranslations": {
       "en": "Warm, discreet and attentive — I love real connection and taking our time.",
@@ -461,7 +1033,7 @@
     "slug": "bo-enschede",
     "state": "live",
     "name": "Bo",
-    "age": 22,
+    "birthDate": "2004-06-13",
     "gender": "male",
     "city": "enschede",
     "verified": true,
@@ -479,6 +1051,50 @@
       "incall",
       "outcall"
     ],
+    "openingHours": {
+      "mon": {
+        "closed": false,
+        "allDay": false,
+        "from": "10:00",
+        "to": "21:00"
+      },
+      "tue": {
+        "closed": false,
+        "allDay": false,
+        "from": "10:00",
+        "to": "21:00"
+      },
+      "wed": {
+        "closed": false,
+        "allDay": false,
+        "from": "10:00",
+        "to": "21:00"
+      },
+      "thu": {
+        "closed": false,
+        "allDay": false,
+        "from": "10:00",
+        "to": "21:00"
+      },
+      "fri": {
+        "closed": false,
+        "allDay": false,
+        "from": "10:00",
+        "to": "21:00"
+      },
+      "sat": {
+        "closed": true,
+        "allDay": false,
+        "from": "",
+        "to": ""
+      },
+      "sun": {
+        "closed": false,
+        "allDay": false,
+        "from": "10:00",
+        "to": "21:00"
+      }
+    },
     "description": "Playful and open-minded. Expect genuine chemistry and zero rush.",
     "descriptionTranslations": {
       "en": "Playful and open-minded. Expect genuine chemistry and zero rush.",
@@ -497,7 +1113,7 @@
     "slug": "sara-amersfoort",
     "state": "live",
     "name": "Sara",
-    "age": 29,
+    "birthDate": "1997-11-16",
     "gender": "female",
     "city": "amersfoort",
     "verified": true,
@@ -514,6 +1130,50 @@
       "incall",
       "outcall"
     ],
+    "openingHours": {
+      "mon": {
+        "closed": false,
+        "allDay": false,
+        "from": "11:00",
+        "to": "22:00"
+      },
+      "tue": {
+        "closed": false,
+        "allDay": false,
+        "from": "11:00",
+        "to": "22:00"
+      },
+      "wed": {
+        "closed": false,
+        "allDay": false,
+        "from": "11:00",
+        "to": "22:00"
+      },
+      "thu": {
+        "closed": false,
+        "allDay": false,
+        "from": "11:00",
+        "to": "22:00"
+      },
+      "fri": {
+        "closed": true,
+        "allDay": false,
+        "from": "",
+        "to": ""
+      },
+      "sat": {
+        "closed": false,
+        "allDay": false,
+        "from": "11:00",
+        "to": "22:00"
+      },
+      "sun": {
+        "closed": false,
+        "allDay": false,
+        "from": "11:00",
+        "to": "22:00"
+      }
+    },
     "description": "Elegant company for dinners, travel and everything after.",
     "descriptionTranslations": {
       "en": "Elegant company for dinners, travel and everything after.",
@@ -532,7 +1192,7 @@
     "slug": "julia-zaanstad",
     "state": "live",
     "name": "Julia",
-    "age": 21,
+    "birthDate": "2005-04-19",
     "gender": "female",
     "city": "zaanstad",
     "verified": true,
@@ -549,6 +1209,50 @@
     "meetingTypes": [
       "incall"
     ],
+    "openingHours": {
+      "mon": {
+        "closed": false,
+        "allDay": false,
+        "from": "12:00",
+        "to": "23:00"
+      },
+      "tue": {
+        "closed": false,
+        "allDay": false,
+        "from": "12:00",
+        "to": "23:00"
+      },
+      "wed": {
+        "closed": false,
+        "allDay": false,
+        "from": "12:00",
+        "to": "23:00"
+      },
+      "thu": {
+        "closed": true,
+        "allDay": false,
+        "from": "",
+        "to": ""
+      },
+      "fri": {
+        "closed": false,
+        "allDay": false,
+        "from": "12:00",
+        "to": "23:00"
+      },
+      "sat": {
+        "closed": false,
+        "allDay": false,
+        "from": "12:00",
+        "to": "23:00"
+      },
+      "sun": {
+        "closed": false,
+        "allDay": false,
+        "from": "12:00",
+        "to": "23:00"
+      }
+    },
     "description": "Certified masseuse with a naughty side — relaxing has never felt this good.",
     "descriptionTranslations": {
       "en": "Certified masseuse with a naughty side — relaxing has never felt this good.",
@@ -567,7 +1271,7 @@
     "slug": "nina-den-bosch",
     "state": "live",
     "name": "Nina",
-    "age": 28,
+    "birthDate": "1998-09-22",
     "gender": "female",
     "city": "den-bosch",
     "verified": true,
@@ -584,6 +1288,50 @@
       "incall",
       "outcall"
     ],
+    "openingHours": {
+      "mon": {
+        "closed": false,
+        "allDay": false,
+        "from": "09:00",
+        "to": "20:00"
+      },
+      "tue": {
+        "closed": false,
+        "allDay": false,
+        "from": "09:00",
+        "to": "20:00"
+      },
+      "wed": {
+        "closed": true,
+        "allDay": false,
+        "from": "",
+        "to": ""
+      },
+      "thu": {
+        "closed": false,
+        "allDay": false,
+        "from": "09:00",
+        "to": "20:00"
+      },
+      "fri": {
+        "closed": false,
+        "allDay": false,
+        "from": "09:00",
+        "to": "20:00"
+      },
+      "sat": {
+        "closed": false,
+        "allDay": false,
+        "from": "09:00",
+        "to": "20:00"
+      },
+      "sun": {
+        "closed": false,
+        "allDay": false,
+        "from": "09:00",
+        "to": "20:00"
+      }
+    },
     "description": "Warm, discreet and attentive — I love real connection and taking our time.",
     "descriptionTranslations": {
       "en": "Warm, discreet and attentive — I love real connection and taking our time.",
@@ -602,7 +1350,7 @@
     "slug": "romy-zwolle",
     "state": "live",
     "name": "Romy",
-    "age": 35,
+    "birthDate": "1991-02-25",
     "gender": "female",
     "city": "zwolle",
     "verified": true,
@@ -620,6 +1368,50 @@
     "meetingTypes": [
       "outcall"
     ],
+    "openingHours": {
+      "mon": {
+        "closed": false,
+        "allDay": false,
+        "from": "10:00",
+        "to": "21:00"
+      },
+      "tue": {
+        "closed": true,
+        "allDay": false,
+        "from": "",
+        "to": ""
+      },
+      "wed": {
+        "closed": false,
+        "allDay": false,
+        "from": "10:00",
+        "to": "21:00"
+      },
+      "thu": {
+        "closed": false,
+        "allDay": false,
+        "from": "10:00",
+        "to": "21:00"
+      },
+      "fri": {
+        "closed": false,
+        "allDay": false,
+        "from": "10:00",
+        "to": "21:00"
+      },
+      "sat": {
+        "closed": false,
+        "allDay": false,
+        "from": "10:00",
+        "to": "21:00"
+      },
+      "sun": {
+        "closed": false,
+        "allDay": false,
+        "from": "10:00",
+        "to": "21:00"
+      }
+    },
     "description": "Playful and open-minded. Expect genuine chemistry and zero rush.",
     "descriptionTranslations": {
       "en": "Playful and open-minded. Expect genuine chemistry and zero rush.",
@@ -638,7 +1430,7 @@
     "slug": "elif-leiden",
     "state": "live",
     "name": "Elif",
-    "age": 27,
+    "birthDate": "1999-07-01",
     "gender": "trans_woman",
     "city": "leiden",
     "verified": true,
@@ -654,6 +1446,50 @@
       "incall",
       "outcall"
     ],
+    "openingHours": {
+      "mon": {
+        "closed": true,
+        "allDay": false,
+        "from": "",
+        "to": ""
+      },
+      "tue": {
+        "closed": false,
+        "allDay": false,
+        "from": "11:00",
+        "to": "22:00"
+      },
+      "wed": {
+        "closed": false,
+        "allDay": false,
+        "from": "11:00",
+        "to": "22:00"
+      },
+      "thu": {
+        "closed": false,
+        "allDay": false,
+        "from": "11:00",
+        "to": "22:00"
+      },
+      "fri": {
+        "closed": false,
+        "allDay": false,
+        "from": "11:00",
+        "to": "22:00"
+      },
+      "sat": {
+        "closed": false,
+        "allDay": false,
+        "from": "11:00",
+        "to": "22:00"
+      },
+      "sun": {
+        "closed": false,
+        "allDay": false,
+        "from": "11:00",
+        "to": "22:00"
+      }
+    },
     "description": "Elegant company for dinners, travel and everything after.",
     "descriptionTranslations": {
       "en": "Elegant company for dinners, travel and everything after.",
@@ -672,7 +1508,7 @@
     "slug": "amber-maastricht",
     "state": "live",
     "name": "Amber",
-    "age": 34,
+    "birthDate": "1992-12-04",
     "gender": "female",
     "city": "maastricht",
     "verified": true,
@@ -689,6 +1525,50 @@
       "incall",
       "outcall"
     ],
+    "openingHours": {
+      "mon": {
+        "closed": false,
+        "allDay": false,
+        "from": "12:00",
+        "to": "23:00"
+      },
+      "tue": {
+        "closed": false,
+        "allDay": false,
+        "from": "12:00",
+        "to": "23:00"
+      },
+      "wed": {
+        "closed": false,
+        "allDay": false,
+        "from": "12:00",
+        "to": "23:00"
+      },
+      "thu": {
+        "closed": false,
+        "allDay": false,
+        "from": "12:00",
+        "to": "23:00"
+      },
+      "fri": {
+        "closed": false,
+        "allDay": false,
+        "from": "12:00",
+        "to": "23:00"
+      },
+      "sat": {
+        "closed": false,
+        "allDay": false,
+        "from": "12:00",
+        "to": "23:00"
+      },
+      "sun": {
+        "closed": false,
+        "allDay": false,
+        "from": "12:00",
+        "to": "23:00"
+      }
+    },
     "description": "Certified masseuse with a naughty side — relaxing has never felt this good.",
     "descriptionTranslations": {
       "en": "Certified masseuse with a naughty side — relaxing has never felt this good.",
@@ -707,7 +1587,7 @@
     "slug": "daan-dordrecht",
     "state": "live",
     "name": "Daan",
-    "age": 26,
+    "birthDate": "2000-05-07",
     "gender": "male",
     "city": "dordrecht",
     "verified": true,
@@ -722,6 +1602,50 @@
     "meetingTypes": [
       "incall"
     ],
+    "openingHours": {
+      "mon": {
+        "closed": false,
+        "allDay": false,
+        "from": "09:00",
+        "to": "20:00"
+      },
+      "tue": {
+        "closed": false,
+        "allDay": false,
+        "from": "09:00",
+        "to": "20:00"
+      },
+      "wed": {
+        "closed": false,
+        "allDay": false,
+        "from": "09:00",
+        "to": "20:00"
+      },
+      "thu": {
+        "closed": false,
+        "allDay": false,
+        "from": "09:00",
+        "to": "20:00"
+      },
+      "fri": {
+        "closed": false,
+        "allDay": false,
+        "from": "09:00",
+        "to": "20:00"
+      },
+      "sat": {
+        "closed": false,
+        "allDay": false,
+        "from": "09:00",
+        "to": "20:00"
+      },
+      "sun": {
+        "closed": false,
+        "allDay": true,
+        "from": "",
+        "to": ""
+      }
+    },
     "description": "Warm, discreet and attentive — I love real connection and taking our time.",
     "descriptionTranslations": {
       "en": "Warm, discreet and attentive — I love real connection and taking our time.",
@@ -740,7 +1664,7 @@
     "slug": "max-ede",
     "state": "live",
     "name": "Max",
-    "age": 33,
+    "birthDate": "1993-10-10",
     "gender": "male",
     "city": "ede",
     "verified": true,
@@ -757,6 +1681,50 @@
       "incall",
       "outcall"
     ],
+    "openingHours": {
+      "mon": {
+        "closed": false,
+        "allDay": false,
+        "from": "10:00",
+        "to": "21:00"
+      },
+      "tue": {
+        "closed": false,
+        "allDay": false,
+        "from": "10:00",
+        "to": "21:00"
+      },
+      "wed": {
+        "closed": false,
+        "allDay": false,
+        "from": "10:00",
+        "to": "21:00"
+      },
+      "thu": {
+        "closed": false,
+        "allDay": false,
+        "from": "10:00",
+        "to": "21:00"
+      },
+      "fri": {
+        "closed": false,
+        "allDay": false,
+        "from": "10:00",
+        "to": "21:00"
+      },
+      "sat": {
+        "closed": false,
+        "allDay": false,
+        "from": "10:00",
+        "to": "21:00"
+      },
+      "sun": {
+        "closed": true,
+        "allDay": false,
+        "from": "",
+        "to": ""
+      }
+    },
     "description": "Playful and open-minded. Expect genuine chemistry and zero rush.",
     "descriptionTranslations": {
       "en": "Playful and open-minded. Expect genuine chemistry and zero rush.",
@@ -775,7 +1743,7 @@
     "slug": "valentina-alphen-aan-den-rijn",
     "state": "live",
     "name": "Valentina",
-    "age": 25,
+    "birthDate": "2001-03-13",
     "gender": "trans_woman",
     "city": "alphen-aan-den-rijn",
     "verified": true,
@@ -790,6 +1758,50 @@
     "meetingTypes": [
       "outcall"
     ],
+    "openingHours": {
+      "mon": {
+        "closed": false,
+        "allDay": false,
+        "from": "11:00",
+        "to": "22:00"
+      },
+      "tue": {
+        "closed": false,
+        "allDay": false,
+        "from": "11:00",
+        "to": "22:00"
+      },
+      "wed": {
+        "closed": false,
+        "allDay": false,
+        "from": "11:00",
+        "to": "22:00"
+      },
+      "thu": {
+        "closed": false,
+        "allDay": false,
+        "from": "11:00",
+        "to": "22:00"
+      },
+      "fri": {
+        "closed": false,
+        "allDay": false,
+        "from": "11:00",
+        "to": "22:00"
+      },
+      "sat": {
+        "closed": true,
+        "allDay": false,
+        "from": "",
+        "to": ""
+      },
+      "sun": {
+        "closed": false,
+        "allDay": false,
+        "from": "11:00",
+        "to": "22:00"
+      }
+    },
     "description": "Elegant company for dinners, travel and everything after.",
     "descriptionTranslations": {
       "en": "Elegant company for dinners, travel and everything after.",
@@ -808,7 +1820,7 @@
     "slug": "bibi-alkmaar",
     "state": "live",
     "name": "Bibi",
-    "age": 32,
+    "birthDate": "1994-08-16",
     "gender": "female",
     "city": "alkmaar",
     "verified": true,
@@ -825,6 +1837,50 @@
       "incall",
       "outcall"
     ],
+    "openingHours": {
+      "mon": {
+        "closed": false,
+        "allDay": false,
+        "from": "12:00",
+        "to": "23:00"
+      },
+      "tue": {
+        "closed": false,
+        "allDay": false,
+        "from": "12:00",
+        "to": "23:00"
+      },
+      "wed": {
+        "closed": false,
+        "allDay": false,
+        "from": "12:00",
+        "to": "23:00"
+      },
+      "thu": {
+        "closed": false,
+        "allDay": false,
+        "from": "12:00",
+        "to": "23:00"
+      },
+      "fri": {
+        "closed": true,
+        "allDay": false,
+        "from": "",
+        "to": ""
+      },
+      "sat": {
+        "closed": false,
+        "allDay": false,
+        "from": "12:00",
+        "to": "23:00"
+      },
+      "sun": {
+        "closed": false,
+        "allDay": false,
+        "from": "12:00",
+        "to": "23:00"
+      }
+    },
     "description": "Certified masseuse with a naughty side — relaxing has never felt this good.",
     "descriptionTranslations": {
       "en": "Certified masseuse with a naughty side — relaxing has never felt this good.",
@@ -843,7 +1899,7 @@
     "slug": "chantal-emmen",
     "state": "live",
     "name": "Chantal",
-    "age": 24,
+    "birthDate": "2002-01-19",
     "gender": "female",
     "city": "emmen",
     "verified": true,
@@ -861,6 +1917,50 @@
       "incall",
       "outcall"
     ],
+    "openingHours": {
+      "mon": {
+        "closed": false,
+        "allDay": false,
+        "from": "09:00",
+        "to": "20:00"
+      },
+      "tue": {
+        "closed": false,
+        "allDay": false,
+        "from": "09:00",
+        "to": "20:00"
+      },
+      "wed": {
+        "closed": false,
+        "allDay": false,
+        "from": "09:00",
+        "to": "20:00"
+      },
+      "thu": {
+        "closed": true,
+        "allDay": false,
+        "from": "",
+        "to": ""
+      },
+      "fri": {
+        "closed": false,
+        "allDay": false,
+        "from": "09:00",
+        "to": "20:00"
+      },
+      "sat": {
+        "closed": false,
+        "allDay": false,
+        "from": "09:00",
+        "to": "20:00"
+      },
+      "sun": {
+        "closed": false,
+        "allDay": false,
+        "from": "09:00",
+        "to": "20:00"
+      }
+    },
     "description": "Warm, discreet and attentive — I love real connection and taking our time.",
     "descriptionTranslations": {
       "en": "Warm, discreet and attentive — I love real connection and taking our time.",
@@ -879,7 +1979,7 @@
     "slug": "esmee-delft",
     "state": "live",
     "name": "Esmee",
-    "age": 31,
+    "birthDate": "1995-06-22",
     "gender": "female",
     "city": "delft",
     "verified": true,
@@ -895,6 +1995,50 @@
     "meetingTypes": [
       "incall"
     ],
+    "openingHours": {
+      "mon": {
+        "closed": false,
+        "allDay": false,
+        "from": "10:00",
+        "to": "21:00"
+      },
+      "tue": {
+        "closed": false,
+        "allDay": false,
+        "from": "10:00",
+        "to": "21:00"
+      },
+      "wed": {
+        "closed": true,
+        "allDay": false,
+        "from": "",
+        "to": ""
+      },
+      "thu": {
+        "closed": false,
+        "allDay": false,
+        "from": "10:00",
+        "to": "21:00"
+      },
+      "fri": {
+        "closed": false,
+        "allDay": false,
+        "from": "10:00",
+        "to": "21:00"
+      },
+      "sat": {
+        "closed": false,
+        "allDay": false,
+        "from": "10:00",
+        "to": "21:00"
+      },
+      "sun": {
+        "closed": false,
+        "allDay": false,
+        "from": "10:00",
+        "to": "21:00"
+      }
+    },
     "description": "Playful and open-minded. Expect genuine chemistry and zero rush.",
     "descriptionTranslations": {
       "en": "Playful and open-minded. Expect genuine chemistry and zero rush.",
@@ -913,7 +2057,7 @@
     "slug": "lot-venlo",
     "state": "live",
     "name": "Lot",
-    "age": 23,
+    "birthDate": "2003-11-25",
     "gender": "female",
     "city": "venlo",
     "verified": true,
@@ -929,6 +2073,50 @@
       "incall",
       "outcall"
     ],
+    "openingHours": {
+      "mon": {
+        "closed": false,
+        "allDay": false,
+        "from": "11:00",
+        "to": "22:00"
+      },
+      "tue": {
+        "closed": true,
+        "allDay": false,
+        "from": "",
+        "to": ""
+      },
+      "wed": {
+        "closed": false,
+        "allDay": false,
+        "from": "11:00",
+        "to": "22:00"
+      },
+      "thu": {
+        "closed": false,
+        "allDay": false,
+        "from": "11:00",
+        "to": "22:00"
+      },
+      "fri": {
+        "closed": false,
+        "allDay": false,
+        "from": "11:00",
+        "to": "22:00"
+      },
+      "sat": {
+        "closed": false,
+        "allDay": false,
+        "from": "11:00",
+        "to": "22:00"
+      },
+      "sun": {
+        "closed": false,
+        "allDay": false,
+        "from": "11:00",
+        "to": "22:00"
+      }
+    },
     "description": "Elegant company for dinners, travel and everything after.",
     "descriptionTranslations": {
       "en": "Elegant company for dinners, travel and everything after.",
@@ -947,7 +2135,7 @@
     "slug": "vera-deventer",
     "state": "live",
     "name": "Vera",
-    "age": 30,
+    "birthDate": "1996-04-01",
     "gender": "female",
     "city": "deventer",
     "verified": true,
@@ -963,6 +2151,50 @@
     "meetingTypes": [
       "outcall"
     ],
+    "openingHours": {
+      "mon": {
+        "closed": true,
+        "allDay": false,
+        "from": "",
+        "to": ""
+      },
+      "tue": {
+        "closed": false,
+        "allDay": false,
+        "from": "12:00",
+        "to": "23:00"
+      },
+      "wed": {
+        "closed": false,
+        "allDay": false,
+        "from": "12:00",
+        "to": "23:00"
+      },
+      "thu": {
+        "closed": false,
+        "allDay": false,
+        "from": "12:00",
+        "to": "23:00"
+      },
+      "fri": {
+        "closed": false,
+        "allDay": false,
+        "from": "12:00",
+        "to": "23:00"
+      },
+      "sat": {
+        "closed": false,
+        "allDay": false,
+        "from": "12:00",
+        "to": "23:00"
+      },
+      "sun": {
+        "closed": false,
+        "allDay": false,
+        "from": "12:00",
+        "to": "23:00"
+      }
+    },
     "description": "Certified masseuse with a naughty side — relaxing has never felt this good.",
     "descriptionTranslations": {
       "en": "Certified masseuse with a naughty side — relaxing has never felt this good.",
@@ -981,7 +2213,7 @@
     "slug": "iris-leeuwarden",
     "state": "live",
     "name": "Iris",
-    "age": 22,
+    "birthDate": "2004-09-04",
     "gender": "female",
     "city": "leeuwarden",
     "verified": true,
@@ -997,6 +2229,50 @@
       "incall",
       "outcall"
     ],
+    "openingHours": {
+      "mon": {
+        "closed": false,
+        "allDay": true,
+        "from": "",
+        "to": ""
+      },
+      "tue": {
+        "closed": false,
+        "allDay": false,
+        "from": "09:00",
+        "to": "20:00"
+      },
+      "wed": {
+        "closed": false,
+        "allDay": false,
+        "from": "09:00",
+        "to": "20:00"
+      },
+      "thu": {
+        "closed": false,
+        "allDay": false,
+        "from": "09:00",
+        "to": "20:00"
+      },
+      "fri": {
+        "closed": false,
+        "allDay": false,
+        "from": "09:00",
+        "to": "20:00"
+      },
+      "sat": {
+        "closed": false,
+        "allDay": false,
+        "from": "09:00",
+        "to": "20:00"
+      },
+      "sun": {
+        "closed": false,
+        "allDay": false,
+        "from": "09:00",
+        "to": "20:00"
+      }
+    },
     "description": "Warm, discreet and attentive — I love real connection and taking our time.",
     "descriptionTranslations": {
       "en": "Warm, discreet and attentive — I love real connection and taking our time.",
@@ -1015,7 +2291,7 @@
     "slug": "tess-heerlen",
     "state": "live",
     "name": "Tess",
-    "age": 29,
+    "birthDate": "1997-02-07",
     "gender": "female",
     "city": "heerlen",
     "verified": true,
@@ -1032,6 +2308,50 @@
       "incall",
       "outcall"
     ],
+    "openingHours": {
+      "mon": {
+        "closed": false,
+        "allDay": false,
+        "from": "10:00",
+        "to": "21:00"
+      },
+      "tue": {
+        "closed": false,
+        "allDay": false,
+        "from": "10:00",
+        "to": "21:00"
+      },
+      "wed": {
+        "closed": false,
+        "allDay": false,
+        "from": "10:00",
+        "to": "21:00"
+      },
+      "thu": {
+        "closed": false,
+        "allDay": false,
+        "from": "10:00",
+        "to": "21:00"
+      },
+      "fri": {
+        "closed": false,
+        "allDay": false,
+        "from": "10:00",
+        "to": "21:00"
+      },
+      "sat": {
+        "closed": false,
+        "allDay": false,
+        "from": "10:00",
+        "to": "21:00"
+      },
+      "sun": {
+        "closed": false,
+        "allDay": false,
+        "from": "10:00",
+        "to": "21:00"
+      }
+    },
     "description": "Playful and open-minded. Expect genuine chemistry and zero rush.",
     "descriptionTranslations": {
       "en": "Playful and open-minded. Expect genuine chemistry and zero rush.",

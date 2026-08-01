@@ -12,8 +12,9 @@ import Button from '@/components/atoms/Button.astro';
 import Modal from '@/components/molecules/Modal.astro';
 import SlabField from '@/components/molecules/SlabField.astro';
 
+/* Segmented control: wide, button-like, unmistakable active state (ink flip). */
 const tabBtn =
-  'auth-tab relative cursor-pointer pb-2.5 pt-1 font-condensed text-sm font-bold uppercase tracking-wide transition-colors';
+  'cursor-pointer py-2.5 font-condensed text-sm font-bold uppercase tracking-wide transition-colors data-[active=true]:bg-foreground data-[active=true]:text-background data-[active=false]:text-muted-foreground data-[active=false]:hover:text-foreground';
 ---
 
 <Modal id="auth" class="max-w-md">
@@ -29,15 +30,13 @@ const tabBtn =
 
     <p class="font-condensed text-xl font-semibold tracking-tight">{m.auth_welcome()}</p>
 
-    <!-- Tabs: underline language, like the header categories -->
-    <div class="mt-4 flex gap-6 border-b border-border" role="tablist">
-      <button type="button" role="tab" data-tab-btn="register" data-active="true" class:list={[tabBtn, 'data-[active=true]:text-foreground data-[active=false]:text-foreground/50']}>
+    <!-- Tabs: segmented control (button-like, clear active state) -->
+    <div class="mt-5 grid grid-cols-2 gap-1.5 border border-foreground/15 p-1.5" role="tablist">
+      <button type="button" role="tab" data-tab-btn="register" data-active="true" class={tabBtn}>
         {m.nav_register()}
-        <span class="auth-underline absolute bottom-0 left-1/2 h-0.5 w-6 -translate-x-1/2 bg-foreground opacity-0 transition-opacity"></span>
       </button>
-      <button type="button" role="tab" data-tab-btn="login" data-active="false" class:list={[tabBtn, 'data-[active=true]:text-foreground data-[active=false]:text-foreground/50']}>
+      <button type="button" role="tab" data-tab-btn="login" data-active="false" class={tabBtn}>
         {m.nav_login()}
-        <span class="auth-underline absolute bottom-0 left-1/2 h-0.5 w-6 -translate-x-1/2 bg-foreground opacity-0 transition-opacity"></span>
       </button>
     </div>
 
@@ -90,12 +89,6 @@ const tabBtn =
   </div>
 </Modal>
 
-<style>
-  [data-active='true'] > .auth-underline {
-    opacity: 1;
-  }
-</style>
-
 <script>
   import { actions } from 'astro:actions';
 
@@ -138,19 +131,16 @@ const tabBtn =
     // Role tiles: select + pre-fill the demo identity (never overwrite the
     // user's own typing — only empty or previously-prefilled values).
     const regForm = modal.querySelector<HTMLFormElement>('[data-auth-form="register"]')!;
-    const prefills = Object.values(PREFILL).map((p) => p.email);
     modal.querySelectorAll<HTMLElement>('[data-role-btn]').forEach((btn) => {
       btn.addEventListener('click', () => {
         modal.querySelectorAll<HTMLElement>('[data-role-btn]').forEach((b) => {
           b.dataset.active = String(b === btn);
         });
+        // Fill the form with the matching demo identity so a single tap on the
+        // submit button registers/logs in.
         const role = btn.dataset.roleBtn as keyof typeof PREFILL;
-        const email = regForm.elements.namedItem('email') as HTMLInputElement;
-        const password = regForm.elements.namedItem('password') as HTMLInputElement;
-        if (!email.value || prefills.includes(email.value)) {
-          email.value = PREFILL[role].email;
-          password.value = PREFILL[role].password;
-        }
+        (regForm.elements.namedItem('email') as HTMLInputElement).value = PREFILL[role].email;
+        (regForm.elements.namedItem('password') as HTMLInputElement).value = PREFILL[role].password;
       });
     });
 
@@ -166,20 +156,35 @@ const tabBtn =
         const locale = (document.documentElement.lang || 'en') as 'nl' | 'en' | 'de';
         const email = String(fd.get('email') ?? '');
         const password = String(fd.get('password') ?? '');
+        const role = (modal.querySelector<HTMLElement>('[data-role-btn][data-active="true"]')
+          ?.dataset.roleBtn ?? 'client') as 'advertiser' | 'client';
+        const call = () =>
+          form.dataset.authForm === 'register'
+            ? actions.auth.register({ email, password, role, locale })
+            : actions.auth.login({ email, password, locale });
         try {
-          const result =
-            form.dataset.authForm === 'register'
-              ? await actions.auth.register({
-                  email,
-                  password,
-                  role: (modal.querySelector<HTMLElement>('[data-role-btn][data-active="true"]')
-                    ?.dataset.roleBtn ?? 'client') as 'advertiser' | 'client',
-                  locale,
-                })
-              : await actions.auth.login({ email, password, locale });
-          if (result.error || !result.data?.href) throw result.error ?? new Error();
+          // Retry once — a cold-start / transient blip shouldn't dead-end the user.
+          let result = await call();
+          if (result.error) {
+            console.warn('[auth] first attempt failed, retrying', result.error);
+            result = await call();
+          }
+          if (result.error || !result.data?.href) throw result.error ?? new Error('no href');
+          // Sync device-local favorites into the new account, then adopt the
+          // merged set back (favorites from another device come along).
+          try {
+            const favApi = (window as any).__favs;
+            if (favApi) {
+              const local = [...favApi.read()];
+              const synced = await actions.account.syncFavorites({ favorites: local });
+              if (synced.data?.favorites) favApi.write(new Set(synced.data.favorites));
+            }
+          } catch {
+            /* non-fatal — favorites stay local */
+          }
           location.href = result.data.href;
-        } catch {
+        } catch (e) {
+          console.error('[auth] failed', e);
           err.classList.remove('hidden');
           delete form.dataset.loading;
         }

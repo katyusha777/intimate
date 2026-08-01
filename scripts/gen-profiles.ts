@@ -79,6 +79,29 @@ const profiles = nsfw.map((img, i) => {
     ]),
   ];
   const meetingTypes = i % 5 === 0 ? ['incall'] : i % 5 === 2 ? ['outcall'] : ['incall', 'outcall'];
+  // Opening hours: most days a range, a couple of weekdays closed, one all-day.
+  const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+  const openHour = 9 + (i % 4); // 09:00..12:00
+  const closeHour = 20 + (i % 4); // 20:00..23:00
+  const openingHours = Object.fromEntries(
+    DAYS.map((d, di) => {
+      const closed = (i + di) % 9 === 0; // ~1 closed day per profile
+      const allDay = di === (i % 7) && i % 4 === 0; // occasional 24h day
+      return [
+        d,
+        closed
+          ? { closed: true, allDay: false, from: '', to: '' }
+          : allDay
+            ? { closed: false, allDay: true, from: '', to: '' }
+            : {
+                closed: false,
+                allDay: false,
+                from: `${String(openHour).padStart(2, '0')}:00`,
+                to: `${String(closeHour).padStart(2, '0')}:00`,
+              },
+      ];
+    }),
+  );
   const d = DESC[i % DESC.length]!;
   const created = new Date(Date.UTC(2026, 5, 1 + ((i * 61) % 55), 8 + (i % 10))).toISOString();
 
@@ -87,7 +110,8 @@ const profiles = nsfw.map((img, i) => {
     slug: `${name.toLowerCase()}-${city}`,
     state: 'live',
     name,
-    age: 21 + ((i * 7) % 15),
+    // birth date for the intended age (21..35), varied day/month for realism
+    birthDate: `${2026 - (21 + ((i * 7) % 15))}-${String(((i * 5) % 12) + 1).padStart(2, '0')}-${String(((i * 3) % 27) + 1).padStart(2, '0')}`,
     gender,
     city,
     verified: true, // every profile on Intimate is verified
@@ -96,6 +120,7 @@ const profiles = nsfw.map((img, i) => {
     priceFrom: 100 + ((i * 37) % 18) * 10,
     services,
     meetingTypes,
+    openingHours,
     description: d[0],
     descriptionTranslations: { en: d[0], nl: d[1], de: d[2] },
     photos: [img, nsfw[(i + 7) % nsfw.length]!, nsfw[(i + 15) % nsfw.length]!],

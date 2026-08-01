@@ -20,11 +20,15 @@ const nav =
   session.role === 'advertiser'
     ? [
         { href: localizePath('/account/'), label: m.nav_dashboard() },
-        { href: localizePath('/account/profile/'), label: m.editor_title() },
+        { href: localizePath('/account/profile/'), label: m.nav_my_profile() },
         { href: localizePath('/account/photos/'), label: m.photos_title() },
         { href: localizePath('/account/verification/'), label: m.verify_title() },
+        { href: localizePath('/account/settings/'), label: m.settings_title() },
       ]
-    : [{ href: localizePath('/account/'), label: m.nav_account() }];
+    : [
+        { href: localizePath('/account/'), label: m.nav_account() },
+        { href: localizePath('/account/settings/'), label: m.settings_title() },
+      ];
 ---
 
 <div class="mx-auto max-w-7xl px-4 py-8 md:px-6 md:py-12">
@@ -44,32 +48,37 @@ const nav =
     </button>
   </div>
 
-  <div class="mt-8 grid items-start gap-8 lg:grid-cols-[14rem_1fr]">
-    <nav class="hidden lg:block" aria-label={m.nav_account()}>
-      <ul class="space-y-1 border-l border-border">
-        {
-          nav.map((n) => (
-            <li>
-              <a
-                href={n.href}
-                class:list={[
-                  '-ml-px block border-l-2 py-1.5 pl-4 text-sm transition-colors',
-                  path === n.href
-                    ? 'border-foreground font-semibold text-foreground'
-                    : 'border-transparent text-muted-foreground hover:text-foreground',
-                ]}
-              >
-                {n.label}
-              </a>
-            </li>
-          ))
-        }
-      </ul>
-      <p class="mt-6 pl-4 text-xs text-muted-foreground">{m.account_demo_note()}</p>
-    </nav>
+  <!-- Desktop: horizontal tabs up top (mobile navigates via the dock). -->
+  <nav
+    class="mt-6 hidden select-none items-stretch gap-6 overflow-x-auto border-b border-border md:flex"
+    aria-label={m.nav_account()}
+  >
+    {
+      nav.map((n) => (
+        <a
+          href={n.href}
+          aria-current={path === n.href ? 'page' : undefined}
+          class:list={[
+            'relative flex flex-none items-center pb-3 font-condensed text-sm font-bold uppercase tracking-wide transition-colors',
+            path === n.href ? 'text-foreground' : 'text-foreground/50 hover:text-foreground',
+          ]}
+        >
+          {n.label}
+          <span
+            class:list={[
+              'absolute bottom-0 left-0 right-0 h-0.5 bg-foreground transition-opacity',
+              path === n.href ? 'opacity-100' : 'opacity-0',
+            ]}
+            aria-hidden="true"
+          />
+        </a>
+      ))
+    }
+  </nav>
 
-    <div class="min-w-0"><slot /></div>
-  </div>
+  <div class="mt-8 min-w-0"><slot /></div>
+
+  <p class="mt-10 text-xs text-muted-foreground">{m.account_demo_note()}</p>
 </div>
 
 <script>

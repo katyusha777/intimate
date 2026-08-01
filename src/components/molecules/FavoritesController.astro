@@ -1,0 +1,84 @@
+---
+/**
+ * Device-local favorites (privacy-first): every heart works immediately, logged
+ * in or not — saved only on this device unless an account is created (then
+ * synced via account.syncFavorites on login/register). Delegated globally:
+ * any [data-fav-toggle][data-fav-slug] toggles; capture phase + stop so a heart
+ * inside a card never triggers navigation, the sheet, or the lightbox.
+ */
+---
+
+<script>
+  const KEY = 'intimate_favs';
+
+  function read(): Set<string> {
+    try {
+      return new Set(JSON.parse(localStorage.getItem(KEY) || '[]'));
+    } catch {
+      return new Set();
+    }
+  }
+  function write(set: Set<string>) {
+    localStorage.setItem(KEY, JSON.stringify([...set]));
+  }
+  // Exposed so the auth flow can sync/adopt the account's set.
+  (window as any).__favs = { read, write, KEY };
+
+  function paint() {
+    // Adopt any account-synced favorites the page seeds (logged-in users).
+    const seed = document.querySelector<HTMLElement>('[data-fav-seed]');
+    if (seed) {
+      try {
+        const list: string[] = JSON.parse(seed.dataset.favSeed || '[]');
+        if (list.length) {
+          const s = read();
+          list.forEach((x) => s.add(x));
+          write(s);
+        }
+      } catch {
+        /* ignore malformed seed */
+      }
+    }
+    const favs = read();
+    document.querySelectorAll<HTMLElement>('[data-fav-toggle]').forEach((b) => {
+      const on = favs.has(b.dataset.favSlug!);
+      b.toggleAttribute('data-faved', on);
+      b.setAttribute('aria-pressed', String(on));
+    });
+    // Favorites page: reveal favorited items, update count + empty state.
+    const page = document.querySelector('[data-fav-page]');
+    if (page) {
+      let n = 0;
+      page.querySelectorAll<HTMLElement>('[data-fav-item]').forEach((el) => {
+        const on = favs.has(el.dataset.favItem!);
+        el.hidden = !on;
+        if (on) n += 1;
+      });
+      const empty = document.querySelector<HTMLElement>('[data-fav-empty]');
+      const count = document.querySelector<HTMLElement>('[data-fav-count]');
+      if (empty) empty.hidden = n > 0;
+      if (count) count.textContent = String(n);
+    }
+  }
+
+  if (!(window as any).__favInit) {
+    (window as any).__favInit = true;
+    document.addEventListener(
+      'click',
+      (e) => {
+        const btn = (e.target as HTMLElement).closest?.('[data-fav-toggle]') as HTMLElement | null;
+        if (!btn) return;
+        e.preventDefault();
+        e.stopImmediatePropagation(); // beat card link / sheet / lightbox handlers
+        const slug = btn.dataset.favSlug!;
+        const favs = read();
+        favs.has(slug) ? favs.delete(slug) : favs.add(slug);
+        write(favs);
+        paint();
+      },
+      { capture: true },
+    );
+  }
+  paint();
+  document.addEventListener('astro:page-load', paint);
+</script>

@@ -331,6 +331,15 @@
     transform: rotate(-0.4deg);
   }
 
+  /* Favorited heart: crimson fill (the tap is rewarded, not walled). */
+  [data-fav-toggle][data-faved] {
+    color: var(--brand);
+  }
+  [data-fav-toggle][data-faved] svg {
+    fill: currentColor;
+    stroke: currentColor;
+  }
+
   /* Print radio: keyline circle; checked = ink dot (inset ring trick). */
   .radio-dot {
     appearance: none;
@@ -404,6 +413,9 @@
   html {
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
+    /* Reserve the scrollbar gutter so opening a modal (which locks background
+       scroll) never shifts centered content sideways. */
+    scrollbar-gutter: stable;
   }
 
   body {

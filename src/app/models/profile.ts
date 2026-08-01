@@ -8,6 +8,7 @@ import { getLocale } from '@/paraglide/runtime';
 import {
   ALL_SERVICES,
   CITIES,
+  DAYS,
   GENDERS,
   LOCALES,
   MEETING_TYPES,
@@ -19,6 +20,17 @@ import {
   type Service,
 } from '@/lib/taxonomy';
 
+/** Opening hours for one day: closed, all-day, or a from–to range (HH:MM). */
+export const DayHoursSchema = z.object({
+  closed: z.boolean().default(false),
+  allDay: z.boolean().default(false),
+  from: z.string().default(''),
+  to: z.string().default(''),
+});
+export type DayHours = z.infer<typeof DayHoursSchema>;
+export const OpeningHoursSchema = z.partialRecord(z.enum(DAYS), DayHoursSchema);
+export type OpeningHours = z.infer<typeof OpeningHoursSchema>;
+
 const CITY_SLUGS = CITIES.map((c) => c.slug) as unknown as [CitySlug, ...CitySlug[]];
 const SERVICE_VALUES = ALL_SERVICES as unknown as [Service, ...Service[]];
 
@@ -28,7 +40,8 @@ export const ProfileSchema = z.object({
   /** Lifecycle state — public reads must only ever surface 'live'. */
   state: z.enum(PROFILE_STATES),
   name: z.string(),
-  age: z.number().int().min(18), // mirrors the DB hard floor (ARCHITECTURE §8.4)
+  /** Date of birth (YYYY-MM-DD); displayed age is computed via profileAge(). */
+  birthDate: z.iso.date(),
   gender: z.enum(GENDERS),
   city: z.enum(CITY_SLUGS),
   verified: z.boolean(),
@@ -37,6 +50,8 @@ export const ProfileSchema = z.object({
   priceFrom: z.number().int().positive(), // EUR
   services: z.array(z.enum(SERVICE_VALUES)),
   meetingTypes: z.array(z.enum(MEETING_TYPES)),
+  /** Availability per weekday (optional — absent = not specified). */
+  openingHours: OpeningHoursSchema.default({}),
   /** Original description as written by the advertiser (their language). */
   description: z.string(),
   /** Managed translations per locale; UI reads via localizedDescription(). */
@@ -45,6 +60,20 @@ export const ProfileSchema = z.object({
   createdAt: z.iso.datetime(),
 });
 export type Profile = z.infer<typeof ProfileSchema>;
+
+/** Age in whole years from a YYYY-MM-DD birth date (the DB stores the date). */
+export function profileAge(birthDate: string, now: Date = new Date()): number {
+  const b = new Date(birthDate);
+  let age = now.getFullYear() - b.getFullYear();
+  const m = now.getMonth() - b.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < b.getDate())) age -= 1;
+  return age;
+}
+
+/** DOB for someone who is exactly `age` today — used to seed/mock data. */
+export function birthDateForAge(age: number, now: Date = new Date()): string {
+  return `${now.getFullYear() - age}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+}
 
 /** Description in the current locale, falling back to the original text. */
 export function localizedDescription(p: Profile, locale: Locale = getLocale() as Locale): string {

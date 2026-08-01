@@ -1,9 +1,8 @@
 ---
 /**
- * Styled native <select> (options via slot). Own primitive — matches the muted
- * input styling; chevron is drawn so the appearance reset stays consistent.
+ * Styled native <select> — Misprint slab frame (matches SlabField), so it sits
+ * consistently beside slab inputs in the profile editor. Options via slot.
  */
-import { cn } from '@/lib/utils';
 import Icon from './Icon.astro';
 
 interface Props {
@@ -14,14 +13,14 @@ interface Props {
 const { class: className, ...props } = Astro.props;
 ---
 
-<span class:list={['relative inline-flex w-full items-center', className]}>
-  <select
-    class={cn(
-      'h-10 w-full cursor-pointer appearance-none rounded-none border border-input bg-transparent pl-3 pr-9 text-base outline-none md:text-sm transition-shadow focus-visible:ring-2 focus-visible:ring-ring',
-    )}
-    {...props}
-  >
-    <slot />
-  </select>
-  <Icon name="chevron-down" class="pointer-events-none absolute right-3 text-xs text-muted-foreground" />
+<span class:list={['slab-field block', className]}>
+  <span class="slab-field__face relative flex h-11 items-center">
+    <select
+      class="h-full w-full cursor-pointer appearance-none bg-transparent pl-4 pr-9 text-base outline-none md:text-sm"
+      {...props}
+    >
+      <slot />
+    </select>
+    <Icon name="chevron-down" class="pointer-events-none absolute right-4 text-xs text-muted-foreground" />
+  </span>
 </span>

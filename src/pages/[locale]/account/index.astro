@@ -2,6 +2,7 @@
 /** Account dashboard — role-aware. */
 import * as m from '@/paraglide/messages';
 import { accountApi } from '@/app/api/account';
+import { profileAge } from '@/app/models/profile';
 import { sessionApi } from '@/app/api/session';
 import { isLocale, localizePath } from '@/lib/i18n';
 import AccountShell from '@/components/organisms/dashboard/AccountShell.astro';
@@ -18,6 +19,22 @@ const profile = session ? await accountApi.myProfile(session) : null;
 const card = 'facts-card dark bg-neutral-950 p-6 text-white';
 const stateChip =
   'slab-cut inline-block border border-white/30 px-2.5 py-1 font-condensed text-xs font-bold uppercase tracking-wide';
+
+/* Deterministic mock analytics (per profile) — replaced by real event counts
+   when the events table lands. Stable across reloads. */
+function seeded(seed: string, mod: number, min: number): number {
+  let x = 0;
+  for (const c of seed) x = (x * 31 + c.charCodeAt(0)) >>> 0;
+  return min + (x % mod);
+}
+const stats =
+  profile && account
+    ? [
+        { label: m.stat_views(), value: seeded(profile.id + 'v', 1200, 220), delta: seeded(profile.id + 'vd', 34, 6) },
+        { label: m.stat_contacts(), value: seeded(profile.id + 'c', 55, 9), delta: seeded(profile.id + 'cd', 28, 4) },
+        { label: m.stat_favorites(), value: account.favorites.length + seeded(profile.id + 'f', 48, 6), delta: seeded(profile.id + 'fd', 22, 3) },
+      ]
+    : [];
 ---
 
 <Layout noindex title={`${m.nav_account()} | Intimate`}>
@@ -25,36 +42,52 @@ const stateChip =
   {
     session && account && (
       <AccountShell {session} title={m.nav_dashboard()} path={localizePath('/account/')}>
-        <div class="grid gap-5 md:grid-cols-2">
+        {stats.length > 0 && (
+          <div class="mb-5 grid grid-cols-3 gap-3 md:gap-5">
+            {stats.map((s) => (
+              <div class="facts-card dark bg-neutral-950 p-4 text-white md:p-5">
+                <p class="eyebrow text-2xs text-white/50">{s.label}</p>
+                <p class="mt-2 font-condensed text-3xl font-bold leading-none md:text-4xl">{s.value}</p>
+                <p class="mt-1.5 flex items-center gap-1 text-xs font-medium text-online">
+                  <svg class="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg>
+                  {s.delta}% <span class="text-white/40">{m.stat_last7()}</span>
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+        <div class="grid items-start gap-5 md:grid-cols-2">
           {profile && (
             <div class={card}>
               <p class="eyebrow text-2xs text-white/50">{m.account_state()}</p>
-              <p class="mt-2 flex items-center gap-3 font-condensed text-2xl font-bold">
-                {profile.name}, {profile.age}
+              <p class="mt-2.5 flex items-center gap-3 font-condensed text-2xl font-bold">
+                {profile.name}, {profileAge(profile.birthDate)}
                 <span class={stateChip}>{profile.state}</span>
               </p>
-              <p class="mt-1 text-sm text-white/60">
+              <p class="mt-1.5 text-sm text-white/60">
                 €{profile.priceFrom} · {profile.services.length} {m.account_services_count()} ·{' '}
                 {profile.photos.length} {m.photos_title().toLowerCase()}
               </p>
-              <label class="mt-4 flex cursor-pointer select-none items-center gap-2.5 text-sm font-medium">
-                <input type="checkbox" checked={profile.online} class="sr-only" />
-                <span class="switch-track" aria-hidden="true" />
-                {m.online_toggle()}
-              </label>
-              <a
-                href={localizePath(`/profile/${profile.slug}/`)}
-                class="mt-5 inline-block text-sm font-semibold underline-offset-4 hover:underline"
-              >
-                {m.account_view_public()} →
-              </a>
+              <div class="mt-5 flex items-center justify-between gap-4 border-t border-white/10 pt-5">
+                <label class="flex cursor-pointer select-none items-center gap-2.5 text-sm font-medium">
+                  <input type="checkbox" checked={profile.online} class="sr-only" />
+                  <span class="switch-track" aria-hidden="true" />
+                  {m.online_toggle()}
+                </label>
+                <a
+                  href={localizePath(`/profile/${profile.slug}/`)}
+                  class="text-sm font-semibold underline-offset-4 hover:underline"
+                >
+                  {m.account_view_public()} →
+                </a>
+              </div>
             </div>
           )}
 
           {session.role === 'advertiser' && (
             <div class={card}>
               <p class="eyebrow text-2xs text-white/50">{m.account_verification()}</p>
-              <div class="mt-3 space-y-2.5 text-sm">
+              <div class="mt-4 space-y-2.5 text-sm">
                 <p class="flex items-center justify-between gap-4 border-b border-white/10 pb-2.5">
                   <span class="text-white/70">{m.account_sms()}</span>
                   <span class:list={account.phoneVerifiedAt ? 'font-medium text-online' : 'text-white/50'}>
