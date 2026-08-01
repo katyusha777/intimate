@@ -286,8 +286,8 @@ const chip =
        Changes here DON'T auto-navigate (the form skips sheet-origin changes);
        APPLY submits once, closing the sheet with the new results. -->
   <ActionSheet id="filters-sheet" label={m.filter_title()} class="lg:hidden">
-    <div data-filters-mobile class="px-4 pb-4 pt-1">
-      <FilterSidebar params={params} resetHref={basePath} {visitMode} {openCategory} />
+    <div data-filters-mobile class="px-5 pb-4 pt-1">
+      <FilterSidebar params={params} resetHref={basePath} {visitMode} {openCategory} sheet />
     </div>
     <div class="sticky bottom-0 flex gap-2 border-t border-border bg-card px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
       <a

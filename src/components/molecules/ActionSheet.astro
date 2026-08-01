@@ -61,7 +61,7 @@ const { id, class: className, label, flush } = Astro.props;
     </div>
     <div
       data-sheet-body
-      class="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom)]"
+      class="min-h-0 flex-1 overflow-y-auto overscroll-none pb-[env(safe-area-inset-bottom)]"
       style="-webkit-overflow-scrolling: touch"
     >
       <slot />
@@ -264,10 +264,13 @@ const { id, class: className, label, flush } = Astro.props;
         // controls (e.g. the RequestSheet's step chips).
         const opener = t.closest<HTMLElement>('[data-sheet-open]:not([data-sheet-open=""])');
         if (opener) {
+          const dlg = document.getElementById(opener.dataset.sheetOpen!) as any;
+          // No such sheet on this page → let the click through (an opener may
+          // be a link with a real href fallback, e.g. the header search icon).
+          if (!dlg?.openSheet) return;
           e.preventDefault();
           e.stopPropagation();
-          const dlg = document.getElementById(opener.dataset.sheetOpen!) as any;
-          dlg?.openSheet?.();
+          dlg.openSheet();
           return;
         }
         const closer = t.closest<HTMLElement>('[data-sheet-close]');

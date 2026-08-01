@@ -25,9 +25,11 @@ interface Props {
   visitMode?: 'query' | 'navigate';
   /** Service category preset by the route → its group starts open. */
   openCategory?: string;
+  /** Inside the mobile ActionSheet: the sheet footer owns Reset — hide the inline one. */
+  sheet?: boolean;
 }
 
-const { params, resetHref, visitMode = 'query', openCategory } = Astro.props;
+const { params, resetHref, visitMode = 'query', openCategory, sheet } = Astro.props;
 const visitNav = visitMode === 'navigate';
 const selectedServices = new Set(params.services ?? []);
 const selectedGenders = new Set(params.genders ?? []);
@@ -44,12 +46,16 @@ const row = 'flex cursor-pointer select-none items-center gap-2.5 text-sm hover:
   <!-- h-9 matches the quick-control row so the first group top-aligns with the cards grid -->
   <div class="flex h-9 items-center justify-between px-1">
     <h2 class="font-condensed text-xl font-semibold tracking-tight">{m.filter_title()}</h2>
-    <a
-      href={resetHref}
-      class="rounded-md border border-foreground/20 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-foreground/60 hover:text-foreground"
-    >
-      {m.filter_reset()}
-    </a>
+    {
+      !sheet && (
+        <a
+          href={resetHref}
+          class="rounded-md border border-foreground/20 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-foreground/60 hover:text-foreground"
+        >
+          {m.filter_reset()}
+        </a>
+      )
+    }
   </div>
 
   <div class="mt-4 px-1">
@@ -79,7 +85,8 @@ const row = 'flex cursor-pointer select-none items-center gap-2.5 text-sm hover:
          Checking cities here never changes the main path state. -->
     <div class={group}>
       <h3 class={heading}>{m.filter_city()}</h3>
-      <div class="max-h-56 space-y-2 overflow-y-auto">
+      <!-- Two columns: the whole list fits without an inner scroller. -->
+      <div class="grid grid-cols-2 gap-x-4 gap-y-2.5">
         {
           CITIES.map((c) => (
             <label class={row}>

@@ -1,8 +1,6 @@
 ---
 import * as m from '@/paraglide/messages';
 import type { Session } from '@/app/models/session';
-import AiSearchInput from '@/components/molecules/AiSearchInput.astro';
-import WandSheet from '@/components/molecules/WandSheet.astro';
 import Button from '@/components/atoms/Button.astro';
 import Combobox from '@/components/molecules/Combobox.astro';
 import UserMenu from '@/components/molecules/UserMenu.astro';
@@ -30,7 +28,6 @@ const path = Astro.url.pathname;
 const pathSegs = path.split('/').filter(Boolean);
 const currentCity = CITIES.find((c) => pathSegs.includes(c.slug))?.slug;
 const searchPath = localizePath('/search/');
-const q = path.startsWith(searchPath) ? (Astro.url.searchParams.get('q') ?? '') : '';
 
 const categories = [
   {
@@ -55,8 +52,6 @@ const categories = [
       <img src="/img/logo-light.svg" alt={m.app_name()} class="hidden h-9 w-auto dark:block" />
     </a>
 
-    <AiSearchInput action={searchPath} value={q} class="hidden max-w-md md:block" />
-
     <nav class="ml-auto hidden flex-none items-center gap-5 text-sm font-semibold md:flex">
       <!-- START ADVERTISING lives in the menu + footer (UX-PLAN 1.1), never
            above the fold as an account wall. -->
@@ -71,17 +66,18 @@ const categories = [
       </a>
     </nav>
 
-    <!-- The wand on mobile (UX-PLAN 6.1): search icon → AI wand sheet. Assist,
-         not hero — behind an icon, never promoted above the fold. Desktop uses
-         the inline AiSearchInput above, so this is md:hidden. -->
-    <button
-      type="button"
-      data-sheet-open="wand-sheet"
+    <!-- Mobile search icon: on listing pages it opens the filter sheet
+         (data-sheet-open, dialog present); anywhere else the href wins and it
+         lands on the search listing (ActionSheet delegation lets the click
+         through when the dialog is absent). -->
+    <a
+      href={searchPath}
+      data-sheet-open="filters-sheet"
       aria-label={m.nav_search()}
       class="ml-auto grid size-10 flex-none cursor-pointer place-items-center rounded-full text-foreground transition-colors hover:bg-foreground/10 active:scale-95 md:hidden"
     >
       <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
-    </button>
+    </a>
 
     <!-- Theme switch only — the safe-mode (discretion) control lives in the
          footer, out of the primary chrome. -->
@@ -170,9 +166,6 @@ const categories = [
     </div>
   </div>
 </header>
-
-<!-- Mobile AI wand sheet (opened by the search icon above). -->
-<WandSheet />
 
 <style>
   /* In motion (hover), the underline picks up the anaglyph pink/cyan split

@@ -11,7 +11,6 @@ import SearchControl from '@/components/molecules/SearchControl.astro';
 import Combobox from '@/components/molecules/Combobox.astro';
 import ActionSheet from '@/components/molecules/ActionSheet.astro';
 import AvailabilityLine from '@/components/molecules/AvailabilityLine.astro';
-import LinkChips from '@/components/molecules/LinkChips.astro';
 import CitySheet from '@/components/molecules/CitySheet.astro';
 import ProfilePhotoMosaic from '@/components/organisms/profile/ProfilePhotoMosaic.astro';
 import RatesTable from '@/components/organisms/profile/RatesTable.astro';
@@ -451,17 +450,6 @@ const swatches = [
     </section>
 
     <section class="space-y-4">
-      <h2 class="text-xl font-semibold">LinkChips — SSR zero-JS fold chips</h2>
-      <p class="text-sm text-muted-foreground">
-        Every chip is an <code>&lt;a&gt;</code> to a canonical listing URL.
-      </p>
-      <div class="space-y-3">
-        <LinkChips city="amsterdam" />
-        <LinkChips />
-      </div>
-    </section>
-
-    <section class="space-y-4">
       <h2 class="text-xl font-semibold">CitySheet — "ask the city once"</h2>
       <p class="text-sm text-muted-foreground">
         First-visit bottom sheet (auto-opens once). Trigger it manually here:
@@ -509,16 +497,6 @@ const swatches = [
           <Skeleton class="h-3 w-1/2" />
         </div>
       </div>
-    </section>
-
-    <section class="space-y-4">
-      <h2 class="text-xl font-semibold">WandSheet — the wand on mobile (6.1)</h2>
-      <p class="text-sm text-muted-foreground">
-        Search icon → AI wand sheet: the AI field (typing optional) over three
-        one-tap example queries, all running the existing <code>aiSearch</code> action.
-      </p>
-      <!-- The sheet is mounted once by the Header (every page); just trigger it. -->
-      <Button data-sheet-open="wand-sheet">Open wand sheet</Button>
     </section>
 
     <section class="space-y-4">

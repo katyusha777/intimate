@@ -7,13 +7,11 @@ import ProfileCard from '@/components/organisms/profile/ProfileCard.astro';
 import Section from '@/components/molecules/Section.astro';
 import SafeImage from '@/components/atoms/SafeImage.astro';
 import SearchControl from '@/components/molecules/SearchControl.astro';
-import LinkChips from '@/components/molecules/LinkChips.astro';
 import CitySheet from '@/components/molecules/CitySheet.astro';
 import Button from '@/components/atoms/Button.astro';
 import { articlesApi } from '@/app/api/articles';
 import { profilesApi } from '@/app/api/profiles';
 import { sessionApi } from '@/app/api/session';
-import { CITIES } from '@/lib/taxonomy';
 
 const locale = Astro.params.locale;
 if (!isLocale(locale)) return new Response(null, { status: 404 });
@@ -44,12 +42,6 @@ const rail = featured.slice(0, 8);
 const featuredArticle = articles.find((a) => a.featured)!;
 const moreArticles = articles.filter((a) => !a.featured);
 
-/* "Back to your city" chip (UX-PLAN 1.2): the home now ALWAYS shows the national
- * shelf; the saved `city` cookie is surfaced here as a one-tap way back into
- * that city, filled client-side so the home stays a single cached page. */
-const cityLabel = m.home_your_city({ city: '{{city}}' });
-const cityNames = Object.fromEntries(CITIES.map((c) => [c.slug, c.name]));
-const homeBase = `/${locale}/`;
 ---
 
 <Layout
@@ -79,33 +71,22 @@ const homeBase = `/${locale}/`;
 
     {
       loggedOut && (
-        <div class="mt-4">
+        <div class="mt-5 text-center">
           <!-- Same anaglyph skew as every primary CTA — unmistakably clickable. -->
-          <Button as="a" href={localizePath('/account/')} class="block w-full text-center">
+          <Button as="a" href={localizePath('/account/')} class="block w-full">
             {m.cta_start_advertising()} →
           </Button>
-          <p class="mt-2 text-2xs text-muted-foreground">Verified-only · free in early access</p>
+          <p class="mt-2.5 text-2xs text-muted-foreground">Verified-only · free in early access</p>
         </div>
       )
     }
 
-    <!-- Browse (secondary): the search is for finding a professional. -->
-    <p class="mt-5 text-2xs font-semibold uppercase tracking-wide text-muted-foreground">Find a professional</p>
-    <div class="mt-2">
+    <!-- Browse: ONE search control, city-aware from the saved cookie — no
+         extra chips or return pills competing with it. -->
+    <p class="eyebrow mt-6">Find a professional</p>
+    <div class="mt-2.5">
       <SearchControl />
     </div>
-    <LinkChips class="mt-3" />
-    <!-- Saved-city return chip: hidden until the inline script confirms a
-         `city` cookie (client-side keeps this page one cached variant). -->
-    <a
-      data-city-pref
-      href="#"
-      hidden
-      class="mt-3 hidden w-fit items-center gap-1.5 rounded-md border border-foreground/20 px-3 py-1.5 text-sm font-medium transition-colors hover:border-foreground/60 active:scale-[0.97]"
-    >
-      <svg class="size-3.5 flex-none text-brand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" /><circle cx="12" cy="10" r="3" /></svg>
-      <span data-city-pref-label></span>
-    </a>
   </section>
 
   <!-- DESKTOP HERO: full-bleed cinematic media on an ink panel. Kept for lg+
@@ -308,31 +289,6 @@ const homeBase = `/${locale}/`;
 
   <!-- First-visit "ask the city once" sheet (1.2). Island; auto-opens once. -->
   <CitySheet />
-
-  <script is:inline define:vars={{ cityNames, homeBase, cityLabel }}>
-    // Reveal the "back to your city" chip from the saved `city` cookie. The home
-    // stays a single cached page — the preference is applied on the client only.
-    (function () {
-      function paint() {
-        const el = document.querySelector('[data-city-pref]');
-        if (!el) return;
-        const m = /(?:^|;\s*)city=([^;]+)/.exec(document.cookie);
-        const slug = m && decodeURIComponent(m[1]);
-        const name = slug && cityNames[slug];
-        if (!name) {
-          el.hidden = true;
-          return;
-        }
-        el.href = `${homeBase}${slug}/`;
-        el.querySelector('[data-city-pref-label]').textContent = cityLabel.replace('{{city}}', name);
-        el.hidden = false;
-        el.classList.add('flex');
-        el.classList.remove('hidden');
-      }
-      paint();
-      document.addEventListener('astro:page-load', paint);
-    })();
-  </script>
 </Layout>
 
 <style>

@@ -78,7 +78,7 @@ enemy of supply *and* demand.
 
 `startSms` (exists — swap body):
 - Zod: E.164 regex (already there). Normalize `00` prefix → `+`.
-- Rate limit in SESSION KV before calling Twilio (same pattern as `aiSearch`):
+- Rate limit in SESSION KV before calling Twilio (hourly KV budget):
   **3 starts/hour per account AND per number AND per IP** — Verify's own velocity
   checks are the backstop, ours keeps the bill sane. 429 → UI shows cooldown.
 - Call Verify `Verifications`; on 2xx save `{ phone }` (unverified) and return ok.

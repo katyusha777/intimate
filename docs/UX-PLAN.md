@@ -20,7 +20,7 @@ Execution plan for the external UX review ("Design review with safe-mode update"
 - Profile model: `priceFrom` (no rates table), `openingHours`, static `online` boolean, `birthDate`, services/meetingTypes from taxonomy.
 - Messaging: built on the mock backend (threads, messages, contacts, media grant, modes). Enforcement in the action layer until the Supabase swap (MESSAGING.md).
 - Presence is mock. Every availability feature below is built against a **derivation helper** so the realtime upgrade (Phase 0 Supabase) swaps the input, not the UI.
-- AI search action + input exist (desktop header); safe mode = footer toggle, anime placeholder set, default ON.
+- Safe mode = footer toggle, anime placeholder set, default ON. (AI search shipped, then REMOVED 2026-08-02 — too slow to be the search affordance.)
 
 ## 2. Cross-cutting laws for every item
 
@@ -94,7 +94,7 @@ DoD: all three states in kitchen-sink · toggle reachable without scrolling on e
 
 ## Phase 6 — Finders' quality-of-life
 
-**6.1 The wand on mobile.** AI search opens from the search icon as a sheet with three tappable example queries; parses into taxonomy + presence filters (the existing `aiSearch` action) so typing stays optional. Not promoted to a hero position until it reliably beats keyword matching — the page's best promise must not break on first use.
+**6.1 The wand on mobile.** ~~Shipped, then removed (2026-08-02): the AI parse was too slow to be user-friendly. The mobile search icon now opens the filter sheet (or lands on /search/).~~
 **6.2 Compare rail from saves (desktop).** Thin SAVED(n) rail — hearts already sync — turns tab-juggling into one row. `compact` ProfileCard variant, no new components.
 
 ## Parked (do not build; revisit trigger noted)

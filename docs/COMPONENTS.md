@@ -34,13 +34,13 @@ Pages = `src/pages/` (compose organisms; own no reusable markup).
     one file), SafeImage (safe-mode image contract), VerifiedBadge.
 - **Molecule** — a self-contained control from atoms + markup, reusable in any
   domain: Modal, ActionSheet, Lightbox, PhotoCarousel, SearchControl,
-  Combobox, SlabField, AiSearchInput, FavoritesController, UserMenu,
-  ThemeToggle, SafeModeToggle (three-state safe-mode control — `compact` icon
-  variant in the header next to ThemeToggle, labelled switch mirrored in the
-  footer; no floating bar),
+  Combobox, SlabField, FavoritesController, UserMenu,
+  ThemeToggle (sun/moon switch, dark is the site default),
+  SafeModeToggle (three-state safe-mode control — labelled switch in the
+  footer only; no floating bar, not in the header),
   Section (owns page rhythm + section headings),
-  AvailabilityLine (dot + text availability, card/line variants), LinkChips
-  (SSR zero-JS fold chips), CitySheet (first-visit city picker).
+  AvailabilityLine (dot + text availability, card/line variants),
+  CitySheet (first-visit city picker).
 - **Organism** — takes domain data (profile, article, auth state) and composes
   atoms/molecules into a section: ProfileCard, AuthModal, Header, Footer.
   Lives in a domain subfolder; a new folder is created with the domain's first
@@ -130,16 +130,16 @@ Folders appear when their first organism lands:
 
 ## Appendix — later additions (append-only)
 
-- **WandSheet** (molecule, UX-PLAN 6.1): the mobile AI-search entry. An
-  `ActionSheet` composing `AiSearchInput` (typing optional) over three one-tap
-  example queries; every path runs the existing `aiSearch` action — no new
-  parser. Opened from the Header's mobile search icon (`data-sheet-open="wand-sheet"`),
-  mounted once by the Header. Assist, not hero.
+- **AI search removed** (2026-08-02): WandSheet, AiSearchInput and the
+  `aiSearch` action are gone — too slow to be the search affordance. The
+  Header's mobile search icon opens the listing's `filters-sheet` when present
+  and falls back to a plain link to `/search/` elsewhere.
 - **SAVED-compare rail** (UX-PLAN 6.2): NOT a new component — a desktop-only,
-  dismissible/collapsible row inside `organisms/search/SearchListing` that
-  reveals saved profiles (localStorage `intimate_favs`, synced by
-  `FavoritesController`) as `ProfileCard variant="compact"`. Pool passed from
-  the page via `buildListing().savedPool`.
+  dismissible/collapsible row inside `organisms/search/SearchListing`, in the
+  results column directly above the cards, that reveals saved profiles
+  (localStorage `intimate_favs`, synced by `FavoritesController`) as
+  `ProfileCard variant="mini"` (small square cards). Pool passed from the page
+  via `buildListing().savedPool`.
 - **Clean filter chips** (`.filter-chip` / `.filter-chip__box` tokens in
   `global.css`): the listing gender + quick filters. Full even keyline border,
   normal radius, an obvious mini-checkbox — replaced the old `.slab-cut` chips
