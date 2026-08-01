@@ -11,7 +11,7 @@ import { genderLabel, sortLabel } from '@/lib/labels';
 import { CITIES, GENDERS, SORT_OPTIONS } from '@/lib/taxonomy';
 import { LISTING_CATEGORIES, type Locale } from '@/lib/taxonomy';
 import { getLocale } from '@/paraglide/runtime';
-import { PAGE_SIZE, type ProfileList, type ProfileListParams } from '@/app/models/profile';
+import { PAGE_SIZE, type Profile, type ProfileList, type ProfileListParams } from '@/app/models/profile';
 import Icon from '@/components/atoms/Icon.astro';
 import FilterSidebar from '@/components/organisms/search/FilterSidebar.astro';
 import ProfileCard from '@/components/organisms/profile/ProfileCard.astro';
@@ -24,6 +24,9 @@ interface Props {
   updated?: string;
   params: ProfileListParams;
   result: ProfileList;
+  /** Full live pool for the desktop SAVED-compare rail (UX-PLAN 6.2); the
+   *  client reveals only the saved ones. Omit to hide the rail entirely. */
+  savedPool?: Profile[];
   /** Path for this tab WITHOUT the city segment, e.g. `/search/` or `/service/escort/`. */
   tabPath: string;
   currentUrl: URL;
@@ -32,7 +35,7 @@ interface Props {
   openCategory?: string;
 }
 
-const { title, intro, updated, params, result, tabPath, currentUrl, visitMode = 'query', openCategory } =
+const { title, intro, updated, params, result, savedPool, tabPath, currentUrl, visitMode = 'query', openCategory } =
   Astro.props;
 
 const locale = getLocale() as Locale;
@@ -84,6 +87,47 @@ const chip =
     </p>
     {updated && <p class="eyebrow mt-1.5">{updated}</p>}
   </div>
+
+  <!-- SAVED-compare rail (UX-PLAN 6.2): desktop only, thin, dismissible.
+       Hidden until the client finds saved profiles; hearts sync via
+       FavoritesController (localStorage). Uses the compact ProfileCard —
+       no new component. `hidden` until the script reveals it. -->
+  {
+    savedPool && (
+      <div data-saved-rail hidden class="mb-6 hidden rounded-xl border border-border bg-card/60 lg:block">
+        <div class="flex items-center justify-between gap-3 px-4 py-2">
+          <button
+            type="button"
+            data-saved-toggle
+            aria-expanded="true"
+            class="flex cursor-pointer items-center gap-2 text-sm font-semibold"
+          >
+            <Icon name="chevron-down" class="text-xs text-muted-foreground transition-transform [[data-saved-rail].is-collapsed_&]:-rotate-90" />
+            <span class="eyebrow">{m.nav_favorites()}</span>
+            <span class="grid min-w-5 place-items-center rounded-full bg-foreground px-1.5 text-2xs font-bold text-background" data-saved-count>0</span>
+          </button>
+          <button
+            type="button"
+            data-saved-dismiss
+            aria-label={m.filter_clear()}
+            class="cursor-pointer text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <Icon name="xmark" class="text-sm" />
+          </button>
+        </div>
+        <div
+          data-saved-row
+          class="flex gap-2 overflow-x-auto px-3 pb-3 [scrollbar-width:thin] [[data-saved-rail].is-collapsed_&]:hidden"
+        >
+          {savedPool.map((p) => (
+            <div data-saved-item={p.slug} hidden class="w-64 flex-none">
+              <ProfileCard profile={p} variant="compact" />
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
 
   <!-- grid-rows min-content/1fr: the tall row-spanning sidebar (col 1) must not
        inflate row 1 and push the cards down — row 2 absorbs its extra height. -->
@@ -313,4 +357,69 @@ const chip =
   }
   initListingForm();
   document.addEventListener('astro:page-load', initListingForm);
+</script>
+
+<script>
+  // SAVED-compare rail (UX-PLAN 6.2): reveal saved profiles as one compact row.
+  // Reads the same localStorage set FavoritesController owns; re-paints when a
+  // heart on this page is toggled (the controller writes on click, we read next
+  // tick). Collapse + dismiss are session-scoped. Desktop-only via CSS.
+  const FAV_KEY = 'intimate_favs';
+  const readFavs = (): Set<string> => {
+    try {
+      return new Set(JSON.parse(localStorage.getItem(FAV_KEY) || '[]'));
+    } catch {
+      return new Set();
+    }
+  };
+
+  function paintSavedRail() {
+    const rail = document.querySelector<HTMLElement>('[data-saved-rail]');
+    if (!rail) return;
+    if (sessionStorage.getItem('saved-rail-dismissed')) {
+      rail.hidden = true;
+      return;
+    }
+    const favs = readFavs();
+    let n = 0;
+    rail.querySelectorAll<HTMLElement>('[data-saved-item]').forEach((el) => {
+      const on = favs.has(el.dataset.savedItem!);
+      el.hidden = !on;
+      if (on) n += 1;
+    });
+    const count = rail.querySelector<HTMLElement>('[data-saved-count]');
+    if (count) count.textContent = String(n);
+    rail.hidden = n === 0;
+    rail.classList.toggle('is-collapsed', sessionStorage.getItem('saved-rail-collapsed') === '1');
+  }
+
+  function initSavedRail() {
+    const rail = document.querySelector<HTMLElement>('[data-saved-rail]');
+    if (!rail || rail.dataset.railInit) {
+      paintSavedRail();
+      return;
+    }
+    rail.dataset.railInit = '1';
+    rail.querySelector('[data-saved-toggle]')?.addEventListener('click', () => {
+      const collapsed = rail.classList.toggle('is-collapsed');
+      sessionStorage.setItem('saved-rail-collapsed', collapsed ? '1' : '0');
+      rail.querySelector('[data-saved-toggle]')?.setAttribute('aria-expanded', String(!collapsed));
+    });
+    rail.querySelector('[data-saved-dismiss]')?.addEventListener('click', () => {
+      sessionStorage.setItem('saved-rail-dismissed', '1');
+      rail.hidden = true;
+    });
+    paintSavedRail();
+  }
+
+  // Re-paint when a heart toggles anywhere — FavoritesController emits
+  // `favchange` after it writes (its own click listener is capture-phase +
+  // stopImmediatePropagation, so we can't observe the click). Once, survives nav.
+  if (!(window as any).__savedRailFav) {
+    (window as any).__savedRailFav = true;
+    document.addEventListener('favchange', paintSavedRail);
+  }
+
+  initSavedRail();
+  document.addEventListener('astro:page-load', initSavedRail);
 </script>

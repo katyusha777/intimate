@@ -28,6 +28,15 @@ export async function buildListing({ url, locale, category, citySlug }: BuildArg
   };
   const result = await profilesApi.list(params);
 
+  // Saved-compare rail pool (UX-PLAN 6.2, desktop): the whole live set, rendered
+  // hidden as compact cards; the client reveals only the saved ones. Same shape
+  // as the favorites page. Reuses `result.items` when it already IS the full pool
+  // (unfiltered first page) so we don't query twice.
+  const savedPool =
+    result.items.length === result.total
+      ? result.items
+      : (await profilesApi.list({ limit: 60 })).items;
+
   // Answer-first block from live data (SEO.md §3) — same text feeds the meta description.
   const stats = listingStats(result.items.length === result.total ? result.items : result.items);
   const where = citySlug ? cityName(citySlug) : m.where_netherlands();
@@ -69,5 +78,5 @@ export async function buildListing({ url, locale, category, citySlug }: BuildArg
     ]),
   ];
 
-  return { tabPath, params, result, title, heading, intro, updated, canonical, alternates, jsonLd };
+  return { tabPath, params, result, savedPool, title, heading, intro, updated, canonical, alternates, jsonLd };
 }

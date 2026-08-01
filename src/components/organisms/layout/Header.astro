@@ -2,6 +2,7 @@
 import * as m from '@/paraglide/messages';
 import type { Session } from '@/app/models/session';
 import AiSearchInput from '@/components/molecules/AiSearchInput.astro';
+import WandSheet from '@/components/molecules/WandSheet.astro';
 import Button from '@/components/atoms/Button.astro';
 import Combobox from '@/components/molecules/Combobox.astro';
 import UserMenu from '@/components/molecules/UserMenu.astro';
@@ -69,7 +70,19 @@ const categories = [
       </a>
     </nav>
 
-    <div class="ml-auto flex flex-none items-center gap-4 md:ml-0">
+    <!-- The wand on mobile (UX-PLAN 6.1): search icon → AI wand sheet. Assist,
+         not hero — behind an icon, never promoted above the fold. Desktop uses
+         the inline AiSearchInput above, so this is md:hidden. -->
+    <button
+      type="button"
+      data-sheet-open="wand-sheet"
+      aria-label={m.nav_search()}
+      class="ml-auto grid size-10 flex-none cursor-pointer place-items-center rounded-full text-foreground transition-colors hover:bg-foreground/10 active:scale-95 md:hidden"
+    >
+      <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
+    </button>
+
+    <div class="flex flex-none items-center gap-4">
       {
         session ? (
           <UserMenu {session} />
@@ -150,6 +163,9 @@ const categories = [
     </div>
   </div>
 </header>
+
+<!-- Mobile AI wand sheet (opened by the search icon above). -->
+<WandSheet />
 
 <style>
   /* In motion (hover), the underline picks up the anaglyph pink/cyan split

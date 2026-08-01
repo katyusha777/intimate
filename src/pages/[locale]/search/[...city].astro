@@ -30,6 +30,7 @@ const listing = await buildListing({ url: Astro.url, locale, citySlug });
       updated={listing.updated}
       params={listing.params}
       result={listing.result}
+      savedPool={listing.savedPool}
       tabPath={listing.tabPath}
       currentUrl={Astro.url}
     />

@@ -424,5 +424,40 @@ const swatches = [
         </div>
       </div>
     </section>
+
+    <section class="space-y-4">
+      <h2 class="text-xl font-semibold">WandSheet — the wand on mobile (6.1)</h2>
+      <p class="text-sm text-muted-foreground">
+        Search icon → AI wand sheet: the AI field (typing optional) over three
+        one-tap example queries, all running the existing <code>aiSearch</code> action.
+      </p>
+      <!-- The sheet is mounted once by the Header (every page); just trigger it. -->
+      <Button data-sheet-open="wand-sheet">Open wand sheet</Button>
+    </section>
+
+    <section class="space-y-4">
+      <h2 class="text-xl font-semibold">SAVED-compare rail (6.2, desktop)</h2>
+      <p class="text-sm text-muted-foreground">
+        Thin dismissible rail — saved profiles as one comparable row of compact
+        cards. Lives in <code>SearchListing</code> (revealed from the saved set);
+        shown here forced-open with a couple of cards.
+      </p>
+      <div class="rounded-xl border border-border bg-card/60">
+        <div class="flex items-center justify-between gap-3 px-4 py-2">
+          <div class="flex items-center gap-2 text-sm font-semibold">
+            <span class="eyebrow">Saved</span>
+            <span class="grid min-w-5 place-items-center rounded-full bg-foreground px-1.5 text-2xs font-bold text-background">2</span>
+          </div>
+          <i class="fa-thin fa-xmark text-muted-foreground" aria-hidden="true"></i>
+        </div>
+        <div class="flex gap-2 overflow-x-auto px-3 pb-3">
+          {profiles.slice(0, 3).map((sp) => (
+            <div class="w-64 flex-none">
+              <ProfileCard profile={sp} variant="compact" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
   </div>
 </Layout>

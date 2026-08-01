@@ -125,3 +125,16 @@ Folders appear when their first organism lands:
    `text-2xs`) — arbitrary bracket values fail `tests/style.test.ts`; new
    needs become tokens in `global.css`, never inline values.
 8. `bun test` green (architecture + style rules are tested).
+
+## Appendix — later additions (append-only)
+
+- **WandSheet** (molecule, UX-PLAN 6.1): the mobile AI-search entry. An
+  `ActionSheet` composing `AiSearchInput` (typing optional) over three one-tap
+  example queries; every path runs the existing `aiSearch` action — no new
+  parser. Opened from the Header's mobile search icon (`data-sheet-open="wand-sheet"`),
+  mounted once by the Header. Assist, not hero.
+- **SAVED-compare rail** (UX-PLAN 6.2): NOT a new component — a desktop-only,
+  dismissible/collapsible row inside `organisms/search/SearchListing` that
+  reveals saved profiles (localStorage `intimate_favs`, synced by
+  `FavoritesController`) as `ProfileCard variant="compact"`. Pool passed from
+  the page via `buildListing().savedPool`.
