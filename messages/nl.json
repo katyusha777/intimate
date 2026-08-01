@@ -311,6 +311,8 @@
   "gtk_shower": "Douche",
   "gtk_payment": "Betaling",
   "gtk_deposit": "Aanbetaling",
+  "deposit_direct": "Ingesteld door de professional — je betaalt rechtstreeks aan de professional, nooit aan Intimate.",
+  "deposit_hint": "Optioneel. Je regelt betalingen zelf — vraag je een aanbetaling ter bevestiging, leg het hier uit en het verschijnt bij je tarieven.",
   "gtk_visits": "Komt naar je toe",
   "gtk_yes": "Ja",
   "gtk_no": "Nee",

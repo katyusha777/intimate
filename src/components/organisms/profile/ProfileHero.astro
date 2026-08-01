@@ -90,13 +90,13 @@ const { profile: p, replySpeed } = Astro.props;
       <div class="mt-3.5 flex flex-wrap gap-1.5">
         {
           p.services.slice(0, 3).map((s) => (
-            <span class="slab-cut border border-white/30 px-2.5 py-1 text-xs font-medium text-white/90">
+            <span class="rounded border border-white/30 px-2.5 py-1 text-xs font-medium text-white/90">
               {serviceLabel(s)}
             </span>
           ))
         }
         {p.services.length > 3 && (
-          <span class="slab-cut border border-white/30 px-2.5 py-1 text-xs font-medium text-white/90">
+          <span class="rounded border border-white/30 px-2.5 py-1 text-xs font-medium text-white/90">
             +{p.services.length - 3}
           </span>
         )}
@@ -107,7 +107,7 @@ const { profile: p, replySpeed } = Astro.props;
   <a
     href="#profile-details"
     aria-label={m.profile_about()}
-    class="absolute bottom-2.5 left-1/2 z-10 -translate-x-1/2 animate-bounce p-2 text-white/80 transition-colors hover:text-white"
+    class="absolute bottom-0.5 left-1/2 z-10 -translate-x-1/2 animate-bounce p-2 text-white/80 transition-colors hover:text-white"
   >
     <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
   </a>

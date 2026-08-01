@@ -1,14 +1,11 @@
 ---
 /**
- * Home search affordance — two UNMISTAKABLE targets, not one ambiguous bar
- * (was "City · Available · Filters", which read as one confusing tap-target):
- *   1) a real search field (Misprint ink slab, DESIGN §1.1) that opens the
- *      listing for the chosen city — the city is a clearly labelled prefix, not
- *      a peer word;
- *   2) a separate, obvious FILTERS button beside it (its own outline slab) that
- *      lands on the same listing where the filter sheet/sidebar lives.
- * Zero JS: both are plain <a> to canonical listing URLs; search text itself
- * rides `?q=` once real search lands (the field is a link shell until then).
+ * Home search affordance — ONE unmistakable target: a real search field
+ * (Misprint ink slab, DESIGN §1.1) that opens the listing for the chosen city;
+ * the city is a clearly labelled prefix, not a peer word. Filters live on the
+ * listing itself (sidebar/sheet) — no duplicate entry point here.
+ * Zero JS: a plain <a> to the canonical listing URL; search text itself rides
+ * `?q=` once real search lands (the field is a link shell until then).
  */
 import * as m from '@/paraglide/messages';
 import { localizePath } from '@/lib/i18n';
@@ -39,14 +36,5 @@ const base = city ? localizePath(`/${city}/`) : localizePath('/search/');
         <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
       </span>
     </span>
-  </a>
-
-  <!-- Separate, obvious FILTERS button — its own control, not a word in the bar. -->
-  <a
-    href={base}
-    class="slab-cut flex flex-none items-center gap-2 border border-foreground/25 px-3.5 text-sm font-semibold transition-colors hover:border-foreground/60 active:scale-[0.97]"
-  >
-    <svg class="size-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4" /></svg>
-    <span class="hidden sm:inline">{m.search_filters()}</span>
   </a>
 </div>

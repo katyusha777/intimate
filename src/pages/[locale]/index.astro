@@ -25,16 +25,14 @@ const loggedOut = !(await sessionApi.fromCookies(Astro.cookies));
 const alternates = samePathAlternates(Astro.url.origin, '/');
 const jsonLd = [websiteJsonLd(Astro.url.origin, locale), organizationJsonLd(Astro.url.origin)];
 
-/* The generic home shows the flagship city's live shelf. A returning visitor
- * with a chosen city was already 302'd to /{locale}/{city}/ by the middleware,
- * so this page stays a SINGLE cached variant (no per-cookie HTML). */
-const FOLD_CITY = CITIES[0]!; // amsterdam
-
-const [{ items: online }, { total: onlineCount }, { items: fresh }, { items: featured }, { items: articles }] =
+/* The home is the NATIONAL shelf — never a city page. A chosen city has its
+ * own canonical URL (/{locale}/{city}/); the saved preference surfaces only as
+ * the labelled "back to your city" chip below, so coming Home always feels
+ * like leaving the city. */
+const [{ items: online, total: onlineCount }, { items: fresh }, { items: featured }, { items: articles }] =
   await Promise.all([
     // Default shelf (1.4): ONLINE NOW — online-first, the every-visit question.
     profilesApi.list({ onlineOnly: true, sort: 'recently_online', limit: 18 }),
-    profilesApi.list({ city: FOLD_CITY.slug, onlineOnly: true, limit: 0 }),
     // NEW THIS WEEK (1.4) — its own shelf, the cold-start boost. Mock: newest
     // arrivals (the real backend windows to a true 7 days).
     profilesApi.list({ sort: 'newest', limit: 12 }),
@@ -67,9 +65,9 @@ const homeBase = `/${locale}/`;
        (lg:) keeps the cinematic hero band below.
        =================================================================== -->
   <section class="mx-auto max-w-7xl px-4 pt-4 md:px-6 lg:hidden">
-    <!-- Live local header line: "AMSTERDAM · 34 ONLINE NOW" (count from data). -->
+    <!-- Live national header line: "THE NETHERLANDS · 34 ONLINE NOW". -->
     <p class="eyebrow flex items-center gap-2 font-condensed text-base font-bold uppercase tracking-wide">
-      <span>{FOLD_CITY.name}</span>
+      <span>{m.where_netherlands()}</span>
       <span class="text-foreground/30" aria-hidden="true">·</span>
       <span class="flex items-center gap-1.5 text-brand">
         <span class="size-1.5 rounded-full bg-online"></span>
@@ -81,16 +79,13 @@ const homeBase = `/${locale}/`;
 
     {
       loggedOut && (
-        <a
-          href={localizePath('/account/')}
-          class="slab-cut mt-4 flex items-center justify-between gap-3 bg-foreground px-4 py-3.5 text-background transition-colors hover:bg-brand"
-        >
-          <span class="min-w-0">
-            <span class="block font-condensed text-base font-bold uppercase tracking-wide">{m.cta_start_advertising()}</span>
-            <span class="block text-2xs text-background/70">Verified-only · free in early access</span>
-          </span>
-          <svg class="size-5 flex-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
-        </a>
+        <div class="mt-4">
+          <!-- Same anaglyph skew as every primary CTA — unmistakably clickable. -->
+          <Button as="a" href={localizePath('/account/')} class="block w-full text-center">
+            {m.cta_start_advertising()} →
+          </Button>
+          <p class="mt-2 text-2xs text-muted-foreground">Verified-only · free in early access</p>
+        </div>
       )
     }
 
@@ -99,14 +94,14 @@ const homeBase = `/${locale}/`;
     <div class="mt-2">
       <SearchControl />
     </div>
-    <LinkChips city={FOLD_CITY.slug} class="mt-3" />
+    <LinkChips class="mt-3" />
     <!-- Saved-city return chip: hidden until the inline script confirms a
          `city` cookie (client-side keeps this page one cached variant). -->
     <a
       data-city-pref
       href="#"
       hidden
-      class="slab-cut mt-3 hidden w-fit items-center gap-1.5 border border-foreground/20 px-3 py-1.5 text-sm font-medium transition-colors hover:border-foreground/60 active:scale-[0.97]"
+      class="mt-3 hidden w-fit items-center gap-1.5 rounded-md border border-foreground/20 px-3 py-1.5 text-sm font-medium transition-colors hover:border-foreground/60 active:scale-[0.97]"
     >
       <svg class="size-3.5 flex-none text-brand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" /><circle cx="12" cy="10" r="3" /></svg>
       <span data-city-pref-label></span>
@@ -138,7 +133,7 @@ const homeBase = `/${locale}/`;
     <div class="relative mx-auto max-w-7xl px-6">
       <div class="py-24 xl:py-40 lg:max-w-[46%]">
         <p class="eyebrow flex items-center gap-2 font-condensed text-lg font-bold uppercase tracking-wide text-white">
-          <span>{FOLD_CITY.name}</span>
+          <span>{m.where_netherlands()}</span>
           <span class="text-white/30" aria-hidden="true">·</span>
           <span class="flex items-center gap-1.5">
             <span class="size-1.5 rounded-full bg-online"></span>

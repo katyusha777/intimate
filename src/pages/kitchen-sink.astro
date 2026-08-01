@@ -368,6 +368,17 @@ const swatches = [
     </section>
 
     <section class="space-y-4">
+      <h2 class="text-xl font-semibold">ProfileCard — mini (favorites rail)</h2>
+      <div class="flex gap-2.5 overflow-x-auto">
+        {profiles.slice(0, 5).map((prof) => (
+          <div class="w-36 flex-none">
+            <ProfileCard profile={prof} variant="mini" />
+          </div>
+        ))}
+      </div>
+    </section>
+
+    <section class="space-y-4">
       <h2 class="text-xl font-semibold">AvailabilityLine — three honest states</h2>
       <p class="text-sm text-muted-foreground">
         One helper (<code>availabilityState</code>), dot + text, never on the photo.

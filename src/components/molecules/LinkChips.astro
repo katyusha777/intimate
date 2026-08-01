@@ -6,7 +6,7 @@
  * tail. The ▾ signals "more inside" (the city sheet / filter sheet), it is not
  * a JS dropdown here.
  *
- * Misprint: sharp slab-cut chips, ink keyline on paper, thumb-height (h-11).
+ * Misprint: sharp rounded-md chips, ink keyline on paper, thumb-height (h-11).
  */
 import * as m from '@/paraglide/messages';
 import { localizePath } from '@/lib/i18n';
@@ -36,7 +36,7 @@ const chips = [
     chips.map((c) => (
       <a
         href={c.href}
-        class="slab-cut flex h-11 items-center gap-1.5 border border-foreground/20 px-3.5 text-sm font-medium transition-colors hover:border-foreground/60 active:scale-[0.97]"
+        class="rounded-md flex h-11 items-center gap-1.5 border border-foreground/20 px-3.5 text-sm font-medium transition-colors hover:border-foreground/60 active:scale-[0.97]"
       >
         <span class="truncate">{c.label}</span>
         {c.caret && (

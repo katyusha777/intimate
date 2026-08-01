@@ -82,8 +82,8 @@ const unread =
          Fonts download lazily, only when a fa-* glyph is actually rendered. -->
     <link rel="stylesheet" href="/fa/css/all.min.css" />
     <link rel="icon" data-real-icon href="/icons/icon.svg" type="image/svg+xml" />
-    <meta name="theme-color" content="#f7f7f7" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#171717" media="(prefers-color-scheme: dark)" />
+    <!-- Dark is the site default (theme rides localStorage, not the device). -->
+    <meta name="theme-color" content="#171717" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Intimate" />
@@ -93,11 +93,9 @@ const unread =
       // No-flash theme: runs before first paint, and again after each view transition swap.
       (function () {
         const apply = () => {
-          const t = localStorage.theme;
-          document.documentElement.classList.toggle(
-            'dark',
-            t === 'dark' || (!t && matchMedia('(prefers-color-scheme: dark)').matches),
-          );
+          // Dark is the house default — even on light-preferring devices. Only
+          // an explicit user pick of light overrides it.
+          document.documentElement.classList.toggle('dark', localStorage.theme !== 'light');
         };
         apply();
         document.addEventListener('astro:after-swap', apply);

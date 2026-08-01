@@ -311,6 +311,8 @@
   "gtk_shower": "Dusche",
   "gtk_payment": "Zahlung",
   "gtk_deposit": "Anzahlung",
+  "deposit_direct": "Von der Professional festgelegt — bezahlt wird direkt an die Professional, nie an Intimate.",
+  "deposit_hint": "Optional. Du wickelst Zahlungen selbst ab — wenn du eine Anzahlung zur Bestätigung verlangst, erkläre sie hier; sie erscheint bei deinen Preisen.",
   "gtk_visits": "Besucht dich",
   "gtk_yes": "Ja",
   "gtk_no": "Nein",

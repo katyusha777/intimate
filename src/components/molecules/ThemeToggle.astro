@@ -1,20 +1,73 @@
 ---
+/**
+ * Theme switch (the little delighter): a pill track with a sliding thumb —
+ * sun on one side, moon on the other. The thumb glides across and the icons
+ * cross-fade/rotate on toggle. State = html.dark (site default: dark).
+ */
 import * as m from '@/paraglide/messages';
 ---
 
 <button
   type="button"
   data-theme-toggle
+  role="switch"
   aria-label={m.theme_toggle()}
-  class="grid size-10 place-items-center rounded-full ring-1 ring-border text-muted-foreground transition-colors hover:text-foreground"
+  class="theme-switch relative inline-flex h-7 w-13 flex-none cursor-pointer items-center rounded-full ring-1 ring-border transition-colors hover:ring-foreground/40"
 >
-  <svg class="size-5 dark:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+  <!-- faint resting icons on the track (destination hints) -->
+  <svg class="track-icon pointer-events-none absolute left-1.5 size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
     <circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
   </svg>
-  <svg class="hidden size-5 dark:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+  <svg class="track-icon pointer-events-none absolute right-1.5 size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
     <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />
   </svg>
+  <!-- sliding thumb carries the ACTIVE icon (sun ↔ moon cross-fade + spin) -->
+  <span class="thumb pointer-events-none absolute left-1 grid size-5 place-items-center rounded-full bg-foreground text-background shadow-soft" aria-hidden="true">
+    <svg class="sun absolute size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+      <circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+    </svg>
+    <svg class="moon absolute size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+      <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />
+    </svg>
+  </span>
 </button>
+
+<style is:global>
+  /* Global (not scoped): header + footer both render one; state lives on <html>. */
+  .theme-switch .thumb {
+    transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  .dark .theme-switch .thumb {
+    transform: translateX(1.5rem);
+  }
+  .theme-switch .track-icon {
+    color: var(--muted-foreground);
+    opacity: 0.55;
+  }
+  .theme-switch .sun,
+  .theme-switch .moon {
+    transition: opacity 0.2s ease, transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  /* The thumb shows the ACTIVE mode's icon — sun spins out, moon spins in. */
+  .theme-switch .sun { opacity: 1; transform: rotate(0deg); }
+  .theme-switch .moon { opacity: 0; transform: rotate(-90deg); }
+  .dark .theme-switch .sun { opacity: 0; transform: rotate(90deg); }
+  .dark .theme-switch .moon { opacity: 1; transform: rotate(0deg); }
+  /* A wink of the anaglyph on press — motion-only accent (DESIGN §1.1). */
+  .theme-switch:active .thumb {
+    transform: scale(0.9);
+  }
+  .dark .theme-switch:active .thumb {
+    transform: translateX(1.5rem) scale(0.9);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .theme-switch .thumb,
+    .theme-switch .sun,
+    .theme-switch .moon {
+      transition-duration: 0.01ms;
+    }
+  }
+</style>
 
 <script>
   // Delegated so every ThemeToggle instance works (header + footer both render one).
@@ -25,5 +78,13 @@ import * as m from '@/paraglide/messages';
       const dark = document.documentElement.classList.toggle('dark');
       localStorage.theme = dark ? 'dark' : 'light';
     });
+    const paint = () =>
+      document
+        .querySelectorAll('[data-theme-toggle]')
+        .forEach((b) =>
+          b.setAttribute('aria-checked', String(document.documentElement.classList.contains('dark'))),
+        );
+    paint();
+    document.addEventListener('astro:page-load', paint);
   }
 </script>

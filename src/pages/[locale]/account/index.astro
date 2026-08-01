@@ -18,7 +18,7 @@ const profile = session ? await accountApi.myProfile(session) : null;
 
 const card = 'facts-card dark bg-neutral-950 p-6 text-white';
 const stateChip =
-  'slab-cut inline-block border border-white/30 px-2.5 py-1 font-condensed text-xs font-bold uppercase tracking-wide';
+  'rounded inline-block border border-white/30 px-2.5 py-1 font-condensed text-xs font-bold uppercase tracking-wide';
 
 /* Deterministic mock analytics (per profile) — replaced by real event counts
    when the events table lands. Stable across reloads. */

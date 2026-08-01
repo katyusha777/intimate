@@ -65,7 +65,17 @@ const muted = dark ? 'text-white/60' : 'text-muted-foreground';
 
       {(p.depositPolicy || p.extrasNote) && (
         <div class:list={['mt-2.5 space-y-1 text-xs', muted]}>
-          {p.depositPolicy && <p>{p.depositPolicy}</p>}
+          {/* Her own policy, clearly labelled as hers — payments always run
+              directly between client and professional, never through Intimate. */}
+          {p.depositPolicy && (
+            <p>
+              <span class:list={['font-semibold', dark ? 'text-white/80' : 'text-foreground/80']}>
+                {m.gtk_deposit()}:
+              </span>{' '}
+              {p.depositPolicy}
+            </p>
+          )}
+          {p.depositPolicy && <p>{m.deposit_direct()}</p>}
           {p.extrasNote && <p>{p.extrasNote}</p>}
         </div>
       )}

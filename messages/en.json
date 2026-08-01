@@ -311,6 +311,8 @@
   "gtk_shower": "Shower",
   "gtk_payment": "Payment",
   "gtk_deposit": "Deposit",
+  "deposit_direct": "Set by the professional — you pay the professional directly, never Intimate.",
+  "deposit_hint": "Optional. You take payments yourself — if you ask a deposit to confirm, explain it here and it shows on your rates card.",
   "gtk_visits": "Visits you",
   "gtk_yes": "Yes",
   "gtk_no": "No",

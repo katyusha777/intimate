@@ -91,47 +91,6 @@ const chip =
     {updated && <p class="eyebrow mt-1.5">{updated}</p>}
   </div>
 
-  <!-- SAVED-compare rail (UX-PLAN 6.2): desktop only, thin, dismissible.
-       Hidden until the client finds saved profiles; hearts sync via
-       FavoritesController (localStorage). Uses the compact ProfileCard —
-       no new component. `hidden` until the script reveals it. -->
-  {
-    savedPool && (
-      <div data-saved-rail hidden class="mb-6 hidden rounded-xl border border-border bg-card/60 lg:block">
-        <div class="flex items-center justify-between gap-3 px-4 py-2">
-          <button
-            type="button"
-            data-saved-toggle
-            aria-expanded="true"
-            class="flex cursor-pointer items-center gap-2 text-sm font-semibold"
-          >
-            <Icon name="chevron-down" class="text-xs text-muted-foreground transition-transform [[data-saved-rail].is-collapsed_&]:-rotate-90" />
-            <span class="eyebrow">{m.nav_favorites()}</span>
-            <span class="grid min-w-5 place-items-center rounded-full bg-foreground px-1.5 text-2xs font-bold text-background" data-saved-count>0</span>
-          </button>
-          <button
-            type="button"
-            data-saved-dismiss
-            aria-label={m.filter_clear()}
-            class="cursor-pointer text-muted-foreground transition-colors hover:text-foreground"
-          >
-            <Icon name="xmark" class="text-sm" />
-          </button>
-        </div>
-        <div
-          data-saved-row
-          class="flex gap-2 overflow-x-auto px-3 pb-3 [scrollbar-width:thin] [[data-saved-rail].is-collapsed_&]:hidden"
-        >
-          {savedPool.map((p) => (
-            <div data-saved-item={p.slug} hidden class="w-64 flex-none">
-              <ProfileCard profile={p} variant="compact" />
-            </div>
-          ))}
-        </div>
-      </div>
-    )
-  }
-
   <!-- grid-rows min-content/1fr: the tall row-spanning sidebar (col 1) must not
        inflate row 1 and push the cards down — row 2 absorbs its extra height. -->
   <div class="grid items-start gap-x-6 gap-y-4 lg:grid-cols-[17rem_1fr] lg:grid-rows-[min-content_1fr]">
@@ -185,10 +144,13 @@ const chip =
       </div>
 
       <!-- Available-now quick filter (fix/search): online OR open today. The
-           listing already SORTS available-first; this narrows to only them. -->
-      <label class="flex-none">
-        <input type="checkbox" name="available" checked={params.availableNow} class="peer sr-only" />
-        <span class:list={[chip, 'flex']}>
+           listing already SORTS available-first; this narrows to only them.
+           Same switch control as "online now" beside it — a toggle, not a
+           button-looking chip. -->
+      <label class="flex h-9 flex-none cursor-pointer select-none items-center gap-2.5 whitespace-nowrap px-2 text-sm font-medium">
+        <input type="checkbox" name="available" checked={params.availableNow} class="sr-only" />
+        <span class="switch-track" aria-hidden="true"></span>
+        <span class="flex items-center gap-1.5">
           <span class="size-1.5 flex-none rounded-full bg-online" aria-hidden="true"></span>
           {m.filter_available()}
         </span>
@@ -201,7 +163,7 @@ const chip =
       </label>
 
       <label class="flex flex-none items-center text-sm lg:ml-auto">
-        <span class="slab-cut relative inline-flex h-9 items-center border border-foreground/20 transition-colors hover:border-foreground/60">
+        <span class="relative inline-flex h-9 items-center rounded-md border border-foreground/20 transition-colors hover:border-foreground/60">
           <select
             name="sort"
             aria-label={m.sort_by()}
@@ -232,6 +194,48 @@ const chip =
     </aside>
 
     <div class="lg:col-start-2">
+      <!-- SAVED-compare rail (UX-PLAN 6.2): desktop only, thin, dismissible.
+           Sits INSIDE the results column, directly above the cards — appearing/
+           disappearing never moves the heading or the filter rail. Mini square
+           ProfileCards (the grid card shrunk). `hidden` until the script
+           reveals it; hearts sync via FavoritesController (localStorage). -->
+      {
+        savedPool && (
+          <div data-saved-rail hidden class="mb-4 hidden rounded-xl border border-border bg-card/60 lg:block">
+            <div class="flex items-center justify-between gap-3 px-4 py-2">
+              <button
+                type="button"
+                data-saved-toggle
+                aria-expanded="true"
+                class="flex cursor-pointer items-center gap-2 text-sm font-semibold"
+              >
+                <Icon name="chevron-down" class="text-xs text-muted-foreground transition-transform [[data-saved-rail].is-collapsed_&]:-rotate-90" />
+                <span class="eyebrow">{m.nav_favorites()}</span>
+                <span class="grid min-w-5 place-items-center rounded-full bg-foreground px-1.5 text-2xs font-bold text-background" data-saved-count>0</span>
+              </button>
+              <button
+                type="button"
+                data-saved-dismiss
+                aria-label={m.filter_clear()}
+                class="cursor-pointer text-muted-foreground transition-colors hover:text-foreground"
+              >
+                <Icon name="xmark" class="text-sm" />
+              </button>
+            </div>
+            <div
+              data-saved-row
+              class="flex gap-2.5 overflow-x-auto px-3 pb-3 [scrollbar-width:thin] [[data-saved-rail].is-collapsed_&]:hidden"
+            >
+              {savedPool.map((p) => (
+                <div data-saved-item={p.slug} hidden class="w-36 flex-none">
+                  <ProfileCard profile={p} variant="mini" />
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      }
+
       {
         result.items.length > 0 ? (
           <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">
