@@ -1,26 +1,52 @@
 ---
 /**
- * The one clean search affordance — a Misprint ink slab (DESIGN §1.1): sharp
- * ink-flip rectangle, hierarchy via ink opacity, paper die-cut for the icon.
- * Visual shell for now — opens nothing until search lands.
+ * Home search affordance — two UNMISTAKABLE targets, not one ambiguous bar
+ * (was "City · Available · Filters", which read as one confusing tap-target):
+ *   1) a real search field (Misprint ink slab, DESIGN §1.1) that opens the
+ *      listing for the chosen city — the city is a clearly labelled prefix, not
+ *      a peer word;
+ *   2) a separate, obvious FILTERS button beside it (its own outline slab) that
+ *      lands on the same listing where the filter sheet/sidebar lives.
+ * Zero JS: both are plain <a> to canonical listing URLs; search text itself
+ * rides `?q=` once real search lands (the field is a link shell until then).
  */
 import * as m from '@/paraglide/messages';
+import { localizePath } from '@/lib/i18n';
+import { CITIES, type CitySlug } from '@/lib/taxonomy';
 
 interface Props {
+  /** Current shelf city; undefined = all of NL. Labels the search prefix. */
+  city?: CitySlug;
   class?: string;
 }
-const { class: className } = Astro.props;
+const { city, class: className } = Astro.props;
+
+const cityName = CITIES.find((c) => c.slug === city)?.name;
+/* Search + filters both open this listing base (city hub or the search index). */
+const base = city ? localizePath(`/${city}/`) : localizePath('/search/');
 ---
 
-<button type="button" class:list={['slab-field block w-full', className]}>
-  <span class="slab-field__face flex items-center py-1.5 pl-5 pr-1.5 text-sm">
-    <span class="pr-4 font-semibold">{m.search_city()}</span>
-    <span class="h-5 w-px bg-foreground/20" aria-hidden="true"></span>
-    <span class="px-4 text-foreground/60">{m.search_availability()}</span>
-    <span class="h-5 w-px bg-foreground/20" aria-hidden="true"></span>
-    <span class="pl-4 pr-3 text-foreground/60">{m.search_filters()}</span>
-    <span class="ml-auto grid size-8 flex-none place-items-center rounded-full bg-foreground text-background">
-      <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
+<div class:list={['flex items-stretch gap-2', className]}>
+  <!-- Search field: labelled city prefix + placeholder, opens the listing. -->
+  <a href={base} class="slab-field block min-w-0 flex-1" aria-label={m.search_open()}>
+    <span class="slab-field__face flex items-center py-1.5 pl-4 pr-1.5 text-sm">
+      <span class="flex-none whitespace-nowrap font-semibold">
+        <span class="text-foreground/50">{m.search_city()}:</span> {cityName ?? m.where_netherlands()}
+      </span>
+      <span class="mx-3 h-5 w-px flex-none bg-foreground/20" aria-hidden="true"></span>
+      <span class="truncate text-foreground/50">{m.search_find_ph()}</span>
+      <span class="ml-auto grid size-8 flex-none place-items-center rounded-full bg-foreground text-background">
+        <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
+      </span>
     </span>
-  </span>
-</button>
+  </a>
+
+  <!-- Separate, obvious FILTERS button — its own control, not a word in the bar. -->
+  <a
+    href={base}
+    class="slab-cut flex flex-none items-center gap-2 border border-foreground/25 px-3.5 text-sm font-semibold transition-colors hover:border-foreground/60 active:scale-[0.97]"
+  >
+    <svg class="size-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4" /></svg>
+    <span class="hidden sm:inline">{m.search_filters()}</span>
+  </a>
+</div>

@@ -411,5 +411,10 @@
   "settings_screening": "Screening question",
   "settings_screening_ph": "e.g. How did you find me?",
   "settings_screening_note": "Asked as the last step of a request. Leave empty for none.",
-  "avail_drives_visibility": "Your availability drives your visibility: the more you're online and open, the more often and higher you appear in listings."
+  "avail_drives_visibility": "Your availability drives your visibility: the more you're online and open, the more often and higher you appear in listings.",
+  "filter_available": "Available now",
+  "filter_apply": "Show results",
+  "search_find_ph": "Search professionals",
+  "search_open": "Open search",
+  "home_your_city": "Back to {city}"
 }

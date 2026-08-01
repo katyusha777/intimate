@@ -411,5 +411,10 @@
   "settings_screening": "Screening-Frage",
   "settings_screening_ph": "z. B. Wie hast du mich gefunden?",
   "settings_screening_note": "Wird als letzter Schritt einer Anfrage gestellt. Leer lassen für keine.",
-  "avail_drives_visibility": "Deine Verfügbarkeit bestimmt deine Sichtbarkeit: Je öfter du online und geöffnet bist, desto häufiger und höher erscheinst du in den Listen."
+  "avail_drives_visibility": "Deine Verfügbarkeit bestimmt deine Sichtbarkeit: Je öfter du online und geöffnet bist, desto häufiger und höher erscheinst du in den Listen.",
+  "filter_available": "Jetzt verfügbar",
+  "filter_apply": "Ergebnisse anzeigen",
+  "search_find_ph": "Professionals suchen",
+  "search_open": "Suche öffnen",
+  "home_your_city": "Zurück nach {city}"
 }

@@ -5,6 +5,8 @@
  */
 import { z } from 'zod';
 import {
+  availabilityRank,
+  availableNow,
   ProfileListParamsSchema,
   ProfileSchema,
   type Profile,
@@ -42,6 +44,7 @@ function matchesQuery(p: Profile, q: string): boolean {
 export const profilesApi: ProfilesApi = {
   async list(params = {}) {
     const q = ProfileListParamsSchema.parse(params);
+    const now = new Date();
     const categoryServices = q.serviceCategory
       ? new Set<string>(SERVICES[q.serviceCategory])
       : null;
@@ -59,9 +62,14 @@ export const profilesApi: ProfilesApi = {
         (q.priceMin === undefined || p.priceFrom >= q.priceMin) &&
         (q.priceMax === undefined || p.priceFrom <= q.priceMax) &&
         (!q.onlineOnly || p.online) &&
+        (!q.availableNow || availableNow(p, now)) &&
         (!q.featuredOnly || p.featured) &&
         (!q.verifiedOnly || p.verified),
-    ).sort(SORTERS[q.sort]);
+    ).sort(
+      // Availability first (online → open-today → back-later), then the chosen
+      // sort — available professionals always lead the shelf (UX-PLAN 1.3).
+      (a, b) => availabilityRank(a, now) - availabilityRank(b, now) || SORTERS[q.sort]!(a, b),
+    );
 
     return { items: rows.slice(q.offset, q.offset + q.limit), total: rows.length };
   },
