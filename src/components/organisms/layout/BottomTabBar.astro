@@ -52,16 +52,17 @@ const tabs =
       : [search, favorites, account];
 ---
 
-<!-- iOS-native tab bar, GLUED to the screen edge: the background runs to
-     bottom:0 so viewport changes read as the page resizing. The bottom
-     padding is deliberately GENEROUS (min 3.25rem): Safari's collapsed
-     toolbar swallows first-taps in the bottom ~50px and gives no API around
-     it, so the icon row simply always sits above that zone — the padding
-     strip is just glass, and a tap there revealing the toolbar is what that
-     region does natively anyway. Standalone PWA hugs the home indicator. -->
+<!-- iOS-native tab bar, GLUED to the screen edge. The Safari gotcha: when
+     the toolbar collapses, WebKit REPAINTS fixed elements at the new spot but
+     HIT-TESTS them ~a toolbar-height lower (the notorious desync — no API,
+     years-old WebKit bug). Defense: the LINKS themselves own all the bottom
+     padding, so their tap boxes run from the icon row down to the screen
+     edge — a tap registered ~44px below where you aimed still lands inside
+     the same link. Bar stays compact when the toolbar is visible (env-based
+     padding, no constant floor needed anymore). -->
 <nav
   transition:persist="tabbar"
-  class="tab-dock tab-dock-pad fixed inset-x-0 bottom-0 z-40 select-none border-t md:hidden"
+  class="tab-dock fixed inset-x-0 bottom-0 z-40 select-none border-t md:hidden"
   aria-label={m.nav_search()}
 >
   <div class="relative mx-auto flex max-w-lg items-stretch px-2 pt-1.5">
@@ -78,7 +79,7 @@ const tabs =
           data-tab
           data-tab-exact={t.exact ? '' : undefined}
           class:list={[
-            'relative flex flex-1 flex-col items-center gap-0.5 rounded-full px-2 py-1.5 text-2xs font-medium transition-[color,transform] active:scale-[0.92]',
+            'tab-hit relative flex flex-1 flex-col items-center gap-0.5 px-2 pt-1.5 text-2xs font-medium transition-[color,transform] active:scale-[0.92]',
             t.active ? 'text-foreground' : 'text-muted-foreground',
           ]}
           aria-current={t.active ? 'page' : undefined}
@@ -127,10 +128,14 @@ const tabs =
       hl.style.opacity = '0';
       return;
     }
-    hl.style.left = `${(activeTab as HTMLElement).offsetLeft}px`;
-    hl.style.top = `${(activeTab as HTMLElement).offsetTop}px`;
-    hl.style.width = `${(activeTab as HTMLElement).offsetWidth}px`;
-    hl.style.height = `${(activeTab as HTMLElement).offsetHeight}px`;
+    const el = activeTab as HTMLElement;
+    // The link's tap box runs into the bottom padding (hit-test defense) —
+    // the visible highlight hugs just the icon+label block.
+    const pad = parseFloat(getComputedStyle(el).paddingBottom) || 0;
+    hl.style.left = `${el.offsetLeft}px`;
+    hl.style.top = `${el.offsetTop}px`;
+    hl.style.width = `${el.offsetWidth}px`;
+    hl.style.height = `${Math.max(0, el.offsetHeight - pad + 6)}px`;
     hl.style.opacity = '1';
   }
   syncTabs();
@@ -138,15 +143,11 @@ const tabs =
 </script>
 
 <style>
-  /* In-browser: enough constant padding to clear the toolbar-swallow zone in
-     BOTH toolbar states. Standalone PWA (no Safari chrome): normal hug. */
-  .tab-dock-pad {
-    padding-bottom: max(calc(var(--sab) + 0.75rem), 3.25rem);
-  }
-  @media (display-mode: standalone) {
-    .tab-dock-pad {
-      padding-bottom: max(var(--sab), 0.5rem);
-    }
+  /* The LINK carries the bottom padding (see the hit-test note above): its
+     tap box reaches the screen edge. Toolbar visible → sab 0 → compact bar;
+     toolbar hidden → sab ~34px → icons ride up clear of the reveal zone. */
+  .tab-hit {
+    padding-bottom: calc(var(--sab) + 0.625rem);
   }
 
   /* Liquid glass: heavy blur + saturation boost over a translucent canvas —
