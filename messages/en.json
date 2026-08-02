@@ -427,5 +427,17 @@
   "filter_show_more": "Show more",
   "filter_show_less": "Show less",
   "filter_availability": "Availability",
-  "region_language": "Language"
+  "region_language": "Language",
+  "nav_support": "Support",
+  "support_heading": "We're actually here",
+  "support_sub": "Real humans, fast answers — for professionals and clients alike. No ticket maze, no bots.",
+  "support_reach": "Reach us directly",
+  "support_hours_note": "We usually reply within minutes during these hours.",
+  "support_topics_title": "What we help with",
+  "support_topic_1": "Verification & profile review",
+  "support_topic_2": "Your ad, photos & visibility",
+  "support_topic_3": "Account & login trouble",
+  "support_topic_4": "Safety, privacy & discretion",
+  "support_topic_5": "Reporting a profile or a problem",
+  "support_note": "We are an advertising platform — appointments are made directly with advertisers. For everything about the platform itself, talk to us."
 }

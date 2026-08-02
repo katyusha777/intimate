@@ -25,10 +25,11 @@ const tab = (href: string, label: string, icon: string, exact = false, sheet = f
 });
 
 /* Role tab matrix (MESSAGING.md §10). The bar only swaps at login/logout, never
-   mid-browse, so nobody sees it transform.
-   - Professional: Dashboard · Messages · Contacts · Account (My profile → account hub)
+   mid-browse, so nobody sees it transform. Max 4 tabs (MOBILE.md §2).
+   - Professional: Messages · Contacts · Support · Account (Dashboard folded
+     into Account — they were the same destination; verify dot rides Account)
    - Client (logged in): Search · Favorites · Messages · Account
-   - Visitor: Search · Favorites · Account (favorites work logged out) */
+   - Visitor: Search · Favorites · Support · Account */
 const search = tab('/search/', m.nav_search(), '<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>');
 const favorites = tab('/favorites/', m.nav_favorites(), '<path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7Z"/>', false, true);
 const account = tab('/account/', m.nav_account(), '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/>');
@@ -37,37 +38,28 @@ const messages = {
   dot: unread > 0,
 };
 const contacts = tab('/contacts/', m.contacts_title(), '<circle cx="9" cy="8" r="3.2"/><path d="M3.5 20c0-3.3 2.5-5.4 5.5-5.4s5.5 2.1 5.5 5.4"/><path d="M16 5.2a3 3 0 0 1 0 5.6"/><path d="M18.5 20c0-2.6-1-4.4-2.6-5.2"/>', false, true);
+/* Lifebuoy — support is one tap away for everyone with a free slot. */
+const support = tab('/support/', m.nav_support(), '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="m5.6 5.6 3.5 3.5m5.8 0 3.5-3.5M5.6 18.4l3.5-3.5m5.8 0 3.5 3.5"/>', false, true);
 
 const tabs =
   session?.role === 'advertiser'
-    ? [
-        {
-          ...tab('/account/', m.nav_dashboard(), '<path d="M4 13a8 8 0 1 1 16 0"/><path d="M12 13l4-4"/><path d="M2 17h20"/>', true),
-          dot: !idVerified,
-        },
-        messages,
-        contacts,
-        account,
-      ]
+    ? [messages, contacts, support, { ...account, dot: !idVerified }]
     : session
       ? [search, favorites, messages, account]
-      : [search, favorites, account];
+      : [search, favorites, support, account];
 ---
 
-<!-- iOS-native tab bar, GLUED to the screen edge. The Safari gotcha: when
-     the toolbar collapses, WebKit REPAINTS fixed elements at the new spot but
-     HIT-TESTS them ~a toolbar-height lower (the notorious desync — no API,
-     years-old WebKit bug). Defense: the LINKS themselves own all the bottom
-     padding, so their tap boxes run from the icon row down to the screen
-     edge — a tap registered ~44px below where you aimed still lands inside
-     the same link. Bar stays compact when the toolbar is visible (env-based
-     padding, no constant floor needed anymore). -->
+<!-- Floating liquid-glass pill dock — compact, so it never blankets the
+     content edge-to-edge. Safari defenses stay: the MEASURED
+     toolbar-collapsed class (script) lifts it above the collapsed pill's tap
+     zone, and touchend navigation rescues any tap Safari's click-eating band
+     still swallows. -->
 <nav
   transition:persist="tabbar"
-  class="tab-dock fixed inset-x-0 bottom-0 z-40 select-none border-t md:hidden"
+  class="tab-pos pointer-events-none fixed inset-x-0 z-40 flex select-none justify-center md:hidden"
   aria-label={m.nav_search()}
 >
-  <div class="relative mx-auto flex max-w-lg items-stretch px-2 pt-1.5">
+  <div class="tab-dock pointer-events-auto relative flex items-center gap-1 rounded-full p-1.5">
     <!-- The glass highlight SLIDES between tabs (left/width animate) instead
          of each tab painting its own static pill. -->
     <span
@@ -83,12 +75,12 @@ const tabs =
           data-page-sheet={t.sheet ? '' : undefined}
           aria-label={t.label}
           class:list={[
-            'tab-hit relative flex flex-1 flex-col items-center px-2 pt-2 transition-[color,transform] active:scale-[0.92]',
+            'relative grid size-11 flex-none place-items-center rounded-full transition-[color,transform] active:scale-[0.92]',
             t.active ? 'text-foreground' : 'text-muted-foreground',
           ]}
           aria-current={t.active ? 'page' : undefined}
         >
-          {t.dot && <span class="absolute right-1/2 top-1 size-1.5 -mr-4 rounded-full bg-brand" />}
+          {t.dot && <span class="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-brand" />}
           <!-- Icons only — the label lives in aria-label (a11y). -->
           <svg
             class="size-6"
@@ -133,13 +125,10 @@ const tabs =
       return;
     }
     const el = activeTab as HTMLElement;
-    // The link's tap box runs into the bottom padding (hit-test defense) —
-    // the visible highlight hugs just the icon+label block.
-    const pad = parseFloat(getComputedStyle(el).paddingBottom) || 0;
     hl.style.left = `${el.offsetLeft}px`;
     hl.style.top = `${el.offsetTop}px`;
     hl.style.width = `${el.offsetWidth}px`;
-    hl.style.height = `${Math.max(0, el.offsetHeight - pad + 6)}px`;
+    hl.style.height = `${el.offsetHeight}px`;
     hl.style.opacity = '1';
   }
   syncTabs();
@@ -158,7 +147,7 @@ const tabs =
   //    expands its toolbar.
   if (!(window as any).__tabbarSafari) {
     (window as any).__tabbarSafari = true;
-    const bar = () => document.querySelector<HTMLElement>('nav.tab-dock');
+    const bar = () => document.querySelector<HTMLElement>('nav.tab-pos');
 
     let minH = Infinity;
     const measure = () => {
@@ -202,25 +191,34 @@ const tabs =
 </script>
 
 <style>
-  /* The LINK carries the bottom padding: its tap box reaches the screen edge.
-     Compact while Safari's toolbar is visible; when the MEASURED collapsed
-     state kicks in (script above), the icons lift far above the pill's tap
-     region. Standalone PWA never gets the class → always compact. */
-  .tab-hit {
-    padding-bottom: calc(var(--sab) + 0.625rem);
-    transition: padding-bottom 0.25s ease;
+  /* Position: near the edge while Safari's toolbar is visible; the MEASURED
+     collapsed state (script) lifts the pill above the collapsed toolbar's
+     tap zone. Standalone PWA just hugs the home indicator. */
+  .tab-pos {
+    bottom: calc(var(--sab) + 0.875rem);
+    transition: bottom 0.25s ease;
   }
-  nav.toolbar-collapsed .tab-hit {
-    padding-bottom: calc(var(--sab) + 3.75rem);
+  .tab-pos.toolbar-collapsed {
+    bottom: calc(var(--sab) + 3.25rem);
+  }
+  @media (display-mode: standalone) {
+    .tab-pos,
+    .tab-pos.toolbar-collapsed {
+      bottom: calc(var(--sab) + 0.875rem);
+    }
   }
 
-  /* Liquid glass: heavy blur + saturation boost over a translucent canvas —
-     the content scrolls visibly underneath, like the native iOS tab bar. */
+  /* Liquid glass pill: heavy blur + saturation boost, translucent canvas, a
+     specular top edge and a soft drop — reads as a floating lens. */
   .tab-dock {
-    background: color-mix(in oklch, var(--background) 72%, transparent);
+    background: color-mix(in oklch, var(--background) 42%, transparent);
     -webkit-backdrop-filter: blur(22px) saturate(1.7);
     backdrop-filter: blur(22px) saturate(1.7);
-    border-color: color-mix(in oklch, var(--foreground) 12%, transparent);
+    border: 1px solid color-mix(in oklch, var(--foreground) 12%, transparent);
+    box-shadow:
+      inset 0 1px 0 0 color-mix(in oklch, white 30%, transparent),
+      inset 0 -1px 0 0 rgb(0 0 0 / 0.06),
+      0 10px 30px rgb(0 0 0 / 0.28);
   }
   @media (prefers-reduced-transparency: reduce) {
     .tab-dock {

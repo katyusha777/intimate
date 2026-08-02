@@ -427,5 +427,17 @@
   "filter_show_more": "Mehr anzeigen",
   "filter_show_less": "Weniger anzeigen",
   "filter_availability": "Verfügbarkeit",
-  "region_language": "Sprache"
+  "region_language": "Sprache",
+  "nav_support": "Support",
+  "support_heading": "Wir sind wirklich da",
+  "support_sub": "Echte Menschen, schnelle Antworten — für Professionals und Kunden. Kein Ticket-Labyrinth, keine Bots.",
+  "support_reach": "Erreiche uns direkt",
+  "support_hours_note": "In diesen Zeiten antworten wir meist innerhalb von Minuten.",
+  "support_topics_title": "Wobei wir helfen",
+  "support_topic_1": "Verifizierung & Profilprüfung",
+  "support_topic_2": "Deine Anzeige, Fotos & Sichtbarkeit",
+  "support_topic_3": "Konto- & Login-Probleme",
+  "support_topic_4": "Sicherheit, Privatsphäre & Diskretion",
+  "support_topic_5": "Ein Profil oder Problem melden",
+  "support_note": "Wir sind eine Werbeplattform — Termine machst du direkt mit den Inserenten. Für alles rund um die Plattform selbst: sprich mit uns."
 }

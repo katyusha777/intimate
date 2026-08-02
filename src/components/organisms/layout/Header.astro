@@ -2,7 +2,9 @@
 import * as m from '@/paraglide/messages';
 import type { Session } from '@/app/models/session';
 import Button from '@/components/atoms/Button.astro';
+import Icon from '@/components/atoms/Icon.astro';
 import Combobox from '@/components/molecules/Combobox.astro';
+import { SUPPORT_CONTACT } from '@/lib/contact';
 import RegionSheet from '@/components/molecules/RegionSheet.astro';
 import UserMenu from '@/components/molecules/UserMenu.astro';
 import { getLocale } from '@/paraglide/runtime';
@@ -93,21 +95,43 @@ const genderTabs = (Object.keys(GENDER_FILTERS) as GenderFilter[]).map((g) => ({
 
     <!-- Text menu sits BESIDE the logo — the right edge belongs to controls. -->
     <nav class="ml-4 hidden flex-none items-center gap-5 text-sm font-semibold md:flex">
-      <!-- START ADVERTISING lives in the menu + footer (UX-PLAN 1.1), never
-           above the fold as an account wall. -->
-      <a href={localizePath("/account/")} class="transition-colors hover:text-brand">
-        {m.cta_start_advertising()}
-      </a>
+      <!-- START ADVERTISING: recruitment for visitors only — logged-in users
+           already have an account (UX-PLAN 1.1). -->
+      {
+        !session && (
+          <a href={localizePath("/account/")} class="transition-colors hover:text-brand">
+            {m.cta_start_advertising()}
+          </a>
+        )
+      }
       <a href={localizePath("/blog/")} class="transition-colors hover:text-brand">
         {m.section_articles()}
       </a>
-      <a href={localizePath("/contact/")} class="transition-colors hover:text-brand">
-        {m.nav_contact()}
+      <a href={localizePath("/support/")} class="transition-colors hover:text-brand">
+        {m.nav_support()}
       </a>
     </nav>
 
-    <!-- Desktop right: bare EN ▾ (mobile has it on the left). -->
-    <div class="ml-auto hidden flex-none items-center md:flex">
+    <!-- Desktop right: support channels (config: lib/contact) + bare EN ▾. -->
+    <div class="ml-auto hidden flex-none items-center gap-4 md:flex">
+      <a
+        href={SUPPORT_CONTACT.whatsapp.href}
+        target="_blank"
+        rel="noopener"
+        class="flex items-center gap-2 text-sm font-semibold text-foreground/80 transition-colors hover:text-foreground"
+      >
+        <Icon name="whatsapp" family="brands" class="text-lg text-online" />
+        <span class="font-condensed tracking-wide">{SUPPORT_CONTACT.whatsapp.display}</span>
+      </a>
+      <a
+        href={SUPPORT_CONTACT.telegram.href}
+        target="_blank"
+        rel="noopener"
+        aria-label="Telegram"
+        class="text-foreground/80 transition-colors hover:text-foreground"
+      >
+        <Icon name="telegram" family="brands" class="text-lg" />
+      </a>
       <Combobox
         variant="bare"
         options={LANGUAGES}
