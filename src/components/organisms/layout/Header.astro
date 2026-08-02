@@ -71,6 +71,7 @@ const genderTabs = (Object.keys(GENDER_FILTERS) as GenderFilter[]).map((g) => ({
         target="[data-city-nav]"
         navBase={localizePath('/')}
         cookie="city"
+        align="left"
       />
       <Combobox
         variant="bare"
@@ -80,6 +81,7 @@ const genderTabs = (Object.keys(GENDER_FILTERS) as GenderFilter[]).map((g) => ({
         triggerLabel={locale.toUpperCase()}
         target="[data-none]"
         lang
+        align="left"
       />
     </div>
 

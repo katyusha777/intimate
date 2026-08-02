@@ -27,12 +27,13 @@ const href = localizePath(`/profile/${p.slug}/`);
 
 /* Misprint "randomness": each card's ink slab gets its own position, tilt and
  * cut — deterministic from the profile id, so it's stable across renders. */
+/* Very subtle: a whisper of tilt and a few-px cut — hand-placed, not askew. */
 const SLABS = [
-  { pos: 'left-1 right-2 bottom-1', rot: -1.1, clip: 'polygon(0 10px, 100% 0, 100% calc(100% - 6px), 0 100%)' },
-  { pos: 'left-2 right-1 bottom-2', rot: 0.9, clip: 'polygon(0 0, 100% 8px, 100% 100%, 0 calc(100% - 8px))' },
-  { pos: 'left-1 right-1 bottom-1.5', rot: -0.5, clip: 'polygon(0 6px, 100% 0, 100% calc(100% - 10px), 0 100%)' },
-  { pos: 'left-2.5 right-1 bottom-1', rot: 1.2, clip: 'polygon(0 0, 100% 10px, 100% calc(100% - 4px), 0 100%)' },
-  { pos: 'left-1 right-2.5 bottom-2.5', rot: -0.8, clip: 'polygon(0 8px, 100% 0, 100% 100%, 0 calc(100% - 10px))' },
+  { pos: 'left-1 right-2 bottom-1', rot: -0.4, clip: 'polygon(0 4px, 100% 0, 100% calc(100% - 3px), 0 100%)' },
+  { pos: 'left-2 right-1 bottom-2', rot: 0.3, clip: 'polygon(0 0, 100% 3px, 100% 100%, 0 calc(100% - 3px))' },
+  { pos: 'left-1 right-1 bottom-1.5', rot: -0.2, clip: 'polygon(0 3px, 100% 0, 100% calc(100% - 4px), 0 100%)' },
+  { pos: 'left-2.5 right-1 bottom-1', rot: 0.45, clip: 'polygon(0 0, 100% 4px, 100% calc(100% - 2px), 0 100%)' },
+  { pos: 'left-1 right-2.5 bottom-2.5', rot: -0.3, clip: 'polygon(0 3px, 100% 0, 100% 100%, 0 calc(100% - 4px))' },
 ];
 const hash = [...p.id].reduce((s, c) => s + c.charCodeAt(0), 0);
 const slab = SLABS[hash % SLABS.length]!;

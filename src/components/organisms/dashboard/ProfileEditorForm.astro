@@ -105,20 +105,22 @@ const selPayments = setOf(p.paymentMethods ?? []);
   <div class="space-y-2">
     <h3 class={heading}>{m.editor_rates()}</h3>
     <p class="text-xs text-muted-foreground">{m.editor_rates_hint()}</p>
+    <!-- One shared grid for header + every row — never wraps, always aligned,
+         fits a 390px screen (flexible duration column + two 5rem price cells). -->
     <div data-rates>
-      <div class="flex items-center gap-3 border-b border-border pb-1.5 text-2xs uppercase tracking-wide text-muted-foreground">
-        <span class="w-40 flex-none">{m.editor_rates_duration()}</span>
-        <span class="w-24 text-right">{m.rates_incall()}</span>
-        <span class="w-24 text-right">{m.rates_outcall()}</span>
+      <div class="grid grid-cols-[1fr_5rem_5rem] items-center gap-2 border-b border-border pb-1.5 text-2xs uppercase tracking-wide text-muted-foreground">
+        <span>{m.editor_rates_duration()}</span>
+        <span class="text-right">{m.rates_incall()}</span>
+        <span class="text-right">{m.rates_outcall()}</span>
       </div>
       {
         RATE_DURATIONS.map((dur) => {
           const r = rateByDuration.get(dur);
           return (
-            <label class="flex flex-wrap items-center gap-3 border-b border-border py-2" data-rate-row data-duration={dur}>
-              <span class="flex w-40 flex-none cursor-pointer items-center gap-2.5 text-sm">
+            <label class="grid grid-cols-[1fr_5rem_5rem] items-center gap-2 border-b border-border py-2" data-rate-row data-duration={dur}>
+              <span class="flex min-w-0 cursor-pointer items-center gap-2.5 text-sm">
                 <input type="checkbox" class="cbx-box" data-rate-on checked={r !== undefined} />
-                {rateDurationLabel(dur)}
+                <span class="truncate">{rateDurationLabel(dur)}</span>
               </span>
               <input
                 type="number"
@@ -128,7 +130,7 @@ const selPayments = setOf(p.paymentMethods ?? []);
                 placeholder="€"
                 data-rate-incall
                 value={r?.incall ?? ''}
-                class="w-24 border border-foreground/20 bg-transparent px-2 py-1 text-right text-sm outline-none transition-colors focus:border-foreground"
+                class="w-full border border-foreground/20 bg-transparent px-2 py-1 text-right text-sm outline-none transition-colors focus:border-foreground"
               />
               <input
                 type="number"
@@ -138,7 +140,7 @@ const selPayments = setOf(p.paymentMethods ?? []);
                 placeholder="€"
                 data-rate-outcall
                 value={r?.outcall ?? ''}
-                class="w-24 border border-foreground/20 bg-transparent px-2 py-1 text-right text-sm outline-none transition-colors focus:border-foreground"
+                class="w-full border border-foreground/20 bg-transparent px-2 py-1 text-right text-sm outline-none transition-colors focus:border-foreground"
               />
             </label>
           );
@@ -156,23 +158,43 @@ const selPayments = setOf(p.paymentMethods ?? []);
     </div>
   </div>
 
-  <!-- Good-to-know (UX-PLAN 2.5): taxonomy-keyed facts filled once. -->
+  <!-- Good-to-know (UX-PLAN 2.5): taxonomy-keyed facts filled once. Every
+       checkbox group is an aligned 2-column grid; languages show the top 6
+       with the long tail behind a native Show-more. -->
   <div class="space-y-4">
     <h3 class={heading}>{m.gtk_title()}</h3>
     <div class="space-y-1.5">
       <span class="eyebrow text-2xs text-muted-foreground">{m.gtk_languages()}</span>
-      <div class="flex flex-wrap gap-x-5 gap-y-2">
-        {LANGUAGES.map((l) => (
+      <div class="grid grid-cols-2 gap-x-4 gap-y-2">
+        {LANGUAGES.slice(0, 6).map((l) => (
           <label class={row}>
             <input type="checkbox" name="languages" value={l} checked={selLanguages.has(l)} class="cbx-box" />
             {languageLabel(l)}
           </label>
         ))}
       </div>
+      <details
+        class="group/langs"
+        open={LANGUAGES.slice(6).some((l) => selLanguages.has(l)) || undefined}
+      >
+        <summary class="flex cursor-pointer list-none items-center gap-1.5 py-1 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground [&::-webkit-details-marker]:hidden">
+          <span class="group-open/langs:hidden">{m.filter_show_more()}</span>
+          <span class="hidden group-open/langs:inline">{m.filter_show_less()}</span>
+          <Icon name="chevron-down" class="text-xs transition-transform group-open/langs:rotate-180" />
+        </summary>
+        <div class="grid grid-cols-2 gap-x-4 gap-y-2 pt-1.5">
+          {LANGUAGES.slice(6).map((l) => (
+            <label class={row}>
+              <input type="checkbox" name="languages" value={l} checked={selLanguages.has(l)} class="cbx-box" />
+              {languageLabel(l)}
+            </label>
+          ))}
+        </div>
+      </details>
     </div>
     <div class="space-y-1.5">
       <span class="eyebrow text-2xs text-muted-foreground">{m.gtk_place()}</span>
-      <div class="flex flex-wrap gap-x-5 gap-y-2">
+      <div class="grid grid-cols-2 gap-x-4 gap-y-2">
         {INCALL_LOCATIONS.map((l) => (
           <label class={row}>
             <input type="checkbox" name="incallLocations" value={l} checked={selIncall.has(l)} class="cbx-box" />
@@ -183,7 +205,7 @@ const selPayments = setOf(p.paymentMethods ?? []);
     </div>
     <div class="space-y-1.5">
       <span class="eyebrow text-2xs text-muted-foreground">{m.editor_amenities()}</span>
-      <div class="flex flex-wrap gap-x-5 gap-y-2">
+      <div class="grid grid-cols-2 gap-x-4 gap-y-2">
         {AMENITIES.map((a) => (
           <label class={row}>
             <input type="checkbox" name="amenities" value={a} checked={selAmenities.has(a)} class="cbx-box" />
@@ -194,7 +216,7 @@ const selPayments = setOf(p.paymentMethods ?? []);
     </div>
     <div class="space-y-1.5">
       <span class="eyebrow text-2xs text-muted-foreground">{m.gtk_payment()}</span>
-      <div class="flex flex-wrap gap-x-5 gap-y-2">
+      <div class="grid grid-cols-2 gap-x-4 gap-y-2">
         {PAYMENT_METHODS.map((pm) => (
           <label class={row}>
             <input type="checkbox" name="paymentMethods" value={pm} checked={selPayments.has(pm)} class="cbx-box" />
@@ -212,21 +234,23 @@ const selPayments = setOf(p.paymentMethods ?? []);
         DAYS.map((day) => {
           const h = p.openingHours?.[day] ?? { closed: false, allDay: false, from: '10:00', to: '22:00' };
           return (
-            <div
-              class="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border py-2.5"
-              data-hours-row
-              data-day={day}
-            >
-              <span class="w-24 flex-none text-sm font-medium">{dayLabel(day)}</span>
-              <label class="flex cursor-pointer select-none items-center gap-2 text-sm">
-                <input type="checkbox" checked={h.closed} class="cbx-box" data-hours-closed />
-                {m.hours_closed()}
-              </label>
-              <label class="flex cursor-pointer select-none items-center gap-2 text-sm" data-hours-openonly>
-                <input type="checkbox" checked={h.allDay} class="cbx-box" data-hours-allday />
-                {m.hours_allday()}
-              </label>
-              <div class="flex items-center gap-2" data-hours-times>
+            <div class="border-b border-border py-2.5" data-hours-row data-day={day}>
+              <!-- Line 1: day left, the two toggles right-aligned — every row's
+                   checkboxes line up. Line 2: the time range (when applicable). -->
+              <div class="flex items-center justify-between gap-3">
+                <span class="text-sm font-medium">{dayLabel(day)}</span>
+                <div class="flex flex-none items-center gap-4">
+                  <label class="flex cursor-pointer select-none items-center gap-2 text-sm">
+                    <input type="checkbox" checked={h.closed} class="cbx-box" data-hours-closed />
+                    {m.hours_closed()}
+                  </label>
+                  <label class="flex cursor-pointer select-none items-center gap-2 text-sm" data-hours-openonly>
+                    <input type="checkbox" checked={h.allDay} class="cbx-box" data-hours-allday />
+                    {m.hours_allday()}
+                  </label>
+                </div>
+              </div>
+              <div class="mt-2 flex items-center gap-2" data-hours-times>
                 <input
                   type="time"
                   data-hours-from

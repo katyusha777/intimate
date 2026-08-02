@@ -221,7 +221,7 @@
      a smaller box, so the frame thickness varies like a hand-cut sticker.
      Auth/search surfaces only; workaday filters use the plain Input atom. */
   .slab-field {
-    --slab-clip: polygon(0.7% 9%, 100% 0, 99.3% 91%, 0 100%);
+    --slab-clip: polygon(0.4% 5%, 100% 0, 99.6% 95%, 0 100%);
     clip-path: var(--slab-clip);
     background: var(--foreground);
     padding: 4px;
@@ -229,7 +229,7 @@
   }
   .slab-field__face {
     /* deliberately mismatched cut → frame thickness varies like a hand-cut sticker */
-    clip-path: polygon(1% 4%, 99.9% 0, 99% 96%, 0.1% 100%);
+    clip-path: polygon(0.6% 2.5%, 99.9% 0, 99.4% 97.5%, 0.1% 100%);
     background: var(--background);
   }
   /* Focus = the anaglyph split, like the Button (drop-shadow follows the clip). */
