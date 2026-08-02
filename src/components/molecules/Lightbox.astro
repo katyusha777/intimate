@@ -1,7 +1,10 @@
 ---
 /**
  * Fullscreen image lightbox (native <dialog>, top-layer so it stacks over the
- * profile sheet). Swipe between photos, tap to dismiss, counter, close button.
+ * profile sheet). Swipe between photos, counter, thumbnail rail, close via the
+ * X or Esc — a tap on the photo does nothing (tap-to-dismiss closed the dialog
+ * on pointerup, and the follow-up click retargeted to the hero underneath and
+ * reopened it half-faded).
  * Opened by delegation: any [data-lightbox] trigger inside a
  * [data-lightbox-group] opens the group's [data-lightbox-photos] images at the
  * trigger's data-lightbox-index. Reads live <img> src so safe-mode is honored.
@@ -43,12 +46,18 @@ const { id = 'lightbox' } = Astro.props;
     >
     </div>
     <!-- Thumbnail rail: tap a thumb to jump; the active one is ringed. Hidden
-         when there's only one photo (nothing to navigate). -->
+         when there's only one photo (nothing to navigate). Centered when it
+         fits (w-fit + mx-auto), scrolls when it doesn't; a bottom scrim seats
+         it instead of letting thumbs float loose over the photo. -->
     <div
-      data-lightbox-thumbs
-      class="pointer-events-auto absolute inset-x-0 bottom-0 z-10 flex gap-2 overflow-x-auto px-4 pt-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-      style="padding-bottom: calc(0.75rem + env(safe-area-inset-bottom))"
+      class="pointer-events-none absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/80 to-transparent pt-8"
+      style="padding-bottom: env(safe-area-inset-bottom)"
     >
+      <div
+        data-lightbox-thumbs
+        class="pointer-events-auto mx-auto flex w-fit max-w-full gap-2 overflow-x-auto px-4 pb-3 pt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
+      </div>
     </div>
   </div>
 </dialog>
@@ -90,6 +99,7 @@ const { id = 'lightbox' } = Astro.props;
         const on = k === i;
         (btns[k] as HTMLElement).classList.toggle('opacity-100', on);
         (btns[k] as HTMLElement).classList.toggle('ring-2', on);
+        (btns[k] as HTMLElement).classList.toggle('ring-white', on);
         (btns[k] as HTMLElement).classList.toggle('opacity-45', !on);
       }
       // Keep the active thumbnail visible in the rail.
@@ -123,7 +133,7 @@ const { id = 'lightbox' } = Astro.props;
           t.type = 'button';
           t.setAttribute('aria-label', `${i + 1} / ${photos.length}`);
           t.className =
-            'h-14 w-11 flex-none cursor-pointer overflow-hidden rounded-md opacity-45 ring-white ring-inset transition-opacity';
+            'h-14 w-11 flex-none cursor-pointer overflow-hidden rounded-md opacity-45 ring-1 ring-white/30 transition-opacity';
           const img = document.createElement('img');
           img.src = p.src;
           img.alt = '';
@@ -151,22 +161,6 @@ const { id = 'lightbox' } = Astro.props;
     };
     dialog.addEventListener('close', () => dialog.removeAttribute('data-open'));
     dialog.querySelector('[data-lightbox-close]')!.addEventListener('click', close);
-
-    // Tap (not swipe) on a photo dismisses — the expected viewer gesture.
-    let sx = 0;
-    let sy = 0;
-    let moved = false;
-    track.addEventListener('pointerdown', (e) => {
-      sx = e.clientX;
-      sy = e.clientY;
-      moved = false;
-    });
-    track.addEventListener('pointermove', (e) => {
-      if (Math.abs(e.clientX - sx) > 10 || Math.abs(e.clientY - sy) > 10) moved = true;
-    });
-    track.addEventListener('pointerup', () => {
-      if (!moved) close();
-    });
 
     // Delegated openers (work on the full page AND inside the profile sheet).
     document.addEventListener('click', (e) => {

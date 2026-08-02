@@ -44,8 +44,8 @@ push(m.gtk_deposit(), p.depositPolicy);
     <dl class:list={['grid grid-cols-1 gap-x-8 sm:grid-cols-2', className]}>
       {rows.map((r) => (
         <div class="flex items-baseline justify-between gap-4 border-b border-border py-2.5 text-sm">
-          <dt class="eyebrow text-2xs text-muted-foreground">{r.label}</dt>
-          <dd class="text-right font-medium">{r.value}</dd>
+          <dt class="eyebrow flex-none text-2xs text-muted-foreground">{r.label}</dt>
+          <dd class="min-w-0 break-words text-right font-medium">{r.value}</dd>
         </div>
       ))}
     </dl>

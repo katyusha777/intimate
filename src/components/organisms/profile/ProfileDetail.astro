@@ -112,23 +112,23 @@ function hoursLabel(h: (typeof hours)[keyof typeof hours]): string {
 
         <section>
           <h2 class="display text-2xl md:text-3xl">{m.filter_services()}</h2>
-          <!-- label left, clean white chips right — plain, legible, no slab
-               (Task 4): white fill, dark text, subtle border, normal radius. -->
-          <div class="mt-4 space-y-3">
+          <!-- One shared grid: every category label sits in the same fixed
+               column, every chip row starts at the same x — nothing ragged. -->
+          <div class="mt-4 grid grid-cols-[7rem_1fr] items-baseline gap-x-4 gap-y-3">
             {
               serviceGroups.map((g) => (
-                <div class="flex gap-4">
-                  <h3 class="w-28 flex-none pt-1.5 font-condensed text-sm font-bold uppercase tracking-wide text-muted-foreground">
+                <>
+                  <h3 class="font-condensed text-sm font-bold uppercase tracking-wide text-muted-foreground">
                     {serviceCategoryLabel(g.cat)}
                   </h3>
-                  <div class="flex flex-wrap items-start gap-1.5">
+                  <div class="flex min-w-0 flex-wrap items-start gap-1.5">
                     {g.items.map((s) => (
                       <span class="rounded border border-border bg-white px-3 py-1 text-xs font-medium text-neutral-900">
                         {serviceLabel(s)}
                       </span>
                     ))}
                   </div>
-                </div>
+                </>
               ))
             }
           </div>
