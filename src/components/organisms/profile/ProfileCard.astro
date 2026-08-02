@@ -35,7 +35,11 @@ const SLABS = [
   { pos: 'left-2.5 right-1 bottom-1', rot: 1.2, clip: 'polygon(0 0, 100% 10px, 100% calc(100% - 4px), 0 100%)' },
   { pos: 'left-1 right-2.5 bottom-2.5', rot: -0.8, clip: 'polygon(0 8px, 100% 0, 100% 100%, 0 calc(100% - 10px))' },
 ];
-const slab = SLABS[[...p.id].reduce((s, c) => s + c.charCodeAt(0), 0) % SLABS.length]!;
+const hash = [...p.id].reduce((s, c) => s + c.charCodeAt(0), 0);
+const slab = SLABS[hash % SLABS.length]!;
+/* Heart + carousel arrows get their own per-card cut/tilt (offset hashes so
+ * heart, slab and arrows never move in lockstep). */
+const heartCut = `cut-${(hash + 1) % 4}`;
 ---
 
 {
@@ -53,7 +57,7 @@ const slab = SLABS[[...p.id].reduce((s, c) => s + c.charCodeAt(0), 0) % SLABS.le
         data-fav-toggle
         data-fav-slug={p.slug}
         aria-label={m.nav_favorites()}
-        class="card-heart absolute right-2 top-2 z-10 grid size-9 cursor-pointer place-items-center bg-neutral-950 text-white transition-transform active:scale-90"
+        class:list={[heartCut, 'absolute right-2 top-2 z-10 grid size-9 cursor-pointer place-items-center bg-neutral-950 text-white transition-transform active:scale-90']}
       >
         <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7Z" /></svg>
       </button>

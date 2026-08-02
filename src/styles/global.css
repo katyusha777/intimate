@@ -322,11 +322,25 @@
   .card-heart {
     clip-path: polygon(0 3px, 100% 0, 100% calc(100% - 3px), 0 100%);
   }
-  .pc-btn--l {
-    clip-path: polygon(0 3px, 100% 0, 100% 100%, 0 calc(100% - 3px));
+  /* Per-card "hand-cut" variants for the small ink squares (card heart,
+     carousel arrows) — same shear family as the info slab, four cuts + tilts
+     picked per profile id so a grid never repeats. `rotate` (not transform)
+     so active:scale keeps composing. */
+  .cut-0 {
+    clip-path: polygon(0 3px, 100% 0, 100% calc(100% - 3px), 0 100%);
+    rotate: -2deg;
   }
-  .pc-btn--r {
-    clip-path: polygon(0 0, 100% 3px, 100% calc(100% - 3px), 0 100%);
+  .cut-1 {
+    clip-path: polygon(0 0, 100% 3px, 100% 100%, 0 calc(100% - 3px));
+    rotate: 1.5deg;
+  }
+  .cut-2 {
+    clip-path: polygon(3px 0, 100% 2px, calc(100% - 2px) 100%, 0 calc(100% - 4px));
+    rotate: -1deg;
+  }
+  .cut-3 {
+    clip-path: polygon(0 4px, calc(100% - 2px) 0, 100% calc(100% - 2px), 2px 100%);
+    rotate: 2.5deg;
   }
   .facts-slab {
     clip-path: polygon(0 10px, 100% 0, 100% calc(100% - 6px), 0 100%);

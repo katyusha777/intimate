@@ -112,26 +112,22 @@ function hoursLabel(h: (typeof hours)[keyof typeof hours]): string {
 
         <section>
           <h2 class="display text-2xl md:text-3xl">{m.filter_services()}</h2>
-          <!-- One shared grid: every category label sits in the same fixed
-               column, every chip row starts at the same x — nothing ragged. -->
-          <div class="mt-4 grid grid-cols-[7rem_1fr] items-baseline gap-x-4 gap-y-3">
+          <!-- Quiet rows, exactly like GOOD TO KNOW below — the white chips
+               read as buttons and shouted over the page. -->
+          <dl class="mt-4 max-w-2xl">
             {
               serviceGroups.map((g) => (
-                <>
-                  <h3 class="font-condensed text-sm font-bold uppercase tracking-wide text-muted-foreground">
+                <div class="flex items-baseline justify-between gap-4 border-b border-border py-2.5 text-sm">
+                  <dt class="eyebrow flex-none text-2xs text-muted-foreground">
                     {serviceCategoryLabel(g.cat)}
-                  </h3>
-                  <div class="flex min-w-0 flex-wrap items-start gap-1.5">
-                    {g.items.map((s) => (
-                      <span class="rounded border border-border bg-white px-3 py-1 text-xs font-medium text-neutral-900">
-                        {serviceLabel(s)}
-                      </span>
-                    ))}
-                  </div>
-                </>
+                  </dt>
+                  <dd class="min-w-0 break-words text-right font-medium">
+                    {g.items.map(serviceLabel).join(', ')}
+                  </dd>
+                </div>
               ))
             }
-          </div>
+          </dl>
         </section>
 
         <!-- Good-to-know rows (2.5): structured facts after SERVICES. -->

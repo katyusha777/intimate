@@ -4,7 +4,6 @@ import type { Session } from '@/app/models/session';
 import Button from '@/components/atoms/Button.astro';
 import Combobox from '@/components/molecules/Combobox.astro';
 import UserMenu from '@/components/molecules/UserMenu.astro';
-import ThemeToggle from '@/components/molecules/ThemeToggle.astro';
 import { getLocale } from '@/paraglide/runtime';
 import { listingCategoryLabel } from '@/lib/labels';
 import { localizePath } from '@/lib/i18n';
@@ -79,23 +78,9 @@ const genderTabs = (Object.keys(GENDER_FILTERS) as GenderFilter[]).map((g) => ({
       </a>
     </nav>
 
-    <!-- Mobile search icon: on listing pages it opens the filter sheet
-         (data-sheet-open, dialog present); anywhere else the href wins and it
-         lands on the search listing (ActionSheet delegation lets the click
-         through when the dialog is absent). -->
-    <a
-      href={searchPath}
-      data-sheet-open="filters-sheet"
-      aria-label={m.nav_search()}
-      class="ml-auto grid size-10 flex-none cursor-pointer place-items-center rounded-full text-foreground transition-colors hover:bg-foreground/10 active:scale-95 md:hidden"
-    >
-      <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
-    </a>
-
-    <!-- Right cluster: language (bare EN ▾), theme, auth. md:ml-auto pushes it
-         right once the mobile search icon (ml-auto) is hidden. -->
-    <!-- Theme switch is desktop-only chrome — mobile gets it in the footer. -->
-    <div class="hidden flex-none items-center gap-2 md:ml-auto md:flex">
+    <!-- Right cluster: the bare EN ▾ language switch (all viewports — mobile
+         search lives in the bottom tab bar, theme in the footer) + auth. -->
+    <div class="ml-auto flex flex-none items-center">
       <Combobox
         variant="bare"
         options={LANGUAGES}
@@ -104,9 +89,7 @@ const genderTabs = (Object.keys(GENDER_FILTERS) as GenderFilter[]).map((g) => ({
         triggerLabel={locale.toUpperCase()}
         target="[data-none]"
         lang
-        class="hidden md:block"
       />
-      <ThemeToggle />
     </div>
 
     <div class="flex flex-none items-center gap-4">
@@ -162,8 +145,10 @@ const genderTabs = (Object.keys(GENDER_FILTERS) as GenderFilter[]).map((g) => ({
 
         <span class="my-3.5 hidden w-px flex-none bg-border md:block" aria-hidden="true"></span>
 
+        <!-- lg: categories take the middle of the bar (mx-auto) instead of
+             hugging the gender group — the empty run of bar works for us. -->
         <nav
-          class="flex min-w-0 flex-none items-stretch gap-5 md:gap-7"
+          class="flex min-w-0 flex-none items-stretch gap-5 md:gap-7 lg:mx-auto"
           aria-label={m.all_categories()}
         >
           {
@@ -202,12 +187,19 @@ const genderTabs = (Object.keys(GENDER_FILTERS) as GenderFilter[]).map((g) => ({
 
 <script>
   // Gender tab click → persist the pick (server default for the next visit).
+  // Filter RESET → clear it, so reset really returns to the plain default.
   if (!(window as any).__genderTabs) {
     (window as any).__genderTabs = true;
     document.addEventListener('click', (e) => {
-      const tab = (e.target as HTMLElement).closest?.('[data-gender-tab]') as HTMLElement | null;
-      if (!tab) return;
-      document.cookie = `gender=${tab.dataset.genderTab}; path=/; max-age=31536000; samesite=lax`;
+      const t = e.target as HTMLElement;
+      const tab = t.closest?.('[data-gender-tab]') as HTMLElement | null;
+      if (tab) {
+        document.cookie = `gender=${tab.dataset.genderTab}; path=/; max-age=31536000; samesite=lax`;
+        return;
+      }
+      if (t.closest?.('[data-filter-reset]')) {
+        document.cookie = 'gender=; path=/; max-age=0; samesite=lax';
+      }
     });
   }
 </script>

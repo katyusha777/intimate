@@ -11,8 +11,8 @@
  * keeping tab and filter as one dimension.
  */
 import * as m from '@/paraglide/messages';
-import { serviceCategoryLabel, serviceLabel } from '@/lib/labels';
-import { CITIES, SERVICES, SERVICE_CATEGORIES } from '@/lib/taxonomy';
+import { serviceCategoryLabel, serviceLabel, sortLabel } from '@/lib/labels';
+import { CITIES, SERVICES, SERVICE_CATEGORIES, SORT_OPTIONS } from '@/lib/taxonomy';
 import type { ProfileListParams } from '@/app/models/profile';
 import Icon from '@/components/atoms/Icon.astro';
 import Input from '@/components/atoms/Input.astro';
@@ -60,6 +60,7 @@ const row = 'flex cursor-pointer select-none items-center gap-2.5 text-sm hover:
       !sheet && (
         <a
           href={resetHref}
+          data-filter-reset
           class="border border-foreground/20 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-foreground/60 hover:text-foreground"
         >
           {m.filter_reset()}
@@ -248,7 +249,7 @@ const row = 'flex cursor-pointer select-none items-center gap-2.5 text-sm hover:
     </div>
 
     <!-- Price -->
-    <div class:list={[group, 'border-b-0']}>
+    <div class={group}>
       <h3 class={heading}>{m.filter_price()}</h3>
       <div class="flex items-center gap-3">
         <Input
@@ -273,6 +274,27 @@ const row = 'flex cursor-pointer select-none items-center gap-2.5 text-sm hover:
           aria-label={m.filter_max()}
         />
       </div>
+    </div>
+
+    <!-- Sort — lives with the filters so the list column stays clean. -->
+    <div class:list={[group, 'border-b-0']}>
+      <h3 class={heading}>{m.sort_by()}</h3>
+      <span class="relative flex h-10 items-center border border-foreground/20 transition-colors hover:border-foreground/60">
+        <select
+          name="sort"
+          aria-label={m.sort_by()}
+          class="h-full w-full cursor-pointer appearance-none bg-transparent pl-3 pr-8 text-base font-medium outline-none md:text-sm"
+        >
+          {
+            SORT_OPTIONS.map((s) => (
+              <option value={s} selected={(params.sort ?? 'newest') === s}>
+                {sortLabel(s)}
+              </option>
+            ))
+          }
+        </select>
+        <Icon name="chevron-down" class="pointer-events-none absolute right-3 text-xs text-muted-foreground" />
+      </span>
     </div>
   </div>
 </aside>

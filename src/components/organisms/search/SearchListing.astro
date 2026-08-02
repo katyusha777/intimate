@@ -7,8 +7,7 @@
  * button on mobile). One GET <form> + SSR = zero client state.
  */
 import * as m from '@/paraglide/messages';
-import { sortLabel } from '@/lib/labels';
-import { CITIES, SORT_OPTIONS } from '@/lib/taxonomy';
+import { CITIES } from '@/lib/taxonomy';
 import { LISTING_CATEGORIES, type Locale } from '@/lib/taxonomy';
 import { getLocale } from '@/paraglide/runtime';
 import { PAGE_SIZE, type Profile, type ProfileList, type ProfileListParams } from '@/app/models/profile';
@@ -51,6 +50,9 @@ const outcallSlug = LISTING_CATEGORIES.find(
 
 /** City lives in the path: `${tabPath}${city}/`. */
 const basePath = params.city ? `${tabPath}${params.city}/` : tabPath;
+/** FULL reset: back to the plain national search — clears the category tab,
+ *  the city and (via the [data-filter-reset] cookie clear) the gender pick. */
+const resetHref = `/${locale}/search/`;
 
 const page = Math.floor((params.offset ?? 0) / PAGE_SIZE) + 1;
 const pageCount = Math.max(1, Math.ceil(result.total / PAGE_SIZE));
@@ -98,60 +100,33 @@ const chip =
     {updated && <p class="eyebrow mt-1.5">{updated}</p>}
   </div>
 
-  <!-- grid-rows min-content/1fr: the tall row-spanning sidebar (col 1) must not
-       inflate row 1 and push the cards down — row 2 absorbs its extra height. -->
-  <div class="grid items-start gap-x-6 gap-y-4 lg:grid-cols-[17rem_1fr] lg:grid-rows-[min-content_1fr]">
-    <!-- Control rail: single scrollable line on mobile (app-style), wraps on lg.
-         The combobox in the header drives the hidden data-city-nav select
-         (path navigation); it is the MAIN location state. -->
-    <div
-      class="-mx-4 flex items-center gap-2 overflow-x-auto px-4 [scrollbar-width:none] lg:col-start-2 lg:mx-0 lg:flex-wrap lg:overflow-visible lg:px-0 [&::-webkit-scrollbar]:hidden"
-    >
-      <select data-city-nav aria-hidden="true" tabindex="-1" class="sr-only">
-        <option value="" selected={!params.city} />
-        {CITIES.map((c) => <option value={c.slug} selected={params.city === c.slug} />)}
-      </select>
+  <!-- The header combobox drives this hidden select (path navigation); it is
+       the MAIN location state — never inside a data-filters-* copy, so it is
+       never viewport-disabled. -->
+  <select data-city-nav aria-hidden="true" tabindex="-1" class="sr-only">
+    <option value="" selected={!params.city} />
+    {CITIES.map((c) => <option value={c.slug} selected={params.city === c.slug} />)}
+  </select>
 
-      <button type="button" data-sheet-open="filters-sheet" class:list={[chip, 'flex-none lg:hidden']}>
-        <Icon name="sliders" class="text-muted-foreground" />
-        {m.filter_title()}
-      </button>
+  <!-- Mobile control rail: just the filter-sheet trigger (sort lives in the
+       filters now — the list column stays clean). -->
+  <div class="mb-4 flex items-center gap-2 lg:hidden">
+    <button type="button" data-sheet-open="filters-sheet" class:list={[chip, 'flex-none']}>
+      <Icon name="sliders" class="text-muted-foreground" />
+      {m.filter_title()}
+    </button>
+  </div>
 
-      <!-- Gender + availability live with the filters (header tabs / sidebar /
-           sheet) — the rail keeps only the sheet trigger and the sort. -->
-
-      <label class="flex flex-none items-center text-sm lg:ml-auto">
-        <span class="relative inline-flex h-9 items-center border border-foreground/20 transition-colors hover:border-foreground/60">
-          <select
-            name="sort"
-            aria-label={m.sort_by()}
-            class="h-full cursor-pointer appearance-none bg-transparent pl-3.5 pr-8 text-base font-medium outline-none md:text-sm"
-          >
-            {
-              SORT_OPTIONS.map((s) => (
-                <option value={s} selected={(params.sort ?? 'newest') === s}>
-                  {sortLabel(s)}
-                </option>
-              ))
-            }
-          </select>
-          <Icon name="chevron-down" class="pointer-events-none absolute right-3 text-xs text-muted-foreground" />
-        </span>
-      </label>
-    </div>
-
-    <!-- Filter panel — DESKTOP: the always-open sidebar column on lg (col 1,
-         both rows). Hidden on mobile, where the sheet below owns filters.
-         `data-filters-desktop` inputs are disabled on mobile so they never
-         double-submit against the sheet's copy (same trick as the gender dupe). -->
-    <aside
-      data-filters-desktop
-      class="hidden min-w-0 lg:col-start-1 lg:row-span-2 lg:row-start-1 lg:block"
-    >
-      <FilterSidebar params={params} resetHref={basePath} {visitMode} {openCategory} />
+  <div class="grid items-start gap-x-6 gap-y-4 lg:grid-cols-[17rem_1fr]">
+    <!-- Filter panel — DESKTOP: the always-open sidebar column on lg. Hidden
+         on mobile, where the sheet below owns filters. `data-filters-desktop`
+         inputs are disabled on mobile so they never double-submit against the
+         sheet's copy. -->
+    <aside data-filters-desktop class="hidden min-w-0 lg:block">
+      <FilterSidebar params={params} resetHref={resetHref} {visitMode} {openCategory} />
     </aside>
 
-    <div class="lg:col-start-2">
+    <div class="min-w-0">
       <!-- SAVED-compare rail (UX-PLAN 6.2): desktop only, thin, collapsible.
            Sits INSIDE the results column, directly above the cards — appearing/
            disappearing never moves the heading or the filter rail. Mini square
@@ -237,11 +212,12 @@ const chip =
        APPLY submits once, closing the sheet with the new results. -->
   <ActionSheet id="filters-sheet" label={m.filter_title()} class="lg:hidden">
     <div data-filters-mobile class="px-5 pb-4 pt-1">
-      <FilterSidebar params={params} resetHref={basePath} {visitMode} {openCategory} sheet />
+      <FilterSidebar params={params} resetHref={resetHref} {visitMode} {openCategory} sheet />
     </div>
     <div class="sticky bottom-0 flex gap-2 border-t border-border bg-card px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
       <a
-        href={basePath}
+        href={resetHref}
+        data-filter-reset
         class="filter-chip flex h-11 flex-1 justify-center text-sm text-muted-foreground"
       >
         {m.filter_reset()}
