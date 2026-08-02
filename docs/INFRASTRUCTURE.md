@@ -10,7 +10,7 @@ time to rediscover. Companion to `ARCHITECTURE.md` (§9 defines the tiers).
 | Tier | App | Database | Notes |
 |---|---|---|---|
 | **dev** | `bun run dev` (localhost:4321) | local Supabase: `bunx supabase start` (Docker required) | all daily work; config in `supabase/config.toml` |
-| **staging** | Worker `intimate-staging` → `intimate-staging.patrickdeamorim.workers.dev` | Supabase project `jqrfzqbuvekhcptqcpda` (Frankfurt) | verification before prod |
+| **staging** | Worker `intimate-staging` → `intimate-staging.mute-hill-24fb.workers.dev` | Supabase project `jqrfzqbuvekhcptqcpda` (Frankfurt) | verification before prod |
 | **prod** | Worker `intimate` | **dedicated Supabase project — not yet created** (see §7) | Supabase MCP is read-only vs prod |
 
 **Migrations flow strictly dev → staging → prod:**
@@ -54,7 +54,9 @@ is bound in both wrangler envs until the prod Supabase project exists
 `.github/workflows/ci.yml`: PRs run `bun install → bun test → build`; pushes to
 `main` additionally build with `CLOUDFLARE_ENV=staging` and deploy the staging
 Worker. Repo secrets (set): `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`
-(account `9ab693202883d3767f3ad5f4ce266053`).
+(account `ac521dc0e1abd98133a8f565daa46294` — Contact@optiweb.dev, migrated
+2026-08-02; the API token secret must be reissued FROM that account or CI
+deploys keep failing/targeting the old one).
 
 ## 4. Assets & third-party
 

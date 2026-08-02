@@ -1,6 +1,9 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "intimate",
+  // Main account: Contact@optiweb.dev (migrated 2026-08-02 from the personal
+  // account — old workers left in place there until confirmed dead).
+  "account_id": "ac521dc0e1abd98133a8f565daa46294",
   "main": "@astrojs/cloudflare/entrypoints/server",
   "compatibility_date": "2026-07-01",
   "compatibility_flags": ["nodejs_compat"],
@@ -13,8 +16,12 @@
   // ponytail: production points at the same Hyperdrive/db as staging until the
   // prod Supabase project exists (INFRASTRUCTURE §7) — split ids then.
   "hyperdrive": [
-    { "binding": "HYPERDRIVE", "id": "c56d9b6e947a4841baa30f8b6a6b9e55" }
+    { "binding": "HYPERDRIVE", "id": "542bb0bee7fa44148f4e6ae3e0129ae7" }
   ],
+  "kv_namespaces": [
+    { "binding": "SESSION", "id": "147037dee79949c2bed21ef6a60d7e00" }
+  ],
+  "images": { "binding": "IMAGES" },
   "vars": {
     // prod values — replace when the prod Supabase project exists (INFRASTRUCTURE §7)
     "PUBLIC_SUPABASE_URL": "https://jqrfzqbuvekhcptqcpda.supabase.co",
@@ -24,8 +31,12 @@
     "staging": {
       "name": "intimate-staging",
       "hyperdrive": [
-        { "binding": "HYPERDRIVE", "id": "c56d9b6e947a4841baa30f8b6a6b9e55" }
+        { "binding": "HYPERDRIVE", "id": "542bb0bee7fa44148f4e6ae3e0129ae7" }
       ],
+      "kv_namespaces": [
+        { "binding": "SESSION", "id": "691e3d062b07444fb1f659a438edc411" }
+      ],
+      "images": { "binding": "IMAGES" },
       "vars": {
         "PUBLIC_SUPABASE_URL": "https://jqrfzqbuvekhcptqcpda.supabase.co",
         "PUBLIC_SUPABASE_KEY": "sb_publishable_jzpgxggUIg8-uodVAaT1SA_KZxO34fe"
