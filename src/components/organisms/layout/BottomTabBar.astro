@@ -52,17 +52,17 @@ const tabs =
       : [search, favorites, account];
 ---
 
-<!-- iOS-native tab bar, GLUED to the screen edge (no floating pill): the
-     background runs to bottom:0 so viewport changes read as the page resizing
-     — nothing hops in space — and the icon row rides padding-bottom
-     max(safe-inset, 8px), which lifts it clear of Safari's toolbar-reveal
-     zone exactly when the toolbar hides. Standalone PWA: this IS the native
-     tab bar. -->
+<!-- iOS-native tab bar, GLUED to the screen edge: the background runs to
+     bottom:0 so viewport changes read as the page resizing. The bottom
+     padding is deliberately GENEROUS (min 3.25rem): Safari's collapsed
+     toolbar swallows first-taps in the bottom ~50px and gives no API around
+     it, so the icon row simply always sits above that zone — the padding
+     strip is just glass, and a tap there revealing the toolbar is what that
+     region does natively anyway. Standalone PWA hugs the home indicator. -->
 <nav
   transition:persist="tabbar"
-  class="tab-dock fixed inset-x-0 bottom-0 z-40 select-none border-t md:hidden"
+  class="tab-dock tab-dock-pad fixed inset-x-0 bottom-0 z-40 select-none border-t md:hidden"
   aria-label={m.nav_search()}
-  style="padding-bottom: max(var(--sab), 0.5rem)"
 >
   <div class="relative mx-auto flex max-w-lg items-stretch px-2 pt-1.5">
     <!-- The glass highlight SLIDES between tabs (left/width animate) instead
@@ -138,6 +138,17 @@ const tabs =
 </script>
 
 <style>
+  /* In-browser: enough constant padding to clear the toolbar-swallow zone in
+     BOTH toolbar states. Standalone PWA (no Safari chrome): normal hug. */
+  .tab-dock-pad {
+    padding-bottom: max(calc(var(--sab) + 0.75rem), 3.25rem);
+  }
+  @media (display-mode: standalone) {
+    .tab-dock-pad {
+      padding-bottom: max(var(--sab), 0.5rem);
+    }
+  }
+
   /* Liquid glass: heavy blur + saturation boost over a translucent canvas —
      the content scrolls visibly underneath, like the native iOS tab bar. */
   .tab-dock {

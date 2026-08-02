@@ -287,7 +287,7 @@ const chip =
         // navigates immediately even from the sheet.
         if (t.closest('[data-filters-mobile]') && !t.closest('[data-visit-nav]')) return;
 
-        sessionStorage.setItem('listing-scroll', String(window.scrollY));
+        sessionStorage.setItem('listing-scroll', String(currentScrollY()));
         const citySeg = () => (form.dataset.city ? `${form.dataset.city}/` : '');
 
         const cityNav = t.closest('[data-city-nav]') as HTMLSelectElement | null;
@@ -315,7 +315,7 @@ const chip =
         .querySelector('[data-filters-mobile]')
         ?.closest('form')
         ?.addEventListener('submit', () => {
-          sessionStorage.setItem('listing-scroll', String(window.scrollY));
+          sessionStorage.setItem('listing-scroll', String(currentScrollY()));
         });
     });
   }

@@ -453,9 +453,12 @@
   /* An open sheet or lightbox LOCKS the page behind it — native <dialog>
      inerts interaction but wheel/touch scroll still reached the document. */
   html[data-sheet-open],
-  html[data-lightbox-open] {
+  html[data-lightbox-open],
+  html[data-sheet-open] .page-zoom,
+  html[data-lightbox-open] .page-zoom {
     overflow: hidden;
   }
+
 
   @media (prefers-reduced-motion: reduce) {
     html {
