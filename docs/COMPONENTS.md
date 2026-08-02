@@ -33,7 +33,7 @@ Pages = `src/pages/` (compose organisms; own no reusable markup).
   - *own primitives*: Icon (Font Awesome abstraction — icon lib swap is this
     one file), SafeImage (safe-mode image contract), VerifiedBadge.
 - **Molecule** — a self-contained control from atoms + markup, reusable in any
-  domain: Modal, ActionSheet, Lightbox, PhotoCarousel, SearchControl,
+  domain: Modal, ActionSheet, Lightbox, PhotoCarousel,
   Combobox, SlabField, FavoritesController, UserMenu,
   ThemeToggle (sun/moon switch, dark is the site default),
   SafeModeToggle (three-state safe-mode control — labelled switch in the
@@ -157,10 +157,9 @@ Folders appear when their first organism lands:
   and taps "Show results" (a real submit); visit-nav tab switches still
   navigate immediately. This replaced the inline `<details>` panel that hijacked
   page scroll on mobile.
-- **SearchControl** (molecule): two unmistakable targets, not one ambiguous bar
-  — a labelled search field (`City: <name>` + placeholder) beside a separate
-  Filters button, both plain `<a>` to the canonical listing (`?q=` rides the
-  field once real search lands). Takes an optional `city` prop.
+- **SearchControl removed** (2026-08-02): the home search bar was deleted with
+  the AI search — browsing runs on the category pills, the city control and
+  the filter sheet; the header search icon is the mobile entry.
 - **Home stays national**: the `/{locale}/` middleware no longer 302s to the
   saved city. The `city` cookie is surfaced client-side on the fold as a
   one-tap "Back to <city>" chip (`[data-city-pref]`), keeping the home a single

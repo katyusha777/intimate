@@ -7,7 +7,6 @@ import Layout from '@/layouts/Layout.astro';
 import ProfileCard from '@/components/organisms/profile/ProfileCard.astro';
 import PhotoCarousel from '@/components/molecules/PhotoCarousel.astro';
 import SafeImage from '@/components/atoms/SafeImage.astro';
-import SearchControl from '@/components/molecules/SearchControl.astro';
 import Combobox from '@/components/molecules/Combobox.astro';
 import ActionSheet from '@/components/molecules/ActionSheet.astro';
 import AvailabilityLine from '@/components/molecules/AvailabilityLine.astro';
@@ -259,8 +258,6 @@ const swatches = [
     <section class="space-y-4">
       <h2 class="text-xl font-semibold">Search, forms & toggles</h2>
       <div class="flex flex-wrap items-center gap-6">
-        <div class="w-full max-w-md"><SearchControl /></div>
-        <div class="w-full max-w-md"><SearchControl city="rotterdam" /></div>
         <SafeModeToggle />
         <div class="w-56"><Select><option>Select atom</option><option>Option B</option></Select></div>
         <div class="w-56"><Input placeholder="Input atom" /></div>

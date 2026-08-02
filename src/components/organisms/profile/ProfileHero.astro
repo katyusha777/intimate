@@ -87,16 +87,18 @@ const { profile: p, replySpeed } = Astro.props;
           </p>
         )
       }
+      <!-- Frosted glass pills over the photo (.glass-media = the sanctioned
+           on-photo overlay material). -->
       <div class="mt-3.5 flex flex-wrap gap-1.5">
         {
           p.services.slice(0, 3).map((s) => (
-            <span class="rounded border border-white/30 px-2.5 py-1 text-xs font-medium text-white/90">
+            <span class="glass-media rounded-full border px-3 py-1 text-xs font-medium">
               {serviceLabel(s)}
             </span>
           ))
         }
         {p.services.length > 3 && (
-          <span class="rounded border border-white/30 px-2.5 py-1 text-xs font-medium text-white/90">
+          <span class="glass-media rounded-full border px-3 py-1 text-xs font-medium">
             +{p.services.length - 3}
           </span>
         )}

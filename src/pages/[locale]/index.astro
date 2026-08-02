@@ -6,7 +6,6 @@ import { organizationJsonLd, websiteJsonLd } from '@/lib/seo';
 import ProfileCard from '@/components/organisms/profile/ProfileCard.astro';
 import Section from '@/components/molecules/Section.astro';
 import SafeImage from '@/components/atoms/SafeImage.astro';
-import SearchControl from '@/components/molecules/SearchControl.astro';
 import CitySheet from '@/components/molecules/CitySheet.astro';
 import Button from '@/components/atoms/Button.astro';
 import { articlesApi } from '@/app/api/articles';
@@ -81,12 +80,6 @@ const moreArticles = articles.filter((a) => !a.featured);
       )
     }
 
-    <!-- Browse: ONE search control, city-aware from the saved cookie — no
-         extra chips or return pills competing with it. -->
-    <p class="eyebrow mt-6">Find a professional</p>
-    <div class="mt-2.5">
-      <SearchControl />
-    </div>
   </section>
 
   <!-- DESKTOP HERO: full-bleed cinematic media on an ink panel. Kept for lg+
@@ -126,24 +119,12 @@ const moreArticles = articles.filter((a) => !a.featured);
         </h1>
         <p class="mt-4 max-w-md leading-relaxed text-white/70">{m.fold_pitch()}</p>
         {
-          loggedOut ? (
-            <>
-              <div class="mt-7 flex flex-wrap items-center gap-4">
-                <Button as="a" href={localizePath('/account/')} size="lg">
-                  {m.cta_start_advertising()}
-                </Button>
-                <span class="text-sm text-white/70">Verified-only · free in early access</span>
-              </div>
-              <div class="mt-6 max-w-md">
-                <p class="eyebrow text-2xs text-white/50">Find a professional</p>
-                <div class="mt-2">
-                  <SearchControl />
-                </div>
-              </div>
-            </>
-          ) : (
-            <div class="mt-7 max-w-md">
-              <SearchControl />
+          loggedOut && (
+            <div class="mt-7 flex flex-wrap items-center gap-4">
+              <Button as="a" href={localizePath('/account/')} size="lg">
+                {m.cta_start_advertising()}
+              </Button>
+              <span class="text-sm text-white/70">Verified-only · free in early access</span>
             </div>
           )
         }

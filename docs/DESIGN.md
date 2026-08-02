@@ -299,10 +299,9 @@ card, desktop right column: presence ("Online now" / "last seen"), rate table
 link. Mobile: collapses into a **sticky bottom glass action bar** with the
 primary CTA + price.
 
-**SearchControl** (Airbnb Image #3) — the one clean search affordance. Segmented
-pill: **City · Availability · Filters**. Desktop: inline in the header, expands
-to a popover. Mobile: a single pill that opens a full sheet. Nothing else
-competes with it.
+**Search affordance** — REMOVED (2026-08-02, with the AI search): browsing runs
+on the category pills, the header city control and the filter sheet; the
+header search icon is the mobile entry to the filter sheet.
 
 **FilterRail / FilterSheet** (OpenSea Image #8) — desktop left rail, mobile
 bottom sheet. Grouped, collapsible, quiet. Quick-filter chips above the grid
@@ -325,14 +324,14 @@ Anything not in this list gets designed *into* the library before it ships.
 ### Desktop header (Airbnb Image #3 + Purple Fly Image #4)
 A single glass bar (`GlassBar`, sticky, `rounded-b-2xl` or full-width hairline):
 - **Left:** wordmark.
-- **Center:** `SearchControl` — City · Availability · Filters. The one control.
+- **Center:** (empty — search lives in the category row + filter sheet).
 - **Right:** icon cluster — theme toggle, language (nl/en/de), Favorites,
   Account/avatar, and a solid crimson **Adverteren** CTA.
 Quiet, translucent, blurs the content scrolling under it. Purple Fly's density
 without its noise.
 
 ### Mobile
-- **Top:** minimal glass bar — wordmark + search icon (opens SearchControl
+- **Top:** minimal glass bar — wordmark + search icon (opens the filter
   sheet). Nothing else up top.
 - **Bottom:** `BottomTabBar` — glass, `backdrop-blur`, safe-area inset,
   **role-driven tab sets** (matrix: MESSAGING.md §10; visitor default
@@ -468,7 +467,7 @@ operator explicitly wants per-load shuffling.
 3. **ProfileImage** + **safe mode** plumbing (§6) — before any card/gallery, so
    the privacy default exists from the first image rendered.
 4. **ProfileCard** (all three variants) + **PhotoCarousel**.
-5. **Header + SearchControl + BottomTabBar + footer (SafeModeToggle)**.
+5. **Header + BottomTabBar + footer (SafeModeToggle)**.
 6. **PhotoGallery + ContactCard** (profile page shell — no data yet).
 7. **FilterRail/Sheet** + listing grid.
 
