@@ -336,7 +336,9 @@ without its noise.
 - **Bottom:** `BottomTabBar` — glass, `backdrop-blur`, safe-area inset,
   **role-driven tab sets** (matrix: MESSAGING.md §10; visitor default
   **Search · Favorites · Account**, max 4 ever per MOBILE.md §2). Active tab =
-  crimson icon + label. iOS-style: floats over content, translucent, never a
+  crimson icon + label. iOS-style: GLUED to the screen edge (bottom:0 +
+  padding-bottom max(safe-inset, 8px) — a floating pill fought Safari's
+  toolbar-reveal zone and jiggled with env() flips), translucent, never a
   hard opaque slab.
 
 View transitions make the bottom bar persist across navigation (no flash), and

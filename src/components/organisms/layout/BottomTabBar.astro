@@ -52,14 +52,19 @@ const tabs =
       : [search, favorites, account];
 ---
 
-<!-- Floating liquid-glass dock (iOS 26 material, DESIGN §5): fits its content,
-     lifted off the edges, blur + saturation + specular top highlight. -->
+<!-- iOS-native tab bar, GLUED to the screen edge (no floating pill): the
+     background runs to bottom:0 so viewport changes read as the page resizing
+     — nothing hops in space — and the icon row rides padding-bottom
+     max(safe-inset, 8px), which lifts it clear of Safari's toolbar-reveal
+     zone exactly when the toolbar hides. Standalone PWA: this IS the native
+     tab bar. -->
 <nav
   transition:persist="tabbar"
-  class="tab-dock-pos pointer-events-none fixed inset-x-0 z-40 flex select-none justify-center md:hidden"
+  class="tab-dock fixed inset-x-0 bottom-0 z-40 select-none border-t md:hidden"
   aria-label={m.nav_search()}
+  style="padding-bottom: max(var(--sab), 0.5rem)"
 >
-  <div class="tab-dock pointer-events-auto relative flex items-center gap-1 rounded-full p-1.5">
+  <div class="relative mx-auto flex max-w-lg items-stretch px-2 pt-1.5">
     <!-- The glass highlight SLIDES between tabs (left/width animate) instead
          of each tab painting its own static pill. -->
     <span
@@ -73,7 +78,7 @@ const tabs =
           data-tab
           data-tab-exact={t.exact ? '' : undefined}
           class:list={[
-            'relative flex min-w-18 flex-col items-center gap-0.5 rounded-full px-4 py-1.5 text-2xs font-medium transition-[color,transform] active:scale-[0.92]',
+            'relative flex flex-1 flex-col items-center gap-0.5 rounded-full px-2 py-1.5 text-2xs font-medium transition-[color,transform] active:scale-[0.92]',
             t.active ? 'text-foreground' : 'text-muted-foreground',
           ]}
           aria-current={t.active ? 'page' : undefined}
@@ -133,32 +138,13 @@ const tabs =
 </script>
 
 <style>
-  /* Dock offset. In-BROWSER Safari: env(safe-area-inset-bottom) FLIPS between
-     0 (toolbar shown) and ~34px (toolbar hidden), so any env-based bottom
-     makes the dock slide down-then-up on every scroll. A CONSTANT 3.5rem
-     never moves AND clears the toolbar-reveal tap zone (~45px), so the first
-     tap always hits the dock. Standalone PWA has no Safari chrome and a
-     stable inset → hug the home indicator there. */
-  .tab-dock-pos {
-    bottom: 3.5rem;
-  }
-  @media (display-mode: standalone) {
-    .tab-dock-pos {
-      bottom: calc(0.875rem + var(--sab));
-    }
-  }
-
-  /* Liquid glass: heavy blur + saturation boost, translucent canvas, a
-     specular top edge and a soft drop — reads as a floating lens. */
+  /* Liquid glass: heavy blur + saturation boost over a translucent canvas —
+     the content scrolls visibly underneath, like the native iOS tab bar. */
   .tab-dock {
-    background: color-mix(in oklch, var(--background) 42%, transparent);
+    background: color-mix(in oklch, var(--background) 72%, transparent);
     -webkit-backdrop-filter: blur(22px) saturate(1.7);
     backdrop-filter: blur(22px) saturate(1.7);
-    border: 1px solid color-mix(in oklch, var(--foreground) 12%, transparent);
-    box-shadow:
-      inset 0 1px 0 0 color-mix(in oklch, white 30%, transparent),
-      inset 0 -1px 0 0 rgb(0 0 0 / 0.06),
-      0 10px 30px rgb(0 0 0 / 0.28);
+    border-color: color-mix(in oklch, var(--foreground) 12%, transparent);
   }
   @media (prefers-reduced-transparency: reduce) {
     .tab-dock {
