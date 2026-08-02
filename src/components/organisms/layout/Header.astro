@@ -289,9 +289,11 @@ const genderTabs = (Object.keys(GENDER_FILTERS) as GenderFilter[]).map((g) => ({
       },
       { passive: true },
     );
-    document.addEventListener('sheet:opened', () => {
-      if (mq.matches) setHidden(true);
-    });
+    // Opening a sheet does NOT touch the header: whatever state it's in
+    // (hidden from scrolling, or visible at the top) simply freezes — scroll
+    // is locked behind the sheet, so nothing changes until the user scrolls
+    // again after closing. (Force-hiding on open left dead empty space when
+    // a profile was opened without ever scrolling.)
     // astro:page-load fires on real navigations (fresh, visible header) AND on
     // sheet content injection (header still hidden) — sync the flag from the
     // DOM instead of assuming, or the next show/hide call no-ops on a stale
