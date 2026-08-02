@@ -123,13 +123,12 @@ const unread =
     <FavoritesController />
 
     <script is:inline data-neutral-title={m.safe_neutral_title()}>
-      // Safe mode (DESIGN.md §6, Phase 5): fail-closed, THREE-valued.
-      //   off     — real photos
-      //   neutral — muted abstract placeholders (default ON for visitors)
+      // Safe mode (DESIGN.md §6, Phase 5): THREE-valued.
+      //   off     — real photos (THE DEFAULT — discretion is opt-in)
+      //   neutral — muted abstract placeholders
       //   dev     — anime placeholders (the operator's build-in-public skin)
-      // Server HTML always ships the neutral placeholder, so default + uncached
-      // + no-JS all show neutral. An explicit cookie wins; otherwise: local dev
-      // defaults to `dev` (a visible set — the old behavior), deployed → neutral.
+      // Server HTML ships the neutral placeholder (no-JS stays discreet); the
+      // script swaps in photos unless a cookie says otherwise.
       (function () {
         const script = document.currentScript;
         const NEUTRAL_TITLE = (script && script.dataset.neutralTitle) || 'Search';
@@ -148,7 +147,7 @@ const unread =
           const v = m && m[1];
           if (v === 'off' || v === 'neutral' || v === 'dev') return v;
           if (v === 'on') return 'neutral'; // legacy cookie
-          return /^(localhost|127\.|192\.168\.|10\.)/.test(location.hostname) ? 'dev' : 'neutral';
+          return 'off'; // photos by default — safe mode is a choice, not a wall
         };
         const setState = (s) => {
           document.cookie = 'safe_mode=' + s + '; path=/; max-age=31536000; samesite=lax';

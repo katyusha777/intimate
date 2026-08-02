@@ -20,7 +20,7 @@ Execution plan for the external UX review ("Design review with safe-mode update"
 - Profile model: `priceFrom` (no rates table), `openingHours`, static `online` boolean, `birthDate`, services/meetingTypes from taxonomy.
 - Messaging: built on the mock backend (threads, messages, contacts, media grant, modes). Enforcement in the action layer until the Supabase swap (MESSAGING.md).
 - Presence is mock. Every availability feature below is built against a **derivation helper** so the realtime upgrade (Phase 0 Supabase) swaps the input, not the UI.
-- Safe mode = footer toggle, anime placeholder set, default ON. (AI search shipped, then REMOVED 2026-08-02 — too slow to be the search affordance.)
+- Safe mode = footer toggle, anime placeholder set, default OFF since 2026-08-02 (photos by default; discretion is opt-in). (AI search shipped, then REMOVED 2026-08-02 — too slow to be the search affordance.)
 
 ## 2. Cross-cutting laws for every item
 
@@ -83,7 +83,7 @@ DoD: MESSAGING.md updated in the same PR · deny tests: free-compose blocked pre
 
 Discretion is a client feature too — a wall of bright anime draws the glance it should deflect.
 
-**5.1 Neutral placeholder set.** Second safeimg set: genuinely boring (muted, abstract, gallery-wall neutral). Safe mode becomes three-valued: `off | neutral (default ON for visitors) | dev` (anime — our work-in-public skin). Same fail-closed plumbing (DESIGN.md §6).
+**5.1 Neutral placeholder set.** Second safeimg set: genuinely boring (muted, abstract, gallery-wall neutral). Safe mode becomes three-valued: `off (default — photos) | neutral | dev` (anime — our work-in-public skin). Same fail-closed plumbing (DESIGN.md §6).
 **5.2 Toggle on the floating bar.** Mobile: safe-mode toggle joins the floating glass bar (one thumb, every screen). Desktop: an always-visible glass button. Footer keeps a mirror. No more full-page-scroll to the panic switch.
 **5.3 Neutral tab title + favicon** while safe mode is on (generic title, monochrome favicon) — the browser chrome is part of the glance test.
 **5.4 Boss key (desktop).** Esc·Esc flips safe mode + tab title/favicon instantly, both directions. One tiny island, sitewide.

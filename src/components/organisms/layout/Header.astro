@@ -24,9 +24,12 @@ const LANGUAGES = [
 
 const locale = getLocale() as Locale;
 const path = Astro.url.pathname;
-/** Current city from the URL path (works on /{city}/, /{tab}/{city}/ …). */
+/** City from the URL path (works on /{city}/, /{tab}/{city}/ …) — this one
+ *  builds hrefs. The cookie only DISPLAYS as the control's label off-city. */
 const pathSegs = path.split('/').filter(Boolean);
-const currentCity = CITIES.find((c) => pathSegs.includes(c.slug))?.slug;
+const pathCity = CITIES.find((c) => pathSegs.includes(c.slug))?.slug;
+const cookieCity = CITIES.find((c) => c.slug === Astro.cookies.get('city')?.value)?.slug;
+const currentCity = pathCity ?? cookieCity;
 const searchPath = localizePath('/search/');
 
 /* Gender is a RADIO over the whole shelf (market is ~80% women → default
@@ -43,8 +46,9 @@ const categories = LISTING_CATEGORIES.map((c) => ({
   active: path.startsWith(localizePath(`/${c.slugs[locale]}/`)),
 }));
 
-/* Gender tabs keep the current listing (tab + city); elsewhere → search. */
-const citySeg = currentCity ? `${currentCity}/` : '';
+/* Gender tabs keep the current listing (tab + city) — PATH city only, the
+ * cookie must never silently re-route a national page. */
+const citySeg = pathCity ? `${pathCity}/` : '';
 const listingBase = `${categories.find((c) => c.active)?.href ?? searchPath}${citySeg}`;
 const genderTabs = (Object.keys(GENDER_FILTERS) as GenderFilter[]).map((g) => ({
   value: g,
@@ -183,7 +187,7 @@ const genderTabs = (Object.keys(GENDER_FILTERS) as GenderFilter[]).map((g) => ({
         <!-- lg: categories take the middle of the bar (mx-auto) instead of
              hugging the gender group — the empty run of bar works for us. -->
         <nav
-          class="flex min-w-0 flex-none items-stretch gap-5 md:gap-7 lg:mx-auto"
+          class="flex min-w-0 flex-none items-stretch gap-5 md:gap-10 lg:mx-auto"
           aria-label={m.all_categories()}
         >
           {

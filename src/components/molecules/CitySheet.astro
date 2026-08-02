@@ -3,15 +3,14 @@
  * "Ask the city once" (UX-PLAN 1.2). First-visit bottom sheet: six cities +
  * ALL OF NL. NO geolocation — coarse by design (more private, less scary).
  *
- * The pick sets a 1-year `city` cookie and navigates to that city's shelf
- * (/{locale}/{city}/); ALL OF NL clears it and stays on the generic home. The
- * cookie only drives the redirect (middleware) — it never varies cached HTML.
+ * The pick sets a 1-year `city` cookie and STAYS PUT — no redirect off the
+ * homepage. The header city control updates in place; the choice applies when
+ * the visitor heads into the listings themselves. ALL OF NL just clears it.
  *
  * Auto-opens once, client-side, when there is no `city` cookie and the visitor
  * hasn't dismissed it. Reachable again anytime from the header location picker.
  */
 import * as m from '@/paraglide/messages';
-import { localizePath } from '@/lib/i18n';
 import { CITIES } from '@/lib/taxonomy';
 import ActionSheet from '@/components/molecules/ActionSheet.astro';
 
@@ -23,7 +22,6 @@ const { manual = false } = Astro.props;
 
 /** The six flagship cities the sheet offers directly. */
 const TOP_CITIES = CITIES.slice(0, 6);
-const home = localizePath('/');
 ---
 
 <ActionSheet id="city-sheet" label={m.city_sheet_title()} class="city-sheet">
@@ -55,29 +53,33 @@ const home = localizePath('/');
   </div>
 </ActionSheet>
 
-<script is:inline define:vars={{ home, manual }}>
+<script is:inline define:vars={{ manual }}>
   (function () {
     const YEAR = 31536000;
     function hasCity() {
       return /(?:^|;\s*)city=/.test(document.cookie);
     }
-    function pick(slug) {
+    function pick(slug, name) {
       if (slug) {
         document.cookie = `city=${slug}; path=/; max-age=${YEAR}; samesite=lax`;
-        location.href = `${home}${slug}/`;
       } else {
-        // ALL OF NL: clear the cookie, mark as answered so we don't re-ask.
+        // ALL OF NL: clear the cookie.
         document.cookie = 'city=; path=/; max-age=0; samesite=lax';
-        localStorage.setItem('city_asked', '1');
-        const dlg = document.getElementById('city-sheet');
-        dlg && dlg.closeSheet && dlg.closeSheet();
       }
+      localStorage.setItem('city_asked', '1');
+      // NO redirect — stay on the page; just reflect the pick in the header
+      // city control(s) so it is preselected when they head into the search.
+      document.querySelectorAll('[data-cbx-cookie="city"] [data-cbx-label]').forEach((el) => {
+        el.textContent = name || el.textContent;
+      });
+      const dlg = document.getElementById('city-sheet');
+      dlg && dlg.closeSheet && dlg.closeSheet();
     }
     function init() {
       document.querySelectorAll('[data-city-pick]').forEach((b) => {
         if (b.dataset.cityInit) return;
         b.dataset.cityInit = '1';
-        b.addEventListener('click', () => pick(b.dataset.cityPick));
+        b.addEventListener('click', () => pick(b.dataset.cityPick, b.textContent.trim().toUpperCase()));
       });
       // First-visit auto-open: no chosen city, not previously dismissed.
       const dlg = document.getElementById('city-sheet');
