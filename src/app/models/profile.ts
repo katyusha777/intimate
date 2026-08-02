@@ -280,7 +280,8 @@ export const ProfileListParamsSchema = z.object({
   availableNow: z.boolean().default(false),
   featuredOnly: z.boolean().default(false),
   verifiedOnly: z.boolean().default(false),
-  sort: z.enum(SORT_OPTIONS).default('newest'),
+  /** Default = last online first: the live shelf is the product's promise. */
+  sort: z.enum(SORT_OPTIONS).default('recently_online'),
   limit: z.number().int().min(0).max(60).default(PAGE_SIZE),
   offset: z.number().int().min(0).default(0),
 });

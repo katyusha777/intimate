@@ -10,7 +10,7 @@ interface Props {
   as?: 'button' | 'a';
   href?: string;
   type?: 'button' | 'submit';
-  size?: 'sm' | 'default' | 'lg';
+  size?: 'xs' | 'sm' | 'default' | 'lg';
   /** No chromatic layers — the secondary slab. */
   plain?: boolean;
   class?: string;
@@ -93,6 +93,9 @@ const Tag = as ?? (href ? 'a' : 'button');
     transition: transform 0.12s ease;
   }
 
+  .ana-btn--xs .ana-btn__face {
+    padding: 0.5rem 1rem;
+  }
   .ana-btn--sm .ana-btn__face {
     padding: 0.625rem 1.375rem;
   }
@@ -112,6 +115,9 @@ const Tag = as ?? (href ? 'a' : 'button');
     color: var(--ana-text);
     transform: skew(-4deg);
     white-space: nowrap;
+  }
+  .ana-btn--xs .ana-btn__label {
+    font-size: 0.75rem;
   }
   .ana-btn--sm .ana-btn__label {
     font-size: 0.8125rem;

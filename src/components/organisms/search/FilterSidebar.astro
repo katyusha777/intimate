@@ -83,6 +83,27 @@ const row = 'flex cursor-pointer select-none items-center gap-2.5 text-sm hover:
       />
     </div>
 
+    <!-- Sort — lives with the filters so the list column stays clean. -->
+    <div class={group}>
+      <h3 class={heading}>{m.sort_by()}</h3>
+      <span class="relative flex h-10 items-center border border-foreground/20 transition-colors hover:border-foreground/60">
+        <select
+          name="sort"
+          aria-label={m.sort_by()}
+          class="h-full w-full cursor-pointer appearance-none bg-transparent pl-3 pr-8 text-base font-medium outline-none md:text-sm"
+        >
+          {
+            SORT_OPTIONS.map((s) => (
+              <option value={s} selected={(params.sort ?? 'recently_online') === s}>
+                {sortLabel(s)}
+              </option>
+            ))
+          }
+        </select>
+        <Icon name="chevron-down" class="pointer-events-none absolute right-3 text-xs text-muted-foreground" />
+      </span>
+    </div>
+
     <!-- Gender: on desktop the header tabs own it; the mobile filter sheet
          carries the same radio here (the header hides gender on mobile). -->
     {
@@ -249,7 +270,7 @@ const row = 'flex cursor-pointer select-none items-center gap-2.5 text-sm hover:
     </div>
 
     <!-- Price -->
-    <div class={group}>
+    <div class:list={[group, 'border-b-0']}>
       <h3 class={heading}>{m.filter_price()}</h3>
       <div class="flex items-center gap-3">
         <Input
@@ -276,25 +297,5 @@ const row = 'flex cursor-pointer select-none items-center gap-2.5 text-sm hover:
       </div>
     </div>
 
-    <!-- Sort — lives with the filters so the list column stays clean. -->
-    <div class:list={[group, 'border-b-0']}>
-      <h3 class={heading}>{m.sort_by()}</h3>
-      <span class="relative flex h-10 items-center border border-foreground/20 transition-colors hover:border-foreground/60">
-        <select
-          name="sort"
-          aria-label={m.sort_by()}
-          class="h-full w-full cursor-pointer appearance-none bg-transparent pl-3 pr-8 text-base font-medium outline-none md:text-sm"
-        >
-          {
-            SORT_OPTIONS.map((s) => (
-              <option value={s} selected={(params.sort ?? 'newest') === s}>
-                {sortLabel(s)}
-              </option>
-            ))
-          }
-        </select>
-        <Icon name="chevron-down" class="pointer-events-none absolute right-3 text-xs text-muted-foreground" />
-      </span>
-    </div>
   </div>
 </aside>

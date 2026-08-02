@@ -1,10 +1,10 @@
 ---
 /**
  * Fullscreen image lightbox (native <dialog>, top-layer so it stacks over the
- * profile sheet). Swipe between photos, counter, thumbnail rail, close via the
- * X or Esc — a tap on the photo does nothing (tap-to-dismiss closed the dialog
- * on pointerup, and the follow-up click retargeted to the hero underneath and
- * reopened it half-faded).
+ * profile sheet). Swipe changes photos; a clean TAP closes. The tap-close
+ * gotcha: closing on pointerup makes the follow-up click retarget to the hero
+ * underneath and instantly reopen — so openers are suppressed for a beat
+ * after a tap-close.
  * Opened by delegation: any [data-lightbox] trigger inside a
  * [data-lightbox-group] opens the group's [data-lightbox-photos] images at the
  * trigger's data-lightbox-index. Reads live <img> src so safe-mode is honored.
@@ -27,15 +27,16 @@ const { id = 'lightbox' } = Astro.props;
       class="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-center justify-between px-4 py-3"
       style="padding-top: calc(0.75rem + env(safe-area-inset-top))"
     >
+      <!-- Chrome = the ink-slab family: white cut slabs, dark glyphs, no pills. -->
       <span
         data-lightbox-counter
-        class="rounded-full bg-white/15 px-3 py-1 text-sm font-medium text-white backdrop-blur"
+        class="slab-cut bg-white px-3 py-1 text-sm font-semibold text-neutral-950"
       ></span>
       <button
         type="button"
         data-lightbox-close
         aria-label="Close"
-        class="pointer-events-auto grid size-10 cursor-pointer place-items-center rounded-full bg-white/15 text-white backdrop-blur transition-transform active:scale-90"
+        class="slab-cut pointer-events-auto grid size-10 cursor-pointer place-items-center bg-white text-neutral-950 transition-transform active:scale-90"
       >
         <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
       </button>
@@ -133,7 +134,7 @@ const { id = 'lightbox' } = Astro.props;
           t.type = 'button';
           t.setAttribute('aria-label', `${i + 1} / ${photos.length}`);
           t.className =
-            'h-14 w-11 flex-none cursor-pointer overflow-hidden rounded-md opacity-45 ring-1 ring-white/30 transition-opacity';
+            'h-14 w-11 flex-none cursor-pointer overflow-hidden opacity-45 ring-1 ring-white/30 transition-opacity';
           const img = document.createElement('img');
           img.src = p.src;
           img.alt = '';
@@ -162,8 +163,31 @@ const { id = 'lightbox' } = Astro.props;
     dialog.addEventListener('close', () => dialog.removeAttribute('data-open'));
     dialog.querySelector('[data-lightbox-close]')!.addEventListener('click', close);
 
+    // Tap closes, swipe changes. Closing on pointerup means the follow-up
+    // click retargets to whatever sits under the finger (often the hero
+    // opener) — `lastTapClose` suppresses openers for a beat so the dialog
+    // can't instantly reopen half-faded.
+    let lastTapClose = 0;
+    let sx = 0;
+    let sy = 0;
+    let moved = false;
+    track.addEventListener('pointerdown', (e) => {
+      sx = e.clientX;
+      sy = e.clientY;
+      moved = false;
+    });
+    track.addEventListener('pointermove', (e) => {
+      if (Math.abs(e.clientX - sx) > 10 || Math.abs(e.clientY - sy) > 10) moved = true;
+    });
+    track.addEventListener('pointerup', () => {
+      if (moved) return;
+      lastTapClose = performance.now();
+      close();
+    });
+
     // Delegated openers (work on the full page AND inside the profile sheet).
     document.addEventListener('click', (e) => {
+      if (performance.now() - lastTapClose < 500) return; // retargeted close-click
       const trigger = (e.target as HTMLElement).closest?.('[data-lightbox]') as HTMLElement | null;
       if (!trigger) return;
       const group = trigger.closest('[data-lightbox-group]');

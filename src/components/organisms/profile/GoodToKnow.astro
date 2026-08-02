@@ -45,7 +45,9 @@ push(m.gtk_deposit(), p.depositPolicy);
       {rows.map((r) => (
         <div class="flex items-baseline justify-between gap-4 border-b border-border py-2.5 text-sm">
           <dt class="eyebrow flex-none text-2xs text-muted-foreground">{r.label}</dt>
-          <dd class="min-w-0 break-words text-right font-medium">{r.value}</dd>
+          <!-- max-w: long values (deposit policies) wrap early instead of
+               running the full row width. -->
+          <dd class="min-w-0 max-w-64 break-words text-right font-medium">{r.value}</dd>
         </div>
       ))}
     </dl>

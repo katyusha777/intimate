@@ -16,7 +16,7 @@ interface Props {
   as?: 'button' | 'a';
   href?: string;
   type?: 'button' | 'submit';
-  size?: 'sm' | 'default' | 'lg';
+  size?: 'xs' | 'sm' | 'default' | 'lg';
   class?: string;
   [key: string]: unknown;
 }
@@ -25,7 +25,7 @@ const { variant = 'default', as, href, type = 'button', size = 'default', class:
 
 // Tertiary padding tracks the anaglyph size scale so the three read as siblings.
 const pad =
-  size === 'sm' ? 'px-4 py-2 text-sm' : size === 'lg' ? 'px-8 py-3.5 text-base' : 'px-6 py-3 text-sm';
+  size === 'xs' ? 'px-3 py-1.5 text-xs' : size === 'sm' ? 'px-4 py-2 text-sm' : size === 'lg' ? 'px-8 py-3.5 text-base' : 'px-6 py-3 text-sm';
 const Tag = as ?? (href ? 'a' : 'button');
 ---
 
