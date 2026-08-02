@@ -145,10 +145,8 @@ const genderTabs = (Object.keys(GENDER_FILTERS) as GenderFilter[]).map((g) => ({
        nothing shifts) — and the boxed AMSTERDAM ▾ location control right. -->
   <div class="border-t border-border/60">
     <div class="mx-auto flex h-14 max-w-7xl items-stretch gap-3 px-4 md:h-16 md:px-6">
-      <!-- Mobile: the scroll run fades out at the right edge (mask) so a
-           half-cut label reads as "more", never as a bug. -->
       <div
-        class="flex min-w-0 flex-1 select-none items-stretch gap-5 overflow-x-auto mask-r-from-80% [scrollbar-width:none] md:gap-7 md:mask-none [&::-webkit-scrollbar]:hidden"
+        class="flex min-w-0 flex-1 select-none items-stretch gap-5 overflow-x-auto [scrollbar-width:none] md:gap-7 [&::-webkit-scrollbar]:hidden"
       >
         <!-- Gender: single-select, default women; a click persists (cookie).
              Desktop-only — on mobile the filter sheet owns gender. -->
@@ -174,8 +172,10 @@ const genderTabs = (Object.keys(GENDER_FILTERS) as GenderFilter[]).map((g) => ({
 
         <!-- lg: categories take the middle of the bar (mx-auto) instead of
              hugging the gender group — the empty run of bar works for us. -->
+        <!-- Mobile: justified across the full bar width; desktop: spaced run
+             centered in the bar. -->
         <nav
-          class="flex min-w-0 flex-none items-stretch gap-5 md:gap-10 lg:mx-auto"
+          class="flex w-full min-w-0 items-stretch justify-between md:w-auto md:flex-none md:justify-start md:gap-10 lg:mx-auto"
           aria-label={m.all_categories()}
         >
           {

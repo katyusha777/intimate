@@ -40,7 +40,6 @@ const slab = SLABS[hash % SLABS.length]!;
 /* Heart + carousel arrows get their own per-card cut/tilt (offset hashes so
  * heart, slab and arrows never move in lockstep). */
 const heartCut = `cut-${(hash + 1) % 4}`;
-const slabCutAlt = `cut-${(hash + 3) % 4}`;
 ---
 
 {
@@ -53,13 +52,11 @@ const slabCutAlt = `cut-${(hash + 3) % 4}`;
       <div class="absolute inset-0 overflow-hidden rounded-lg bg-neutral-950 shadow-soft transition-shadow duration-200 group-hover:shadow-soft-lg">
         <PhotoCarousel photos={p.photos} keyBase={p.id} alt={p.name} class="h-full" {loading} />
       </div>
-      <!-- Live signal on the photo's top-left corner (heart owns top-right). -->
+      <!-- Live signal on the photo's top-left corner (heart owns top-right):
+           just the pulsing dot, no slab behind it. -->
       {p.online && (
-        <span
-          class:list={[slabCutAlt, 'absolute left-2 top-2 z-10 grid size-6 place-items-center bg-neutral-950']}
-          title={m.online_now()}
-        >
-          <span class="online-dot size-2 rounded-full bg-online"></span>
+        <span class="absolute left-2.5 top-2.5 z-10" title={m.online_now()}>
+          <span class="online-dot block size-2.5 rounded-full bg-online"></span>
           <span class="sr-only">{m.online_now()}</span>
         </span>
       )}
