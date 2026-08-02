@@ -59,6 +59,19 @@ const row = 'flex cursor-pointer select-none items-center gap-2.5 text-sm hover:
   </div>
 
   <div class="mt-4 px-1">
+    <!-- Find someone specific: name or phone number, rides the existing `q`
+         param (digits ≥6 → phone lookup in the API). -->
+    <div class={group}>
+      <h3 class={heading}>{m.filter_find_someone()}</h3>
+      <Input
+        type="search"
+        name="q"
+        value={params.q ?? ''}
+        placeholder={m.filter_find_someone_ph()}
+        aria-label={m.filter_find_someone()}
+      />
+    </div>
+
     <!-- Gender (desktop home; on mobile the quick chips above the grid own it —
          the listing script disables whichever set is hidden). -->
     <div class:list={[group, 'hidden lg:block']} data-gender-desktop>

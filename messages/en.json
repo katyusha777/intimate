@@ -418,5 +418,7 @@
   "filter_apply": "Show results",
   "search_find_ph": "Search professionals",
   "search_open": "Open search",
-  "home_your_city": "Back to {city}"
+  "home_your_city": "Back to {city}",
+  "filter_find_someone": "Find someone",
+  "filter_find_someone_ph": "Name or phone number"
 }

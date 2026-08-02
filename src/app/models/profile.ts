@@ -91,6 +91,8 @@ export const ProfileSchema = z.object({
   priceFrom: z.number().int().positive().optional(), // EUR — derived from rates
   /** First-class rate table (UX-PLAN 2.1); `priceFrom` derives from it. */
   rates: z.array(RateRowSchema).default([]),
+  /** Public contact number — searchable via `q` (find-someone-specific). */
+  phone: z.string().optional(),
   /** Optional deposit policy shown under the table + in good-to-know. */
   depositPolicy: z.string().optional(),
   /** Optional free note under the table ("extras discussed in person"). */

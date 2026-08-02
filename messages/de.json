@@ -418,5 +418,7 @@
   "filter_apply": "Ergebnisse anzeigen",
   "search_find_ph": "Professionals suchen",
   "search_open": "Suche öffnen",
-  "home_your_city": "Zurück nach {city}"
+  "home_your_city": "Zurück nach {city}",
+  "filter_find_someone": "Jemanden finden",
+  "filter_find_someone_ph": "Name oder Telefonnummer"
 }

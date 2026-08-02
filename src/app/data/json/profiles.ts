@@ -29,8 +29,14 @@ const SORTERS: Record<string, (a: Profile, b: Profile) => number> = {
   price_high_low: (a, b) => b.priceFrom - a.priceFrom,
 };
 
+/** Digits only, minus NL prefixes — "+31 6 12…" and "0612…" compare equal. */
+const phoneDigits = (s: string) => s.replace(/\D/g, '').replace(/^(0031|31|0)/, '');
+
 /** Naive full-text match — the SQL backend swaps this for Postgres FTS. */
 function matchesQuery(p: Profile, q: string): boolean {
+  // Find-someone-specific: a query with 6+ digits is a phone lookup.
+  const qDigits = phoneDigits(q);
+  if (qDigits.length >= 6) return !!p.phone && phoneDigits(p.phone).includes(qDigits);
   const hay = [p.name, p.description, ...Object.values(p.descriptionTranslations), CITY_NAME.get(p.city) ?? '', ...p.services.map((s) => s.replaceAll('_', ' '))]
     .join(' ')
     .toLowerCase();

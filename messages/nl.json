@@ -418,5 +418,7 @@
   "filter_apply": "Toon resultaten",
   "search_find_ph": "Zoek professionals",
   "search_open": "Zoeken openen",
-  "home_your_city": "Terug naar {city}"
+  "home_your_city": "Terug naar {city}",
+  "filter_find_someone": "Zoek iemand",
+  "filter_find_someone_ph": "Naam of telefoonnummer"
 }
