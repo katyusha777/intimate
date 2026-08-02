@@ -98,6 +98,14 @@
       {
         "duration": "overnight",
         "incall": 800
+      },
+      {
+        "label": "15 min phone call",
+        "incall": 25
+      },
+      {
+        "label": "Video call (30 min)",
+        "incall": 60
       }
     ],
     "depositPolicy": "20% deposit to confirm, deducted from the total.",
@@ -462,6 +470,10 @@
         "duration": "hour_2",
         "incall": 365,
         "outcall": 385
+      },
+      {
+        "label": "Dinner date add-on",
+        "outcall": 150
       }
     ],
     "depositPolicy": "20% deposit to confirm, deducted from the total.",

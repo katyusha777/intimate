@@ -18,7 +18,7 @@ export const ProfileEditSchema = z.object({
   gender: z.enum(GENDERS),
   city: z.enum(CITY_SLUGS),
   // priceFrom is derived from `rates` (UX-PLAN 2.1) — not directly editable.
-  rates: z.array(RateRowSchema).max(RATE_DURATIONS.length),
+  rates: z.array(RateRowSchema).max(24), // presets + her custom line items
   depositPolicy: z.string().trim().max(200).optional(),
   extrasNote: z.string().trim().max(200).optional(),
   services: z.array(z.enum(SERVICE_VALUES)).max(20),

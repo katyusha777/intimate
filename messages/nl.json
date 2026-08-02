@@ -439,5 +439,11 @@
   "support_topic_3": "Account- & inlogproblemen",
   "support_topic_4": "Veiligheid, privacy & discretie",
   "support_topic_5": "Een profiel of probleem melden",
-  "support_note": "Wij zijn een advertentieplatform — afspraken maak je rechtstreeks met adverteerders. Voor alles over het platform zelf: praat met ons."
+  "support_note": "Wij zijn een advertentieplatform — afspraken maak je rechtstreeks met adverteerders. Voor alles over het platform zelf: praat met ons.",
+  "editor_custom_items": "Eigen items",
+  "editor_add_item": "Item toevoegen",
+  "editor_custom_ph": "bijv. 15 minuten bellen",
+  "editor_move_up": "Omhoog",
+  "editor_move_down": "Omlaag",
+  "editor_remove_item": "Item verwijderen"
 }

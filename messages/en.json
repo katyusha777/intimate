@@ -439,5 +439,11 @@
   "support_topic_3": "Account & login trouble",
   "support_topic_4": "Safety, privacy & discretion",
   "support_topic_5": "Reporting a profile or a problem",
-  "support_note": "We are an advertising platform — appointments are made directly with advertisers. For everything about the platform itself, talk to us."
+  "support_note": "We are an advertising platform — appointments are made directly with advertisers. For everything about the platform itself, talk to us.",
+  "editor_custom_items": "Custom items",
+  "editor_add_item": "Add item",
+  "editor_custom_ph": "e.g. 15 minutes phone call",
+  "editor_move_up": "Move up",
+  "editor_move_down": "Move down",
+  "editor_remove_item": "Remove item"
 }

@@ -41,25 +41,43 @@ const CITY_SLUGS = CITIES.map((c) => c.slug) as unknown as [CitySlug, ...CitySlu
 const SERVICE_VALUES = ALL_SERVICES as unknown as [Service, ...Service[]];
 
 /**
- * One rate row (UX-PLAN 2.1): a duration with an incall and/or outcall price.
- * At least one of the two prices must be set — a row with no price is noise.
- * `priceFrom` is DERIVED from the min of these (ratesMinPrice), never authored.
+ * One rate row (UX-PLAN 2.1): either a PRESET duration or a free-text custom
+ * item ("15 minutes phone call"), with an incall and/or outcall price. At
+ * least one price must be set — a row with no price is noise. Array order IS
+ * the display order (the editor sorts custom items).
+ * `priceFrom` is DERIVED (ratesMinPrice over duration rows), never authored.
  */
 export const RateRowSchema = z
   .object({
-    duration: z.enum(RATE_DURATIONS),
+    /** Preset time row — mutually fallback with `label`. */
+    duration: z.enum(RATE_DURATIONS).optional(),
+    /** Her own free-text line item. */
+    label: z.string().trim().min(1).max(60).optional(),
     incall: z.number().int().positive().optional(),
     outcall: z.number().int().positive().optional(),
+  })
+  .refine((r) => r.duration !== undefined || r.label !== undefined, {
+    message: 'rate row needs a duration or a label',
   })
   .refine((r) => r.incall !== undefined || r.outcall !== undefined, {
     message: 'rate row needs an incall or outcall price',
   });
 export type RateRow = z.infer<typeof RateRowSchema>;
 
-/** Minimum price across a rates table (both columns) — the derived `priceFrom`. */
+/** Minimum price across rate rows (both columns). */
 export function ratesMinPrice(rates: readonly RateRow[]): number | undefined {
   const all = rates.flatMap((r) => [r.incall, r.outcall].filter((n): n is number => n !== undefined));
   return all.length ? Math.min(...all) : undefined;
+}
+
+/**
+ * The card's "from €X": duration rows only — a €5 custom add-on ("phone
+ * call") must not masquerade as the meeting price. Falls back to all rows
+ * when she only has custom items.
+ */
+export function priceFromRates(rates: readonly RateRow[]): number | undefined {
+  const timed = rates.filter((r) => r.duration !== undefined);
+  return ratesMinPrice(timed.length ? timed : rates);
 }
 
 export const ProfileSchema = z.object({
@@ -130,7 +148,7 @@ export const ProfileSchema = z.object({
   // fallback for tableless profiles. `?? 0` keeps the type a plain number even
   // in the (invalid seed) case of neither — callers never see undefined.
   ...p,
-  priceFrom: ratesMinPrice(p.rates) ?? p.priceFrom ?? 0,
+  priceFrom: priceFromRates(p.rates) ?? p.priceFrom ?? 0,
 }));
 export type Profile = z.infer<typeof ProfileSchema>;
 

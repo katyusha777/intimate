@@ -39,9 +39,10 @@ const serviceGroups = SERVICE_CATEGORIES.map((cat) => ({
 })).filter((g) => g.items.length > 0);
 
 // Her durations, each with a snapshot price = the min of its incall/outcall.
-const rates = p.rates ?? [];
+// Preset time rows only — custom line items are not bookable durations.
+const rates = (p.rates ?? []).filter((r) => r.duration !== undefined);
 const durationOptions = rates.map((r) => ({
-  duration: r.duration,
+  duration: r.duration!,
   price: ratesMinPrice([r]) ?? 0,
 }));
 

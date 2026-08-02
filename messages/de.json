@@ -439,5 +439,11 @@
   "support_topic_3": "Konto- & Login-Probleme",
   "support_topic_4": "Sicherheit, Privatsphäre & Diskretion",
   "support_topic_5": "Ein Profil oder Problem melden",
-  "support_note": "Wir sind eine Werbeplattform — Termine machst du direkt mit den Inserenten. Für alles rund um die Plattform selbst: sprich mit uns."
+  "support_note": "Wir sind eine Werbeplattform — Termine machst du direkt mit den Inserenten. Für alles rund um die Plattform selbst: sprich mit uns.",
+  "editor_custom_items": "Eigene Positionen",
+  "editor_add_item": "Position hinzufügen",
+  "editor_custom_ph": "z. B. 15 Minuten Telefonat",
+  "editor_move_up": "Nach oben",
+  "editor_move_down": "Nach unten",
+  "editor_remove_item": "Position entfernen"
 }

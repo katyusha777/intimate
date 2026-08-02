@@ -242,9 +242,12 @@ const genderTabs = (Object.keys(GENDER_FILTERS) as GenderFilter[]).map((g) => ({
 
 <style>
   /* Auto-hide slide (script below): transform only — content never reflows,
-     the bar just glides out. Same spring family as the sheets. */
+     the bar just glides out. Same spring family as the sheets. will-change
+     pre-promotes the layer: iOS Safari refuses to animate backdrop-blurred
+     elements smoothly otherwise (the "header pops" bug). */
   .site-header {
-    transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+    transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+    will-change: transform;
   }
   .site-header.header-hide {
     transform: translateY(-100%);
@@ -282,7 +285,13 @@ const genderTabs = (Object.keys(GENDER_FILTERS) as GenderFilter[]).map((g) => ({
         const dy = y - lastY;
         lastY = y;
         if (!mq.matches) return setHidden(false);
-        if (document.documentElement.hasAttribute('data-sheet-open')) return; // locked behind a sheet
+        // ONLY real scrolling moves the header — never a sheet/lightbox
+        // opening or closing (their scroll-locks can emit phantom events).
+        if (
+          document.documentElement.hasAttribute('data-sheet-open') ||
+          document.documentElement.hasAttribute('data-lightbox-open')
+        )
+          return;
         if (y < 60) return setHidden(false); // near the top: always show
         if (dy > 6) setHidden(true);
         else if (dy < -6) setHidden(false);

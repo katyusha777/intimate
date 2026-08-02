@@ -47,7 +47,11 @@ const heading = 'font-condensed text-sm font-bold uppercase tracking-wide';
 const row = 'flex cursor-pointer select-none items-center gap-2.5 text-sm hover:text-foreground/70';
 
 // Existing rate rows keyed by duration for quick prefill of the table editor.
-const rateByDuration = new Map((p.rates ?? []).map((r) => [r.duration, r]));
+const rateByDuration = new Map(
+  (p.rates ?? []).filter((r) => r.duration !== undefined).map((r) => [r.duration, r]),
+);
+/** Her free-text line items (label rows), in her saved order. */
+const customRows = (p.rates ?? []).filter((r) => r.duration === undefined);
 const setOf = (arr: readonly string[]) => new Set(arr as readonly string[]);
 const selLanguages = setOf(p.languages ?? []);
 const selIncall = setOf(p.incallLocations ?? []);
@@ -147,6 +151,75 @@ const selPayments = setOf(p.paymentMethods ?? []);
         })
       }
     </div>
+
+    <!-- Custom line items: her own free-text rows ("15 minutes phone call"),
+         each with prices, removable and sortable (↑/↓ — array order is the
+         display order on the public rates table). -->
+    <div class="pt-4" data-custom-rates>
+      <p class="eyebrow text-2xs text-muted-foreground">{m.editor_custom_items()}</p>
+      <div class="mt-2 space-y-2" data-custom-list>
+        {
+          customRows.map((r) => (
+            <div class="grid grid-cols-[1fr_5rem_5rem] items-center gap-2" data-custom-row>
+              <div class="flex min-w-0 items-center gap-1.5">
+                <input
+                  type="text"
+                  maxlength="60"
+                  placeholder={m.editor_custom_ph()}
+                  data-custom-label
+                  value={r.label}
+                  class="w-full min-w-0 border border-foreground/20 bg-transparent px-2 py-1 text-sm outline-none transition-colors focus:border-foreground"
+                />
+                <button type="button" data-act="up" aria-label={m.editor_move_up()} class="grid size-7 flex-none cursor-pointer place-items-center border border-foreground/20 text-muted-foreground transition-colors hover:border-foreground/60 hover:text-foreground">
+                  <Icon name="chevron-up" class="text-xs" />
+                </button>
+                <button type="button" data-act="down" aria-label={m.editor_move_down()} class="grid size-7 flex-none cursor-pointer place-items-center border border-foreground/20 text-muted-foreground transition-colors hover:border-foreground/60 hover:text-foreground">
+                  <Icon name="chevron-down" class="text-xs" />
+                </button>
+                <button type="button" data-act="remove" aria-label={m.editor_remove_item()} class="grid size-7 flex-none cursor-pointer place-items-center border border-foreground/20 text-muted-foreground transition-colors hover:border-brand hover:text-brand">
+                  <Icon name="xmark" class="text-xs" />
+                </button>
+              </div>
+              <input type="number" inputmode="numeric" min="0" step="5" placeholder="€" data-custom-incall value={r.incall ?? ''} class="w-full border border-foreground/20 bg-transparent px-2 py-1 text-right text-sm outline-none transition-colors focus:border-foreground" />
+              <input type="number" inputmode="numeric" min="0" step="5" placeholder="€" data-custom-outcall value={r.outcall ?? ''} class="w-full border border-foreground/20 bg-transparent px-2 py-1 text-right text-sm outline-none transition-colors focus:border-foreground" />
+            </div>
+          ))
+        }
+      </div>
+      <template data-custom-template>
+        <div class="grid grid-cols-[1fr_5rem_5rem] items-center gap-2" data-custom-row>
+          <div class="flex min-w-0 items-center gap-1.5">
+            <input
+              type="text"
+              maxlength="60"
+              placeholder={m.editor_custom_ph()}
+              data-custom-label
+              class="w-full min-w-0 border border-foreground/20 bg-transparent px-2 py-1 text-sm outline-none transition-colors focus:border-foreground"
+            />
+            <button type="button" data-act="up" aria-label={m.editor_move_up()} class="grid size-7 flex-none cursor-pointer place-items-center border border-foreground/20 text-muted-foreground transition-colors hover:border-foreground/60 hover:text-foreground">
+              <Icon name="chevron-up" class="text-xs" />
+            </button>
+            <button type="button" data-act="down" aria-label={m.editor_move_down()} class="grid size-7 flex-none cursor-pointer place-items-center border border-foreground/20 text-muted-foreground transition-colors hover:border-foreground/60 hover:text-foreground">
+              <Icon name="chevron-down" class="text-xs" />
+            </button>
+            <button type="button" data-act="remove" aria-label={m.editor_remove_item()} class="grid size-7 flex-none cursor-pointer place-items-center border border-foreground/20 text-muted-foreground transition-colors hover:border-brand hover:text-brand">
+              <Icon name="xmark" class="text-xs" />
+            </button>
+          </div>
+          <input type="number" inputmode="numeric" min="0" step="5" placeholder="€" data-custom-incall class="w-full border border-foreground/20 bg-transparent px-2 py-1 text-right text-sm outline-none transition-colors focus:border-foreground" />
+          <input type="number" inputmode="numeric" min="0" step="5" placeholder="€" data-custom-outcall class="w-full border border-foreground/20 bg-transparent px-2 py-1 text-right text-sm outline-none transition-colors focus:border-foreground" />
+        </div>
+      </template>
+      <button
+        type="button"
+        data-add-custom
+        class="mt-2 flex cursor-pointer items-center gap-1.5 border border-foreground/20 px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:border-foreground/60 hover:text-foreground"
+      >
+        <Icon name="plus" class="text-xs" />
+        {m.editor_add_item()}
+      </button>
+    </div>
+
     <div class="grid gap-4 pt-2 sm:grid-cols-2">
       <div>
         <SlabField label={m.gtk_deposit()} name="depositPolicy" value={p.depositPolicy ?? ''} maxlength="200" />
@@ -355,6 +428,25 @@ const selPayments = setOf(p.paymentMethods ?? []);
         );
       });
 
+      // Custom line items: add / remove / reorder (DOM order = saved order).
+      const customList = form.querySelector<HTMLElement>('[data-custom-list]');
+      const customTpl = form.querySelector<HTMLTemplateElement>('[data-custom-template]');
+      form.querySelector('[data-add-custom]')?.addEventListener('click', () => {
+        if (!customList || !customTpl) return;
+        customList.appendChild(customTpl.content.cloneNode(true));
+        customList.querySelector<HTMLInputElement>('[data-custom-row]:last-child [data-custom-label]')?.focus();
+      });
+      customList?.addEventListener('click', (e) => {
+        const btn = (e.target as HTMLElement).closest<HTMLElement>('button[data-act]');
+        if (!btn) return;
+        const row = btn.closest('[data-custom-row]')!;
+        if (btn.dataset.act === 'remove') row.remove();
+        else if (btn.dataset.act === 'up' && row.previousElementSibling)
+          customList.insertBefore(row, row.previousElementSibling);
+        else if (btn.dataset.act === 'down' && row.nextElementSibling)
+          customList.insertBefore(row.nextElementSibling, row);
+      });
+
       form.addEventListener('submit', async (e) => {
         e.preventDefault();
         const fd = new FormData(form);
@@ -380,6 +472,23 @@ const selPayments = setOf(p.paymentMethods ?? []);
           const outcall = num('[data-rate-outcall]');
           if (incall === undefined && outcall === undefined) return;
           const row: Record<string, unknown> = { duration: r.dataset.duration };
+          if (incall !== undefined) row.incall = incall;
+          if (outcall !== undefined) row.outcall = outcall;
+          rates.push(row);
+        });
+        // Her custom line items, in DOM order (= her chosen order). A row
+        // needs a label AND at least one price; the rest is skipped quietly.
+        form.querySelectorAll<HTMLElement>('[data-custom-row]').forEach((r) => {
+          const label = r.querySelector<HTMLInputElement>('[data-custom-label]')!.value.trim();
+          if (!label) return;
+          const num = (sel: string) => {
+            const v = r.querySelector<HTMLInputElement>(sel)!.value.trim();
+            return v === '' ? undefined : Number(v);
+          };
+          const incall = num('[data-custom-incall]');
+          const outcall = num('[data-custom-outcall]');
+          if (incall === undefined && outcall === undefined) return;
+          const row: Record<string, unknown> = { label };
           if (incall !== undefined) row.incall = incall;
           if (outcall !== undefined) row.outcall = outcall;
           rates.push(row);
