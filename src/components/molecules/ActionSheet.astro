@@ -142,6 +142,14 @@ const { id, class: className, label, flush } = Astro.props;
       };
       const close = () => {
         if (!dialog.open) return;
+        // Exits are FAST (iOS convention: sheets close quicker than they
+        // open) — and the page is scroll-locked until the slide ends, so
+        // every ms here is dead input time. Flick paths set their own
+        // (even faster) duration before calling close().
+        if (!panel.style.transitionDuration) {
+          panel.style.transitionDuration = '0.3s';
+          backdrop.style.transitionDuration = '0.3s';
+        }
         dialog.removeAttribute('data-open');
         // CRITICAL: the <html> scroll-lock marker is NOT touched here. Unlocking
         // mid-slide lets Safari re-expand its chrome → the dynamic viewport
