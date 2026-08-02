@@ -59,7 +59,7 @@ const genderTabs = (Object.keys(GENDER_FILTERS) as GenderFilter[]).map((g) => ({
        DESKTOP: logo left, text menu beside it, EN + auth right. -->
   <div class="relative mx-auto flex h-14 max-w-7xl items-center gap-3 px-4 md:h-[4.25rem] md:gap-5 md:px-6">
     <!-- Mobile left: city + language (desktop keeps city in row 2, EN right). -->
-    <div class="flex flex-none items-center gap-2 md:hidden">
+    <div class="flex flex-none items-center gap-1 md:hidden">
       <Combobox
         variant="bare"
         options={CITIES.map((c) => ({ value: c.slug, label: c.name }))}
@@ -90,8 +90,8 @@ const genderTabs = (Object.keys(GENDER_FILTERS) as GenderFilter[]).map((g) => ({
       class="absolute left-1/2 flex -translate-x-1/2 items-center md:static md:left-auto md:flex-none md:translate-x-0"
     >
       <!-- naming follows the source files: LIGHT = light (white) lettering, DARK = dark lettering -->
-      <img src="/img/logo-dark.svg" alt={m.app_name()} class="h-9 w-auto dark:hidden" />
-      <img src="/img/logo-light.svg" alt={m.app_name()} class="hidden h-9 w-auto dark:block" />
+      <img src="/img/logo-dark.svg" alt={m.app_name()} class="h-7 w-auto dark:hidden md:h-9" />
+      <img src="/img/logo-light.svg" alt={m.app_name()} class="hidden h-7 w-auto dark:block md:h-9" />
     </a>
 
     <!-- Text menu sits BESIDE the logo — the right edge belongs to controls. -->
@@ -122,7 +122,7 @@ const genderTabs = (Object.keys(GENDER_FILTERS) as GenderFilter[]).map((g) => ({
       />
     </div>
 
-    <div class="ml-auto flex flex-none items-center gap-3 md:ml-0 md:gap-4">
+    <div class="ml-auto flex flex-none items-center gap-2.5 md:ml-0 md:gap-4">
       {
         session ? (
           <UserMenu {session} />
@@ -150,8 +150,10 @@ const genderTabs = (Object.keys(GENDER_FILTERS) as GenderFilter[]).map((g) => ({
        nothing shifts) — and the boxed AMSTERDAM ▾ location control right. -->
   <div class="border-t border-border/60">
     <div class="mx-auto flex h-14 max-w-7xl items-stretch gap-3 px-4 md:h-16 md:px-6">
+      <!-- Mobile: the scroll run fades out at the right edge (mask) so a
+           half-cut label reads as "more", never as a bug. -->
       <div
-        class="flex min-w-0 flex-1 select-none items-stretch gap-5 overflow-x-auto [scrollbar-width:none] md:gap-7 [&::-webkit-scrollbar]:hidden"
+        class="flex min-w-0 flex-1 select-none items-stretch gap-5 overflow-x-auto mask-r-from-80% [scrollbar-width:none] md:gap-7 md:mask-none [&::-webkit-scrollbar]:hidden"
       >
         <!-- Gender: single-select, default women; a click persists (cookie).
              Desktop-only — on mobile the filter sheet owns gender. -->
