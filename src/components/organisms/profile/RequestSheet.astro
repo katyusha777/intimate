@@ -60,7 +60,7 @@ for (let i = 0; i < 7 && slotOptions.length < 4; i++) {
 }
 
 const chip =
-  'rounded-md cursor-pointer border border-foreground/20 px-3 py-1.5 text-sm font-medium transition-colors hover:border-foreground/60 data-[sel]:border-foreground data-[sel]:bg-foreground data-[sel]:text-background';
+  'cursor-pointer border border-foreground/20 px-3 py-1.5 text-sm font-medium transition-colors hover:border-foreground/60 data-[sel]:border-foreground data-[sel]:bg-foreground data-[sel]:text-background';
 const stepTitle = 'font-condensed text-lg font-bold';
 ---
 
@@ -108,7 +108,7 @@ const stepTitle = 'font-condensed text-lg font-bold';
                 type="button"
                 data-pick-duration={d.duration}
                 data-price={d.price}
-                class="rounded-md flex cursor-pointer items-center justify-between gap-4 border border-foreground/20 px-4 py-3 text-left transition-colors hover:border-foreground/60 data-[sel]:border-foreground"
+                class="flex cursor-pointer items-center justify-between gap-4 border border-foreground/20 px-4 py-3 text-left transition-colors hover:border-foreground/60 data-[sel]:border-foreground"
               >
                 <span class="font-medium">{rateDurationLabel(d.duration)}</span>
                 <span class="font-condensed text-lg font-bold">€{d.price}</span>

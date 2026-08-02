@@ -25,11 +25,13 @@ Pages = `src/pages/` (compose organisms; own no reusable markup).
 **Level definitions:**
 - **Atom** — renders essentially one element; knows nothing about profiles,
   search, or auth. Two kinds:
-  - *wrappers* over `ui/` (Button — `variant="default"` renders the internal
-    AnaglyphButton atom (DESIGN.md §3.1); `variant="secondary"` is the clean
-    bordered anti-anaglyph for non-primary actions — Input, Select, Badge,
-    Avatar, Switch, Skeleton) — the app-facing API. **Swapping the UI library =
-    re-implementing these files; nothing above atoms changes.**
+  - *wrappers* over `ui/` (Button — THE three button types, flat + skews, no
+    radii: `default` = the internal AnaglyphButton slab (DESIGN.md §3.1),
+    `secondary` = the same cut slab without the pink/cyan layers (AnaglyphButton
+    `plain`), `tertiary` = flat foreground outline (white on dark / black on
+    light) — Input, Select, Badge, Avatar, Switch, Skeleton) — the app-facing
+    API. **Swapping the UI library = re-implementing these files; nothing above
+    atoms changes.**
   - *own primitives*: Icon (Font Awesome abstraction — icon lib swap is this
     one file), SafeImage (safe-mode image contract), VerifiedBadge.
 - **Molecule** — a self-contained control from atoms + markup, reusable in any
@@ -141,8 +143,9 @@ Folders appear when their first organism lands:
   `ProfileCard variant="mini"` (small square cards). Pool passed from the page
   via `buildListing().savedPool`.
 - **Clean filter chips** (`.filter-chip` / `.filter-chip__box` tokens in
-  `global.css`): the listing gender + quick filters. Full even keyline border,
-  normal radius, an obvious mini-checkbox — replaced the old `.slab-cut` chips
+  `global.css`): the listing quick filters. Full even keyline border, FLAT
+  corners (the button family carries no radii), an obvious mini-checkbox —
+  replaced the old `.slab-cut` chips
   that read as noise. SELECTED = ink-fill + a slight `skewX` shear (suppressed
   under `prefers-reduced-motion`), driven by CSS `.peer:checked + .filter-chip`
   (the input is a sibling `peer sr-only`). Used in `SearchListing` and shown on

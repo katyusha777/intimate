@@ -4,15 +4,15 @@
  * here, call sites stay untouched (previous vendor wrapper:
  * `import { Button } from '@/components/ui/button'`).
  *
- * Variants:
- *  - `default`   — the Persona-5 anaglyph (the "special" primary CTA), unchanged.
- *  - `secondary` — a CLEAN button: full border, subtle solid fill, normal radius.
- *                  Unmistakably a button — no slab-cut corners, no anaglyph.
+ * THE three button types (flat lines + skews, no radii):
+ *  - `default`   — PRIMARY: the Persona-5 anaglyph (skewed slab + pink/cyan).
+ *  - `secondary` — the same cut ink slab WITHOUT the chromatic layers.
+ *  - `tertiary`  — muted flat outline: keyline border, quiet text, square.
  */
 import AnaglyphButton from './AnaglyphButton.astro';
 
 interface Props {
-  variant?: 'default' | 'secondary';
+  variant?: 'default' | 'secondary' | 'tertiary';
   as?: 'button' | 'a';
   href?: string;
   type?: 'button' | 'submit';
@@ -23,17 +23,17 @@ interface Props {
 
 const { variant = 'default', as, href, type = 'button', size = 'default', class: className, ...rest } = Astro.props;
 
-// Secondary padding tracks the anaglyph size scale so the two read as siblings.
+// Tertiary padding tracks the anaglyph size scale so the three read as siblings.
 const pad =
   size === 'sm' ? 'px-4 py-2 text-sm' : size === 'lg' ? 'px-8 py-3.5 text-base' : 'px-6 py-3 text-sm';
 const Tag = as ?? (href ? 'a' : 'button');
 ---
 
 {
-  variant === 'secondary' ? (
+  variant === 'tertiary' ? (
     <Tag
       class:list={[
-        'btn-secondary inline-flex items-center justify-center gap-2 rounded-md border font-semibold transition-colors',
+        'btn-tertiary inline-flex items-center justify-center gap-2 border font-semibold transition-colors',
         pad,
         className,
       ]}
@@ -44,7 +44,7 @@ const Tag = as ?? (href ? 'a' : 'button');
       <slot />
     </Tag>
   ) : (
-    <AnaglyphButton {as} {href} {type} {size} class={className} {...rest}>
+    <AnaglyphButton {as} {href} {type} {size} plain={variant === 'secondary'} class={className} {...rest}>
       <slot />
     </AnaglyphButton>
   )

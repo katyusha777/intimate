@@ -32,6 +32,17 @@ interface Props {
 const { params, resetHref, visitMode = 'query', openCategory, sheet } = Astro.props;
 const visitNav = visitMode === 'navigate';
 const selectedServices = new Set(params.services ?? []);
+/* Resolved gender pick (radio, default women) — mirrors the header tabs. */
+const genderPick = params.genders?.includes('male')
+  ? 'men'
+  : params.genders?.includes('trans_woman')
+    ? 'trans'
+    : 'women';
+const genderOptions = [
+  { value: 'women', label: m.gender_tab_women() },
+  { value: 'men', label: m.gender_tab_men() },
+  { value: 'trans', label: m.gender_tab_trans() },
+];
 /* Effective location set: main city (path, set top-right) + extra sidebar cities. */
 const selectedCities = new Set([params.city, ...(params.cities ?? [])].filter(Boolean));
 
@@ -49,7 +60,7 @@ const row = 'flex cursor-pointer select-none items-center gap-2.5 text-sm hover:
       !sheet && (
         <a
           href={resetHref}
-          class="rounded-md border border-foreground/20 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-foreground/60 hover:text-foreground"
+          class="border border-foreground/20 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-foreground/60 hover:text-foreground"
         >
           {m.filter_reset()}
         </a>
@@ -71,8 +82,50 @@ const row = 'flex cursor-pointer select-none items-center gap-2.5 text-sm hover:
       />
     </div>
 
-    <!-- Gender lives in the header row (WOMEN · MEN · TRANS radio, default
-         women) — not duplicated here. -->
+    <!-- Gender: on desktop the header tabs own it; the mobile filter sheet
+         carries the same radio here (the header hides gender on mobile). -->
+    {
+      sheet && (
+        <div class={group}>
+          <h3 class={heading}>{m.filter_gender()}</h3>
+          <div class="space-y-2">
+            {genderOptions.map((g) => (
+              <label class={row}>
+                <input
+                  type="radio"
+                  name="gender"
+                  value={g.value}
+                  checked={g.value === genderPick}
+                  class="radio-dot"
+                />
+                {g.label}
+              </label>
+            ))}
+          </div>
+        </div>
+      )
+    }
+
+    <!-- Availability: the two live-now switches (moved out of the control
+         rail — quick filters live with the other filters). -->
+    <div class={group}>
+      <h3 class={heading}>{m.filter_availability()}</h3>
+      <div class="space-y-2.5">
+        <label class="flex cursor-pointer select-none items-center gap-2.5 text-sm font-medium">
+          <input type="checkbox" name="available" checked={params.availableNow} class="sr-only" />
+          <span class="switch-track" aria-hidden="true"></span>
+          <span class="flex items-center gap-1.5">
+            <span class="size-1.5 flex-none rounded-full bg-online" aria-hidden="true"></span>
+            {m.filter_available()}
+          </span>
+        </label>
+        <label class="flex cursor-pointer select-none items-center gap-2.5 text-sm font-medium">
+          <input type="checkbox" name="online" checked={params.onlineOnly} class="sr-only" />
+          <span class="switch-track" aria-hidden="true"></span>
+          {m.filter_online()}
+        </label>
+      </div>
+    </div>
 
     <!-- Location: extra cities on top of the main one (header combobox).
          Checking cities here never changes the main path state. Top 6 visible

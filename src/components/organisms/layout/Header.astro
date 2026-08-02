@@ -94,7 +94,8 @@ const genderTabs = (Object.keys(GENDER_FILTERS) as GenderFilter[]).map((g) => ({
 
     <!-- Right cluster: language (bare EN ▾), theme, auth. md:ml-auto pushes it
          right once the mobile search icon (ml-auto) is hidden. -->
-    <div class="flex flex-none items-center gap-2 md:ml-auto">
+    <!-- Theme switch is desktop-only chrome — mobile gets it in the footer. -->
+    <div class="hidden flex-none items-center gap-2 md:ml-auto md:flex">
       <Combobox
         variant="bare"
         options={LANGUAGES}
@@ -139,8 +140,9 @@ const genderTabs = (Object.keys(GENDER_FILTERS) as GenderFilter[]).map((g) => ({
       <div
         class="flex min-w-0 flex-1 select-none items-stretch gap-5 overflow-x-auto [scrollbar-width:none] md:gap-7 [&::-webkit-scrollbar]:hidden"
       >
-        <!-- Gender: single-select, default women; a click persists (cookie). -->
-        <nav class="flex flex-none items-stretch gap-4 md:gap-5" aria-label={m.filter_gender()}>
+        <!-- Gender: single-select, default women; a click persists (cookie).
+             Desktop-only — on mobile the filter sheet owns gender. -->
+        <nav class="hidden flex-none items-stretch gap-4 md:flex md:gap-5" aria-label={m.filter_gender()}>
           {
             genderTabs.map((g) => (
               <a
@@ -158,7 +160,7 @@ const genderTabs = (Object.keys(GENDER_FILTERS) as GenderFilter[]).map((g) => ({
           }
         </nav>
 
-        <span class="my-3.5 w-px flex-none bg-border" aria-hidden="true"></span>
+        <span class="my-3.5 hidden w-px flex-none bg-border md:block" aria-hidden="true"></span>
 
         <nav
           class="flex min-w-0 flex-none items-stretch gap-5 md:gap-7"

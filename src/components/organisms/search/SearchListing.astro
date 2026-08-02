@@ -63,7 +63,7 @@ function pageHref(p: number): string {
   return qs ? `${basePath}?${qs}` : basePath;
 }
 
-/* Clean filter chip (fix/search): full even keyline, normal radius — calm,
+/* Clean filter chip (fix/search): full even keyline, flat corners — calm,
    unmistakably a filter. `.filter-chip` owns border/radius/height; here we add
    the tap feedback. Selected state (skew + ink fill) is CSS via peer:checked. */
 const chip =
@@ -80,13 +80,14 @@ const chip =
   data-visit-incall-path={`/${locale}/${incallSlug}/`}
   data-visit-outcall-path={`/${locale}/${outcallSlug}/`}
 >
-  <!-- Header owns the gender radio; carry the non-default pick through every
-       filter submit (women = clean URL). -->
+  <!-- Desktop: the header tabs own gender, so this hidden input carries the
+       non-default pick through filter submits. Mobile: the sheet's radio owns
+       it — the script disables this input there so the two never double. -->
   {
     params.genders?.includes('male') ? (
-      <input type="hidden" name="gender" value="men" />
+      <input type="hidden" name="gender" value="men" data-gender-hidden />
     ) : params.genders?.includes('trans_woman') ? (
-      <input type="hidden" name="gender" value="trans" />
+      <input type="hidden" name="gender" value="trans" data-gender-hidden />
     ) : null
   }
   <div class="mb-6">
@@ -116,29 +117,11 @@ const chip =
         {m.filter_title()}
       </button>
 
-      <!-- Gender lives in the header row (WOMEN · MEN · TRANS radio). -->
-
-      <!-- Available-now quick filter (fix/search): online OR open today. The
-           listing already SORTS available-first; this narrows to only them.
-           Same switch control as "online now" beside it — a toggle, not a
-           button-looking chip. -->
-      <label class="flex h-9 flex-none cursor-pointer select-none items-center gap-2.5 whitespace-nowrap px-2 text-sm font-medium">
-        <input type="checkbox" name="available" checked={params.availableNow} class="sr-only" />
-        <span class="switch-track" aria-hidden="true"></span>
-        <span class="flex items-center gap-1.5">
-          <span class="size-1.5 flex-none rounded-full bg-online" aria-hidden="true"></span>
-          {m.filter_available()}
-        </span>
-      </label>
-
-      <label class="flex h-9 flex-none cursor-pointer select-none items-center gap-2.5 whitespace-nowrap px-2 text-sm font-medium">
-        <input type="checkbox" name="online" checked={params.onlineOnly} class="sr-only" />
-        <span class="switch-track" aria-hidden="true"></span>
-        {m.filter_online()}
-      </label>
+      <!-- Gender + availability live with the filters (header tabs / sidebar /
+           sheet) — the rail keeps only the sheet trigger and the sort. -->
 
       <label class="flex flex-none items-center text-sm lg:ml-auto">
-        <span class="relative inline-flex h-9 items-center rounded-md border border-foreground/20 transition-colors hover:border-foreground/60">
+        <span class="relative inline-flex h-9 items-center border border-foreground/20 transition-colors hover:border-foreground/60">
           <select
             name="sort"
             aria-label={m.sort_by()}
@@ -307,6 +290,7 @@ const chip =
           .forEach((i) => (i.disabled = off));
       dis('[data-filters-desktop] input', !lg); // mobile: whole sidebar copy off
       dis('[data-filters-mobile] input', lg); // desktop: whole sheet copy off
+      dis('[data-gender-hidden]', !lg); // mobile: the sheet's gender radio owns it
     };
     if (!(window as any).__filterSetsMq) {
       (window as any).__filterSetsMq = true;

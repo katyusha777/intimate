@@ -3,12 +3,16 @@
  * Persona 5-inspired anaglyph button: skewed face with chromatic offset
  * layers (pink = brand primary, cyan = the 3D-glasses gag). Face/text flip
  * automatically with the theme via tokens. Click = brief glitch shiver.
+ * `plain` drops the pink/cyan layers — same cut ink slab, quieter (the
+ * SECONDARY button).
  */
 interface Props {
   as?: 'button' | 'a';
   href?: string;
   type?: 'button' | 'submit';
   size?: 'sm' | 'default' | 'lg';
+  /** No chromatic layers — the secondary slab. */
+  plain?: boolean;
   class?: string;
   [key: string]: unknown;
 }
@@ -18,6 +22,7 @@ const {
   href,
   type = 'button',
   size = 'default',
+  plain = false,
   class: className,
   ...rest
 } = Astro.props;
@@ -31,8 +36,8 @@ const Tag = as ?? (href ? 'a' : 'button');
   type={Tag === 'button' ? type : undefined}
   {...rest}
 >
-  <span class="ana-btn__layer ana-btn__layer--pink" aria-hidden="true"></span>
-  <span class="ana-btn__layer ana-btn__layer--cyan" aria-hidden="true"></span>
+  {!plain && <span class="ana-btn__layer ana-btn__layer--pink" aria-hidden="true"></span>}
+  {!plain && <span class="ana-btn__layer ana-btn__layer--cyan" aria-hidden="true"></span>}
   <span class="ana-btn__face">
     <span class="ana-btn__label"><slot /></span>
   </span>
@@ -161,8 +166,9 @@ const Tag = as ?? (href ? 'a' : 'button');
     document.querySelectorAll<HTMLElement>('.ana-btn').forEach((btn) => {
       if (btn.dataset.anaInit) return;
       btn.dataset.anaInit = '1';
-      const pink = btn.querySelector<HTMLElement>('.ana-btn__layer--pink')!;
-      const cyan = btn.querySelector<HTMLElement>('.ana-btn__layer--cyan')!;
+      const pink = btn.querySelector<HTMLElement>('.ana-btn__layer--pink');
+      const cyan = btn.querySelector<HTMLElement>('.ana-btn__layer--cyan');
+      if (!pink || !cyan) return; // plain (secondary) slab — no glitch layers
       const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
       btn.addEventListener('click', () => {

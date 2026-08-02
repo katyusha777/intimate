@@ -434,27 +434,26 @@
   }
 }
 
-/* --- Secondary Button (Button.astro variant="secondary") -------------------
- * The anti-anaglyph: a clean, obvious button — full border + subtle solid fill
- * + normal radius, no slab-cut corners. For non-primary actions the anaglyph
- * made confusing. Colours ride theme tokens, so it flips light/dark on its own
- * and renders as a white-outlined button inside a `.dark` ink slab. */
+/* --- Tertiary Button (Button.astro variant="tertiary") ---------------------
+ * The quiet outline of the three-type family (primary anaglyph · secondary
+ * plain slab · tertiary outline): a flat foreground keyline — white-bordered
+ * on dark, black-bordered on light — transparent fill, square corners. */
 @layer components {
-  .btn-secondary {
-    border-color: var(--border);
-    background: var(--muted);
+  .btn-tertiary {
+    border-color: color-mix(in oklch, var(--foreground) 60%, transparent);
+    background: transparent;
     color: var(--foreground);
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
   }
-  .btn-secondary:hover {
-    background: var(--accent, var(--muted));
+  .btn-tertiary:hover {
     border-color: var(--foreground);
+    background: color-mix(in oklch, var(--foreground) 6%, transparent);
   }
-  .btn-secondary:active {
+  .btn-tertiary:active {
     transform: scale(0.98);
   }
-  .btn-secondary:focus-visible {
+  .btn-tertiary:focus-visible {
     outline: 2px solid var(--ring);
     outline-offset: 2px;
   }
@@ -490,7 +489,7 @@
    APPENDED (fix/search): clean filter chips.
    The old inline filter chips used `.slab-cut` (a slab corner-cut) which read as
    visual noise, not "these are filters". This is the calm replacement: a full,
-   even keyline border with a normal radius and an obvious mini-checkbox. SELECTED
+   even keyline border with flat corners and an obvious mini-checkbox. SELECTED
    skews slightly (a small shear) + ink-fills — the wanted "active" feel. Paired
    with `.peer-checked:*` utilities where the input is a sibling `peer` (gender/
    quick chips). Legible, unmistakably a control.
@@ -502,7 +501,7 @@
     gap: 0.5rem;
     height: 2.25rem;
     padding-inline: 0.75rem;
-    border-radius: 0.5rem;
+    /* Flat lines — the button family has NO radii (skews + keylines only). */
     border: 1px solid color-mix(in oklch, var(--foreground) 22%, transparent);
     font-weight: 500;
     cursor: pointer;
@@ -532,14 +531,12 @@
     display: grid;
     place-items: center;
     border: 1.5px solid currentColor;
-    border-radius: 0.1875rem;
     opacity: 0.5;
   }
   .filter-chip__box::after {
     content: '';
     width: 0.4rem;
     height: 0.4rem;
-    border-radius: 0.0625rem;
     background: currentColor;
     opacity: 0;
     transition: opacity 0.15s ease;

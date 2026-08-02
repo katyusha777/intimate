@@ -50,7 +50,7 @@ const heading = 'font-condensed text-sm font-bold uppercase tracking-wide text-m
                 <a
                   href={`/${l}/account/settings/`}
                   class:list={[
-                    'rounded-md border px-3 py-1.5 text-sm font-medium transition-colors',
+                    'border px-3 py-1.5 text-sm font-medium transition-colors',
                     l === locale
                       ? 'border-foreground bg-foreground text-background'
                       : 'border-foreground/20 hover:border-foreground/60',
@@ -123,7 +123,7 @@ const heading = 'font-condensed text-sm font-bold uppercase tracking-wide text-m
                     <button
                       type="button"
                       data-unblock={t.id}
-                      class="rounded-md border border-foreground/20 px-3 py-1 text-sm font-medium transition-colors hover:border-foreground/60"
+                      class="border border-foreground/20 px-3 py-1 text-sm font-medium transition-colors hover:border-foreground/60"
                     >
                       {m.msg_unblock()}
                     </button>
