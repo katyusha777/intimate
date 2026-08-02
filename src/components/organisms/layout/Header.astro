@@ -110,13 +110,13 @@ const categories = [
     </div>
   </div>
 
-  <!-- Row 2: main categories as visible pill tabs (active = ink fill) — real
-       controls, not floating words — plus the always-visible location control
-       behind a hairline divider. NOT the anaglyph style (DESIGN §2.6). -->
+  <!-- Row 2: a few generously-spaced text tabs; the active one carries a
+       brand underline sitting ON the bar's bottom edge — plus the location
+       control behind a hairline divider. NOT the anaglyph style (DESIGN §2.6). -->
   <div class="border-t border-border/60">
-    <div class="mx-auto flex h-12 max-w-7xl items-center gap-3 px-4 md:h-13 md:px-6">
+    <div class="mx-auto flex h-12 max-w-7xl items-stretch gap-3 px-4 md:h-13 md:px-6">
       <nav
-        class="flex min-w-0 flex-1 select-none items-center gap-1.5 overflow-x-auto py-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        class="flex min-w-0 flex-1 select-none items-stretch gap-6 overflow-x-auto [scrollbar-width:none] md:gap-8 [&::-webkit-scrollbar]:hidden"
         aria-label={m.all_categories()}
       >
         {
@@ -125,13 +125,18 @@ const categories = [
               href={l.href}
               aria-current={l.active ? 'page' : undefined}
               class:list={[
-                'flex flex-none items-center rounded-full px-3.5 py-1.5 font-condensed text-sm font-bold uppercase tracking-wide transition-colors active:scale-[0.97]',
-                l.active
-                  ? 'bg-foreground text-background'
-                  : 'text-foreground/60 hover:bg-foreground/10 hover:text-foreground',
+                'chroma-hover relative flex flex-none items-center font-condensed text-sm font-bold uppercase tracking-wide transition-colors active:scale-[0.97]',
+                l.active ? 'text-foreground' : 'text-foreground/55 hover:text-foreground',
               ]}
             >
               {l.label}
+              <span
+                class:list={[
+                  'absolute inset-x-0 bottom-0 h-0.5 bg-brand transition-opacity',
+                  l.active ? 'opacity-100' : 'opacity-0',
+                ]}
+                aria-hidden="true"
+              />
             </a>
           ))
         }

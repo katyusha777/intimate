@@ -194,7 +194,7 @@ const chip =
     </aside>
 
     <div class="lg:col-start-2">
-      <!-- SAVED-compare rail (UX-PLAN 6.2): desktop only, thin, dismissible.
+      <!-- SAVED-compare rail (UX-PLAN 6.2): desktop only, thin, collapsible.
            Sits INSIDE the results column, directly above the cards — appearing/
            disappearing never moves the heading or the filter rail. Mini square
            ProfileCards (the grid card shrunk). `hidden` until the script
@@ -212,14 +212,6 @@ const chip =
                 <Icon name="chevron-down" class="text-xs text-muted-foreground transition-transform [[data-saved-rail].is-collapsed_&]:-rotate-90" />
                 <span class="eyebrow">{m.nav_favorites()}</span>
                 <span class="grid min-w-5 place-items-center rounded-full bg-foreground px-1.5 text-2xs font-bold text-background" data-saved-count>0</span>
-              </button>
-              <button
-                type="button"
-                data-saved-dismiss
-                aria-label={m.filter_clear()}
-                class="cursor-pointer text-muted-foreground transition-colors hover:text-foreground"
-              >
-                <Icon name="xmark" class="text-sm" />
               </button>
             </div>
             <div
@@ -412,7 +404,7 @@ const chip =
   // SAVED-compare rail (UX-PLAN 6.2): reveal saved profiles as one compact row.
   // Reads the same localStorage set FavoritesController owns; re-paints when a
   // heart on this page is toggled (the controller writes on click, we read next
-  // tick). Collapse + dismiss are session-scoped. Desktop-only via CSS.
+  // tick). Collapse is session-scoped and always reopenable. Desktop-only via CSS.
   const FAV_KEY = 'intimate_favs';
   const readFavs = (): Set<string> => {
     try {
@@ -425,10 +417,6 @@ const chip =
   function paintSavedRail() {
     const rail = document.querySelector<HTMLElement>('[data-saved-rail]');
     if (!rail) return;
-    if (sessionStorage.getItem('saved-rail-dismissed')) {
-      rail.hidden = true;
-      return;
-    }
     const favs = readFavs();
     let n = 0;
     rail.querySelectorAll<HTMLElement>('[data-saved-item]').forEach((el) => {
@@ -449,14 +437,11 @@ const chip =
       return;
     }
     rail.dataset.railInit = '1';
+    // Collapse, never dismiss: a closed rail must stay one tap from reopening.
     rail.querySelector('[data-saved-toggle]')?.addEventListener('click', () => {
       const collapsed = rail.classList.toggle('is-collapsed');
       sessionStorage.setItem('saved-rail-collapsed', collapsed ? '1' : '0');
       rail.querySelector('[data-saved-toggle]')?.setAttribute('aria-expanded', String(!collapsed));
-    });
-    rail.querySelector('[data-saved-dismiss]')?.addEventListener('click', () => {
-      sessionStorage.setItem('saved-rail-dismissed', '1');
-      rail.hidden = true;
     });
     paintSavedRail();
   }

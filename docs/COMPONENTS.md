@@ -135,7 +135,7 @@ Folders appear when their first organism lands:
   Header's mobile search icon opens the listing's `filters-sheet` when present
   and falls back to a plain link to `/search/` elsewhere.
 - **SAVED-compare rail** (UX-PLAN 6.2): NOT a new component — a desktop-only,
-  dismissible/collapsible row inside `organisms/search/SearchListing`, in the
+  collapsible row inside `organisms/search/SearchListing`, in the
   results column directly above the cards, that reveals saved profiles
   (localStorage `intimate_favs`, synced by `FavoritesController`) as
   `ProfileCard variant="mini"` (small square cards). Pool passed from the page

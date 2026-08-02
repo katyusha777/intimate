@@ -90,15 +90,17 @@ const unread =
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon-180.png" />
     <ClientRouter />
     <script is:inline>
-      // No-flash theme: runs before first paint, and again after each view transition swap.
+      // No-flash theme: dark is the house default — even on light-preferring
+      // devices; only an explicit pick of light overrides it. On view
+      // transitions the class is stamped on the INCOMING document BEFORE the
+      // swap (after-swap re-adding it straddled a style recalc, so the theme
+      // switch thumb visibly slid on every navigation).
       (function () {
-        const apply = () => {
-          // Dark is the house default — even on light-preferring devices. Only
-          // an explicit user pick of light overrides it.
-          document.documentElement.classList.toggle('dark', localStorage.theme !== 'light');
-        };
-        apply();
-        document.addEventListener('astro:after-swap', apply);
+        const dark = () => localStorage.theme !== 'light';
+        document.documentElement.classList.toggle('dark', dark());
+        document.addEventListener('astro:before-swap', (e) => {
+          e.newDocument.documentElement.classList.toggle('dark', dark());
+        });
       })();
     </script>
   </head>
