@@ -30,6 +30,7 @@
   "env": {
     "staging": {
       "name": "intimate-staging",
+      "routes": [{ "pattern": "staging.intimate.nl", "custom_domain": true }],
       "hyperdrive": [
         { "binding": "HYPERDRIVE", "id": "542bb0bee7fa44148f4e6ae3e0129ae7" }
       ],

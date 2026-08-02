@@ -10,7 +10,7 @@ time to rediscover. Companion to `ARCHITECTURE.md` (§9 defines the tiers).
 | Tier | App | Database | Notes |
 |---|---|---|---|
 | **dev** | `bun run dev` (localhost:4321) | local Supabase: `bunx supabase start` (Docker required) | all daily work; config in `supabase/config.toml` |
-| **staging** | Worker `intimate-staging` → `intimate-staging.mute-hill-24fb.workers.dev` | Supabase project `jqrfzqbuvekhcptqcpda` (Frankfurt) | verification before prod |
+| **staging** | Worker `intimate-staging` → `staging.intimate.nl` | Supabase project `jqrfzqbuvekhcptqcpda` (Frankfurt) | verification before prod |
 | **prod** | Worker `intimate` | **dedicated Supabase project — not yet created** (see §7) | Supabase MCP is read-only vs prod |
 
 **Migrations flow strictly dev → staging → prod:**
