@@ -6,6 +6,7 @@
  * lightbox at its index. Desktop only — mobile keeps the immersive hero.
  */
 import * as m from '@/paraglide/messages';
+import Button from '@/components/atoms/Button.astro';
 import SafeImage from '@/components/atoms/SafeImage.astro';
 
 interface Props {
@@ -62,15 +63,16 @@ const cellSpan = (i: number) =>
 
   {
     n > 1 && (
-      <button
-        type="button"
+      <!-- The SECONDARY button (plain anaglyph slab, no pink/cyan). -->
+      <Button
+        variant="secondary"
+        size="sm"
         data-lightbox
         data-lightbox-index="0"
-        class="absolute bottom-4 right-4 flex cursor-pointer items-center gap-2 border border-foreground bg-background px-4 py-2 text-sm font-semibold shadow-soft transition-transform active:scale-95"
+        class="absolute bottom-4 right-4"
       >
-        <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></svg>
         {m.profile_show_all()}
-      </button>
+      </Button>
     )
   }
 </div>
