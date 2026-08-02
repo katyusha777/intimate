@@ -137,6 +137,8 @@ const { id, class: className, label, flush } = Astro.props;
         // start frame, so the panel reliably slides up from the bottom.
         dialog.setAttribute('data-open', '');
         document.documentElement.setAttribute('data-sheet-open', '');
+        // Chrome (the auto-hiding header) listens for this.
+        dialog.dispatchEvent(new CustomEvent('sheet:opened', { bubbles: true }));
       };
       const close = () => {
         if (!dialog.open) return;

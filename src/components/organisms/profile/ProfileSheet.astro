@@ -63,17 +63,25 @@ import ActionSheet from '@/components/molecules/ActionSheet.astro';
     let savedState: unknown = null;
     let savedUrl = '';
 
-    const SKELETON = `
-      <div class="animate-pulse">
-        <div class="h-[72dvh] bg-muted"></div>
-        <div class="space-y-3 p-6">
+    // The tapped card's photo is ALREADY decoded in memory — seed the sheet
+    // with it so the hero paints on the very first frame (no black/gray flash
+    // while the page fetches); the real hero then swaps in over the same
+    // pixels. Only the text area pulses.
+    const skeleton = (photo?: string) => `
+      <div>
+        <div class="h-[72dvh] bg-muted">${
+          photo
+            ? `<img src="${photo.replace(/"/g, '&quot;')}" alt="" class="h-full w-full object-cover" />`
+            : ''
+        }</div>
+        <div class="animate-pulse space-y-3 p-6">
           <div class="h-6 w-1/3 bg-muted"></div>
           <div class="h-4 w-2/3 bg-muted"></div>
           <div class="h-4 w-1/2 bg-muted"></div>
         </div>
       </div>`;
 
-    async function openProfile(url: string) {
+    async function openProfile(url: string, seedPhoto?: string) {
       const b = body();
       const s = sheet();
       if (!b || !s) {
@@ -87,7 +95,7 @@ import ActionSheet from '@/components/molecules/ActionSheet.astro';
       history.replaceState(null, '', savedUrl);
       history.pushState(null, '', url);
       open = true;
-      b.innerHTML = SKELETON;
+      b.innerHTML = skeleton(seedPhoto);
       b.scrollTop = 0;
       s.openSheet();
       try {
@@ -165,7 +173,8 @@ import ActionSheet from '@/components/molecules/ActionSheet.astro';
         if (!isProfileHref(a.getAttribute('href') || '')) return;
         e.preventDefault();
         e.stopImmediatePropagation();
-        openProfile(a.href);
+        // Hand over the card's already-decoded photo for the first frame.
+        openProfile(a.href, a.querySelector('img')?.currentSrc || undefined);
       },
       { capture: true },
     );

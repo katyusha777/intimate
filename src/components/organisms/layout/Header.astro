@@ -59,7 +59,10 @@ const genderTabs = (Object.keys(GENDER_FILTERS) as GenderFilter[]).map((g) => ({
 }));
 ---
 
-<header class="glass sticky top-0 z-40 border-b" style="padding-top: env(safe-area-inset-top)">
+<header
+  class="site-header glass sticky top-0 z-40 border-b"
+  style="padding-top: env(safe-area-inset-top)"
+>
   <!-- Row 1 — MOBILE: [city · EN] left, logo dead-center, auth right.
        DESKTOP: logo left, text menu beside it, EN + auth right. -->
   <div class="relative mx-auto flex h-14 max-w-7xl items-center gap-3 px-4 md:h-[4.25rem] md:gap-5 md:px-6">
@@ -213,10 +216,65 @@ const genderTabs = (Object.keys(GENDER_FILTERS) as GenderFilter[]).map((g) => ({
   </div>
 </header>
 
+<style>
+  /* Auto-hide slide (script below): transform only — content never reflows,
+     the bar just glides out. Same spring family as the sheets. */
+  .site-header {
+    transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  .site-header.header-hide {
+    transform: translateY(-100%);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .site-header {
+      transition-duration: 0.01ms;
+    }
+  }
+</style>
+
 <!-- Mobile region sheet (opened by the header's city|EN trigger). -->
 <RegionSheet {currentCity} />
 
 <script>
+  // ── Auto-hiding header (mobile): scroll down → slide away (more screen),
+  // scroll up → slide back. Opening ANY sheet hides it and LEAVES it hidden —
+  // one less thing moving when a sheet closes; only an upward scroll brings
+  // it back. Desktop keeps the always-visible sticky header.
+  if (!(window as any).__headerAutoHide) {
+    (window as any).__headerAutoHide = true;
+    const mq = matchMedia('(max-width: 767px)');
+    const header = () => document.querySelector<HTMLElement>('header.site-header');
+    let lastY = window.scrollY;
+    let hidden = false;
+    const setHidden = (h: boolean) => {
+      if (h === hidden) return;
+      hidden = h;
+      header()?.classList.toggle('header-hide', h);
+    };
+    window.addEventListener(
+      'scroll',
+      () => {
+        const y = window.scrollY;
+        const dy = y - lastY;
+        lastY = y;
+        if (!mq.matches) return setHidden(false);
+        if (document.documentElement.hasAttribute('data-sheet-open')) return; // locked behind a sheet
+        if (y < 60) return setHidden(false); // near the top: always show
+        if (dy > 6) setHidden(true);
+        else if (dy < -6) setHidden(false);
+      },
+      { passive: true },
+    );
+    document.addEventListener('sheet:opened', () => {
+      if (mq.matches) setHidden(true);
+    });
+    // New page → fresh header state (the element re-rendered visible anyway).
+    document.addEventListener('astro:page-load', () => {
+      lastY = window.scrollY;
+      hidden = false;
+    });
+  }
+
   // Gender tab click → persist the pick (server default for the next visit).
   // Filter RESET → clear it, so reset really returns to the plain default.
   if (!(window as any).__genderTabs) {
