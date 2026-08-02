@@ -42,7 +42,8 @@ Pages = `src/pages/` (compose organisms; own no reusable markup).
   footer only; no floating bar, not in the header),
   Section (owns page rhythm + section headings),
   AvailabilityLine (dot + text availability, card/line variants),
-  CitySheet (first-visit city picker).
+  CitySheet (first-visit city picker), RegionSheet (mobile "CITY | EN" header
+  trigger → language radio + city picker in one ActionSheet).
 - **Organism** — takes domain data (profile, article, auth state) and composes
   atoms/molecules into a section: ProfileCard, AuthModal, Header, Footer.
   Lives in a domain subfolder; a new folder is created with the domain's first

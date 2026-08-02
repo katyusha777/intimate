@@ -426,5 +426,6 @@
   "gender_tab_trans": "Trans",
   "filter_show_more": "Toon meer",
   "filter_show_less": "Toon minder",
-  "filter_availability": "Beschikbaarheid"
+  "filter_availability": "Beschikbaarheid",
+  "region_language": "Taal"
 }

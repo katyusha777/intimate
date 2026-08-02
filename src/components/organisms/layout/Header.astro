@@ -3,6 +3,7 @@ import * as m from '@/paraglide/messages';
 import type { Session } from '@/app/models/session';
 import Button from '@/components/atoms/Button.astro';
 import Combobox from '@/components/molecules/Combobox.astro';
+import RegionSheet from '@/components/molecules/RegionSheet.astro';
 import UserMenu from '@/components/molecules/UserMenu.astro';
 import { getLocale } from '@/paraglide/runtime';
 import { listingCategoryLabel } from '@/lib/labels';
@@ -62,32 +63,19 @@ const genderTabs = (Object.keys(GENDER_FILTERS) as GenderFilter[]).map((g) => ({
   <!-- Row 1 — MOBILE: [city · EN] left, logo dead-center, auth right.
        DESKTOP: logo left, text menu beside it, EN + auth right. -->
   <div class="relative mx-auto flex h-14 max-w-7xl items-center gap-3 px-4 md:h-[4.25rem] md:gap-5 md:px-6">
-    <!-- Mobile left: city + language (desktop keeps city in row 2, EN right). -->
-    <div class="flex flex-none items-center gap-1 md:hidden">
-      <Combobox
-        variant="bare"
-        options={CITIES.map((c) => ({ value: c.slug, label: c.name }))}
-        value={currentCity}
-        placeholder={m.filter_city().toUpperCase()}
-        triggerLabel={(CITIES.find((c) => c.slug === currentCity)?.name ?? m.filter_city()).toUpperCase()}
-        anyLabel={`${m.filter_city()}: ${m.filter_any()}`}
-        searchPlaceholder={m.filter_city()}
-        target="[data-city-nav]"
-        navBase={localizePath('/')}
-        cookie="city"
-        align="left"
-      />
-      <Combobox
-        variant="bare"
-        options={LANGUAGES}
-        value={locale}
-        placeholder={locale.toUpperCase()}
-        triggerLabel={locale.toUpperCase()}
-        target="[data-none]"
-        lang
-        align="left"
-      />
-    </div>
+    <!-- Mobile left: ONE region trigger — "ROTTERDAM | EN ▾" opens the
+         RegionSheet (language radio + city picker). Desktop keeps city in
+         row 2 and EN on the right. -->
+    <button
+      type="button"
+      data-sheet-open="region-sheet"
+      class="flex flex-none cursor-pointer items-center gap-1.5 px-1 text-xs font-bold text-foreground/80 transition-colors hover:text-foreground md:hidden"
+    >
+      <span>{(CITIES.find((c) => c.slug === currentCity)?.name ?? m.filter_city()).toUpperCase()}</span>
+      <span class="text-foreground/30" aria-hidden="true">|</span>
+      <span>{locale.toUpperCase()}</span>
+      <svg class="size-3 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+    </button>
 
     <!-- Logo: dead-center on mobile (absolute), left on md+. -->
     <a
@@ -224,6 +212,9 @@ const genderTabs = (Object.keys(GENDER_FILTERS) as GenderFilter[]).map((g) => ({
     </div>
   </div>
 </header>
+
+<!-- Mobile region sheet (opened by the header's city|EN trigger). -->
+<RegionSheet {currentCity} />
 
 <script>
   // Gender tab click → persist the pick (server default for the next visit).

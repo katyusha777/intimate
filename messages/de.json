@@ -426,5 +426,6 @@
   "gender_tab_trans": "Trans",
   "filter_show_more": "Mehr anzeigen",
   "filter_show_less": "Weniger anzeigen",
-  "filter_availability": "Verfügbarkeit"
+  "filter_availability": "Verfügbarkeit",
+  "region_language": "Sprache"
 }
