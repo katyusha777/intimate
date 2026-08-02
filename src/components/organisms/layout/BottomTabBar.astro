@@ -81,15 +81,17 @@ const tabs =
           data-tab
           data-tab-exact={t.exact ? '' : undefined}
           data-page-sheet={t.sheet ? '' : undefined}
+          aria-label={t.label}
           class:list={[
-            'tab-hit relative flex flex-1 flex-col items-center gap-0.5 px-2 pt-1.5 text-2xs font-medium transition-[color,transform] active:scale-[0.92]',
+            'tab-hit relative flex flex-1 flex-col items-center px-2 pt-2 transition-[color,transform] active:scale-[0.92]',
             t.active ? 'text-foreground' : 'text-muted-foreground',
           ]}
           aria-current={t.active ? 'page' : undefined}
         >
-          {t.dot && <span class="absolute right-3 top-1 size-1.5 rounded-full bg-brand" />}
+          {t.dot && <span class="absolute right-1/2 top-1 size-1.5 -mr-4 rounded-full bg-brand" />}
+          <!-- Icons only — the label lives in aria-label (a11y). -->
           <svg
-            class="size-5"
+            class="size-6"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -99,7 +101,6 @@ const tabs =
             aria-hidden="true"
             set:html={t.icon}
           />
-          {t.label}
         </a>
       ))
     }
