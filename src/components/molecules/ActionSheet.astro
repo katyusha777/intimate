@@ -141,7 +141,11 @@ const { id, class: className, label, flush } = Astro.props;
       const close = () => {
         if (!dialog.open) return;
         dialog.removeAttribute('data-open');
-        document.documentElement.removeAttribute('data-sheet-open');
+        // CRITICAL: the <html> scroll-lock marker is NOT touched here. Unlocking
+        // mid-slide lets Safari re-expand its chrome → the dynamic viewport
+        // resizes → every dvh/fixed element (this panel included) reflows under
+        // the animation — the "choppy close". The world stays frozen until the
+        // panel has fully left the screen (the dialog 'close' handler unlocks).
         const done = () => {
           panel.removeEventListener('transitionend', done);
           dialog.close();
@@ -155,7 +159,13 @@ const { id, class: className, label, flush } = Astro.props;
       (dialog as any).closeSheet = close;
       dialog.addEventListener('close', () => {
         dialog.removeAttribute('data-open');
-        document.documentElement.removeAttribute('data-sheet-open');
+        panel.style.transitionDuration = '';
+        backdrop.style.transitionDuration = '';
+        // Sheets can STACK (favorites → profile): only the LAST one to close
+        // may unlock the page — [open] is already gone from this dialog here.
+        if (!document.querySelector('dialog[data-sheet][open]')) {
+          document.documentElement.removeAttribute('data-sheet-open');
+        }
         dialog.dispatchEvent(new CustomEvent('sheet:closed', { bubbles: true }));
       });
 
@@ -230,8 +240,16 @@ const { id, class: className, label, flush } = Astro.props;
           last && first && last.t > first.t ? (last.y - first.y) / (last.t - first.t) : 0;
         reset();
         if (!wasEngaged) return;
-        // Flick down OR dragged past 45% → dismiss.
-        if (velocity > 0.55 || dragY > panelHeight() * 0.45) close();
+        // Flick down OR dragged past 45% → dismiss. A flick finishes FAST —
+        // the panel is already partway down and the finger said "go": the
+        // default 0.5s glide reads as lag after a hard flick. (Duration is
+        // cleared in the dialog 'close' handler.)
+        if (velocity > 0.55 || dragY > panelHeight() * 0.45) {
+          const quick = velocity > 0.55 ? '0.25s' : '0.35s';
+          panel.style.transitionDuration = quick;
+          backdrop.style.transitionDuration = quick;
+          close();
+        }
       };
 
       handle.addEventListener('pointerdown', (e) => {
