@@ -127,10 +127,10 @@ const genderTabs = (Object.keys(GENDER_FILTERS) as GenderFilter[]).map((g) => ({
         href={SUPPORT_CONTACT.telegram.href}
         target="_blank"
         rel="noopener"
-        aria-label="Telegram"
-        class="text-foreground/80 transition-colors hover:text-foreground"
+        class="flex items-center gap-2 text-sm font-semibold text-foreground/80 transition-colors hover:text-foreground"
       >
         <Icon name="telegram" family="brands" class="text-lg text-telegram" />
+        <span class="font-condensed tracking-wide">{SUPPORT_CONTACT.telegram.display}</span>
       </a>
       <Combobox
         variant="bare"
