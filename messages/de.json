@@ -423,5 +423,7 @@
   "filter_find_someone_ph": "Name oder Telefonnummer",
   "gender_tab_women": "Frauen",
   "gender_tab_men": "Männer",
-  "gender_tab_trans": "Trans"
+  "gender_tab_trans": "Trans",
+  "filter_show_more": "Mehr anzeigen",
+  "filter_show_less": "Weniger anzeigen"
 }

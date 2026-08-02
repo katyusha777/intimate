@@ -131,11 +131,11 @@ const genderTabs = (Object.keys(GENDER_FILTERS) as GenderFilter[]).map((g) => ({
     </div>
   </div>
 
-  <!-- Row 2: gender radio (· WOMEN  MEN  TRANS) | categories, generously
-       spaced text tabs — active category carries a brand underline on the
-       bar's bottom edge — and the boxed AMSTERDAM ▾ location control right. -->
+  <!-- Row 2: gender radio (WOMEN  MEN  TRANS) | categories — generously
+       spaced text tabs, active = plain white (no underline, no dot: quiet,
+       nothing shifts) — and the boxed AMSTERDAM ▾ location control right. -->
   <div class="border-t border-border/60">
-    <div class="mx-auto flex h-12 max-w-7xl items-stretch gap-3 px-4 md:h-13 md:px-6">
+    <div class="mx-auto flex h-14 max-w-7xl items-stretch gap-3 px-4 md:h-16 md:px-6">
       <div
         class="flex min-w-0 flex-1 select-none items-stretch gap-5 overflow-x-auto [scrollbar-width:none] md:gap-7 [&::-webkit-scrollbar]:hidden"
       >
@@ -148,11 +148,10 @@ const genderTabs = (Object.keys(GENDER_FILTERS) as GenderFilter[]).map((g) => ({
                 data-gender-tab={g.value}
                 aria-current={g.active ? 'true' : undefined}
                 class:list={[
-                  'chroma-hover flex flex-none items-center gap-1.5 font-condensed text-sm font-bold uppercase tracking-wide transition-colors active:scale-[0.97]',
+                  'chroma-hover flex flex-none items-center font-condensed text-sm font-bold uppercase tracking-wide transition-colors active:scale-[0.97]',
                   g.active ? 'text-foreground' : 'text-foreground/55 hover:text-foreground',
                 ]}
               >
-                {g.active && <span class="size-1.5 rounded-full bg-brand" aria-hidden="true" />}
                 {g.label}
               </a>
             ))
@@ -176,13 +175,6 @@ const genderTabs = (Object.keys(GENDER_FILTERS) as GenderFilter[]).map((g) => ({
                 ]}
               >
                 {l.label}
-                <span
-                  class:list={[
-                    'absolute inset-x-0 bottom-0 h-0.5 bg-brand transition-opacity',
-                    l.active ? 'opacity-100' : 'opacity-0',
-                  ]}
-                  aria-hidden="true"
-                />
               </a>
             ))
           }

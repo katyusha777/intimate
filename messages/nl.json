@@ -423,5 +423,7 @@
   "filter_find_someone_ph": "Naam of telefoonnummer",
   "gender_tab_women": "Vrouwen",
   "gender_tab_men": "Mannen",
-  "gender_tab_trans": "Trans"
+  "gender_tab_trans": "Trans",
+  "filter_show_more": "Toon meer",
+  "filter_show_less": "Toon minder"
 }
