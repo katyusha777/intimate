@@ -189,6 +189,7 @@ import SideDrawer from '@/components/molecules/SideDrawer.astro';
         const me = e as MouseEvent;
         if (me.button !== 0 || me.metaKey || me.ctrlKey || me.shiftKey || me.altKey) return;
         if ((e.target as HTMLElement).closest?.('[data-fav-toggle]')) return; // heart favorites, not navigates
+        if ((e.target as HTMLElement).closest?.('.pc-btn')) return; // carousel arrows switch photos, never open the card
         // A verified mark opens its receipt, not the profile. NON-EMPTY only:
         // an open sheet stamps an EMPTY data-sheet-open on <html>, which must
         // not veto profile links inside that sheet (favorites → profile).

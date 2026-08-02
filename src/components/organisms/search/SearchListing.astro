@@ -7,6 +7,7 @@
  * button on mobile). One GET <form> + SSR = zero client state.
  */
 import * as m from '@/paraglide/messages';
+import { serviceLabel } from '@/lib/labels';
 import { CITIES } from '@/lib/taxonomy';
 import { LISTING_CATEGORIES, type Locale } from '@/lib/taxonomy';
 import { getLocale } from '@/paraglide/runtime';
@@ -70,6 +71,49 @@ function pageHref(p: number): string {
    the tap feedback. Selected state (skew + ink fill) is CSS via peer:checked. */
 const chip =
   'filter-chip flex text-sm active:scale-[0.96]';
+
+/* Active filters as removable pills above the results: each X is a link to
+ * the same listing minus that one value. Structural state (category tab,
+ * path city) lives in the header, not here. */
+function hrefWithout(mutate: (sp: URLSearchParams) => void): string {
+  const sp = new URLSearchParams(currentUrl.searchParams);
+  mutate(sp);
+  sp.delete('page');
+  const qs = sp.toString();
+  return qs ? `${basePath}?${qs}` : basePath;
+}
+function dropOne(sp: URLSearchParams, key: string, value: string) {
+  const left = sp.getAll(key).filter((v) => v !== value);
+  sp.delete(key);
+  left.forEach((v) => sp.append(key, v));
+}
+type Pill = { label: string; href: string; gender?: boolean };
+const pills: Pill[] = [];
+if (params.q) pills.push({ label: `“${params.q}”`, href: hrefWithout((sp) => sp.delete('q')) });
+if (params.genders?.includes('male'))
+  pills.push({ label: m.gender_tab_men(), href: hrefWithout((sp) => sp.delete('gender')), gender: true });
+if (params.genders?.includes('trans_woman'))
+  pills.push({ label: m.gender_tab_trans(), href: hrefWithout((sp) => sp.delete('gender')), gender: true });
+for (const c of params.cities ?? [])
+  pills.push({
+    label: CITIES.find((x) => x.slug === c)?.name ?? c,
+    href: hrefWithout((sp) => dropOne(sp, 'cities', c)),
+  });
+for (const s of params.services ?? [])
+  pills.push({ label: serviceLabel(s), href: hrefWithout((sp) => dropOne(sp, 'services', s)) });
+if (params.meetingType && currentUrl.searchParams.has('visit'))
+  pills.push({
+    label: params.meetingType === 'incall' ? m.cat_private() : m.cat_escort(),
+    href: hrefWithout((sp) => sp.delete('visit')),
+  });
+if (params.priceMin !== undefined)
+  pills.push({ label: `≥ €${params.priceMin}`, href: hrefWithout((sp) => sp.delete('priceMin')) });
+if (params.priceMax !== undefined)
+  pills.push({ label: `≤ €${params.priceMax}`, href: hrefWithout((sp) => sp.delete('priceMax')) });
+if (params.availableNow)
+  pills.push({ label: m.filter_available(), href: hrefWithout((sp) => sp.delete('available')) });
+if (params.onlineOnly)
+  pills.push({ label: m.filter_online(), href: hrefWithout((sp) => sp.delete('online')) });
 ---
 
 <form
@@ -127,6 +171,34 @@ const chip =
     </aside>
 
     <div class="min-w-0">
+      <!-- Active filters, removable in place: each pill's X links to the same
+           listing minus that value. Gender pills also reset the cookie
+           (data-gender-tab — the header script picks it up). -->
+      {
+        pills.length > 0 && (
+          <div class="mb-4 flex flex-wrap items-center gap-2">
+            {pills.map((pill) => (
+              <a
+                href={pill.href}
+                data-gender-tab={pill.gender ? 'women' : undefined}
+                class="filter-chip flex h-8 items-center gap-1.5 text-xs"
+              >
+                {pill.label}
+                <Icon name="xmark" class="text-2xs text-muted-foreground" />
+              </a>
+            ))}
+            {pills.length > 1 && (
+              <a
+                href={resetHref}
+                data-filter-reset
+                class="px-1 text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+              >
+                {m.filter_reset()}
+              </a>
+            )}
+          </div>
+        )
+      }
       <!-- SAVED-compare rail (UX-PLAN 6.2): desktop only, thin, collapsible.
            Sits INSIDE the results column, directly above the cards — appearing/
            disappearing never moves the heading or the filter rail. Mini square
