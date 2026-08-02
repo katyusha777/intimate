@@ -1,6 +1,14 @@
 ---
-/** App-facing Skeleton — wraps ui/skeleton (vendor). See atoms/Button.astro. */
-import { Skeleton as UiSkeleton } from '@/components/ui/skeleton';
+/**
+ * App-facing Skeleton — renders the `.skeleton` token (global.css): a
+ * foreground-mix pulse that is visible on BOTH themes (the old vendor
+ * bg-accent pulse vanished on dark surfaces). Size/shape via `class`.
+ */
+interface Props {
+  class?: string;
+  [key: string]: unknown;
+}
+const { class: className, ...rest } = Astro.props;
 ---
 
-<UiSkeleton {...Astro.props}><slot /></UiSkeleton>
+<div class:list={['skeleton', className]} {...rest}></div>
