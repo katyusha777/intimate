@@ -16,8 +16,8 @@ if (!isLocale(locale)) return new Response(null, { status: 404 });
 const alternates = samePathAlternates(Astro.url.origin, '/support/');
 
 const channels = [
-  { icon: 'whatsapp', label: 'WhatsApp', ...SUPPORT_CONTACT.whatsapp },
-  { icon: 'telegram', label: 'Telegram', ...SUPPORT_CONTACT.telegram },
+  { icon: 'whatsapp', label: 'WhatsApp', color: 'text-online', ...SUPPORT_CONTACT.whatsapp },
+  { icon: 'telegram', label: 'Telegram', color: 'text-telegram', ...SUPPORT_CONTACT.telegram },
 ];
 const topics = [
   m.support_topic_1(),
@@ -49,7 +49,7 @@ const topics = [
             rel="noopener"
             class="flex items-center gap-4 border border-foreground/20 px-5 py-4 transition-colors hover:border-foreground/60 active:scale-[0.99]"
           >
-            <Icon name={c.icon} family="brands" class="text-2xl text-online" />
+            <Icon name={c.icon} family="brands" class:list={['text-2xl', c.color]} />
             <span class="font-semibold">{c.label}</span>
             <span class="ml-auto font-condensed text-lg font-bold tracking-wide">{c.display}</span>
           </a>

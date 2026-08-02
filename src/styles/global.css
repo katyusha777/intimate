@@ -135,6 +135,8 @@
   --text-2xs--line-height: 0.875rem;
   --tracking-eyebrow: 0.14em;
   --color-online: var(--online);
+  /* Brand colors for the support channels (test bans arbitrary hex classes). */
+  --color-telegram: #229ed9;
   --color-brand: var(--brand);
   --color-brand-foreground: var(--brand-foreground);
   --color-glass-ultrathin: var(--glass-ultrathin);

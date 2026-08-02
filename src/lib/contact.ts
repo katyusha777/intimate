@@ -8,8 +8,8 @@ export const SUPPORT_CONTACT = {
     href: 'https://wa.me/31853332377',
   },
   telegram: {
-    display: '085 333 2377',
-    href: 'https://t.me/+31853332377',
+    display: '@intimatenl',
+    href: 'https://t.me/intimatenl',
   },
   /** Shown next to the channels — hours are copy, not logic. */
   hours: 'Mon–Fri 9:00–17:00',
