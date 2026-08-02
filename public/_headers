@@ -1,0 +1,10 @@
+# Long-lived caching for the static image sets (filenames are stable) — the
+# browser cache is what makes the safe-mode src swap invisible on navigation.
+/nsfwimg/*
+  Cache-Control: public, max-age=31536000, immutable
+/safeimg/*
+  Cache-Control: public, max-age=31536000, immutable
+/img/*
+  Cache-Control: public, max-age=86400
+/fa/*
+  Cache-Control: public, max-age=31536000, immutable

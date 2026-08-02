@@ -66,6 +66,9 @@ const { id, class: className, label, flush } = Astro.props;
     >
       <slot />
     </div>
+    <!-- Panel-anchored chrome (e.g. a floating close FAB) — outside the
+         scroller, so it stays put while the body scrolls. -->
+    <slot name="chrome" />
   </div>
 </dialog>
 

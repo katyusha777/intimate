@@ -429,6 +429,9 @@
   html {
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
+    /* In-page anchors (hero down-arrow) glide instead of snapping. Scripted
+       restores opt out with behavior:'instant'. */
+    scroll-behavior: smooth;
     /* Reserve the scrollbar gutter so opening a modal (which locks background
        scroll) never shifts centered content sideways. */
     scrollbar-gutter: stable;
@@ -445,6 +448,19 @@
     /* Belt + suspenders: nothing (skewed CTAs, rotated slabs) may create a
        horizontal document scroll in the first place. */
     overflow-x: clip;
+  }
+
+  /* An open sheet or lightbox LOCKS the page behind it — native <dialog>
+     inerts interaction but wheel/touch scroll still reached the document. */
+  html[data-sheet-open],
+  html[data-lightbox-open] {
+    overflow: hidden;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
   }
 }
 

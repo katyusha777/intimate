@@ -471,13 +471,8 @@ export const LISTING_CATEGORIES = [
     filter: { serviceCategory: 'virtual' },
     slugs: { nl: 'virtuele-seks', en: 'virtual-sex', de: 'virtueller-sex' },
   },
-  {
-    slug: 'bdsm',
-    kind: 'service_category',
-    icon: 'handcuffs',
-    filter: { serviceCategory: 'fetish_bdsm' },
-    slugs: { nl: 'bdsm', en: 'bdsm', de: 'bdsm' },
-  },
+  // BDSM tab removed 2026-08-02 — the fetish_bdsm SERVICE category stays
+  // filterable in the sidebar; it just no longer owns a top-level tab/page.
 ] as const;
 
 export const SORT_OPTIONS = [

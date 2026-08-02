@@ -60,8 +60,6 @@ export function listingCategoryLabel(slug: ListingCategorySlug): string {
       return m.cat_massage();
     case 'virtual-sex':
       return m.cat_virtual();
-    case 'bdsm':
-      return m.cat_bdsm();
   }
 }
 

@@ -60,7 +60,13 @@ const tabs =
   style="bottom: calc(0.875rem + var(--sab))"
   aria-label={m.nav_search()}
 >
-  <div class="tab-dock pointer-events-auto flex items-center gap-1 rounded-full p-1.5">
+  <div class="tab-dock pointer-events-auto relative flex items-center gap-1 rounded-full p-1.5">
+    <!-- The glass highlight SLIDES between tabs (left/width animate) instead
+         of each tab painting its own static pill. -->
+    <span
+      data-tab-highlight
+      class="pointer-events-none absolute rounded-full bg-foreground/10 opacity-0 transition-[left,width,opacity] duration-300 ease-out"
+      aria-hidden="true"></span>
     {
       tabs.map((t) => (
         <a
@@ -68,8 +74,8 @@ const tabs =
           data-tab
           data-tab-exact={t.exact ? '' : undefined}
           class:list={[
-            'relative flex min-w-18 flex-col items-center gap-0.5 rounded-full px-4 py-1.5 text-2xs font-medium transition-[background-color,color,transform] active:scale-[0.92]',
-            t.active ? 'bg-foreground/10 text-foreground' : 'text-muted-foreground',
+            'relative flex min-w-18 flex-col items-center gap-0.5 rounded-full px-4 py-1.5 text-2xs font-medium transition-[color,transform] active:scale-[0.92]',
+            t.active ? 'text-foreground' : 'text-muted-foreground',
           ]}
           aria-current={t.active ? 'page' : undefined}
         >
@@ -94,20 +100,34 @@ const tabs =
 
 <script>
   // The dock is transition:persist, so its server-rendered active state goes
-  // stale on client-side navigation. Re-sync from the URL on every page load.
+  // stale on client-side navigation. Re-sync from the URL on every page load,
+  // and glide the shared highlight pill under the active tab.
   function syncTabs() {
     const path = location.pathname;
+    let activeTab: HTMLAnchorElement | null = null;
     document.querySelectorAll<HTMLAnchorElement>('[data-tab]').forEach((a) => {
       const href = new URL(a.href).pathname;
       const active = a.hasAttribute('data-tab-exact')
         ? path === href
         : path.startsWith(href.replace(/\/$/, ''));
-      a.classList.toggle('bg-foreground/10', active);
       a.classList.toggle('text-foreground', active);
       a.classList.toggle('text-muted-foreground', !active);
-      if (active) a.setAttribute('aria-current', 'page');
-      else a.removeAttribute('aria-current');
+      if (active) {
+        a.setAttribute('aria-current', 'page');
+        activeTab = a;
+      } else a.removeAttribute('aria-current');
     });
+    const hl = document.querySelector<HTMLElement>('[data-tab-highlight]');
+    if (!hl) return;
+    if (!activeTab) {
+      hl.style.opacity = '0';
+      return;
+    }
+    hl.style.left = `${(activeTab as HTMLElement).offsetLeft}px`;
+    hl.style.top = `${(activeTab as HTMLElement).offsetTop}px`;
+    hl.style.width = `${(activeTab as HTMLElement).offsetWidth}px`;
+    hl.style.height = `${(activeTab as HTMLElement).offsetHeight}px`;
+    hl.style.opacity = '1';
   }
   syncTabs();
   document.addEventListener('astro:page-load', syncTabs);

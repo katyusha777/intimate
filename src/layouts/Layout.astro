@@ -136,9 +136,10 @@ const unread =
           "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='96' fill='%23888'/%3E%3C/svg%3E";
         // Real title lives in a meta tag Astro re-renders per page, so it stays
         // fresh across view transitions even after we neutralize document.title.
-        const realTitle = () => {
-          const m = document.querySelector("meta[name='x-real-title']");
-          return (m && m.getAttribute('content')) || document.title;
+        const realTitle = (root) => {
+          root = root || document;
+          const m = root.querySelector("meta[name='x-real-title']");
+          return (m && m.getAttribute('content')) || root.title;
         };
         const STATES = ['off', 'neutral', 'dev'];
 
@@ -153,17 +154,21 @@ const unread =
           document.cookie = 'safe_mode=' + s + '; path=/; max-age=31536000; samesite=lax';
         };
 
-        const apply = () => {
+        // `root` lets astro:before-swap run this against the INCOMING document
+        // — images get their real src BEFORE first paint, so navigation never
+        // flashes the neutral placeholder (the "images flicker" bug).
+        const apply = (root) => {
+          root = root || document;
           const s = state();
           const off = s === 'off';
           const pick = s === 'dev' ? 'dev' : 'safe'; // safe = neutral data-attr
-          document.querySelectorAll('img[data-safe]').forEach((el) => {
+          root.querySelectorAll('img[data-safe]').forEach((el) => {
             const want = off
               ? el.dataset.real || el.dataset.safe
               : el.dataset[pick] || el.dataset.safe;
             if (el.getAttribute('src') !== want) el.setAttribute('src', want);
           });
-          document.querySelectorAll('[data-safe-video-wrap]').forEach((wrap) => {
+          root.querySelectorAll('[data-safe-video-wrap]').forEach((wrap) => {
             const video = wrap.querySelector('video');
             const fallback = wrap.querySelector('img');
             if (!video) return;
@@ -174,18 +179,18 @@ const unread =
           });
           // Toggle UI: aria-checked = "is safe mode active at all", data-safe-state
           // carries the exact value so the label/icon can reflect all three.
-          document.querySelectorAll('[data-safe-toggle]').forEach((b) => {
+          root.querySelectorAll('[data-safe-toggle]').forEach((b) => {
             b.setAttribute('aria-checked', String(!off));
             b.setAttribute('data-safe-state', s);
           });
           // Neutral tab chrome (5.3): generic title + monochrome favicon while
           // safe mode is on (neutral OR dev); restore the real ones when off.
-          const icon = document.querySelector('link[data-real-icon]');
+          const icon = root.querySelector('link[data-real-icon]');
           if (off) {
-            document.title = realTitle();
+            root.title = realTitle(root);
             if (icon) icon.setAttribute('href', '/icons/icon.svg');
           } else {
-            document.title = NEUTRAL_TITLE;
+            root.title = NEUTRAL_TITLE;
             if (icon) icon.setAttribute('href', NEUTRAL_FAVICON);
           }
         };
@@ -222,7 +227,11 @@ const unread =
           }
         });
 
-        document.addEventListener('astro:page-load', apply);
+        // BEFORE-swap: the incoming document gets its real image srcs (and tab
+        // chrome) pre-paint — no placeholder flash on navigation. page-load
+        // stays as the fallback for injected content (profile sheet etc.).
+        document.addEventListener('astro:before-swap', (e) => apply(e.newDocument));
+        document.addEventListener('astro:page-load', () => apply());
         apply();
       })();
 

@@ -14,6 +14,18 @@ import ActionSheet from '@/components/molecules/ActionSheet.astro';
      sheet; `flush` floats the grab pill over the immersive hero. -->
 <ActionSheet id="profile-sheet" label="Profile" flush>
   <div data-profile-sheet-slot></div>
+  <!-- Floating close, bottom-right: always in thumb reach however deep the
+       profile is scrolled. ponytail: fixed spot — draggable if it bothers. -->
+  <button
+    slot="chrome"
+    type="button"
+    data-sheet-close
+    aria-label="Close"
+    class="slab-cut absolute bottom-5 right-4 z-30 grid size-11 cursor-pointer place-items-center bg-foreground text-background shadow-soft-lg transition-transform active:scale-90"
+    style="bottom: calc(1.25rem + env(safe-area-inset-bottom))"
+  >
+    <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+  </button>
 </ActionSheet>
 
 <script>

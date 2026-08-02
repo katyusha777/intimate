@@ -20,9 +20,9 @@ interface Props {
 const { currentCity } = Astro.props;
 
 const LANGUAGES = [
-  { value: 'nl', label: 'Nederlands' },
-  { value: 'en', label: 'English' },
-  { value: 'de', label: 'Deutsch' },
+  { value: 'nl', label: 'Nederlands', flag: '🇳🇱' },
+  { value: 'en', label: 'English', flag: '🇬🇧' },
+  { value: 'de', label: 'Deutsch', flag: '🇩🇪' },
 ];
 const locale = getLocale() as Locale;
 const heading = 'font-condensed text-sm font-bold uppercase tracking-wide';
@@ -33,20 +33,23 @@ const home = localizePath('/');
   <div class="space-y-6 px-5 pb-6 pt-1">
     <div class="space-y-3">
       <h3 class={heading}>{m.region_language()}</h3>
-      <div class="space-y-2">
+      <!-- Same button family as the city grid below — flag + native name. -->
+      <div class="grid grid-cols-3 gap-2.5">
         {
           LANGUAGES.map((l) => (
-            <label class="flex cursor-pointer select-none items-center gap-2.5 text-sm hover:text-foreground/70">
-              <input
-                type="radio"
-                name="region-lang"
-                value={l.value}
-                checked={l.value === locale}
-                class="radio-dot"
-                data-region-lang={l.value}
-              />
+            <button
+              type="button"
+              data-region-lang={l.value}
+              class:list={[
+                'flex h-12 cursor-pointer items-center justify-center gap-1.5 border px-2 text-sm font-semibold transition-colors active:scale-[0.97]',
+                l.value === locale
+                  ? 'border-foreground'
+                  : 'border-foreground/20 hover:border-foreground/60',
+              ]}
+            >
+              <span aria-hidden="true">{l.flag}</span>
               {l.label}
-            </label>
+            </button>
           ))
         }
       </div>

@@ -77,6 +77,21 @@ const { id = 'lightbox' } = Astro.props;
       opacity: 0;
     }
   }
+  /* The photo ANIMATES into position (zoom + fade) instead of snapping in. */
+  .lightbox[data-open] [data-lightbox-track] {
+    animation: lightbox-in 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  @keyframes lightbox-in {
+    from {
+      opacity: 0;
+      transform: scale(0.9);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .lightbox[data-open] [data-lightbox-track] {
+      animation: none;
+    }
+  }
 </style>
 
 <script>
@@ -149,6 +164,7 @@ const { id = 'lightbox' } = Astro.props;
       );
       dialog.showModal();
       dialog.setAttribute('data-open', '');
+      document.documentElement.setAttribute('data-lightbox-open', ''); // scroll-lock the page
       requestAnimationFrame(() => {
         track.scrollLeft = index * track.clientWidth;
         setActive(index);
@@ -158,9 +174,13 @@ const { id = 'lightbox' } = Astro.props;
 
     const close = () => {
       dialog.removeAttribute('data-open');
+      document.documentElement.removeAttribute('data-lightbox-open');
       dialog.close();
     };
-    dialog.addEventListener('close', () => dialog.removeAttribute('data-open'));
+    dialog.addEventListener('close', () => {
+      dialog.removeAttribute('data-open');
+      document.documentElement.removeAttribute('data-lightbox-open');
+    });
     dialog.querySelector('[data-lightbox-close]')!.addEventListener('click', close);
 
     // Tap closes, swipe changes. Closing on pointerup means the follow-up
