@@ -171,9 +171,10 @@ const { id, class: className, label, flush } = Astro.props;
         dialog.removeAttribute('data-open');
         panel.style.transitionDuration = '';
         backdrop.style.transitionDuration = '';
-        // Sheets can STACK (favorites → profile): only the LAST one to close
-        // may unlock the page — [open] is already gone from this dialog here.
-        if (!document.querySelector('dialog[data-sheet][open]')) {
+        // Sheets can STACK (favorites → profile), and drawers share the same
+        // lock: only the LAST open overlay unlocks the page — [open] is
+        // already gone from this dialog here.
+        if (!document.querySelector('dialog[data-sheet][open], dialog[data-drawer][open]')) {
           document.documentElement.removeAttribute('data-sheet-open');
         }
         dialog.dispatchEvent(new CustomEvent('sheet:closed', { bubbles: true }));

@@ -1,12 +1,14 @@
 ---
 /**
- * Mobile profile presentation: an ActionSheet that, on phones, intercepts
- * profile-card links, fetches the profile page, lifts out [data-profile-root]
- * and shows it in the sheet (URL updated via pushState → shareable, back-button
- * closes). Desktop and no-JS fall through to the real full-page navigation, so
- * SEO and deep-links are untouched.
+ * Profile presentation without leaving the shelf: profile-card links are
+ * intercepted, the profile page fetched and [data-profile-root] lifted into
+ * — phones: the bottom ActionSheet · desktop: the right-hand SideDrawer
+ * (slide-over) — with the URL pushed (shareable, back closes). No-JS and
+ * modified clicks fall through to real navigation, so SEO/deep-links are
+ * untouched.
  */
 import ActionSheet from '@/components/molecules/ActionSheet.astro';
+import SideDrawer from '@/components/molecules/SideDrawer.astro';
 ---
 
 <!-- A real modal sheet: the ActionSheet default (80dvh cap, rounded top, a
@@ -28,6 +30,11 @@ import ActionSheet from '@/components/molecules/ActionSheet.astro';
     <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
   </button>
 </ActionSheet>
+
+<!-- Desktop slide-over: the listing stays visible behind the backdrop. -->
+<SideDrawer id="profile-drawer" label="Profile">
+  <div data-profile-drawer-slot></div>
+</SideDrawer>
 
 <style>
   /* Constant offset in-browser (env(sab) flips with Safari's toolbar and
@@ -51,8 +58,16 @@ import ActionSheet from '@/components/molecules/ActionSheet.astro';
     const mobile = matchMedia('(max-width: 767px)');
     const isProfileHref = (href: string) => /\/profile\/[^/?#]+\/?$/.test(href);
 
-    const sheet = () => document.getElementById('profile-sheet') as any;
-    const body = () => sheet()?.querySelector('[data-sheet-body]') as HTMLElement | null;
+    // Presentation by viewport: bottom sheet on phones, right slide-over on
+    // desktop. Same contract (openSheet/closeSheet + sheet:closed).
+    const sheet = () =>
+      document.getElementById(mobile.matches ? 'profile-sheet' : 'profile-drawer') as any;
+    const anyOpen = () =>
+      (['profile-sheet', 'profile-drawer']
+        .map((id) => document.getElementById(id))
+        .find((d: any) => d?.open) ?? null) as any;
+    const body = () =>
+      sheet()?.querySelector('[data-sheet-body], [data-drawer-body]') as HTMLElement | null;
 
     let open = false;
     let suppressPop = false;
@@ -134,7 +149,8 @@ import ActionSheet from '@/components/molecules/ActionSheet.astro';
     // Sheet closed by any gesture (drag/flick/backdrop/Esc): pop our entry so
     // the URL returns to the listing (ClientRouter no-ops on the null state).
     document.addEventListener('sheet:closed', (e) => {
-      if ((e.target as HTMLElement)?.id !== 'profile-sheet' || !open) return;
+      const id = (e.target as HTMLElement)?.id;
+      if ((id !== 'profile-sheet' && id !== 'profile-drawer') || !open) return;
       open = false;
       suppressPop = true;
       history.back();
@@ -149,7 +165,7 @@ import ActionSheet from '@/components/molecules/ActionSheet.astro';
       }
       if (open) {
         open = false;
-        sheet()?.closeSheet();
+        anyOpen()?.closeSheet();
         restoreHistory();
       }
     });
@@ -164,13 +180,12 @@ import ActionSheet from '@/components/molecules/ActionSheet.astro';
       }
     });
 
-    // Intercept profile links on phones only; everything else navigates.
-    // Capture phase + stopImmediatePropagation so we beat Astro's ClientRouter
-    // (which also handles link clicks for SPA navigation).
+    // Intercept profile links on EVERY viewport (sheet or drawer); modified
+    // clicks (new-tab etc.) fall through. Capture + stopImmediatePropagation
+    // beats Astro's ClientRouter.
     document.addEventListener(
       'click',
       (e) => {
-        if (!mobile.matches) return;
         const me = e as MouseEvent;
         if (me.button !== 0 || me.metaKey || me.ctrlKey || me.shiftKey || me.altKey) return;
         if ((e.target as HTMLElement).closest?.('[data-fav-toggle]')) return; // heart favorites, not navigates

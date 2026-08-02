@@ -43,7 +43,9 @@ Pages = `src/pages/` (compose organisms; own no reusable markup).
   Section (owns page rhythm + section headings),
   AvailabilityLine (dot + text availability, card/line variants),
   CitySheet (first-visit city picker), RegionSheet (mobile "CITY | EN" header
-  trigger → language radio + city picker in one ActionSheet), PageSheet
+  trigger → language radio + city picker in one ActionSheet), SideDrawer
+  (right-hand slide-over speaking the ActionSheet contract — desktop profile
+  presentation), PageSheet
   (phones: Favorites/Messages/Contacts tab links open their page inside an
   ActionSheet — fetch + lift <main> + adopt module scripts + pushState; the
   chat thread stays a real page; desktop navigates normally).
