@@ -257,6 +257,12 @@ const { id, class: className, label, flush } = Astro.props;
   // Delegated open/close triggers.
   if (!(window as any).__sheetDelegation) {
     (window as any).__sheetDelegation = true;
+    // A real navigation while a sheet is open (e.g. inbox sheet → thread):
+    // the swap discards the dialog, but the <html> marker must not linger —
+    // it scroll-locks the new page.
+    document.addEventListener('astro:after-swap', () =>
+      document.documentElement.removeAttribute('data-sheet-open'),
+    );
     // Capture phase: an opener nested inside a link (a verified mark on a
     // profile card) must beat Astro's ClientRouter link handler — so we
     // preventDefault AND stopPropagation before navigation is ever considered.

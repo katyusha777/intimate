@@ -457,6 +457,18 @@ const swatches = [
     </section>
 
     <section class="space-y-4">
+      <h2 class="text-xl font-semibold">PageSheet — mobile tab sections as sheets</h2>
+      <p class="text-sm text-muted-foreground">
+        On phones, <code>a[data-page-sheet]</code> links (Favorites / Messages /
+        Contacts tabs) open their page in this sheet with the URL pushed;
+        desktop navigates. Mounted once by the Layout. Resize to mobile and:
+      </p>
+      <a href="/en/favorites/" data-page-sheet class="text-sm text-brand underline-offset-2 hover:underline">
+        Open Favorites as a sheet (mobile only)
+      </a>
+    </section>
+
+    <section class="space-y-4">
       <h2 class="text-xl font-semibold">RegionSheet — mobile city | language</h2>
       <p class="text-sm text-muted-foreground">
         One header trigger ("ROTTERDAM | EN") opens language radio + city picker.

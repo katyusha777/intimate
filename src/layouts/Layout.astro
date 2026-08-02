@@ -10,6 +10,7 @@ import Header from '@/components/organisms/layout/Header.astro';
 import Footer from '@/components/organisms/layout/Footer.astro';
 import BottomTabBar from '@/components/organisms/layout/BottomTabBar.astro';
 import AuthModal from '@/components/organisms/auth/AuthModal.astro';
+import PageSheet from '@/components/molecules/PageSheet.astro';
 import ProfileSheet from '@/components/organisms/profile/ProfileSheet.astro';
 import Lightbox from '@/components/molecules/Lightbox.astro';
 import FavoritesController from '@/components/molecules/FavoritesController.astro';
@@ -118,6 +119,7 @@ const unread =
     </div>
     {!bare && <BottomTabBar {session} {idVerified} {unread} />}
     <AuthModal />
+    <PageSheet />
     <ProfileSheet />
     <Lightbox />
     <FavoritesController />
