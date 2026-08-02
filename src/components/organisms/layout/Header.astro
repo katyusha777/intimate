@@ -268,10 +268,13 @@ const genderTabs = (Object.keys(GENDER_FILTERS) as GenderFilter[]).map((g) => ({
     document.addEventListener('sheet:opened', () => {
       if (mq.matches) setHidden(true);
     });
-    // New page → fresh header state (the element re-rendered visible anyway).
+    // astro:page-load fires on real navigations (fresh, visible header) AND on
+    // sheet content injection (header still hidden) — sync the flag from the
+    // DOM instead of assuming, or the next show/hide call no-ops on a stale
+    // guard ("scroll up after closing a profile doesn't reveal the header").
     document.addEventListener('astro:page-load', () => {
       lastY = window.scrollY;
-      hidden = false;
+      hidden = !!header()?.classList.contains('header-hide');
     });
   }
 
