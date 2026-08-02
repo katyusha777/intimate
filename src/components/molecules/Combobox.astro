@@ -31,6 +31,14 @@ interface Props {
   lang?: boolean;
   /** Optional leading icon (e.g. location-dot). */
   icon?: string;
+  /**
+   * Trigger look: `default` rounded keyline · `box` sharp condensed-uppercase
+   * rectangle (the AMSTERDAM ▾ location control) · `bare` borderless text
+   * (the EN ▾ language switch).
+   */
+  variant?: 'default' | 'box' | 'bare';
+  /** Override the trigger text (e.g. "EN" while options carry full names). */
+  triggerLabel?: string;
   class?: string;
 }
 
@@ -45,9 +53,18 @@ const {
   cookie,
   lang,
   icon,
+  variant = 'default',
+  triggerLabel,
   class: className,
 } = Astro.props;
 const current = options.find((o) => o.value === value);
+
+const TRIGGER = {
+  default:
+    'flex h-9 w-full cursor-pointer select-none items-center gap-2 rounded-md border border-foreground/20 px-3 text-sm font-medium transition-colors hover:border-foreground/60',
+  box: 'flex h-9 w-full cursor-pointer select-none items-center gap-2 border border-foreground/30 px-3.5 font-condensed text-sm font-bold uppercase tracking-wide transition-colors hover:border-foreground/70 md:h-10',
+  bare: 'flex h-9 w-full cursor-pointer select-none items-center gap-1 px-1 text-sm font-bold text-foreground/80 transition-colors hover:text-foreground',
+};
 ---
 
 <div
@@ -58,14 +75,9 @@ const current = options.find((o) => o.value === value);
   data-cbx-cookie={cookie}
   data-cbx-lang={lang || undefined}
 >
-  <button
-    type="button"
-    aria-haspopup="listbox"
-    data-cbx-btn
-    class="flex h-9 w-full cursor-pointer select-none items-center gap-2 rounded-md border border-foreground/20 px-3 text-sm font-medium transition-colors hover:border-foreground/60"
-  >
+  <button type="button" aria-haspopup="listbox" data-cbx-btn class={TRIGGER[variant]}>
     {icon && <Icon name={icon} class="text-muted-foreground" />}
-    <span data-cbx-label class="truncate">{current ? current.label : placeholder}</span>
+    <span data-cbx-label class="truncate">{triggerLabel ?? (current ? current.label : placeholder)}</span>
     <Icon name="chevron-down" class="ml-auto text-xs text-muted-foreground" />
   </button>
 

@@ -25,7 +25,13 @@ if (category && rest && !CITIES.some((c) => c.slug === rest)) {
   return new Response(null, { status: 404 });
 }
 
-const listing = await buildListing({ url: Astro.url, locale, category, citySlug });
+const listing = await buildListing({
+  url: Astro.url,
+  locale,
+  category,
+  citySlug,
+  defaultGender: Astro.cookies.get('gender')?.value,
+});
 
 const visitMode =
   category?.kind === 'meeting_type' ? ('navigate' as const) : ('query' as const);

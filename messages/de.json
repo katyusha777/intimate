@@ -420,5 +420,8 @@
   "search_open": "Suche öffnen",
   "home_your_city": "Zurück nach {city}",
   "filter_find_someone": "Jemanden finden",
-  "filter_find_someone_ph": "Name oder Telefonnummer"
+  "filter_find_someone_ph": "Name oder Telefonnummer",
+  "gender_tab_women": "Frauen",
+  "gender_tab_men": "Männer",
+  "gender_tab_trans": "Trans"
 }

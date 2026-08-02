@@ -13,7 +13,12 @@ if (citySlug && !CITIES.some((c) => c.slug === citySlug)) {
   return new Response(null, { status: 404 });
 }
 
-const listing = await buildListing({ url: Astro.url, locale, citySlug });
+const listing = await buildListing({
+  url: Astro.url,
+  locale,
+  citySlug,
+  defaultGender: Astro.cookies.get('gender')?.value,
+});
 ---
 
 <Layout

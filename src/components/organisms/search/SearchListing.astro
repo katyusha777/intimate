@@ -7,8 +7,8 @@
  * button on mobile). One GET <form> + SSR = zero client state.
  */
 import * as m from '@/paraglide/messages';
-import { genderLabel, sortLabel } from '@/lib/labels';
-import { CITIES, GENDERS, SORT_OPTIONS } from '@/lib/taxonomy';
+import { sortLabel } from '@/lib/labels';
+import { CITIES, SORT_OPTIONS } from '@/lib/taxonomy';
 import { LISTING_CATEGORIES, type Locale } from '@/lib/taxonomy';
 import { getLocale } from '@/paraglide/runtime';
 import { PAGE_SIZE, type Profile, type ProfileList, type ProfileListParams } from '@/app/models/profile';
@@ -52,7 +52,6 @@ const outcallSlug = LISTING_CATEGORIES.find(
 /** City lives in the path: `${tabPath}${city}/`. */
 const basePath = params.city ? `${tabPath}${params.city}/` : tabPath;
 
-const selectedGenders = new Set(params.genders ?? []);
 const page = Math.floor((params.offset ?? 0) / PAGE_SIZE) + 1;
 const pageCount = Math.max(1, Math.ceil(result.total / PAGE_SIZE));
 
@@ -81,6 +80,15 @@ const chip =
   data-visit-incall-path={`/${locale}/${incallSlug}/`}
   data-visit-outcall-path={`/${locale}/${outcallSlug}/`}
 >
+  <!-- Header owns the gender radio; carry the non-default pick through every
+       filter submit (women = clean URL). -->
+  {
+    params.genders?.includes('male') ? (
+      <input type="hidden" name="gender" value="men" />
+    ) : params.genders?.includes('trans_woman') ? (
+      <input type="hidden" name="gender" value="trans" />
+    ) : null
+  }
   <div class="mb-6">
     <h1 class="display text-3xl md:text-4xl">{title}</h1>
     <p class="mt-1.5 max-w-2xl text-sm text-muted-foreground">
@@ -108,38 +116,7 @@ const chip =
         {m.filter_title()}
       </button>
 
-      <!-- Gender chips: mobile only — on lg the sidebar group owns gender
-           (the script disables whichever set is hidden, so values never double). -->
-      <div class="flex flex-none items-center gap-2 lg:hidden" data-gender-mobile>
-        {
-          GENDERS.map((g) => (
-            <label class="flex-none">
-              <input
-                type="checkbox"
-                name="genders"
-                value={g}
-                checked={selectedGenders.has(g)}
-                class="peer sr-only"
-              />
-              <span class={chip}>
-                <span class="filter-chip__box" aria-hidden="true" />
-                {genderLabel(g)}
-              </span>
-            </label>
-          ))
-        }
-        {
-          selectedGenders.size > 0 && (
-            <button
-              type="button"
-              data-clear-genders
-              class="flex-none cursor-pointer px-1 text-xs text-muted-foreground underline-offset-2 transition-colors hover:text-foreground hover:underline"
-            >
-              {m.filter_clear()}
-            </button>
-          )
-        }
-      </div>
+      <!-- Gender lives in the header row (WOMEN · MEN · TRANS radio). -->
 
       <!-- Available-now quick filter (fix/search): online OR open today. The
            listing already SORTS available-first; this narrows to only them.
@@ -318,9 +295,9 @@ const chip =
     restoreScroll();
 
     // Filters live in two places at once: the DESKTOP sidebar and the MOBILE
-    // filter sheet (plus gender also lives in the quick chips). Only the visible
-    // set may submit, so the hidden set's inputs are disabled per viewport —
-    // otherwise city/services/visit/price/gender would double up in the query.
+    // filter sheet. Only the visible set may submit, so the hidden set's
+    // inputs are disabled per viewport — otherwise city/services/visit/price
+    // would double up in the query. (Gender lives in the header, not here.)
     const mqLg = matchMedia('(min-width: 64rem)');
     const syncSets = () => {
       const lg = mqLg.matches;
@@ -328,12 +305,8 @@ const chip =
         document
           .querySelectorAll<HTMLInputElement>(sel)
           .forEach((i) => (i.disabled = off));
-      dis('[data-gender-mobile] input', lg); // desktop: quick chips off
       dis('[data-filters-desktop] input', !lg); // mobile: whole sidebar copy off
       dis('[data-filters-mobile] input', lg); // desktop: whole sheet copy off
-      // Gender inside the sheet is never the source (quick chips own mobile,
-      // the sidebar owns desktop) — keep it disabled so it can't double-submit.
-      dis('[data-filters-mobile] [data-gender-desktop] input', true);
     };
     if (!(window as any).__filterSetsMq) {
       (window as any).__filterSetsMq = true;
@@ -344,14 +317,6 @@ const chip =
     document.querySelectorAll<HTMLFormElement>('form[data-listing-form]').forEach((form) => {
       if (form.dataset.init) return;
       form.dataset.init = '1';
-
-      form.querySelector('[data-clear-genders]')?.addEventListener('click', () => {
-        form
-          .querySelectorAll<HTMLInputElement>('input[name="genders"]')
-          .forEach((i) => (i.checked = false));
-        sessionStorage.setItem('listing-scroll', String(window.scrollY));
-        form.requestSubmit();
-      });
 
       form.addEventListener('change', (e) => {
         const t = e.target as HTMLElement;

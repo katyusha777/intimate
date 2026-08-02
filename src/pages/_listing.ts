@@ -16,13 +16,17 @@ interface BuildArgs {
   locale: Locale;
   category?: ListingCategory;
   citySlug?: string;
+  /** Visitor's last gender pick (cookie) — URL `?gender=` still wins.
+   *  ponytail: cookie-dependent SSR default forks cached HTML per gender —
+   *  revisit (vary or client-side) when the edge cache lands. */
+  defaultGender?: string;
 }
 
-export async function buildListing({ url, locale, category, citySlug }: BuildArgs) {
+export async function buildListing({ url, locale, category, citySlug, defaultGender }: BuildArgs) {
   const tabPath = category ? `/${locale}/${category.slugs[locale]}/` : `/${locale}/search/`;
 
   const params: ProfileListParams = {
-    ...profileListParamsFromUrl(url),
+    ...profileListParamsFromUrl(url, defaultGender),
     ...(category?.filter ?? {}),
     city: citySlug as ProfileListParams['city'],
   };

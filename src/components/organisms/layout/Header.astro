@@ -8,6 +8,7 @@ import ThemeToggle from '@/components/molecules/ThemeToggle.astro';
 import { getLocale } from '@/paraglide/runtime';
 import { listingCategoryLabel } from '@/lib/labels';
 import { localizePath } from '@/lib/i18n';
+import { GENDER_FILTERS, type GenderFilter } from '@/app/models/profile';
 import { CITIES, LISTING_CATEGORIES, type Locale } from '@/lib/taxonomy';
 
 interface Props {
@@ -29,18 +30,29 @@ const pathSegs = path.split('/').filter(Boolean);
 const currentCity = CITIES.find((c) => pathSegs.includes(c.slug))?.slug;
 const searchPath = localizePath('/search/');
 
-const categories = [
-  {
-    label: m.cat_all(),
-    href: searchPath,
-    active: path.startsWith(searchPath),
-  },
-  ...LISTING_CATEGORIES.map((c) => ({
-    label: listingCategoryLabel(c.slug),
-    href: localizePath(`/${c.slugs[locale]}/`),
-    active: path.startsWith(localizePath(`/${c.slugs[locale]}/`)),
-  })),
-];
+/* Gender is a RADIO over the whole shelf (market is ~80% women → default
+ * women). URL ?gender= wins, then the visitor's cookie, then women. Tab
+ * clicks persist the pick client-side (script below). */
+const genderPick = ([Astro.url.searchParams.get('gender'), Astro.cookies.get('gender')?.value].find(
+  (g) => g && g in GENDER_FILTERS,
+) ?? 'women') as GenderFilter;
+const withGender = (href: string) => (genderPick === 'women' ? href : `${href}?gender=${genderPick}`);
+
+const categories = LISTING_CATEGORIES.map((c) => ({
+  label: listingCategoryLabel(c.slug),
+  href: localizePath(`/${c.slugs[locale]}/`),
+  active: path.startsWith(localizePath(`/${c.slugs[locale]}/`)),
+}));
+
+/* Gender tabs keep the current listing (tab + city); elsewhere → search. */
+const citySeg = currentCity ? `${currentCity}/` : '';
+const listingBase = `${categories.find((c) => c.active)?.href ?? searchPath}${citySeg}`;
+const genderTabs = (Object.keys(GENDER_FILTERS) as GenderFilter[]).map((g) => ({
+  value: g,
+  label: { women: m.gender_tab_women(), men: m.gender_tab_men(), trans: m.gender_tab_trans() }[g],
+  href: g === 'women' ? listingBase : `${listingBase}?gender=${g}`,
+  active: g === genderPick,
+}));
 ---
 
 <header class="glass sticky top-0 z-40 border-b" style="padding-top: env(safe-area-inset-top)">
@@ -80,10 +92,19 @@ const categories = [
       <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
     </a>
 
-    <!-- Theme switch only — the safe-mode (discretion) control lives in the
-         footer, out of the primary chrome. md:ml-auto pushes the control
-         cluster right once the mobile search icon (ml-auto) is hidden. -->
-    <div class="flex flex-none items-center md:ml-auto">
+    <!-- Right cluster: language (bare EN ▾), theme, auth. md:ml-auto pushes it
+         right once the mobile search icon (ml-auto) is hidden. -->
+    <div class="flex flex-none items-center gap-2 md:ml-auto">
+      <Combobox
+        variant="bare"
+        options={LANGUAGES}
+        value={locale}
+        placeholder={locale.toUpperCase()}
+        triggerLabel={locale.toUpperCase()}
+        target="[data-none]"
+        lang
+        class="hidden md:block"
+      />
       <ThemeToggle />
     </div>
 
@@ -110,51 +131,67 @@ const categories = [
     </div>
   </div>
 
-  <!-- Row 2: a few generously-spaced text tabs; the active one carries a
-       brand underline sitting ON the bar's bottom edge — plus the location
-       control behind a hairline divider. NOT the anaglyph style (DESIGN §2.6). -->
+  <!-- Row 2: gender radio (· WOMEN  MEN  TRANS) | categories, generously
+       spaced text tabs — active category carries a brand underline on the
+       bar's bottom edge — and the boxed AMSTERDAM ▾ location control right. -->
   <div class="border-t border-border/60">
     <div class="mx-auto flex h-12 max-w-7xl items-stretch gap-3 px-4 md:h-13 md:px-6">
-      <nav
-        class="flex min-w-0 flex-1 select-none items-stretch gap-6 overflow-x-auto [scrollbar-width:none] md:gap-8 [&::-webkit-scrollbar]:hidden"
-        aria-label={m.all_categories()}
+      <div
+        class="flex min-w-0 flex-1 select-none items-stretch gap-5 overflow-x-auto [scrollbar-width:none] md:gap-7 [&::-webkit-scrollbar]:hidden"
       >
-        {
-          categories.map((l) => (
-            <a
-              href={l.href}
-              aria-current={l.active ? 'page' : undefined}
-              class:list={[
-                'chroma-hover relative flex flex-none items-center font-condensed text-sm font-bold uppercase tracking-wide transition-colors active:scale-[0.97]',
-                l.active ? 'text-foreground' : 'text-foreground/55 hover:text-foreground',
-              ]}
-            >
-              {l.label}
-              <span
+        <!-- Gender: single-select, default women; a click persists (cookie). -->
+        <nav class="flex flex-none items-stretch gap-4 md:gap-5" aria-label={m.filter_gender()}>
+          {
+            genderTabs.map((g) => (
+              <a
+                href={g.href}
+                data-gender-tab={g.value}
+                aria-current={g.active ? 'true' : undefined}
                 class:list={[
-                  'absolute inset-x-0 bottom-0 h-0.5 bg-brand transition-opacity',
-                  l.active ? 'opacity-100' : 'opacity-0',
+                  'chroma-hover flex flex-none items-center gap-1.5 font-condensed text-sm font-bold uppercase tracking-wide transition-colors active:scale-[0.97]',
+                  g.active ? 'text-foreground' : 'text-foreground/55 hover:text-foreground',
                 ]}
-                aria-hidden="true"
-              />
-            </a>
-          ))
-        }
-      </nav>
-      <div class="flex flex-none items-center gap-2 border-l border-border/60 pl-3 md:pl-4">
-        <!-- Language: follows the page's hreflang alternates (SEO §2 — every
-             URL is locale-prefixed; localized slugs handled per page). -->
+              >
+                {g.active && <span class="size-1.5 rounded-full bg-brand" aria-hidden="true" />}
+                {g.label}
+              </a>
+            ))
+          }
+        </nav>
+
+        <span class="my-3.5 w-px flex-none bg-border" aria-hidden="true"></span>
+
+        <nav
+          class="flex min-w-0 flex-none items-stretch gap-5 md:gap-7"
+          aria-label={m.all_categories()}
+        >
+          {
+            categories.map((l) => (
+              <a
+                href={withGender(l.href)}
+                aria-current={l.active ? 'page' : undefined}
+                class:list={[
+                  'chroma-hover relative flex flex-none items-center font-condensed text-sm font-bold uppercase tracking-wide transition-colors active:scale-[0.97]',
+                  l.active ? 'text-foreground' : 'text-foreground/55 hover:text-foreground',
+                ]}
+              >
+                {l.label}
+                <span
+                  class:list={[
+                    'absolute inset-x-0 bottom-0 h-0.5 bg-brand transition-opacity',
+                    l.active ? 'opacity-100' : 'opacity-0',
+                  ]}
+                  aria-hidden="true"
+                />
+              </a>
+            ))
+          }
+        </nav>
+      </div>
+
+      <div class="flex flex-none items-center">
         <Combobox
-          icon="globe"
-          options={LANGUAGES}
-          value={locale}
-          placeholder={LANGUAGES.find((l) => l.value === locale)?.label ?? locale}
-          target="[data-none]"
-          lang
-          class="hidden sm:block"
-        />
-        <Combobox
-          icon="location-dot"
+          variant="box"
           options={CITIES.map((c) => ({ value: c.slug, label: c.name }))}
           value={currentCity}
           placeholder={m.filter_city()}
@@ -168,4 +205,16 @@ const categories = [
     </div>
   </div>
 </header>
+
+<script>
+  // Gender tab click → persist the pick (server default for the next visit).
+  if (!(window as any).__genderTabs) {
+    (window as any).__genderTabs = true;
+    document.addEventListener('click', (e) => {
+      const tab = (e.target as HTMLElement).closest?.('[data-gender-tab]') as HTMLElement | null;
+      if (!tab) return;
+      document.cookie = `gender=${tab.dataset.genderTab}; path=/; max-age=31536000; samesite=lax`;
+    });
+  }
+</script>
 

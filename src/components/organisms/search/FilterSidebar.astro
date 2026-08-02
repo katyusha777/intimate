@@ -11,8 +11,8 @@
  * keeping tab and filter as one dimension.
  */
 import * as m from '@/paraglide/messages';
-import { genderLabel, serviceCategoryLabel, serviceLabel } from '@/lib/labels';
-import { CITIES, GENDERS, SERVICES, SERVICE_CATEGORIES } from '@/lib/taxonomy';
+import { serviceCategoryLabel, serviceLabel } from '@/lib/labels';
+import { CITIES, SERVICES, SERVICE_CATEGORIES } from '@/lib/taxonomy';
 import type { ProfileListParams } from '@/app/models/profile';
 import Icon from '@/components/atoms/Icon.astro';
 import Input from '@/components/atoms/Input.astro';
@@ -32,7 +32,6 @@ interface Props {
 const { params, resetHref, visitMode = 'query', openCategory, sheet } = Astro.props;
 const visitNav = visitMode === 'navigate';
 const selectedServices = new Set(params.services ?? []);
-const selectedGenders = new Set(params.genders ?? []);
 /* Effective location set: main city (path, set top-right) + extra sidebar cities. */
 const selectedCities = new Set([params.city, ...(params.cities ?? [])].filter(Boolean));
 
@@ -72,27 +71,8 @@ const row = 'flex cursor-pointer select-none items-center gap-2.5 text-sm hover:
       />
     </div>
 
-    <!-- Gender (desktop home; on mobile the quick chips above the grid own it —
-         the listing script disables whichever set is hidden). -->
-    <div class:list={[group, 'hidden lg:block']} data-gender-desktop>
-      <h3 class={heading}>{m.filter_gender()}</h3>
-      <div class="space-y-2">
-        {
-          GENDERS.map((g) => (
-            <label class={row}>
-              <input
-                type="checkbox"
-                name="genders"
-                value={g}
-                checked={selectedGenders.has(g)}
-                class="cbx-box"
-              />
-              {genderLabel(g)}
-            </label>
-          ))
-        }
-      </div>
-    </div>
+    <!-- Gender lives in the header row (WOMEN · MEN · TRANS radio, default
+         women) — not duplicated here. -->
 
     <!-- Location: extra cities on top of the main one (header combobox).
          Checking cities here never changes the main path state. -->

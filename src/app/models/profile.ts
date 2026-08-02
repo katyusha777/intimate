@@ -299,10 +299,24 @@ export interface ProfilesApi {
 }
 
 /**
+ * Listing gender filter (radio, not checkbox): the market is ~80% women, so
+ * the default is `women`; `trans` fans out to both taxonomy values. UI value →
+ * taxonomy `genders` array.
+ */
+export const GENDER_FILTERS = {
+  women: ['female'],
+  men: ['male'],
+  trans: ['trans_woman', 'trans_man'],
+} as const;
+export type GenderFilter = keyof typeof GENDER_FILTERS;
+
+/**
  * Parse listing filters from a page URL (GET-form params). Invalid values are
  * dropped, never thrown — a mangled URL is a default listing, not a 500.
+ * `defaultGender` (the visitor's last pick, cookie) applies when the URL says
+ * nothing; the hard default is `women`.
  */
-export function profileListParamsFromUrl(url: URL): ProfileListParams {
+export function profileListParamsFromUrl(url: URL, defaultGender?: string): ProfileListParams {
   const sp = url.searchParams;
   const opt = (key: string) => sp.get(key) || undefined;
   const num = (key: string) => {
@@ -311,11 +325,15 @@ export function profileListParamsFromUrl(url: URL): ProfileListParams {
   };
   const page = Math.max(1, Math.trunc(num('page') ?? 1));
 
+  const genderPick = [opt('gender'), defaultGender, 'women'].find(
+    (g): g is GenderFilter => !!g && g in GENDER_FILTERS,
+  )!;
+
   const candidate = {
     q: opt('q'),
     city: opt('city'),
     cities: sp.getAll('cities'),
-    genders: sp.getAll('genders'),
+    genders: [...GENDER_FILTERS[genderPick]],
     services: sp.getAll('services'),
     meetingType: opt('visit'),
     priceMin: num('priceMin'),
