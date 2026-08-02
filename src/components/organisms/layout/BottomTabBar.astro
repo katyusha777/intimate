@@ -140,14 +140,74 @@ const tabs =
   }
   syncTabs();
   document.addEventListener('astro:page-load', syncTabs);
+
+  // ── Safari collapsed-toolbar defense, twice over ─────────────────────────
+  // Apple exposes NO metric for the collapsed pill's tap region (safe-area
+  // only covers the home indicator), so:
+  // 1) DETECT the state instead: the layout viewport GROWS when the toolbar
+  //    hides (window.innerHeight rises above its per-orientation minimum) →
+  //    toggle a class that lifts the icons far above the pill; compact bar
+  //    while the toolbar is visible.
+  // 2) Don't trust `click` at all: Safari eats the synthesized click in that
+  //    band but raw touchend still fires — navigate from touchend ourselves
+  //    (tap-vs-scroll guarded), so the tap navigates even if Safari also
+  //    expands its toolbar.
+  if (!(window as any).__tabbarSafari) {
+    (window as any).__tabbarSafari = true;
+    const bar = () => document.querySelector<HTMLElement>('nav.tab-dock');
+
+    let minH = Infinity;
+    const measure = () => {
+      const h = window.innerHeight;
+      if (h < minH) minH = h;
+      bar()?.classList.toggle('toolbar-collapsed', h > minH + 30);
+      syncTabs(); // bar height changed → re-seat the highlight
+    };
+    window.addEventListener('resize', measure);
+    window.visualViewport?.addEventListener('resize', measure);
+    window.addEventListener('orientationchange', () => {
+      minH = Infinity; // heights differ per orientation — re-learn
+      setTimeout(measure, 300);
+    });
+    measure();
+
+    let tx = 0;
+    let ty = 0;
+    document.addEventListener(
+      'touchstart',
+      (e) => {
+        if (!(e.target as HTMLElement).closest?.('nav.tab-dock')) return;
+        tx = e.touches[0]!.clientX;
+        ty = e.touches[0]!.clientY;
+      },
+      { passive: true },
+    );
+    document.addEventListener(
+      'touchend',
+      (e) => {
+        const a = (e.target as HTMLElement).closest?.('a[data-tab]') as HTMLAnchorElement | null;
+        if (!a) return;
+        const t = e.changedTouches[0]!;
+        if (Math.abs(t.clientX - tx) > 12 || Math.abs(t.clientY - ty) > 12) return; // a scroll, not a tap
+        e.preventDefault(); // suppress the (possibly-eaten) synthesized click
+        a.click(); // programmatic click — Safari can't swallow it; ClientRouter handles it
+      },
+      { passive: false },
+    );
+  }
 </script>
 
 <style>
-  /* The LINK carries the bottom padding (see the hit-test note above): its
-     tap box reaches the screen edge. Toolbar visible → sab 0 → compact bar;
-     toolbar hidden → sab ~34px → icons ride up clear of the reveal zone. */
+  /* The LINK carries the bottom padding: its tap box reaches the screen edge.
+     Compact while Safari's toolbar is visible; when the MEASURED collapsed
+     state kicks in (script above), the icons lift far above the pill's tap
+     region. Standalone PWA never gets the class → always compact. */
   .tab-hit {
     padding-bottom: calc(var(--sab) + 0.625rem);
+    transition: padding-bottom 0.25s ease;
+  }
+  nav.toolbar-collapsed .tab-hit {
+    padding-bottom: calc(var(--sab) + 3.75rem);
   }
 
   /* Liquid glass: heavy blur + saturation boost over a translucent canvas —
