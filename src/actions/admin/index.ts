@@ -107,10 +107,10 @@ export const admin = {
       const session = await requireAdmin(context, ['moderator']);
       if (decision === 'resolve') {
         if (!resolution) throw new ActionError({ code: 'BAD_REQUEST', message: 'resolution required' });
-        await reportsApi.resolve({ id, resolution, note, handledBy: session.email });
+        await reportsApi.resolve({ id, resolution, note, handledBy: session.accountId });
         await record(session, { action: 'resolve_report', entityType: 'report', entityId: id, reason: resolution, meta: note ? { note } : undefined });
       } else {
-        await reportsApi.dismiss({ id, note, handledBy: session.email });
+        await reportsApi.dismiss({ id, note, handledBy: session.accountId });
         await record(session, { action: 'dismiss_report', entityType: 'report', entityId: id, meta: note ? { note } : undefined });
       }
       await releaseItem(session, `report:${id}`);
