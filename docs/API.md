@@ -47,6 +47,10 @@ discipline that makes the swap trivial:
 4. Swap = add `data/db/profiles.ts` (Drizzle → Hyperdrive) implementing
    `ProfilesApi`, then change one re-export line in `api/profiles.ts`.
 
+The table-by-table Postgres shape, the enum↔taxonomy map, and the full mock→prod
+seam (email→uuid identity, `photos[]`→`media`, override→direct edit) live in
+**DATA.md**; the DDL/RLS law is SUPABASE.md.
+
 Conventions: params objects validated with the model's `ParamsSchema`
 (`limit` capped, defaults applied); list results are `{ items, total }` (total
 before paging — pagination and counts come for free); `byX` returns `T | null`.
@@ -62,20 +66,11 @@ Zod-parsed, and admin-only operations live in `src/actions/` behind auth
 checks. Service-role keys never leave the server.
 
 **Browser path (supabase-js: Auth, Realtime, RLS-guarded dashboard mutations
-ONLY).** RLS is the wall. Per Supabase's current best practices:
-
-- Wrap auth functions: `(select auth.uid()) = user_id` — cached per statement
-  instead of per row (their benchmarks: ~99.9% faster).
-- **Index every column referenced in a policy.**
-- Always add `TO authenticated` / `TO anon` so policies aren't evaluated for
-  ineligible roles.
-- Duplicate policy conditions as explicit query filters (`.eq(...)`) — better
-  query plans.
-- Avoid joins in policies; use `security definer` helper functions for complex
-  authorization (and pin their `search_path`).
-- Authorization data in `app_metadata`, never `user_metadata` (users can edit
-  the latter). JWT claims go stale until refresh — keep expiry short.
-- `UPDATE` policies need a matching `SELECT` policy.
+ONLY).** RLS is the wall. The short law: wrapped `(select auth.uid())`, indexed
+policy columns, `TO authenticated`/`TO anon`, no joins in policies, authz claims
+in `app_metadata` only, every policy with its deny test. Canonical policy
+shapes, the performance rules with benchmarks, and the key/client construction
+spec live in SUPABASE.md §1–3 — that doc is the detailed spec of this split.
 
 ## 4. Realtime (the app is live everywhere)
 
@@ -86,12 +81,10 @@ Per current Supabase guidance: **Broadcast is the primary primitive** —
   `realtime.send()` for custom payloads) so any write fans out instantly —
   approval moments, new-profile toasts, import progress, admin queues.
 - **Topics:** `entity:id` naming (`profile:p01`, `call:abc`, `city:amsterdam`).
-- **Private channels by default:** RLS policies on `realtime.messages`
-  (filtering `extension = 'broadcast'` / `'presence'` + `realtime.topic()`),
-  clients join with `private: true`, and "Allow public access" is disabled in
-  Realtime settings. Keep these policies *simple* — complex RLS on
-  `realtime.messages` raises join latency. Policies are cached per connection;
-  short JWT expiry keeps them fresh (`setAuth` on refresh).
+- **Private channels by default:** clients join with `private: true`,
+  authorized by RLS on `realtime.messages`; "Allow public access" is disabled
+  in Realtime settings. Policy shapes, `setAuth` lifecycle, and quotas:
+  SUPABASE.md §5.
 - **Presence** for online-now badges and live city counts (its own
   `extension = 'presence'` policy).
 - **Payloads are IDs + minimal state, never trusted as instructions** — the

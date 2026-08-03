@@ -10,7 +10,7 @@ import type { Session } from '@/app/models/session';
 
 export const ReportSchema = z.object({
   id: z.string(),
-  createdAt: z.string(),
+  createdAt: z.iso.datetime(),
   reporterEmail: z.string(),
   targetKind: z.enum(REPORT_TARGETS),
   targetId: z.string(),
@@ -26,7 +26,7 @@ export const ReportSchema = z.object({
   resolution: z.enum(REPORT_RESOLUTIONS).optional(),
   resolutionNote: z.string().default(''),
   handledBy: z.string().optional(),
-  handledAt: z.string().optional(),
+  handledAt: z.iso.datetime().optional(),
 });
 export type Report = z.infer<typeof ReportSchema>;
 

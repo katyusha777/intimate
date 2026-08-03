@@ -76,10 +76,10 @@ Server-rendered, realtime-layered (our SSR-first + broadcast pattern, reused):
 **SLA target surfaced in UI:** oldest pending age; goal <24h (a brand promise — "verified fast").
 **Retention machinery visible:** each approved item shows its purge date; the purge job (Workers Cron sweeping R2 against the retention window, hard rule 3) reports last-run status on this page — the toxic-waste policy, observable.
 
-## 6. Moderation queue (profiles + media)
+## 6. Moderation queue (new profiles + media)
 
-- Items: new submissions, **edits to live profiles** (text/photos re-enter review — hard rule 5's "never auto-publish" extended to edits), flagged media.
-- **Diff view for edits:** jsonb field-level diff (old→new highlighted) — review the change, not the whole profile again. This is what makes edit-review sustainable.
+- Items: new submissions (the first `pending_review → live` approval) and media — every uploaded image is a `media` row reviewed individually.
+- **Text edits to live profiles publish immediately** (decided 2026-08-03): no edit-review queue, no revision layer — human moderation is images-only; an AI text-moderation pass can be layered later. Reports remain the recourse for bad text.
 - Media strip with NSFW-triage scores (OpenRouter vision pass, pre-computed by the import/upload pipeline) sorting riskiest first; per-photo approve/reject; cover-photo rule check (tiered explicitness policy) called out explicitly. Blurred-by-default per §2.
 - Approve → live + cache purge + IndexNow ping · Reject → taxonomy reason + note → user notified with specifics.
 - Claim + keyboard flow identical to §5 (one interaction model across all queues — enforced by shared components, §2).
@@ -126,7 +126,7 @@ List of `call_sessions`: participants, initiated_by (always professional — ass
 ## 13. Built on the stack (the leverage list)
 
 - **Supabase Realtime:** queue live-updates + claim broadcasts (no two admins on one item) + escalation banner push + presence for "admins online". Private channels authorized via RLS, SSR-first paint with realtime layered after — the standard pattern.
-- **Postgres does the logic:** completeness score, queue SLA ages, relations panel, diff-ready jsonb history — views/functions, not app code; audit via triggers on sensitive tables (can't forget to log).
+- **Postgres does the logic:** completeness score, queue SLA ages, relations panel — views/functions, not app code; audit via triggers on sensitive tables (can't forget to log).
 - **Cloudflare R2:** verification docs (dedicated private bucket, hard rule 3); presigned short-TTL GETs issued only by admin actions; purge via Workers Cron.
 - **Supabase Auth MFA:** aal2 enforcement for admins.
 - **Cloudflare Access:** the edge wall on `/admin/*`.
@@ -155,7 +155,7 @@ Bulk operations (multi-select approve/state-change) · canned-response macros ·
 - [ ] Cloudflare Access active on /admin/* in prod; Supabase MFA enforced (aal2 middleware test)
 - [ ] Role matrix enforced in server actions (tests per role per action, not just UI hiding)
 - [ ] Verification flow end-to-end: claim broadcast visible to a second admin · doc URL TTL ≤5min · every doc issuance AND render in audit_log · approve schedules purge · reject reason reaches the user's dashboard verbatim
-- [ ] Moderation diff view renders field-level changes; media triage ordering works; media blurred-by-default with per-item reveal
+- [ ] Moderation queue: new-profile approval works; media triage ordering works; media blurred-by-default with per-item reveal
 - [ ] Escalation reports pin + site-wide admin banner via realtime (test: insert escalation → banner within 2s)
 - [ ] Thread access governance: support role denied · report-scoped default · full-open requires reason · audit entry created (asserted)
 - [ ] Platform messages: distinct Platform identity in the user's inbox · replies land in Support inbox · template versions logged

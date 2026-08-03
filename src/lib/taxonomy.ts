@@ -186,8 +186,12 @@ export const NUMERIC_RANGES = {
   shoe_size_eu: { min: 34, max: 47 },
 } as const;
 
-/** Configurable policy minimum (some municipalities/licenses require 21). */
-export const POLICY_MIN_AGE = 18;
+/**
+ * Policy minimum age to advertise: 21 (NL sex-work regulation). 18 stays the
+ * absolute legal-adult floor (NUMERIC_RANGES.age.min); 21 is the market gate,
+ * enforced at the profiles DB CHECK + ProfileEditSchema.
+ */
+export const POLICY_MIN_AGE = 21;
 
 // ---------------------------------------------------------------------------
 // Meetings, rates, amenities, availability
@@ -243,7 +247,9 @@ export const RATE_DURATIONS = [
   'overnight',
   'weekend',
 ] as const;
-// rates rows: { duration: RateDuration, meeting_type: MeetingType, amount_eur: int }
+// A rate row is { duration?: RateDuration, label?: string, incall?: int, outcall?: int }
+// (a preset duration OR a free-text custom line, priced per meeting column).
+// See RateRowSchema in src/app/models/profile.ts — stored as profiles.rates JSONB.
 
 export const CURRENCIES = ['eur'] as const;
 
@@ -251,10 +257,9 @@ export const PAYMENT_METHODS = ['cash', 'pin', 'bank_transfer', 'crypto'] as con
 
 export const CONTACT_CHANNELS = ['phone', 'whatsapp', 'telegram', 'signal', 'sms'] as const;
 
-export const WEEKDAYS = [
-  'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday',
-] as const;
-// availability rows: { day: Weekday, from: 'HH:MM', to: 'HH:MM' } | 24_7 flag on profile
+// Weekdays for opening hours live in DAYS (Mon-first, 3-letter) above — the one
+// day vocabulary. Availability is profiles.opening_hours JSONB keyed by DAYS,
+// each value a DayHours { closed, allDay, from 'HH:MM', to 'HH:MM' }.
 
 // ---------------------------------------------------------------------------
 // Services — canonical tags by category (tag-level naming as used industry-wide;
@@ -526,7 +531,6 @@ export type Amenity = (typeof AMENITIES)[number];
 export type RateDuration = (typeof RATE_DURATIONS)[number];
 export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
 export type ContactChannel = (typeof CONTACT_CHANNELS)[number];
-export type Weekday = (typeof WEEKDAYS)[number];
 export type ServiceCategory = (typeof SERVICE_CATEGORIES)[number];
 export type Service = (typeof SERVICES)[ServiceCategory][number];
 export type CitySlug = (typeof CITIES)[number]['slug'];

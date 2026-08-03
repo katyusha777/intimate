@@ -45,9 +45,11 @@ bun run deploy:staging   # = CLOUDFLARE_ENV=staging astro build && wrangler depl
 ```
 
 On deploy the adapter auto-provisions a `SESSION` KV namespace and an `IMAGES`
-binding. Hyperdrive `intimate-staging` (id `c56d9b6e947a4841baa30f8b6a6b9e55`)
-is bound in both wrangler envs until the prod Supabase project exists
-(`ponytail:` note in `wrangler.jsonc`).
+binding. One Hyperdrive (id `542bb0bee7fa44148f4e6ae3e0129ae7`) is bound in both
+wrangler envs until the prod Supabase project exists (`ponytail:` note in
+`wrangler.jsonc`). In local dev the binding's `localConnectionString` points at
+the local Supabase Postgres (`127.0.0.1:54322`) — `bunx supabase start` first,
+or db-backed pages fail to connect.
 
 ## 3. CI (GitHub Actions)
 

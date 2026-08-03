@@ -90,7 +90,7 @@ Site-level: segmented XML sitemaps (real lastmod) · robots.txt allowing GPTBot/
 
 1. **RLS on every table.** Anon key is public. Service role key server-side only.
 2. **EXIF stripped from every uploaded image** before storage (GPS leaks endanger advertisers). All photos via Cloudflare Images only.
-3. **Verification documents are toxic waste — bounded retention, not instant deletion** (CLAUDE.md hard rule 3): dedicated private Cloudflare R2 bucket (EU jurisdiction, zero public access — §11), admin-only via short-TTL signed URLs, every read audit-logged. Retained for the defined window (placeholder: 12 months after profile deactivation, pending legal review — provability requires the document), then **purged automatically**; state/date/reviewer/hash retained forever. Never logged, never cached.
+3. **Verification documents are toxic waste — bounded retention, not instant deletion** (CLAUDE.md hard rule 3): dedicated private Cloudflare R2 bucket (EU jurisdiction, zero public access — §11), admin-only via short-TTL signed URLs, every read audit-logged. Retained for the defined window (48 months after profile deactivation, pending final legal review — provability requires the document), then **purged automatically**; state/date/reviewer/hash retained forever. Never logged, never cached.
 4. **Age hard floor 18 at DB level** (policy-configurable to 21 per licensing).
 5. **Taxonomy is law:** `src/lib/taxonomy.ts` is the only source of controlled vocabulary; DB stores those snake_case English values; UI labels via i18n keys; import normalizes into it; extend via taxonomy + translations + migration, never ad hoc.
 6. **Import is self-service consent:** the advertiser submits *her own* profile URL; extraction validated by Zod against taxonomy; **never auto-published** — she reviews, then moderation.
@@ -136,7 +136,7 @@ Advertisers verify in two steps before a profile can go live; both flows are ser
 
 **ID verification — dedicated Cloudflare R2 bucket.**
 - Flow: advertiser uploads ID + selfie holding a handwritten per-request code (issued by us, single-use) → server action strips EXIF → objects written to a **separate R2 bucket used for nothing else**: EU jurisdiction, no public access, no r2.dev subdomain, no custom domain, no CORS — reachable exclusively through admin-authenticated server actions issuing short-lived presigned GETs for the review screen.
-- Admin reviews in the verification queue (ADMIN.md §5) → approve/reject → the object enters its **bounded retention window** (§8.3: placeholder 12 months after profile deactivation, pending legal review), then a Workers Cron sweeper **purges it automatically** — and deletes any object past the window as a backstop regardless of state. Retained after purge: state, date, reviewer, content hash — nothing else.
+- Admin reviews in the verification queue (ADMIN.md §5) → approve/reject → the object enters its **bounded retention window** (§8.3: 48 months after profile deactivation, pending final legal review), then a Workers Cron sweeper **purges it automatically** — and deletes any object past the window as a backstop regardless of state. Retained after purge: state, date, reviewer, content hash — nothing else.
 - Every action → `audit_log`. Documents are never logged, never cached, never proxied through anything that caches.
 
 ## 12. Agencies (growth channel)

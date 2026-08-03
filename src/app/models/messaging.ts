@@ -55,8 +55,8 @@ export const MessageSchema = z.object({
   photo: z.string().optional(),
   /** request kind: the immutable pre-qualified contact card (UX-PLAN 4.1). */
   request: RequestPayloadSchema.optional(),
-  createdAt: z.string(),
-  readAt: z.string().optional(),
+  createdAt: z.iso.datetime(),
+  readAt: z.iso.datetime().optional(),
 });
 export type Message = z.infer<typeof MessageSchema>;
 
@@ -81,8 +81,8 @@ export const ThreadSchema = z.object({
   state: z.enum(THREAD_STATES).default('open'),
   /** Set when state=blocked, so each side sees its own block list. */
   blockedBy: z.enum(['professional', 'client']).optional(),
-  createdAt: z.string(),
-  lastMessageAt: z.string(),
+  createdAt: z.iso.datetime(),
+  lastMessageAt: z.iso.datetime(),
   // --- contact fields (professional's CRM; prod = `contacts` row) ---
   pinned: z.boolean().default(false),
   /** Private to her (never leaves the professional side). */
@@ -123,7 +123,7 @@ export const ManualContactSchema = z.object({
   /** Phone or email, freeform (how she'd reach them). */
   handle: z.string().trim().max(120).default(''),
   note: z.string().max(500).default(''),
-  createdAt: z.string(),
+  createdAt: z.iso.datetime(),
 });
 export type ManualContact = z.infer<typeof ManualContactSchema>;
 
