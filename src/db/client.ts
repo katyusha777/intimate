@@ -13,6 +13,9 @@ export function createDb(hyperdrive: Pick<Hyperdrive, 'connectionString'>) {
     max: 5,
     fetch_types: false,
     prepare: false,
+    // Don't echo server NOTICE/WARNING to the console (e.g. realtime.send's
+    // "no partition" notice before Realtime first runs) — they're not errors.
+    onnotice: () => {},
   });
   return drizzle(client, { schema });
 }

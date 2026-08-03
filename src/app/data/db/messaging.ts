@@ -1,0 +1,624 @@
+/**
+ * Drizzle messaging backend (docs/MESSAGING.md, DATA.md): threads · messages ·
+ * contacts (the professional's CRM: note/pin/media-grant/private-unlock, one
+ * row per thread) · conversation_settings. Replaces the KV mock; the seam
+ * (api/messaging.ts) is the switch.
+ *
+ * Participation is decided from the session, never trusted from input — same
+ * `partyOf` law as the mock (professional = owns the profile; client = the
+ * thread's account by email). last_message_at + realtime broadcast are handled
+ * by the message-insert triggers (drizzle/0001), so inserts don't touch them.
+ *
+ * Fresh Db per call (workerd forbids cross-request I/O reuse).
+ */
+import { and, eq, inArray, isNull, ne, sql, type SQL } from 'drizzle-orm';
+import { type Db } from '@/db/client';
+import { accounts, contacts, conversationSettings, messages, profiles, threads } from '@/db/schema';
+import {
+  ConversationSettingsSchema,
+  RequestPayloadSchema,
+  ThreadSchema,
+  replySpeed,
+  type ContactItem,
+  type ConversationSettings,
+  type Message,
+  type MessagingApi,
+  type Party,
+  type ReplySpeed,
+  type Thread,
+  type ThreadMeta,
+  type ThreadSummary,
+} from '@/app/models/messaging';
+import type { Session } from '@/app/models/session';
+
+const iso = (v: Date | string): string => (v instanceof Date ? v : new Date(v)).toISOString();
+
+// ── projection ──────────────────────────────────────────────────────────────
+
+type MsgRow = typeof messages.$inferSelect;
+function toMessage(m: MsgRow): Message {
+  return {
+    id: m.id,
+    sender: m.sender,
+    kind: m.kind,
+    body: m.body,
+    photo: m.imageKey ?? undefined, // chat photo (data-URL inline for now)
+    request: m.request ?? undefined,
+    createdAt: iso(m.createdAt),
+    readAt: m.readAt ? iso(m.readAt) : undefined,
+  };
+}
+
+interface ThreadJoin {
+  id: string;
+  profileId: string;
+  profileSlug: string;
+  profileName: string;
+  clientEmail: string | null;
+  clientName: string | null;
+  state: Thread['state'];
+  blockedBy: Party | null;
+  createdAt: Date;
+  lastMessageAt: Date;
+  pinned: boolean | null;
+  note: string | null;
+  clientMediaAllowed: boolean | null;
+  privateSetUnlocked: boolean | null;
+}
+
+function toThread(r: ThreadJoin, msgs: MsgRow[]): Thread {
+  const email = r.clientEmail ?? '';
+  return ThreadSchema.parse({
+    id: r.id,
+    profileId: r.profileId,
+    profileSlug: r.profileSlug,
+    profileName: r.profileName,
+    clientEmail: email,
+    clientName: r.clientName ?? email.split('@')[0] ?? 'Client',
+    state: r.state,
+    blockedBy: r.blockedBy ?? undefined,
+    createdAt: iso(r.createdAt),
+    lastMessageAt: iso(r.lastMessageAt),
+    pinned: r.pinned ?? false,
+    note: r.note ?? '',
+    clientMediaAllowed: r.clientMediaAllowed ?? false,
+    privateSetUnlocked: r.privateSetUnlocked ?? false,
+    messages: msgs.map(toMessage),
+  });
+}
+
+/** threads ⟕ profiles ⟕ accounts ⟕ contacts + messages → projected Thread[]. */
+async function loadThreads(d: Db, where: SQL): Promise<Thread[]> {
+  const rows: ThreadJoin[] = await d
+    .select({
+      id: threads.id,
+      profileId: threads.profileId,
+      profileSlug: profiles.slug,
+      profileName: profiles.name,
+      clientEmail: accounts.email,
+      clientName: accounts.displayName,
+      state: threads.state,
+      blockedBy: threads.blockedBy,
+      createdAt: threads.createdAt,
+      lastMessageAt: threads.lastMessageAt,
+      pinned: contacts.pinned,
+      note: contacts.note,
+      clientMediaAllowed: contacts.clientMediaAllowed,
+      privateSetUnlocked: contacts.privateSetUnlocked,
+    })
+    .from(threads)
+    .innerJoin(profiles, eq(profiles.id, threads.profileId))
+    .innerJoin(accounts, eq(accounts.id, threads.clientAccountId))
+    .leftJoin(contacts, eq(contacts.threadId, threads.id))
+    .where(where);
+  if (!rows.length) return [];
+  // ponytail: loads every message of every matched thread to build summaries;
+  // push snippet+unread into SQL when a pro's inbox gets large.
+  const ids = rows.map((r) => r.id);
+  const msgs = await d.select().from(messages).where(inArray(messages.threadId, ids)).orderBy(messages.createdAt);
+  const byThread = new Map<string, MsgRow[]>();
+  for (const m of msgs) (byThread.get(m.threadId) ?? byThread.set(m.threadId, []).get(m.threadId)!).push(m);
+  return rows.map((r) => toThread(r, byThread.get(r.id) ?? []));
+}
+
+/** Which side is the session on? Same law as the mock (client keyed by email). */
+function partyOf(session: Session, t: Thread): Party | null {
+  if (session.profileId && session.profileId === t.profileId) return 'professional';
+  if (session.email.toLowerCase() === t.clientEmail.toLowerCase()) return 'client';
+  return null;
+}
+
+// System cards aren't unread messages (don't badge her for a card she triggered).
+function unreadFor(t: Thread, party: Party): number {
+  return t.messages.filter((m) => m.sender !== party && m.sender !== 'system' && !m.readAt).length;
+}
+function snippetFor(t: Thread): string {
+  const last = [...t.messages].reverse().find((m) => m.kind !== 'system');
+  if (!last) return '';
+  if (last.kind === 'photo') return '📷';
+  if (last.kind === 'request') return 'msg_snippet_request';
+  return last.body;
+}
+function toSummary(t: Thread, party: Party): ThreadSummary {
+  return {
+    id: t.id,
+    profileId: t.profileId,
+    profileSlug: t.profileSlug,
+    profileName: t.profileName,
+    clientEmail: t.clientEmail,
+    clientName: t.clientName,
+    state: t.state,
+    pinned: t.pinned,
+    note: t.note,
+    clientMediaAllowed: t.clientMediaAllowed,
+    lastMessageAt: t.lastMessageAt,
+    snippet: snippetFor(t),
+    unread: unreadFor(t, party),
+  };
+}
+
+// ── helpers ─────────────────────────────────────────────────────────────────
+
+/** A live profile's id from a slug — you message from a live page. */
+async function liveProfileId(d: Db, slug: string): Promise<{ id: string } | undefined> {
+  return (
+    await d.select({ id: profiles.id }).from(profiles).where(and(eq(profiles.slug, slug), eq(profiles.state, 'live'))).limit(1)
+  )[0];
+}
+
+async function findThread(d: Db, profileId: string, clientAccountId: string): Promise<Thread | null> {
+  const rows = await loadThreads(d, and(eq(threads.profileId, profileId), eq(threads.clientAccountId, clientAccountId))!);
+  return rows[0] ?? null;
+}
+
+/** Create the thread + its CRM contact row (1:1). Returns the loaded Thread. */
+async function createThread(
+  d: Db,
+  profileId: string,
+  clientAccountId: string,
+  state: Thread['state'],
+): Promise<Thread> {
+  const [row] = await d
+    .insert(threads)
+    .values({ profileId, clientAccountId, state })
+    .onConflictDoNothing()
+    .returning({ id: threads.id });
+  const id =
+    row?.id ??
+    (await d
+      .select({ id: threads.id })
+      .from(threads)
+      .where(and(eq(threads.profileId, profileId), eq(threads.clientAccountId, clientAccountId)))
+      .limit(1))[0]!.id;
+  if (row) {
+    await d
+      .insert(contacts)
+      .values({ profileId, kind: 'thread', threadId: id, clientAccountId })
+      .onConflictDoNothing();
+  }
+  return (await loadThreads(d, eq(threads.id, id)))[0]!;
+}
+
+/**
+ * Backend over a per-call Db factory (workerd forbids sharing a client across
+ * requests → `db()` returns a fresh one). The seam (api/messaging.ts) injects
+ * the Hyperdrive binding; tests inject a local-Postgres factory.
+ */
+export function makeMessagingApi(db: () => Db): MessagingApi {
+  return {
+  async settings(profileId) {
+    const [row] = await db()
+      .select()
+      .from(conversationSettings)
+      .where(eq(conversationSettings.profileId, profileId))
+      .limit(1);
+    // No row → default 'off' (product law, MESSAGING.md 0.1). The mock defaulted
+    // 'everyone' for explorability; prod is opt-in.
+    if (!row) return ConversationSettingsSchema.parse({});
+    return ConversationSettingsSchema.parse({
+      mode: row.mode,
+      allowCallRequests: row.allowCallRequests,
+      screeningQuestion: row.screeningQuestion,
+    });
+  },
+
+  async setMode(session, mode) {
+    if (!session.profileId) return;
+    await db()
+      .insert(conversationSettings)
+      .values({ profileId: session.profileId, mode })
+      .onConflictDoUpdate({ target: conversationSettings.profileId, set: { mode } });
+  },
+
+  async setScreeningQuestion(session, { question }) {
+    if (!session.profileId) return;
+    const screeningQuestion = question.slice(0, 140);
+    await db()
+      .insert(conversationSettings)
+      .values({ profileId: session.profileId, screeningQuestion })
+      .onConflictDoUpdate({ target: conversationSettings.profileId, set: { screeningQuestion } });
+  },
+
+  async listThreads(session) {
+    const d = db();
+    const where = session.profileId
+      ? eq(threads.profileId, session.profileId)
+      : eq(threads.clientAccountId, session.accountId);
+    const party: Party = session.profileId ? 'professional' : 'client';
+    return (await loadThreads(d, where))
+      .filter((t) => t.state !== 'blocked')
+      .map((t) => toSummary(t, party))
+      .sort((a, b) => Number(b.pinned) - Number(a.pinned) || b.lastMessageAt.localeCompare(a.lastMessageAt));
+  },
+
+  async getThread(session, threadId) {
+    const [t] = await loadThreads(db(), eq(threads.id, threadId));
+    if (!t || !partyOf(session, t)) return null; // participant-only
+    return t;
+  },
+
+  async poll(session, threadId, after) {
+    const [t] = await loadThreads(db(), eq(threads.id, threadId));
+    if (!t) return null;
+    const party = partyOf(session, t);
+    if (!party) return null;
+    const list = after ? t.messages.filter((m) => m.createdAt > after) : t.messages;
+    const mine = t.messages.filter((m) => m.sender === party && m.readAt);
+    const readUpTo = mine.length ? mine[mine.length - 1]!.createdAt : null;
+    return {
+      messages: list,
+      readUpTo,
+      clientMediaAllowed: t.clientMediaAllowed,
+      privateSetUnlocked: t.privateSetUnlocked,
+      state: t.state,
+    };
+  },
+
+  async startThread(session, { profileSlug }) {
+    if (session.profileId) return null; // clients only initiate
+    const d = db();
+    const profile = await liveProfileId(d, profileSlug);
+    if (!profile) return null;
+    if ((await this.settings(profile.id)).mode === 'off') return null; // her inbox, her rules
+    const existing = await findThread(d, profile.id, session.accountId);
+    if (existing) return existing;
+    return createThread(d, profile.id, session.accountId, 'open');
+  },
+
+  async startRequest(session, { profileSlug, request }) {
+    if (session.profileId) return null;
+    const d = db();
+    const profile = await liveProfileId(d, profileSlug);
+    if (!profile) return null;
+    if ((await this.settings(profile.id)).mode === 'off') return null;
+    // UGC is data — re-validate at the wall even though the action parsed it.
+    const parsed = RequestPayloadSchema.safeParse(request);
+    if (!parsed.success) return null;
+
+    let thread = await findThread(d, profile.id, session.accountId);
+    if (thread?.state === 'blocked') return null; // blocked pair → no request path
+    if (!thread) thread = await createThread(d, profile.id, session.accountId, 'pending');
+    else await d.update(threads).set({ state: 'pending' }).where(eq(threads.id, thread.id));
+
+    await d.insert(messages).values({
+      threadId: thread.id,
+      sender: 'client',
+      kind: 'request',
+      request: parsed.data,
+    });
+    return (await loadThreads(d, eq(threads.id, thread.id)))[0]!;
+  },
+
+  async respondRequest(session, { threadId, accept, reply }) {
+    const d = db();
+    const [t] = await loadThreads(d, eq(threads.id, threadId));
+    if (!t || partyOf(session, t) !== 'professional') return false;
+    if (t.state !== 'pending') return false;
+
+    if (accept) {
+      await d.update(threads).set({ state: 'open' }).where(eq(threads.id, threadId));
+      // Accept unlocks her private set for THIS client (UX-PLAN 4.4) + system card.
+      await d.update(contacts).set({ privateSetUnlocked: true }).where(eq(contacts.threadId, threadId));
+      await d.insert(messages).values({ threadId, sender: 'system', kind: 'system', body: 'msg_system_request_accepted' });
+    } else {
+      // Decline closes SILENTLY (frozen, invisible in listThreads); the optional
+      // quick reply is the ONLY thing the client sees.
+      const clean = (reply ?? '').trim().slice(0, 4000);
+      if (clean) await d.insert(messages).values({ threadId, sender: 'professional', kind: 'text', body: clean });
+      await d.update(threads).set({ state: 'frozen' }).where(eq(threads.id, threadId));
+    }
+    return true;
+  },
+
+  async send(session, { threadId, kind, body = '', photo }) {
+    const d = db();
+    const [t] = await loadThreads(d, eq(threads.id, threadId));
+    if (!t) return null;
+    const party = partyOf(session, t);
+    if (!party) return null;
+    // Free-compose only on an OPEN thread — a pending request blocks both sides
+    // (the UX-PLAN 4.1 throttle) and blocked kills it.
+    if (t.state !== 'open') return null;
+
+    if (party === 'client') {
+      if ((await this.settings(t.profileId)).mode === 'off') return null;
+      if (kind === 'photo' && !t.clientMediaAllowed) return null; // her grant gates his media
+    }
+    const clean = body.trim().slice(0, 4000);
+    if (kind === 'text' && !clean) return null;
+    if (kind === 'photo' && !photo) return null;
+
+    const [row] = await d
+      .insert(messages)
+      .values({
+        threadId,
+        sender: party,
+        kind,
+        body: kind === 'text' ? clean : '',
+        imageKey: kind === 'photo' ? photo : null,
+      })
+      .returning();
+    return row ? toMessage(row) : null;
+  },
+
+  async markRead(session, threadId) {
+    const d = db();
+    const [t] = await loadThreads(d, eq(threads.id, threadId));
+    if (!t) return;
+    const party = partyOf(session, t);
+    if (!party) return;
+    // Mark the OTHER side's unread messages read.
+    await d
+      .update(messages)
+      .set({ readAt: sql`now()` })
+      .where(and(eq(messages.threadId, threadId), ne(messages.sender, party), isNull(messages.readAt)));
+  },
+
+  async setNote(session, { threadId, note }) {
+    const d = db();
+    const [t] = await loadThreads(d, eq(threads.id, threadId));
+    if (!t || partyOf(session, t) !== 'professional') return;
+    await d.update(contacts).set({ note: note.slice(0, 500) }).where(eq(contacts.threadId, threadId));
+  },
+
+  async setPinned(session, { threadId, pinned }) {
+    const d = db();
+    const [t] = await loadThreads(d, eq(threads.id, threadId));
+    if (!t || partyOf(session, t) !== 'professional') return;
+    await d.update(contacts).set({ pinned }).where(eq(contacts.threadId, threadId));
+  },
+
+  async setMediaAllowed(session, { threadId, allowed }) {
+    const d = db();
+    const [t] = await loadThreads(d, eq(threads.id, threadId));
+    if (!t || partyOf(session, t) !== 'professional') return;
+    if (t.clientMediaAllowed === allowed) return;
+    await d.update(contacts).set({ clientMediaAllowed: allowed }).where(eq(contacts.threadId, threadId));
+    // Granting is explained with a system card; revoking is silent.
+    if (allowed) await d.insert(messages).values({ threadId, sender: 'system', kind: 'system', body: 'msg_system_media_on' });
+  },
+
+  async setBlocked(session, { threadId, blocked }) {
+    const d = db();
+    const [t] = await loadThreads(d, eq(threads.id, threadId));
+    if (!t) return;
+    const party = partyOf(session, t);
+    if (!party) return;
+    if (blocked) {
+      await d.update(threads).set({ state: 'blocked', blockedBy: party }).where(eq(threads.id, threadId));
+    } else if (t.blockedBy === party) {
+      await d.update(threads).set({ state: 'open', blockedBy: null }).where(eq(threads.id, threadId));
+    }
+  },
+
+  async listBlocked(session) {
+    const d = db();
+    const where = session.profileId
+      ? eq(threads.profileId, session.profileId)
+      : eq(threads.clientAccountId, session.accountId);
+    const party: Party = session.profileId ? 'professional' : 'client';
+    return (await loadThreads(d, where))
+      .filter((t) => t.state === 'blocked' && t.blockedBy === party)
+      .map((t) => toSummary(t, party));
+  },
+
+  async listContacts(session) {
+    if (!session.profileId) return [];
+    const d = db();
+    // Conversation contacts (auto): every non-blocked thread of her profile.
+    const fromThreads: ContactItem[] = (await loadThreads(d, eq(threads.profileId, session.profileId)))
+      .filter((t) => t.state !== 'blocked')
+      .map((t) => ({
+        id: t.id,
+        name: t.clientName,
+        note: t.note,
+        handle: '',
+        pinned: t.pinned,
+        kind: 'thread' as const,
+        threadId: t.id,
+        mediaAllowed: t.clientMediaAllowed,
+      }));
+    // Manual address-book entries (contacts rows with no thread).
+    const manual = await d
+      .select()
+      .from(contacts)
+      .where(and(eq(contacts.profileId, session.profileId), eq(contacts.kind, 'manual')));
+    const fromManual: ContactItem[] = manual.map((c) => ({
+      id: c.id,
+      name: c.name,
+      note: c.note,
+      handle: c.handle,
+      pinned: false,
+      kind: 'manual' as const,
+    }));
+    return [...fromThreads, ...fromManual].sort(
+      (a, b) => Number(b.pinned) - Number(a.pinned) || a.name.localeCompare(b.name),
+    );
+  },
+
+  async addContact(session, { name, handle = '', note = '' }) {
+    if (!session.profileId) return;
+    await db().insert(contacts).values({ profileId: session.profileId, kind: 'manual', name, handle, note });
+  },
+
+  async updateContact(session, { id, name, handle = '', note = '' }) {
+    if (!session.profileId) return;
+    // Scoped to HER manual contacts — a foreign id updates nothing.
+    await db()
+      .update(contacts)
+      .set({ name, handle, note })
+      .where(and(eq(contacts.id, id), eq(contacts.profileId, session.profileId), eq(contacts.kind, 'manual')));
+  },
+
+  async removeContact(session, { id }) {
+    if (!session.profileId) return;
+    await db()
+      .delete(contacts)
+      .where(and(eq(contacts.id, id), eq(contacts.profileId, session.profileId), eq(contacts.kind, 'manual')));
+  },
+
+  async replySpeedFor(profileId): Promise<ReplySpeed | null> {
+    const d = db();
+    const ids = (await d.select({ id: threads.id }).from(threads).where(eq(threads.profileId, profileId))).map((r) => r.id);
+    if (!ids.length) return null; // no data → honest null (no demo crutch in prod)
+    const msgs = await d.select().from(messages).where(inArray(messages.threadId, ids)).orderBy(messages.createdAt);
+    const byThread = new Map<string, { messages: Message[] }>();
+    for (const m of msgs) (byThread.get(m.threadId) ?? byThread.set(m.threadId, { messages: [] }).get(m.threadId)!).messages.push(toMessage(m));
+    return replySpeed([...byThread.values()]);
+  },
+
+  async adminListThreads(): Promise<ThreadMeta[]> {
+    const d = db();
+    const rows = await d
+      .select({
+        id: threads.id,
+        profileName: profiles.name,
+        profileSlug: profiles.slug,
+        clientName: accounts.displayName,
+        clientEmail: accounts.email,
+        state: threads.state,
+        lastMessageAt: threads.lastMessageAt,
+        messageCount: sql<number>`(select count(*)::int from ${messages} where ${messages.threadId} = ${threads.id})`,
+        hasMedia: sql<boolean>`exists (select 1 from ${messages} where ${messages.threadId} = ${threads.id} and ${messages.kind} = 'photo')`,
+      })
+      .from(threads)
+      .innerJoin(profiles, eq(profiles.id, threads.profileId))
+      .innerJoin(accounts, eq(accounts.id, threads.clientAccountId));
+    return rows
+      .map((r) => ({
+        id: r.id,
+        profileName: r.profileName,
+        profileSlug: r.profileSlug,
+        clientName: r.clientName ?? (r.clientEmail ?? '').split('@')[0] ?? 'Client',
+        clientEmail: r.clientEmail ?? '',
+        messageCount: r.messageCount,
+        lastMessageAt: iso(r.lastMessageAt),
+        state: r.state,
+        hasMedia: r.hasMedia,
+      }))
+      .sort((a, b) => b.lastMessageAt.localeCompare(a.lastMessageAt));
+  },
+
+  async adminGetThread(threadId) {
+    return (await loadThreads(db(), eq(threads.id, threadId)))[0] ?? null;
+  },
+
+  async seedDemo(session) {
+    if (!session.profileId) return;
+    const d = db();
+    // Once per profile: skip if she already has any thread (real or seeded).
+    const has = await d.select({ id: threads.id }).from(threads).where(eq(threads.profileId, session.profileId)).limit(1);
+    if (has.length) return;
+
+    // Demo counterparties — orphan client accounts (no auth user; they exist
+    // only to populate her inbox for the demo). Fixed ids → idempotent.
+    const demoAccounts = [
+      { id: '00000000-0000-4000-d000-000000000001', name: 'Daan', email: 'daan@demo.intimate.nl' },
+      { id: '00000000-0000-4000-d000-000000000002', name: 'Thomas', email: 'thomas@demo.intimate.nl' },
+      { id: '00000000-0000-4000-d000-000000000003', name: 'Sven', email: 'sven@demo.intimate.nl' },
+    ];
+    for (const a of demoAccounts) {
+      await d
+        .insert(accounts)
+        .values({ id: a.id, accountType: 'client', email: a.email, displayName: a.name })
+        .onConflictDoNothing();
+    }
+    // She can receive messages while demoing.
+    await d
+      .insert(conversationSettings)
+      .values({ profileId: session.profileId, mode: 'everyone' })
+      .onConflictDoUpdate({ target: conversationSettings.profileId, set: { mode: 'everyone' } });
+
+    const min = (n: number) => new Date(Date.now() - n * 60_000);
+    const demoPhoto =
+      "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='240'%20height='320'%3E%3Crect%20width='240'%20height='320'%20fill='%23c81e5a'/%3E%3Ctext%20x='120'%20y='168'%20font-size='24'%20fill='white'%20text-anchor='middle'%20font-family='sans-serif'%3EDemo%20photo%3C/text%3E%3C/svg%3E";
+
+    type Seed = {
+      account: (typeof demoAccounts)[number];
+      pinned?: boolean;
+      note?: string;
+      mediaAllowed?: boolean;
+      msgs: Array<{ sender: 'client' | 'professional' | 'system'; kind: 'text' | 'photo' | 'system'; body?: string; photo?: string; at: Date; read?: boolean }>;
+    };
+    const seeds: Seed[] = [
+      {
+        account: demoAccounts[0]!,
+        msgs: [
+          { sender: 'client', kind: 'text', body: 'Hi! Are you available tonight around 9?', at: min(40), read: true },
+          { sender: 'professional', kind: 'text', body: 'Hi Daan! Yes, from 8pm. Where are you based?', at: min(38), read: true },
+          { sender: 'client', kind: 'text', body: 'Amsterdam Zuid. How long can you do?', at: min(3) },
+        ],
+      },
+      {
+        account: demoAccounts[1]!,
+        mediaAllowed: true,
+        msgs: [
+          { sender: 'client', kind: 'text', body: 'Hey, really loved your profile 😊', at: min(184), read: true },
+          { sender: 'professional', kind: 'text', body: 'Thank you Thomas! 💋', at: min(183), read: true },
+          { sender: 'system', kind: 'system', body: 'msg_system_media_on', at: min(180) },
+          { sender: 'client', kind: 'photo', photo: demoPhoto, at: min(178), read: true },
+          { sender: 'professional', kind: 'text', body: 'Looks great — see you Friday!', at: min(175), read: true },
+        ],
+      },
+      {
+        account: demoAccounts[2]!,
+        pinned: true,
+        note: 'Regular — prefers evenings, always on time.',
+        msgs: [
+          { sender: 'client', kind: 'text', body: 'Do you offer dinner dates?', at: min(1440), read: true },
+          { sender: 'professional', kind: 'text', body: "I do! Let's arrange something next week.", at: min(1439), read: true },
+        ],
+      },
+    ];
+
+    for (const s of seeds) {
+      const [tr] = await d
+        .insert(threads)
+        .values({ profileId: session.profileId, clientAccountId: s.account.id, state: 'open', lastMessageAt: s.msgs.at(-1)!.at })
+        .onConflictDoNothing()
+        .returning({ id: threads.id });
+      if (!tr) continue;
+      await d.insert(contacts).values({
+        profileId: session.profileId,
+        kind: 'thread',
+        threadId: tr.id,
+        clientAccountId: s.account.id,
+        pinned: s.pinned ?? false,
+        note: s.note ?? '',
+        clientMediaAllowed: s.mediaAllowed ?? false,
+      });
+      await d.insert(messages).values(
+        s.msgs.map((m) => ({
+          threadId: tr.id,
+          sender: m.sender,
+          kind: m.kind,
+          body: m.body ?? '',
+          imageKey: m.photo ?? null,
+          createdAt: m.at,
+          readAt: m.read ? m.at : null,
+        })),
+      );
+    }
+  },
+  };
+}

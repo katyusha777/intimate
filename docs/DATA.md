@@ -169,7 +169,9 @@ The Zod models and `XxxApi` interfaces are stable; only the backend swaps
 | mock messaging mode default `everyone` (explorable demo) | DB default `off` — the product law; the swap must NOT carry the mock default |
 | `clientName` derived from email | `accounts.display_name` |
 | `account.favorites[]` (slug array) | `favorites` table (client × profile) |
-| thread inline `note`/`pinned`/`clientMediaAllowed`/`privateSetUnlocked` | `contacts` row |
+| thread inline `note`/`pinned`/`clientMediaAllowed`/`privateSetUnlocked` | ✅ DONE — `contacts` row (1:1 with the thread, created alongside it); manual entries are `contacts` with `kind='manual'` |
+| messaging identity keyed by email/`clientEmail` | ✅ DONE — `threads.client_account_id`; `clientEmail`/`clientName` projected from the account join |
+| reply-speed demo latency table | ✅ DONE — real median over `messages`, or honest `null` (no demo crutch) |
 | `report.reporterEmail` | `reports.reporter_account_id` (nullable — anonymous reports) |
 | `AuditEntry` in admin KV | `audit_log` table (trigger-appended) |
 | `ImportJob` / `Org` seeded in KV | `import_jobs` / `orgs` tables |
