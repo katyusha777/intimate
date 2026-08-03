@@ -9,7 +9,7 @@ import { overview } from '@/actions/admin/queues';
 import { commandStats } from '@/actions/admin/entities';
 import AdminShell from '@/components/organisms/admin/AdminShell.astro';
 
-const session = await getAdmin({ cookies: Astro.cookies });
+const session = await getAdmin(Astro);
 const ov = session ? await overview() : null;
 const stats = session ? await commandStats() : null;
 const activity = session ? (await listAudit()).slice(0, 12) : [];

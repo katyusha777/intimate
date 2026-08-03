@@ -11,7 +11,7 @@ import { profilesApi } from '@/app/api/profiles';
 import AdminShell from '@/components/organisms/admin/AdminShell.astro';
 import SafeImage from '@/components/atoms/SafeImage.astro';
 
-const session = await getAdmin({ cookies: Astro.cookies });
+const session = await getAdmin(Astro);
 if (session) await seedClients();
 const clients = session ? await listClients() : [];
 const email = Astro.url.searchParams.get('email');

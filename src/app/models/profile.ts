@@ -31,6 +31,7 @@ import {
   PUBIC_HAIR,
   RATE_DURATIONS,
   SERVICE_CATEGORIES,
+  SERVICES,
   SMOKING,
   SORT_OPTIONS,
   TATTOOS,
@@ -311,6 +312,17 @@ export function availableNow(p: Profile, now: Date = new Date()): boolean {
   return availabilityRank(p, now) < AVAILABILITY_RANK.back_at;
 }
 
+/**
+ * Presence → SSR projection (SUPABASE.md §5.4, DATA.md): `online` is DERIVED —
+ * a profile is online when its heartbeat (`last_active_at`, written by her
+ * island's throttled self-update) is fresher than this window. The json mock
+ * carries an explicit flag instead; the db backend derives via this helper.
+ */
+export const ONLINE_WINDOW_MS = 5 * 60_000;
+export function onlineFromLastActive(lastActiveAt: string | undefined, now: Date = new Date()): boolean {
+  return !!lastActiveAt && now.getTime() - new Date(lastActiveAt).getTime() < ONLINE_WINDOW_MS;
+}
+
 export const PAGE_SIZE = 24;
 
 export const ProfileListParamsSchema = z.object({
@@ -344,6 +356,82 @@ export interface ProfileList {
   items: Profile[];
   /** Total matches before limit/offset — pagination + counts come for free. */
   total: number;
+}
+
+// ---------------------------------------------------------------------------
+// The ONE list semantics (filter → sort → paginate), shared by every backend:
+// json passes its parsed rows, the db backend passes projected rows — so the
+// two can never drift. ponytail: pure in-memory over the live set; push the
+// hot filters into SQL when the live-profile count makes it matter.
+// ---------------------------------------------------------------------------
+
+const CITY_NAME = new Map(CITIES.map((c) => [c.slug, c.name.toLowerCase()]));
+
+const SORTERS: Record<string, (a: Profile, b: Profile) => number> = {
+  newest: (a, b) => b.createdAt.localeCompare(a.createdAt),
+  recently_online: (a, b) =>
+    Number(b.online) - Number(a.online) || b.createdAt.localeCompare(a.createdAt),
+  price_low_high: (a, b) => a.priceFrom - b.priceFrom,
+  price_high_low: (a, b) => b.priceFrom - a.priceFrom,
+};
+
+/** Digits only, minus NL prefixes — "+31 6 12…" and "0612…" compare equal. */
+const phoneDigits = (s: string) => s.replace(/\D/g, '').replace(/^(0031|31|0)/, '');
+
+/** Naive full-text match (Postgres FTS is a later swap, same semantics seam). */
+function matchesQuery(p: Profile, q: string): boolean {
+  // Find-someone-specific: a query with 6+ digits is a phone lookup.
+  const qDigits = phoneDigits(q);
+  if (qDigits.length >= 6) return !!p.phone && phoneDigits(p.phone).includes(qDigits);
+  const hay = [p.name, p.description, ...Object.values(p.descriptionTranslations), CITY_NAME.get(p.city) ?? '', ...p.services.map((s) => s.replaceAll('_', ' '))]
+    .join(' ')
+    .toLowerCase();
+  return q
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean)
+    .every((term) => hay.includes(term));
+}
+
+/** Filter + sort + paginate a LIVE profile set per validated params. */
+export function applyProfileListParams(
+  live: readonly Profile[],
+  params: ProfileListParams | undefined,
+  now: Date = new Date(),
+): ProfileList {
+  const q = ProfileListParamsSchema.parse(params ?? {});
+  const categoryServices = q.serviceCategory ? new Set<string>(SERVICES[q.serviceCategory]) : null;
+  // Location = union of the main city (path) and extra sidebar cities.
+  const citySet = new Set([...(q.city ? [q.city] : []), ...q.cities]);
+
+  const rows = live
+    .filter(
+      (p) =>
+        (!q.q || matchesQuery(p, q.q)) &&
+        (citySet.size === 0 || citySet.has(p.city)) &&
+        (q.genders.length === 0 || q.genders.includes(p.gender)) &&
+        (q.services.length === 0 || q.services.some((s) => p.services.includes(s))) &&
+        (!categoryServices || p.services.some((s) => categoryServices.has(s))) &&
+        (!q.meetingType || p.meetingTypes.includes(q.meetingType)) &&
+        (q.priceMin === undefined || p.priceFrom >= q.priceMin) &&
+        (q.priceMax === undefined || p.priceFrom <= q.priceMax) &&
+        (!q.onlineOnly || p.online) &&
+        (!q.availableNow || availableNow(p, now)) &&
+        (!q.featuredOnly || p.featured) &&
+        (!q.verifiedOnly || p.verified),
+    )
+    .sort(
+      // Availability first (online → open-today → back-later), then the chosen
+      // sort — available professionals always lead the shelf (UX-PLAN 1.3).
+      // Slug last: full ties must order identically on every backend and every
+      // request, or offset pagination skips/repeats rows between pages.
+      (a, b) =>
+        availabilityRank(a, now) - availabilityRank(b, now) ||
+        SORTERS[q.sort]!(a, b) ||
+        a.slug.localeCompare(b.slug),
+    );
+
+  return { items: rows.slice(q.offset, q.offset + q.limit), total: rows.length };
 }
 
 /** Contract every backend implements (json today, Drizzle/Supabase later). */

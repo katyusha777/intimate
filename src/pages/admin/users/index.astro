@@ -12,7 +12,7 @@ import { profilesApi } from '@/app/api/profiles';
 
 import AdminShell from '@/components/organisms/admin/AdminShell.astro';
 
-const session = await getAdmin({ cookies: Astro.cookies });
+const session = await getAdmin(Astro);
 const q = (Astro.url.searchParams.get('q') ?? '').toLowerCase().trim();
 const email = Astro.url.searchParams.get('email');
 

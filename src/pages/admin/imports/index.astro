@@ -7,7 +7,7 @@ import { getAdmin } from '@/actions/admin/lib';
 import { listImports } from '@/actions/admin/imports';
 import AdminShell from '@/components/organisms/admin/AdminShell.astro';
 
-const session = await getAdmin({ cookies: Astro.cookies });
+const session = await getAdmin(Astro);
 const jobs = session ? await listImports() : [];
 const failed = jobs.filter((j) => j.state === 'failed').length;
 

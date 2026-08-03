@@ -13,7 +13,7 @@ import Layout from '@/layouts/Layout.astro';
 const { locale, thread: threadId } = Astro.params;
 if (!isLocale(locale) || !threadId) return new Response(null, { status: 404 });
 
-const session = await sessionApi.fromCookies(Astro.cookies);
+const session = await sessionApi.current(Astro);
 if (!session) return Astro.redirect(localizePath('/account/'));
 
 const thread = await messagingApi.getThread(session, threadId);

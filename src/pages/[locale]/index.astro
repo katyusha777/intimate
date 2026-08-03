@@ -17,7 +17,7 @@ if (!isLocale(locale)) return new Response(null, { status: 404 });
 
 /* Supply is the constraint: the signed-out home leads with a professional
  * recruitment CTA (browsing needs no account and continues below). */
-const loggedOut = !(await sessionApi.fromCookies(Astro.cookies));
+const loggedOut = !(await sessionApi.current(Astro));
 
 const alternates = samePathAlternates(Astro.url.origin, '/');
 const jsonLd = [websiteJsonLd(Astro.url.origin, locale), organizationJsonLd(Astro.url.origin)];

@@ -8,7 +8,7 @@ import { getAdmin } from '@/actions/admin/lib';
 import { listCalls } from '@/actions/admin/calls';
 import AdminShell from '@/components/organisms/admin/AdminShell.astro';
 
-const session = await getAdmin({ cookies: Astro.cookies });
+const session = await getAdmin(Astro);
 const mode = Astro.url.searchParams.get('mode') ?? '';
 const state = Astro.url.searchParams.get('state') ?? '';
 const calls = session ? await listCalls({ mode, state }) : [];

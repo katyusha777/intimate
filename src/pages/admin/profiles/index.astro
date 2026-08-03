@@ -14,7 +14,7 @@ import { cityName } from '@/lib/seo';
 import AdminShell from '@/components/organisms/admin/AdminShell.astro';
 import SafeImage from '@/components/atoms/SafeImage.astro';
 
-const session = await getAdmin({ cookies: Astro.cookies });
+const session = await getAdmin(Astro);
 const sp = Astro.url.searchParams;
 const f = {
   q: sp.get('q') ?? '',

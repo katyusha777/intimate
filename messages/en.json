@@ -185,6 +185,7 @@
   "role_advertiser_desc": "I offer services",
   "role_client_desc": "I'm a visitor",
   "auth_error": "That didn't work — try again.",
+  "auth_confirm_sent": "Almost there — check your inbox and click the confirmation link to activate your account.",
   "account_signout": "Sign out",
   "account_signin_prompt": "Sign in to view your account.",
   "account_state": "Profile status",

@@ -137,6 +137,7 @@
   "role_advertiser_desc": "Ich biete Dienste an",
   "role_client_desc": "Ich bin Besucher",
   "auth_error": "Das hat nicht geklappt — bitte erneut versuchen.",
+  "auth_confirm_sent": "Fast geschafft — bitte Postfach öffnen und den Bestätigungslink anklicken.",
   "account_signout": "Abmelden",
   "account_signin_prompt": "Melde dich an, um dein Konto zu sehen.",
   "account_state": "Profilstatus",

@@ -15,7 +15,7 @@ import Layout from '@/layouts/Layout.astro';
 const locale = Astro.params.locale;
 if (!isLocale(locale)) return new Response(null, { status: 404 });
 
-const session = await sessionApi.fromCookies(Astro.cookies);
+const session = await sessionApi.current(Astro);
 
 let unavailable = false;
 if (session && !session.profileId) {

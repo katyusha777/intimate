@@ -19,9 +19,9 @@ import {
   REQUEST_WHEN,
 } from "@/lib/taxonomy";
 
-/** Actions run with the request's cookie jar — sessions resolve per request. */
-async function requireSession(context: { cookies: Parameters<typeof sessionApi.fromCookies>[0] }) {
-  const session = await sessionApi.fromCookies(context.cookies);
+/** Actions run with the request context — sessions verified per request. */
+async function requireSession(context: Parameters<typeof sessionApi.current>[0]) {
+  const session = await sessionApi.current(context);
   if (!session) throw new ActionError({ code: "UNAUTHORIZED" });
   return session;
 }
@@ -31,13 +31,18 @@ export const server = {
     register: defineAction({
       input: z.object({
         email: z.string().email(),
-        password: z.string().min(6), // accepted, unused — mock backend
+        password: z.string().min(8), // dashboard minimum mirrors this
         role: z.enum(["advertiser", "client"]),
         locale: z.enum(LOCALES),
       }),
-      handler: async ({ email, role, locale }, context) => {
-        await sessionApi.register(context.cookies, { email, role });
-        return { href: `/${locale}/account/` };
+      handler: async ({ email, password, role, locale }, context) => {
+        try {
+          const { needsConfirmation } = await sessionApi.register(context, { email, password, role });
+          if (needsConfirmation) return { href: null, needsConfirmation: true };
+          return { href: `/${locale}/account/`, needsConfirmation: false };
+        } catch (e) {
+          throw new ActionError({ code: "BAD_REQUEST", message: (e as Error).message });
+        }
       },
     }),
 
@@ -47,8 +52,9 @@ export const server = {
         password: z.string().min(1),
         locale: z.enum(LOCALES),
       }),
-      handler: async ({ email, locale }, context) => {
-        await sessionApi.signIn(context.cookies, { email });
+      handler: async ({ email, password, locale }, context) => {
+        const session = await sessionApi.signIn(context, { email, password });
+        if (!session) throw new ActionError({ code: "UNAUTHORIZED" });
         return { href: `/${locale}/account/` };
       },
     }),
@@ -56,7 +62,7 @@ export const server = {
     logout: defineAction({
       input: z.object({ locale: z.enum(LOCALES) }),
       handler: async ({ locale }, context) => {
-        await sessionApi.signOut(context.cookies);
+        await sessionApi.signOut(context);
         return { href: `/${locale}/` };
       },
     }),

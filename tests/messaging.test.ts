@@ -33,9 +33,10 @@ const { messagingApi } = await import('@/app/data/json/messaging');
 const PROFILE_SLUG = 'eva-amsterdam';
 const PROFILE_ID = 'p01';
 
-const client = { email: 'client@example.com', role: 'client' as const, name: 'Client' };
-const otherClient = { email: 'other@example.com', role: 'client' as const, name: 'Other' };
+const client = { accountId: 'acc-client', email: 'client@example.com', role: 'client' as const, name: 'Client' };
+const otherClient = { accountId: 'acc-other', email: 'other@example.com', role: 'client' as const, name: 'Other' };
 const professional = {
+  accountId: 'acc-eva',
   email: 'eva@example.com',
   role: 'advertiser' as const,
   name: 'Eva',

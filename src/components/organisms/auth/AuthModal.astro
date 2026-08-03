@@ -69,6 +69,9 @@ const tabBtn =
       <SlabField label={m.auth_password()} name="password" type="password" autocomplete="new-password" required />
 
       <p data-auth-error class="hidden text-sm font-medium text-brand">{m.auth_error()}</p>
+      <p data-auth-confirm class="hidden border border-foreground/20 bg-muted p-3 text-sm leading-relaxed">
+        {m.auth_confirm_sent()}
+      </p>
       <Button type="submit" size="lg" class="w-full">{m.auth_create_account()}</Button>
       <p class="text-center text-xs leading-relaxed text-muted-foreground">{m.auth_terms()}</p>
     </form>
@@ -91,12 +94,6 @@ const tabBtn =
 
 <script>
   import { actions } from 'astro:actions';
-
-  /** Demo identities the role tiles pre-fill (mock backend maps them to /data). */
-  const PREFILL = {
-    advertiser: { email: 'eva@intimate.nl', password: 'demo-password' },
-    client: { email: 'marco@example.com', password: 'demo-password' },
-  } as const;
 
   function selectTab(scope: HTMLElement, name: string) {
     scope.querySelectorAll<HTMLElement>('[data-tab-btn]').forEach((b) => {
@@ -128,19 +125,12 @@ const tabBtn =
       });
     }
 
-    // Role tiles: select + pre-fill the demo identity (never overwrite the
-    // user's own typing — only empty or previously-prefilled values).
-    const regForm = modal.querySelector<HTMLFormElement>('[data-auth-form="register"]')!;
+    // Role tiles: pure selection (advertiser default).
     modal.querySelectorAll<HTMLElement>('[data-role-btn]').forEach((btn) => {
       btn.addEventListener('click', () => {
         modal.querySelectorAll<HTMLElement>('[data-role-btn]').forEach((b) => {
           b.dataset.active = String(b === btn);
         });
-        // Fill the form with the matching demo identity so a single tap on the
-        // submit button registers/logs in.
-        const role = btn.dataset.roleBtn as keyof typeof PREFILL;
-        (regForm.elements.namedItem('email') as HTMLInputElement).value = PREFILL[role].email;
-        (regForm.elements.namedItem('password') as HTMLInputElement).value = PREFILL[role].password;
       });
     });
 
@@ -163,13 +153,15 @@ const tabBtn =
             ? actions.auth.register({ email, password, role, locale })
             : actions.auth.login({ email, password, locale });
         try {
-          // Retry once — a cold-start / transient blip shouldn't dead-end the user.
-          let result = await call();
-          if (result.error) {
-            console.warn('[auth] first attempt failed, retrying', result.error);
-            result = await call();
+          const result = await call();
+          if (result.error) throw result.error;
+          // Email confirmation pending: no session yet — tell them to check mail.
+          if (!result.data?.href) {
+            const note = form.querySelector<HTMLElement>('[data-auth-confirm]');
+            note?.classList.remove('hidden');
+            delete form.dataset.loading;
+            return;
           }
-          if (result.error || !result.data?.href) throw result.error ?? new Error('no href');
           // Sync device-local favorites into the new account, then adopt the
           // merged set back (favorites from another device come along).
           try {

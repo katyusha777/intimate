@@ -6,11 +6,10 @@
  * and the API contracts; DATA.md maps the two and the mock→prod seam. Every
  * enum here mirrors `src/lib/taxonomy.ts` (taxonomy = law) — extend there first.
  *
- * NOT in this file (lands in the Phase-0 security migration, SUPABASE.md §11):
- * RLS policies + deny tests, GRANT/REVOKE, the `private.*` helpers, the
- * `realtime.broadcast_changes` triggers, the append-only audit guard, and the
- * `accounts.id → auth.users(id)` FK (auth schema is Supabase-managed). This is
- * the tables/enums/constraints/indexes only. See DATA.md for the per-table plan.
+ * NOT in this file — drizzle/0001_security.sql owns everything drizzle-kit
+ * can't express: roles, grants, RLS policies, `private.*` helpers, triggers
+ * (audit append-only, message broadcast, thread touch, state stamp). Deny
+ * tests: tests/rls.test.ts. See DATA.md §6 for the per-table posture.
  *
  * Relative taxonomy import (not `@/lib/taxonomy`): drizzle-kit bundles this file
  * with esbuild and does not resolve tsconfig path aliases. Type-only imports are
@@ -133,15 +132,17 @@ export const reportResolutionEnum = pgEnum('report_resolution', vals(REPORT_RESO
 const createdAt = () => timestamp('created_at', { withTimezone: true }).notNull().defaultNow();
 
 // ---------------------------------------------------------------------------
-// Accounts — one row per auth user (accounts.id = auth.users.id). Holds the
-// supply/demand role + verification state. PII (phone) is denormalized from
-// auth for the server path; the auth.users FK is added in the Phase-0 migration.
+// Accounts — one row per auth user (accounts.id = auth.users.id BY CONVENTION,
+// deliberately NO FK: GDPR erasure deletes the auth user while this row must
+// survive scrubbed for audit — see 0001_security.sql header). Holds the
+// supply/demand role + verification state + identity denormalized from auth
+// (email/display_name/phone), written server-side at signup/change.
 // ---------------------------------------------------------------------------
 
 export const accounts = pgTable(
   'accounts',
   {
-    id: uuid('id').primaryKey(), // = auth.users.id (FK added Phase-0, auth schema)
+    id: uuid('id').primaryKey(), // = auth.users.id (convention, no FK — header)
     accountType: accountTypeEnum('account_type').notNull(),
     adminRole: adminRoleEnum('admin_role'), // only when accountType = 'admin'
     // Denormalized from auth.users, written server-side at signup/change —

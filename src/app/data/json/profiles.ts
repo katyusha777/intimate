@@ -1,83 +1,20 @@
 /**
- * JSON backend for profiles — the "database" until the real schema lands
- * (docs/API.md). Mirrors the semantics the Drizzle/Supabase backend must keep:
- * public reads only surface `live` profiles; params are Zod-validated.
+ * JSON backend for profiles — the "database" until the swap (docs/API.md).
+ * All list semantics live in applyProfileListParams (models/profile.ts),
+ * shared verbatim with the db backend so the two can never drift. Public
+ * visibility rule: only `live` rows leave the backend.
  */
 import { z } from 'zod';
-import {
-  availabilityRank,
-  availableNow,
-  ProfileListParamsSchema,
-  ProfileSchema,
-  type Profile,
-  type ProfilesApi,
-} from '@/app/models/profile';
-import { CITIES, SERVICES } from '@/lib/taxonomy';
+import { applyProfileListParams, ProfileSchema, type ProfilesApi } from '@/app/models/profile';
 import raw from './profiles.json';
 
 const ALL = z.array(ProfileSchema).parse(raw);
-// Visibility rule enforced at the backend, exactly like the DB backend will.
+// Visibility rule enforced at the backend, exactly like the DB backend.
 const LIVE = ALL.filter((p) => p.state === 'live');
-
-const CITY_NAME = new Map(CITIES.map((c) => [c.slug, c.name.toLowerCase()]));
-
-const SORTERS: Record<string, (a: Profile, b: Profile) => number> = {
-  newest: (a, b) => b.createdAt.localeCompare(a.createdAt),
-  recently_online: (a, b) =>
-    Number(b.online) - Number(a.online) || b.createdAt.localeCompare(a.createdAt),
-  price_low_high: (a, b) => a.priceFrom - b.priceFrom,
-  price_high_low: (a, b) => b.priceFrom - a.priceFrom,
-};
-
-/** Digits only, minus NL prefixes — "+31 6 12…" and "0612…" compare equal. */
-const phoneDigits = (s: string) => s.replace(/\D/g, '').replace(/^(0031|31|0)/, '');
-
-/** Naive full-text match — the SQL backend swaps this for Postgres FTS. */
-function matchesQuery(p: Profile, q: string): boolean {
-  // Find-someone-specific: a query with 6+ digits is a phone lookup.
-  const qDigits = phoneDigits(q);
-  if (qDigits.length >= 6) return !!p.phone && phoneDigits(p.phone).includes(qDigits);
-  const hay = [p.name, p.description, ...Object.values(p.descriptionTranslations), CITY_NAME.get(p.city) ?? '', ...p.services.map((s) => s.replaceAll('_', ' '))]
-    .join(' ')
-    .toLowerCase();
-  return q
-    .toLowerCase()
-    .split(/\s+/)
-    .filter(Boolean)
-    .every((term) => hay.includes(term));
-}
 
 export const profilesApi: ProfilesApi = {
   async list(params = {}) {
-    const q = ProfileListParamsSchema.parse(params);
-    const now = new Date();
-    const categoryServices = q.serviceCategory
-      ? new Set<string>(SERVICES[q.serviceCategory])
-      : null;
-    // Location = union of the main city (path) and extra sidebar cities.
-    const citySet = new Set([...(q.city ? [q.city] : []), ...q.cities]);
-
-    const rows = LIVE.filter(
-      (p) =>
-        (!q.q || matchesQuery(p, q.q)) &&
-        (citySet.size === 0 || citySet.has(p.city)) &&
-        (q.genders.length === 0 || q.genders.includes(p.gender)) &&
-        (q.services.length === 0 || q.services.some((s) => p.services.includes(s))) &&
-        (!categoryServices || p.services.some((s) => categoryServices.has(s))) &&
-        (!q.meetingType || p.meetingTypes.includes(q.meetingType)) &&
-        (q.priceMin === undefined || p.priceFrom >= q.priceMin) &&
-        (q.priceMax === undefined || p.priceFrom <= q.priceMax) &&
-        (!q.onlineOnly || p.online) &&
-        (!q.availableNow || availableNow(p, now)) &&
-        (!q.featuredOnly || p.featured) &&
-        (!q.verifiedOnly || p.verified),
-    ).sort(
-      // Availability first (online → open-today → back-later), then the chosen
-      // sort — available professionals always lead the shelf (UX-PLAN 1.3).
-      (a, b) => availabilityRank(a, now) - availabilityRank(b, now) || SORTERS[q.sort]!(a, b),
-    );
-
-    return { items: rows.slice(q.offset, q.offset + q.limit), total: rows.length };
+    return applyProfileListParams(LIVE, params);
   },
 
   async bySlug(slug) {

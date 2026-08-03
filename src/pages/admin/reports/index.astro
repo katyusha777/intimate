@@ -10,7 +10,7 @@ import { REPORT_RESOLUTIONS } from '@/lib/taxonomy';
 import AdminShell from '@/components/organisms/admin/AdminShell.astro';
 import QueueList from '@/components/organisms/admin/QueueList.astro';
 
-const session = await getAdmin({ cookies: Astro.cookies });
+const session = await getAdmin(Astro);
 const items = session ? await reportsQueue() : [];
 const selId = Astro.url.searchParams.get('item');
 const selected = items.find((r) => r.id === selId) ?? null;

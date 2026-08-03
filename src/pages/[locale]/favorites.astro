@@ -17,7 +17,7 @@ const locale = Astro.params.locale;
 if (!isLocale(locale)) return new Response(null, { status: 404 });
 
 const { items: profiles } = await profilesApi.list({ limit: 60 });
-const session = await sessionApi.fromCookies(Astro.cookies);
+const session = await sessionApi.current(Astro);
 const accountFavs = session ? (await accountApi.get(session)).favorites : [];
 ---
 

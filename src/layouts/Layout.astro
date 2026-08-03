@@ -43,7 +43,7 @@ const { title = m.app_name(), description, canonical, alternates, jsonLd = [], n
 const locale = getLocale();
 
 /* Session-aware chrome: layouts may read the seam (docs/API.md). */
-const session = await sessionApi.fromCookies(Astro.cookies);
+const session = await sessionApi.current(Astro);
 const idVerified =
   session?.role === 'advertiser'
     ? (await accountApi.get(session)).idVerification === 'approved'

@@ -10,7 +10,7 @@ import { getAdmin, record } from '@/actions/admin/lib';
 import { messagingApi } from '@/app/api/messaging';
 import AdminShell from '@/components/organisms/admin/AdminShell.astro';
 
-const session = await getAdmin({ cookies: Astro.cookies });
+const session = await getAdmin(Astro);
 const metas = session ? await messagingApi.adminListThreads() : [];
 
 const threadId = Astro.url.searchParams.get('thread');

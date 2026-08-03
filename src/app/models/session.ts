@@ -1,17 +1,19 @@
 /**
- * Session domain model (docs/API.md seam). The interface is the contract:
- * today a mock cookie backend, later Supabase Auth SSR cookies — call sites
- * never change.
+ * Session domain model (docs/API.md seam). The interface is the contract —
+ * implemented by the Supabase Auth backend (data/supabase/session.ts):
+ * @supabase/ssr cookie sessions, JWTs verified locally via getClaims().
  */
 import { z } from 'zod';
 import { ACCOUNT_TYPES, ADMIN_ROLES } from '@/lib/taxonomy';
 
 export const SessionSchema = z.object({
+  /** accounts.id = auth.users.id — the identity every table keys on. */
+  accountId: z.string(),
   email: z.string().email(),
   role: z.enum(ACCOUNT_TYPES),
-  /** Display name (advertiser: profile name; client: derived from email). */
+  /** Display name (advertiser: profile name; else accounts.display_name). */
   name: z.string().min(1),
-  /** Linked public profile — advertisers only. */
+  /** Linked public profile — advertisers only (absent until one exists). */
   profileId: z.string().optional(),
   profileSlug: z.string().optional(),
   /** Admin sub-role (ADMIN.md §1). Present only when role === 'admin'. */
@@ -35,10 +37,28 @@ export interface CookieJar {
   delete(name: string, opts?: { path?: string }): void;
 }
 
+/**
+ * What every call site already has: the Astro global on pages/layouts, the
+ * action context in actions. Session cookies are chunked — the raw request
+ * header is required, a get-by-name jar is not enough.
+ */
+export interface AuthCtx {
+  request: Request;
+  cookies: CookieJar;
+}
+
 export interface SessionApi {
-  /** Cookie is untrusted input: strict parse, anything invalid → null. */
-  fromCookies(cookies: CookieJar): Promise<Session | null>;
-  register(cookies: CookieJar, input: { email: string; role: 'advertiser' | 'client' }): Promise<Session>;
-  signIn(cookies: CookieJar, input: { email: string }): Promise<Session>;
-  signOut(cookies: CookieJar): Promise<void>;
+  /** Verified session from the request cookies (JWT checked), or null. */
+  current(ctx: AuthCtx): Promise<Session | null>;
+  /**
+   * Sign up with email + password. When email confirmation is required the
+   * user gets a mail and NO session yet — the modal shows "check your inbox".
+   */
+  register(
+    ctx: AuthCtx,
+    input: { email: string; password: string; role: 'advertiser' | 'client' },
+  ): Promise<{ session: Session | null; needsConfirmation: boolean }>;
+  /** Password sign-in; null = bad credentials (or unconfirmed email). */
+  signIn(ctx: AuthCtx, input: { email: string; password: string }): Promise<Session | null>;
+  signOut(ctx: AuthCtx): Promise<void>;
 }

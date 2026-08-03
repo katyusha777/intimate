@@ -15,7 +15,7 @@ import AdminShell from '@/components/organisms/admin/AdminShell.astro';
 import QueueList from '@/components/organisms/admin/QueueList.astro';
 import DocViewer from '@/components/organisms/admin/DocViewer.astro';
 
-const session = await getAdmin({ cookies: Astro.cookies });
+const session = await getAdmin(Astro);
 const items = session ? await verificationQueue() : [];
 const selectedEmail = Astro.url.searchParams.get('item');
 const selected = items.find((i) => i.email === selectedEmail) ?? null;

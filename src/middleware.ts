@@ -15,7 +15,7 @@ import { negotiateLocale } from '@/lib/i18n';
  */
 /** Internal, non-localized routes the URL strategy must not redirect.
  *  `/admin` is locale-less by design (ADMIN.md §1) — English-only internal tool. */
-const BYPASS = ['/kitchen-sink', '/_actions', '/admin'];
+const BYPASS = ['/kitchen-sink', '/_actions', '/admin', '/auth'];
 
 export const onRequest = defineMiddleware((context, next) => {
   if (context.url.pathname === '/') {

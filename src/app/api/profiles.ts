@@ -1,7 +1,12 @@
 /**
  * Profiles API — the data-source seam (docs/API.md).
  * Pages/layouts/actions call this module and never a backend directly.
- * Swapping to the Drizzle/Supabase backend = changing this one re-export;
- * call sites don't change.
+ * LIVE on the Drizzle backend (hosted Postgres via Hyperdrive) — the json
+ * backend remains only as the parity reference (tests/db-parity.test.ts).
  */
-export { profilesApi } from '@/app/data/json/profiles';
+import { env } from 'cloudflare:workers';
+import { profilesDbApi } from '@/app/data/db/profiles';
+
+export const profilesApi = profilesDbApi(
+  () => (env as unknown as { HYPERDRIVE: Hyperdrive }).HYPERDRIVE,
+);

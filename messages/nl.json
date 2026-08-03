@@ -137,6 +137,7 @@
   "role_advertiser_desc": "Ik bied diensten aan",
   "role_client_desc": "Ik ben bezoeker",
   "auth_error": "Dat werkte niet — probeer opnieuw.",
+  "auth_confirm_sent": "Bijna klaar — check je inbox en klik op de bevestigingslink om je account te activeren.",
   "account_signout": "Uitloggen",
   "account_signin_prompt": "Log in om je account te bekijken.",
   "account_state": "Profielstatus",

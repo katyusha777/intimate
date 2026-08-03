@@ -22,16 +22,14 @@ const now = () => new Date().toISOString();
 const rid = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
 
 /** Context shape shared by Astro pages (Astro.*) and action handlers. */
-export interface AdminCtx {
-  cookies: Parameters<typeof sessionApi.fromCookies>[0];
-}
+export type AdminCtx = Parameters<typeof sessionApi.current>[0];
 
 /**
  * The admin gate. `super` can do anything; otherwise the adminRole must be in
  * `allowed`. Real security adds the CF Access + aal2 assertions here (§1).
  */
 export async function requireAdmin(context: AdminCtx, allowed?: AdminRole[]): Promise<Session> {
-  const session = await sessionApi.fromCookies(context.cookies);
+  const session = await sessionApi.current(context);
   if (!session || session.role !== 'admin' || !session.adminRole) {
     throw new ActionError({ code: 'UNAUTHORIZED', message: 'admin only' });
   }
@@ -43,7 +41,7 @@ export async function requireAdmin(context: AdminCtx, allowed?: AdminRole[]): Pr
 
 /** Non-throwing check for pages that render their own "not authorized" state. */
 export async function getAdmin(context: AdminCtx): Promise<Session | null> {
-  const session = await sessionApi.fromCookies(context.cookies);
+  const session = await sessionApi.current(context);
   return session && session.role === 'admin' && session.adminRole ? session : null;
 }
 

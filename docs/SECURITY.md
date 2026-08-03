@@ -43,7 +43,7 @@ Data we don't hold can't leak — collect GDPR-minimal, purge on schedule (messa
 **Constraints beat code.** Anything that must NEVER happen gets a DB-level guard, because app code (especially AI-written app code) has bugs: age ≥ 18 CHECK (hard rule 4) · lifecycle transitions via trigger-validated state machine · `UNIQUE(profile_id, client_account_id)` on threads · unique verified phone · FKs everywhere · `initiated_by = professional` CHECK on call_sessions. When a rule can live in Postgres, it lives in Postgres.
 
 **Migration discipline (no data loss by fat-finger):**
-- Strictly `local → staging → prod`, each an explicit command (INFRASTRUCTURE.md §1). Prod migration only after the same migration ran on staging AND staging was exercised.
+- Single-tier for now (INFRASTRUCTURE.md §1): `bun run db:migrate` against THE hosted db — acceptable only while all data is disposable. Before real data: tiers return, strictly `local → staging → prod`, prod only after the same migration ran on staging AND staging was exercised.
 - **Destructive operations (`DROP TABLE`, `DROP COLUMN`, type narrowing, mass `UPDATE`/`DELETE`) never ship inside a feature migration.** Expand → migrate data → switch reads → contract in a LATER release, after a backup point. The contract step requires explicit owner sign-off (§9).
 - Soft deletes only (hard rule 6) — `deleted` is a state, `DELETE` on user-facing tables is reserved for the scheduled purge jobs (messages 90d, docs retention), which are themselves tested.
 

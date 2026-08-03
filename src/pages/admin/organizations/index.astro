@@ -8,7 +8,7 @@ import { listOrgs, orgById } from '@/actions/admin/orgs';
 import { cityName } from '@/lib/seo';
 import AdminShell from '@/components/organisms/admin/AdminShell.astro';
 
-const session = await getAdmin({ cookies: Astro.cookies });
+const session = await getAdmin(Astro);
 const orgs = session ? await listOrgs() : [];
 const id = Astro.url.searchParams.get('id');
 const detail = session && id ? await orgById(id) : null;

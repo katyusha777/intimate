@@ -27,7 +27,7 @@ interface Props {
 }
 const { title, section = '' } = Astro.props;
 
-const session = await getAdmin({ cookies: Astro.cookies });
+const session = await getAdmin(Astro);
 const badges = session ? await adminBadges() : { escalations: 0, reportsOpen: 0 };
 
 /** Nav items with the role capability that may see them (super sees all). */

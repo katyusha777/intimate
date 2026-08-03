@@ -12,7 +12,7 @@ import AdminShell from '@/components/organisms/admin/AdminShell.astro';
 import QueueList from '@/components/organisms/admin/QueueList.astro';
 import SafeImage from '@/components/atoms/SafeImage.astro';
 
-const session = await getAdmin({ cookies: Astro.cookies });
+const session = await getAdmin(Astro);
 const items = session ? await moderationQueue() : [];
 const selId = Astro.url.searchParams.get('item');
 const selected = items.find((m) => m.id === selId) ?? null;

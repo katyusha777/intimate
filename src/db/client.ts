@@ -4,9 +4,10 @@ import * as schema from './schema';
 
 /**
  * Server-side data path: Drizzle → Hyperdrive → Postgres.
- * Call per-request with the HYPERDRIVE binding from Astro.locals.runtime.env.
+ * Pass the HYPERDRIVE binding (cloudflare:workers env) — or any object with a
+ * connectionString (tests use the local Supabase Postgres directly).
  */
-export function createDb(hyperdrive: Hyperdrive) {
+export function createDb(hyperdrive: Pick<Hyperdrive, 'connectionString'>) {
   const client = postgres(hyperdrive.connectionString, {
     // Workers guidance: small pool, no type fetching round-trip.
     max: 5,

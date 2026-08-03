@@ -1,2 +1,2 @@
-/** THE SEAM (docs/API.md): swap to the Supabase backend by changing this line. */
-export { sessionApi } from '@/app/data/json/session';
+/** THE SEAM (docs/API.md): Supabase Auth is live — the mock backend is gone. */
+export { sessionApi } from '@/app/data/supabase/session';

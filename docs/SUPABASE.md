@@ -23,16 +23,17 @@ change that discovers it.
 | 4 | **Server data path = Drizzle → Hyperdrive → direct Postgres (port 5432)**, not Supavisor | Cloudflare's documented recommendation: Hyperdrive does the pooling; Supavisor transaction mode under Hyperdrive = double pooling + prepared-statement breakage. |
 | 5 | **Hyperdrive connects as a dedicated `app_server` role with `bypassrls`** — not `postgres`, not the service key | The server path is deliberately RLS-exempt (API.md §3: code is the guard there); a dedicated login role scopes the blast radius (no superuser, no auth/storage schema access, revocable independently). |
 | 6 | **Realtime = Broadcast, private channels, RLS-authorized. `postgres_changes` is banned** | Supabase's own guidance: postgres_changes runs an authorization check per subscriber per event and collapses under load; broadcast sends once and fans out. |
-| 7 | **Drizzle owns all DDL for `public`** — schema, RLS policies, grants, triggers all live in `supabase/`-independent Drizzle migrations | One migration tool, one flow (`local → staging → prod`). Supabase CLI runs the local stack only; Supabase Branching / declarative schemas assume `supabase/migrations/` and are not used. |
+| 7 | **Drizzle owns all DDL for `public`** — schema, RLS policies, grants, triggers all live in `supabase/`-independent Drizzle migrations | One migration tool, one flow (`bun run db:migrate`; tiered `local → staging → prod` when the split returns). Supabase Branching / declarative schemas assume `supabase/migrations/` and are not used. |
 | 8 | **Data API stays on but minimal**: expose `public` only, drop `graphql_public`, `max_rows` lowered | Browser RLS-guarded mutations ride PostgREST, so it can't be disabled — but everything not needed gets unexposed (advisor 0026/0027). |
 | 9 | **Supabase Storage has exactly one planned use**: private chat video (MESSAGING.md §7) | Photos = Cloudflare Images; verification docs = dedicated R2 bucket (hard rule 3). Supabase doesn't back up Storage objects — one more reason media lives elsewhere. |
 | 10 | **Turnstile is wired into Supabase Auth itself** (Bot and Abuse Protection → Cloudflare Turnstile) | We already run Turnstile; Auth-level CAPTCHA is the documented SMS-pumping defense and needs no extra middleware. |
 
 ## 1. Projects, keys & clients
 
-**Projects:** one per tier (INFRASTRUCTURE §1): local stack (`bunx supabase start`) ·
-staging `jqrfzqbuvekhcptqcpda` · prod (Frankfurt, created before first real data).
-Never point two tiers at one project.
+**Projects:** SINGLE-TIER for now (INFRASTRUCTURE §1, decided 2026-08-03):
+`jqrfzqbuvekhcptqcpda` (Frankfurt) is THE database for dev, Workers, tests and
+seeds. A dedicated prod project + local stack return before first real data —
+at that point, never point two tiers at one project again.
 
 **Keys** (`.env.example` is the catalog):
 
@@ -273,8 +274,8 @@ regardless of policies, and the server path (`app_server`) still can.
   these semantics; the db backend mirrors them exactly.
 - The audit-log append-only trigger guard (SECURITY.md §3) binds even here —
   trigger-enforced, so no role short of superuser can rewrite history.
-- Migrations run over `DATABASE_URL` per tier (`db:migrate:local|staging|prod`),
-  never through Hyperdrive.
+- Migrations run over `DATABASE_URL` (`bun run db:migrate`; per-tier scripts
+  return with the multi-tier split), never through Hyperdrive.
 
 ## 5. Realtime
 
@@ -399,8 +400,8 @@ many channels), which is why islands share the §1 browser singleton.
   drizzle-kit can't express — RLS policies, grants, triggers, `private.*`
   helpers, roles — lives in hand-written SQL inside the same generated
   migration files (`drizzle-kit generate` then edit, or `--custom` migrations).
-  One flow: `db:generate` → `db:migrate:local` → staging → prod
-  (INFRASTRUCTURE §1); destructive-migration discipline per SECURITY.md §3.
+  One flow: `db:generate` → `db:migrate` (single-tier, INFRASTRUCTURE §1);
+  destructive-migration discipline per SECURITY.md §3.
 - The Supabase-managed schemas (`auth`, `storage`, `realtime`) are theirs — we
   never migrate them; we only reference (`auth.users` FKs) and attach policies
   where designed for it (`realtime.messages`, `storage.objects`).
@@ -413,27 +414,23 @@ many channels), which is why islands share the §1 browser singleton.
   they assume `supabase/migrations/` owns DDL. Local `supabase migration` and
   `db diff` tooling stays available for *inspecting* drift, never for applying.
 
-## 7. Local dev & environment parity
+## 7. Dev setup & config authority (single-tier)
 
-- `bunx supabase start` runs the full stack: API :54321 · Postgres :54322 ·
-  Studio :54323 · **Mailpit :54324** (captures all local auth email — use it to
-  test flows without a provider). `supabase stop` keeps data; `--no-backup`
-  wipes.
-- `supabase/config.toml` governs **local only**. Keep these keys in parity with
-  the hosted dashboards by hand (or Management API — hosted settings do NOT sync
-  from the repo): `auth.site_url` + `additional_redirect_urls`, `jwt_expiry`,
-  `[auth.rate_limit]`, `[auth.sms.*]` provider + `enable_confirmations`,
-  `[auth.mfa]`, `api.schemas`, `api.max_rows`. A `[remotes.<env>]` block in
-  config.toml is the documented place to record per-environment overrides so
-  the intended hosted config is at least version-controlled.
-- Config changes to make when Phase 0 starts: `api.schemas = ["public"]` (drop
-  `graphql_public`, decision 8) · `api.max_rows` from 1000 to something honest
-  (our list endpoints cap `limit` in Zod anyway) · `[auth.sms.test_otp]` fixture
-  numbers for tests.
-- Dashboard-side settings on staging/prod (rate limits, Turnstile secret, SMTP,
-  SSL enforcement, network restrictions) are part of the provisioning checklist
-  (INFRASTRUCTURE §7), verified manually — config drift between staging and prod
-  dashboards is a launch-gate check.
+- No local stack (INFRASTRUCTURE §1): dev, tests and seeds hit the hosted
+  project over `.env` (`DATABASE_URL` +
+  `WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE` — use the **Session
+  pooler** string; the direct host is IPv6-only).
+- **The project dashboard is the config authority.** Settings the code assumes
+  (mirror of the dormant `supabase/config.toml`, which is version-controlled
+  intent): `api.schemas = ["public"]` (decision 8) · `api.max_rows = 100` ·
+  `auth.site_url` + redirect URLs (localhost:4321 for dev) · email
+  confirmations ON (§2.2) · min password 8 · rate limits · Turnstile + SMTP
+  when they land. Hosted settings do NOT sync from the repo — change both.
+- Email testing without SMTP: Supabase's built-in email has tight rate limits
+  (2/hour) — fine for solo dev; SMTP is the real fix (§9).
+- When the multi-tier split returns, `bunx supabase start` + config.toml become
+  the local tier again (git history pre-2026-08-03 has the wiring), and
+  dashboard parity across tiers becomes a launch-gate check.
 
 ## 8. Storage (one narrow, future use)
 
@@ -511,12 +508,20 @@ Do at prod-project creation, verify at launch gate:
 
 1. Prod project + staging alignment: new keys, ES256 signing keys, Turnstile,
    SMTP, rate limits, advisors clean (§9).
-2. First migration wave: `app_server` role · default-privilege revokes ·
-   `private` schema · core tables with RLS + deny tests + DB constraints
-   (SECURITY.md §3) · audit trigger guard.
-3. Auth swap behind the seam: `@supabase/ssr` middleware + `getClaims()` replaces
-   the mock cookie (`api/session` interface unchanged); role claims in
-   `app_metadata`; admin TOTP + aal2 wall; **mock session code deleted**.
+2. ✅ First migration wave (2026-08-03): `drizzle/0000_*.sql` (14 tables, DB
+   constraints) + `drizzle/0001_security.sql` (`app_server` role ·
+   default-privilege revokes · `private` schema · RLS everywhere · realtime
+   policies · audit/broadcast/stamp triggers) · deny tests `tests/rls.test.ts` ·
+   dev seed `bun run db:seed` · parity `tests/db-parity.test.ts`.
+   Apply to the hosted project via `bun run db:migrate` (advisors are the gate).
+3. ✅ Auth swap (2026-08-03, TOTP pending): `data/supabase/session.ts` +
+   `getClaims()` replaced the mock (deleted); email+password live, role claims
+   stamped into `app_metadata` by the `drizzle/0002` auth triggers (no service
+   key in the signup path); `/auth/confirm` route ready (needs the dashboard
+   email-template change in its doc comment). Admin promotion:
+   `bun scripts/make-admin.ts <email> [role]`. **Still open:** admin TOTP
+   enrollment + the aal2 wall · Turnstile captchaToken · phone+password (needs
+   the SMS provider).
 4. Realtime seam implementation (`src/app/realtime/`): private channels, DB
    triggers, presence for professionals; polling mock retired.
 5. Messaging/admin productionization rides on top (their own docs' phases).

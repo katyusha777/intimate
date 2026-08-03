@@ -5,25 +5,27 @@ time to rediscover. Companion to `ARCHITECTURE.md` (§9 defines the tiers).
 
 ---
 
-## 1. Environments (dev / staging / prod)
+## 1. Environments — SINGLE-TIER for now (decided 2026-08-03)
 
-| Tier | App | Database | Notes |
-|---|---|---|---|
-| **dev** | `bun run dev` (localhost:4321) | local Supabase: `bunx supabase start` (Docker required) | all daily work; config in `supabase/config.toml` |
-| **staging** | Worker `intimate-staging` → `staging.intimate.nl` | Supabase project `jqrfzqbuvekhcptqcpda` (Frankfurt) | verification before prod |
-| **prod** | Worker `intimate` | **dedicated Supabase project — not yet created** (see §7) | Supabase MCP is read-only vs prod |
-
-**Migrations flow strictly dev → staging → prod:**
+One hosted Supabase project (`jqrfzqbuvekhcptqcpda`, Frankfurt) is **THE
+database**. Everything points at it: `bun run dev` (via the
+`WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE` env var), both
+deployed Workers (`intimate`, `intimate-staging` — same Hyperdrive id),
+drizzle-kit, tests and seeds (via `DATABASE_URL`). Copy `.env.example` → `.env`
+and fill in the **Session pooler** connection string (the direct
+`db.<ref>` host is IPv6-only). No local Docker stack — `supabase/config.toml`
+is dormant; **auth/API settings are configured in the project dashboard**.
 
 ```bash
 bun run db:generate           # drizzle-kit generate (from src/db/schema.ts)
-bun run db:migrate:local      # local supabase (127.0.0.1:54322)
-bun run db:migrate:staging    # staging project — after local passes
-bun run db:migrate:prod       # prod — ONLY after staging verification (wired when prod exists)
+bun run db:migrate            # apply migrations (DATABASE_URL from .env)
+bun run db:seed               # mock catalog → the db (idempotent, replaces prior seed)
 ```
 
-Local Supabase: `bunx supabase start` / `stop` / `status`. Studio at
-`127.0.0.1:54323`; local Postgres at `127.0.0.1:54322` (user/pass `postgres`).
+**Upgrade path (when the project proves itself):** re-introduce tiers — local
+stack (`bunx supabase start`, config.toml becomes live again), a separate prod
+project (§7 checklist), per-tier `db:migrate:*` scripts and Hyperdrive ids.
+The git history (pre-2026-08-03) has the exact multi-tier wiring.
 
 ## 2. Deploy (Cloudflare Workers)
 
@@ -46,10 +48,9 @@ bun run deploy:staging   # = CLOUDFLARE_ENV=staging astro build && wrangler depl
 
 On deploy the adapter auto-provisions a `SESSION` KV namespace and an `IMAGES`
 binding. One Hyperdrive (id `542bb0bee7fa44148f4e6ae3e0129ae7`) is bound in both
-wrangler envs until the prod Supabase project exists (`ponytail:` note in
-`wrangler.jsonc`). In local dev the binding's `localConnectionString` points at
-the local Supabase Postgres (`127.0.0.1:54322`) — `bunx supabase start` first,
-or db-backed pages fail to connect.
+wrangler envs — single-tier (§1). In `bun run dev` the binding connects via
+`WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE` from `.env` — without
+it, db-backed pages fail to connect.
 
 ## 3. CI (GitHub Actions)
 
@@ -99,10 +100,10 @@ context7, shadcn (→ `@fulldev` registry), playwright.
 
 ## 7. Provisioning checklist (before first real data / launch)
 
-- [ ] **Prod Supabase project** (Frankfurt) — then: prod Hyperdrive config,
-      fill prod `vars` in `wrangler.jsonc`, wire `db:migrate:prod`, keep MCP
-      read-only, **enable PITR/daily backups + run one restore drill before
-      first real data** (SECURITY.md §4).
+- [ ] **Dedicated prod Supabase project** (Frankfurt) — the single-tier setup
+      (§1) graduates: prod Hyperdrive config, prod `vars` in `wrangler.jsonc`,
+      per-tier migrate scripts, keep MCP read-only, **enable PITR/daily
+      backups + run one restore drill before first real data** (SECURITY.md §4).
 - [ ] Cloudflare Images (paid — ToS requirement for media), KV, Queues, Cron,
       Turnstile.
 - [ ] coturn VPS (EU, e.g. Hetzner) for video-call TURN fallback

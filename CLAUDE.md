@@ -81,14 +81,15 @@ Visual verification/screenshots via the **Playwright MCP** (`mcp__playwright__*`
 
 ```bash
 bun install · bun run dev · bun test · bun run build
-bun run db:generate · bun run db:migrate:local|staging   # strictly local → staging → prod
+bun run db:generate · bun run db:migrate      # migrations → THE hosted db (DATABASE_URL in .env)
+bun run db:seed                               # mock catalog → the hosted db (dev/parity)
 bun run deploy:staging                       # = CLOUDFLARE_ENV=staging astro build && wrangler deploy --env staging
                                              # env is baked at BUILD time (CLOUDFLARE_ENV); prod: build without it, then wrangler deploy
 ```
 
 ## Environments
 
-Three tiers (ARCHITECTURE §9, runbook in INFRASTRUCTURE.md): `dev` = local + local Supabase (`bunx supabase start`) · `staging` = `intimate-staging` Worker + staging Supabase project · `prod` = only after staging verification; Supabase MCP vs production is **read-only**.
+**Single-tier for now (decided 2026-08-03):** ONE hosted Supabase project (`jqrfzqbuvekhcptqcpda`) is THE database — dev, the deployed Workers, tests and seeds all point at it via `.env` / Hyperdrive. No local Docker stack, no staging/prod DB split until the project proves itself (the multi-tier runbook stays in INFRASTRUCTURE.md §1 as the upgrade path). Auth/config changes happen in that project's dashboard, not config.toml.
 
 ## Conventions
 

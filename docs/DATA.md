@@ -17,8 +17,12 @@ Two type sources, one truth each — they must agree, and this doc is the map:
 
 Drizzle-inferred row types (`typeof profiles.$inferSelect`) are the server
 path's types; the Zod models remain what pages/actions/components consume. The
-db backend (`src/app/data/db/*`, Phase 0) projects rows → Zod models so call
-sites never change (API.md §2).
+db backend (`src/app/data/db/*`) projects rows → Zod models so call sites never
+change (API.md §2). **List semantics live once**: `applyProfileListParams`
+(models/profile.ts) is shared by the json and db backends — filter/sort/paging
+can't drift; `tests/db-parity.test.ts` asserts the projections match too.
+`online` is derived from the `last_active_at` heartbeat (`ONLINE_WINDOW_MS`),
+never stored. Seed the db with the mock catalog: `bun run db:seed`.
 
 ---
 
@@ -160,25 +164,30 @@ The Zod models and `XxxApi` interfaces are stable; only the backend swaps
 | `ImportJob` / `Org` seeded in KV | `import_jobs` / `orgs` tables |
 | reply-speed demo samples | SQL view over `messages` |
 
-## 6. Phase-0 security plan (per-table — built in the SUPABASE.md §11 migration wave, NOT here)
+## 6. The security wall (BUILT: `drizzle/0001_security.sql` · deny tests: `tests/rls.test.ts`)
 
-`schema.ts` is tables/enums/constraints/indexes. RLS policies (+ deny tests),
-grants, `private.*` helpers and realtime triggers land in the Phase-0 security
-PR (SECURITY.md §3 review ritual). The intended posture per table:
+`schema.ts` is tables/enums/constraints/indexes; 0001 is everything else —
+`app_server` role (explicit full-access policies, BYPASSRLS only as a bonus:
+hosted postgres can't always grant it), default-privilege revokes, `private`
+schema + `is_thread_participant`, RLS on all 14 tables, realtime policies, and
+the triggers (audit append-only · message broadcast via `realtime.send` on
+`thread:{id}` · thread `last_message_at` touch · `state_changed_at` stamp).
+Posture per table, each with its deny test:
 
-- **Public-read, live-only** (`profiles`, `media`, `articles`): grant SELECT to
-  `anon, authenticated`; RLS `state='live'` (media: `state='approved' and not
-  is_private`). Owner policies (`account_id = auth.uid()`) for the dashboard.
-- **Participant-only** (`threads`, `messages`, `contacts`,
-  `conversation_settings`): RLS via a `private.is_thread_participant` helper
-  (SUPABASE.md §3); realtime broadcast triggers on `messages` (topic
-  `thread:{id}`). `contacts` never leaves the professional side.
-- **Own-row** (`favorites`, `accounts` self): `client_account_id = auth.uid()`.
-- **Server/admin only — no anon/authenticated grants at all**
-  (`verification_docs`, `audit_log`, `import_jobs`, `reports` write-side): the
-  server path (`app_server`, bypassrls) and admin actions reach them; PostgREST
-  can't. `audit_log` also gets the append-only trigger guard.
-- **auth.users FK** on `accounts.id` added here (deferred: auth schema).
+- **Public-read, live-only**: `profiles` (SELECT anon+authenticated, `state='live'`;
+  owner reads own any-state; owner UPDATE **column-granted to `last_active_at`
+  only** — the heartbeat) · `media` (`approved and not is_private` and profile
+  live; owner sees all hers).
+- **Participant-only**: `threads`, `messages` SELECT via participant policies;
+  message INSERT stays server-side (actions validate; no browser grant).
+- **Own-row**: `favorites` (select/insert/delete), `accounts` (select).
+- **Zero browser access** (`orgs`, `conversation_settings`, `contacts`,
+  `reports`, `audit_log`, `verification_docs`, `import_jobs`, `articles`): no
+  grants at all — PostgREST can't reach them; `app_server` + admin actions can.
+- **NO `auth.users` FK on `accounts.id`** (decided 2026-08-03): GDPR erasure
+  deletes the auth user while the scrubbed accounts row must survive for audit
+  — a FK would block the delete or cascade away history. Convention + server-
+  only row creation guarantee the link.
 
 Presence (online-now, city counts) and favorite-sync ride realtime broadcast,
-never polling (API.md §4). Build order + advisor gate: SUPABASE.md §11.
+never polling (API.md §4). Advisor gate + staging order: SUPABASE.md §11.

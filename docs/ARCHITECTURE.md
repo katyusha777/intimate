@@ -103,15 +103,15 @@ Site-level: segmented XML sitemaps (real lastmod) · robots.txt allowing GPTBot/
 
 ## 9. Environments & workflow
 
-Three tiers — the live database can never be touched by development work:
-
-| Tier | App | Database |
-|---|---|---|
-| **dev** | `bun run dev` local (`.dev.vars`) | local Supabase (`bunx supabase start`, Docker) |
-| **staging** | `intimate-staging` Worker | Supabase project `jqrfzqbuvekhcptqcpda` (staging) |
-| **prod** | `intimate` Worker | dedicated Supabase project (Frankfurt) — created before first real data; own Hyperdrive; Supabase MCP read-only |
-
-Migrations flow strictly `local → staging → prod` (`db:migrate:local` / `db:migrate:staging` / `db:migrate:prod`), each an explicit `DATABASE_URL`; prod only after staging verification. Full runbook: `INFRASTRUCTURE.md`. GitHub Issues is the plan of record for features; sessions stay scoped to one issue. Bun everywhere locally; CI: GitHub Actions running `bun install`, `bun test`, build, staging deploy on main.
+**Single-tier for now** (decided 2026-08-03, pre-launch simplicity): ONE hosted
+Supabase project (`jqrfzqbuvekhcptqcpda`, Frankfurt) serves dev, both Workers,
+tests and seeds — `bun run db:migrate` / `db:seed` over `DATABASE_URL` from
+`.env`. The three-tier split (local Docker stack / staging / dedicated prod
+project, migrations strictly `local → staging → prod`) is the **upgrade path
+before real data lands** — runbook and provisioning checklist:
+`INFRASTRUCTURE.md` §1/§7. GitHub Issues is the plan of record for features;
+sessions stay scoped to one issue. Bun everywhere locally; CI: GitHub Actions
+running `bun install`, `bun test`, build, staging deploy on main.
 
 ## 10. Video calls (1-on-1, WebRTC)
 

@@ -8,7 +8,7 @@ import { getAdmin } from '@/actions/admin/lib';
 import { analytics } from '@/actions/admin/analytics';
 import AdminShell from '@/components/organisms/admin/AdminShell.astro';
 
-const session = await getAdmin({ cookies: Astro.cookies });
+const session = await getAdmin(Astro);
 const a = session ? await analytics() : null;
 const humanize = (s: string) => s.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
 
