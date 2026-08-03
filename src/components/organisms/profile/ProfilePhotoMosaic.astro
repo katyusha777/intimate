@@ -18,11 +18,19 @@ interface Props {
 }
 const { photos, keyBase, alt, class: className } = Astro.props;
 const n = photos.length;
+/* 1–3 photos: equal columns filling the container width (no ragged right
+   edge). 4+: the 3:4 snap strip, side-scrollable. */
+const fills = n <= 3;
 ---
 
 <div class:list={['relative', className]}>
   <div
-    class="flex h-[26rem] snap-x snap-mandatory gap-2 overflow-x-auto overscroll-x-contain rounded-xl [scrollbar-width:none] lg:h-[30rem] [&::-webkit-scrollbar]:hidden"
+    class:list={[
+      'h-[26rem] gap-2 rounded-xl lg:h-[30rem]',
+      fills
+        ? ['grid', n === 1 ? 'grid-cols-1' : n === 2 ? 'grid-cols-2' : 'grid-cols-3']
+        : 'flex snap-x snap-mandatory overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
+    ]}
   >
     {
       photos.map((photo, i) => (
@@ -31,7 +39,10 @@ const n = photos.length;
           data-lightbox
           data-lightbox-index={i}
           aria-label={`${alt} — ${i + 1}`}
-          class="group relative aspect-[3/4] h-full flex-none snap-start cursor-pointer overflow-hidden rounded-xl bg-neutral-950"
+          class:list={[
+            'group relative cursor-pointer overflow-hidden rounded-xl bg-neutral-950',
+            fills ? 'h-full w-full' : 'aspect-[3/4] h-full flex-none snap-start',
+          ]}
         >
           <SafeImage
             imageKey={`${keyBase}-${i}`}
