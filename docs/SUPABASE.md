@@ -136,11 +136,16 @@ const { data } = await supabase.auth.verifyOtp({ phone, token: code, type: 'sms'
 - OTP cadence: one request per 60 s per user, code valid 1 h, project-wide send
   cap defaults to 30 SMS/hour — raise deliberately for launch (§9), because the
   default assumes email-primary auth.
-- **Decided (2026-08): password is primary.** Sign-up/in with **email OR phone
-  + password** (`signInWithPassword({ email | phone })`). Email sign-ups require
-  **email confirmation** (`enable_confirmations` on; Mailpit locally, custom SMTP
-  hosted per §9). Phone OTP stays enabled as a secondary/recovery path. Turnstile
-  rides `options.captchaToken` in every flow.
+- **Decided (2026-08-04): email + password for everyone.** Both clients and
+  professionals (the girls) sign up/in with **email + password** (one AuthModal, no
+  method toggle). Email confirmation (`enable_confirmations`) needs custom SMTP hosted
+  per §9 — the built-in sender's ~2/h cap is the "email rate limit exceeded" wall; it
+  is **currently disabled** in the dashboard so registration works until SendGrid (or
+  another adult-tolerant SMTP) is wired. **Phone is NOT a login method** — it is a
+  professional-only *verification attribute*: after email signup she proves she owns a
+  number via **Twilio Verify** (`VA` service, `account.startSms`/`checkSms` → `lib/twilio.ts`,
+  API-key auth). Phone input defaults to NL (+31; `06…`/bare → E.164) but accepts any
+  country code. Turnstile rides `options.captchaToken` on the email flows.
 
 ### 2.3 MFA / aal2 (the admin wall)
 

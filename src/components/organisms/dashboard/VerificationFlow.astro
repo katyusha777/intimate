@@ -49,7 +49,7 @@ const stepDone = 'grid size-8 flex-none place-items-center bg-online font-conden
               name="phone"
               type="tel"
               inputmode="tel"
-              placeholder="+31 6 12345678"
+              placeholder="06 12345678"
               class="flex-1"
             />
             <Button size="sm" type="button" data-sms-send class="mb-1">
@@ -128,6 +128,16 @@ const stepDone = 'grid size-8 flex-none place-items-center bg-online font-conden
 <script>
   import { actions } from 'astro:actions';
 
+  // Default to the Netherlands: bare/national numbers (06…, 612…) become +31;
+  // an explicit + or 00 country code is respected. Server re-validates E.164.
+  function toE164(raw: string): string {
+    const s = raw.replace(/[\s()\-.]/g, '');
+    if (s.startsWith('+')) return s;
+    if (s.startsWith('00')) return '+' + s.slice(2);
+    if (s.startsWith('0')) return '+31' + s.slice(1);
+    return '+31' + s;
+  }
+
   function initVerification() {
     document.querySelectorAll<HTMLElement>('[data-verification]').forEach((root) => {
       if (root.dataset.init) return;
@@ -136,9 +146,9 @@ const stepDone = 'grid size-8 flex-none place-items-center bg-online font-conden
 
       root.querySelector<HTMLElement>('[data-sms-send]')?.addEventListener('click', async () => {
         err?.classList.add('hidden');
-        const phone = root
-          .querySelector<HTMLInputElement>('[data-sms-start] input[name="phone"]')!
-          .value.replace(/[\s-]/g, '');
+        const phone = toE164(
+          root.querySelector<HTMLInputElement>('[data-sms-start] input[name="phone"]')!.value,
+        );
         const { error } = await actions.account.startSms({ phone });
         if (error) return err?.classList.remove('hidden');
         root.querySelector('[data-sms-start]')?.classList.add('hidden');

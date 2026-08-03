@@ -9,6 +9,7 @@ import { accountApi } from "@/app/api/account";
 import { messagingApi } from "@/app/api/messaging";
 import { reportsApi } from "@/app/api/reports";
 import { sessionApi } from "@/app/api/session";
+import { startPhoneVerify, checkPhoneVerify } from "@/lib/twilio";
 import { CONVERSATION_MODES, REPORT_REASONS, REPORT_TARGETS } from "@/lib/taxonomy";
 // The one sanctioned cross-fence import: the action registry wires in admin.
 import { admin } from "@/actions/admin";
@@ -146,7 +147,14 @@ export const server = {
       input: z.object({ phone: z.string().regex(/^\+[1-9]\d{6,14}$/) }),
       handler: async ({ phone }, context) => {
         const session = await requireSession(context);
-        // Mock: Twilio Verify `start` lands here later (ARCHITECTURE §11).
+        // Twilio Verify sends the code; we stash the (still-unverified) number so
+        // checkSms knows which To to verify against. phoneVerifiedAt gates trust.
+        try {
+          await startPhoneVerify(phone);
+        } catch (e) {
+          console.error('[sms] start failed', (e as Error).message);
+          throw new ActionError({ code: 'BAD_REQUEST' });
+        }
         await accountApi.save(session, { phone });
         return { ok: true };
       },
@@ -154,9 +162,18 @@ export const server = {
 
     checkSms: defineAction({
       input: z.object({ code: z.string().regex(/^\d{6}$/) }),
-      handler: async (_input, context) => {
+      handler: async ({ code }, context) => {
         const session = await requireSession(context);
-        // Mock: any 6-digit code verifies. Twilio `check` replaces this.
+        const { phone } = await accountApi.get(session);
+        if (!phone) throw new ActionError({ code: 'BAD_REQUEST' });
+        let approved = false;
+        try {
+          approved = await checkPhoneVerify(phone, code);
+        } catch (e) {
+          console.error('[sms] check failed', (e as Error).message);
+          throw new ActionError({ code: 'BAD_REQUEST' });
+        }
+        if (!approved) throw new ActionError({ code: 'BAD_REQUEST', message: 'invalid code' });
         await accountApi.save(session, { phoneVerifiedAt: new Date().toISOString() });
         return { ok: true };
       },
