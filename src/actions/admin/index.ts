@@ -10,7 +10,7 @@ import { accountApi } from '@/app/api/account';
 import { reportsApi } from '@/app/api/reports';
 import { REJECTION_REASONS, REPORT_RESOLUTIONS } from '@/lib/taxonomy';
 import { claimItem, record, releaseItem, requireAdmin } from './lib';
-import { removeModerationItem } from './queues';
+import { decideModeration } from './queues';
 import { setProfileState } from './entities';
 import { retryImport } from './imports';
 import type { AdminAction, ProfileState } from '@/lib/taxonomy';
@@ -83,7 +83,7 @@ export const admin = {
     handler: async ({ id, decision, reason }, context) => {
       const session = await requireAdmin(context, ['moderator']);
       if (decision === 'reject' && !reason) throw new ActionError({ code: 'BAD_REQUEST', message: 'reason required' });
-      await removeModerationItem(id);
+      await decideModeration(id, decision === 'approve');
       await record(session, {
         action: decision === 'approve' ? 'approve_profile' : 'reject_profile',
         entityType: 'moderation',

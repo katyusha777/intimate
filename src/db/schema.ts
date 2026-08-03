@@ -513,3 +513,35 @@ export const articles = pgTable(
   },
   (t) => [uniqueIndex('articles_slug_idx').on(t.slug)],
 );
+
+// ---------------------------------------------------------------------------
+// Call sessions (ADMIN.md §11, ARCHITECTURE §10) — metadata ONLY; calls are
+// peer-to-peer and never recorded. `initiated_by = professional` is a CHECK
+// (SECURITY.md §3: clients can never initiate). client_account_id is null for
+// the seeded demo (real calls link the account).
+// ---------------------------------------------------------------------------
+
+export const callModeEnum = pgEnum('call_mode', ['voice', 'video']);
+export const callStateEnum = pgEnum('call_state', ['ringing', 'active', 'ended', 'declined', 'timeout']);
+
+export const callSessions = pgTable(
+  'call_sessions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    profileId: uuid('profile_id')
+      .notNull()
+      .references(() => profiles.id),
+    clientAccountId: uuid('client_account_id').references(() => accounts.id),
+    clientName: text('client_name').notNull().default(''),
+    initiatedBy: text('initiated_by').notNull().default('professional'),
+    mode: callModeEnum('mode').notNull(),
+    state: callStateEnum('state').notNull(),
+    startedAt: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),
+    durationS: integer('duration_s').notNull().default(0),
+  },
+  (t) => [
+    index('call_sessions_profile_idx').on(t.profileId),
+    index('call_sessions_started_idx').on(t.startedAt),
+    check('call_sessions_initiator', sql`${t.initiatedBy} = 'professional'`),
+  ],
+);

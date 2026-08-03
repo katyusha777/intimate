@@ -6,6 +6,9 @@
  */
 import { env } from 'cloudflare:workers';
 import { ActionError } from 'astro:actions';
+import { and, desc, eq } from 'drizzle-orm';
+import { createDb } from '@/db/client';
+import { auditLog } from '@/db/schema';
 import { sessionApi } from '@/app/api/session';
 import type { Session } from '@/app/models/session';
 import type { AdminAction, AdminRole } from '@/lib/taxonomy';
@@ -18,8 +21,8 @@ interface Kv {
 function kv(): Kv | undefined {
   return (env as unknown as Record<string, unknown>).SESSION as Kv | undefined;
 }
+const adb = () => createDb((env as unknown as { HYPERDRIVE: Hyperdrive }).HYPERDRIVE);
 const now = () => new Date().toISOString();
-const rid = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
 
 /** Context shape shared by Astro pages (Astro.*) and action handlers. */
 export type AdminCtx = Parameters<typeof sessionApi.current>[0];
@@ -46,23 +49,16 @@ export async function getAdmin(context: AdminCtx): Promise<Session | null> {
 }
 
 // --- Audit log (append-only; every admin action + sensitive read) ---------
-const AUDIT_KEY = 'admin:audit';
+// Postgres `audit_log`, guarded append-only by the 0001 trigger (no role can
+// rewrite history). admin_account_id keeps the actor even after user deletion.
 const AUDIT_CAP = 2000;
 
 export async function record(
   session: Session,
   entry: { action: AdminAction; entityType: string; entityId: string; reason?: string; meta?: Record<string, string> },
 ): Promise<void> {
-  const raw = await kv()?.get(AUDIT_KEY);
-  let list: AuditEntry[] = [];
-  try {
-    list = raw ? (JSON.parse(raw) as AuditEntry[]) : [];
-  } catch {
-    list = [];
-  }
-  list.push({
-    id: rid(),
-    at: now(),
+  await adb().insert(auditLog).values({
+    adminAccountId: session.accountId,
     adminEmail: session.email,
     adminRole: session.adminRole!,
     action: entry.action,
@@ -71,8 +67,6 @@ export async function record(
     reason: entry.reason,
     meta: entry.meta,
   });
-  if (list.length > AUDIT_CAP) list = list.slice(-AUDIT_CAP);
-  await kv()?.put(AUDIT_KEY, JSON.stringify(list));
 }
 
 export interface AuditFilter {
@@ -81,21 +75,25 @@ export interface AuditFilter {
   entityType?: string;
 }
 export async function listAudit(filter: AuditFilter = {}): Promise<AuditEntry[]> {
-  const raw = await kv()?.get(AUDIT_KEY);
-  let list: AuditEntry[] = [];
-  try {
-    list = raw ? (JSON.parse(raw) as AuditEntry[]) : [];
-  } catch {
-    list = [];
-  }
-  return list
-    .filter(
-      (e) =>
-        (!filter.adminEmail || e.adminEmail === filter.adminEmail) &&
-        (!filter.action || e.action === filter.action) &&
-        (!filter.entityType || e.entityType === filter.entityType),
-    )
-    .reverse();
+  const where = and(
+    filter.adminEmail ? eq(auditLog.adminEmail, filter.adminEmail) : undefined,
+    filter.action ? eq(auditLog.action, filter.action as AdminAction) : undefined,
+    filter.entityType ? eq(auditLog.entityType, filter.entityType) : undefined,
+  );
+  const rows = await adb().select().from(auditLog).where(where).orderBy(desc(auditLog.at)).limit(AUDIT_CAP);
+  return rows.map(
+    (r): AuditEntry => ({
+      id: r.id,
+      at: r.at.toISOString(),
+      adminEmail: r.adminEmail,
+      adminRole: r.adminRole,
+      action: r.action,
+      entityType: r.entityType,
+      entityId: r.entityId,
+      reason: r.reason ?? undefined,
+      meta: r.meta ?? undefined,
+    }),
+  );
 }
 
 // --- Claims (soft locks so two admins never work one item) ----------------

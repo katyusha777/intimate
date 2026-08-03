@@ -173,9 +173,11 @@ The Zod models and `XxxApi` interfaces are stable; only the backend swaps
 | messaging identity keyed by email/`clientEmail` | ✅ DONE — `threads.client_account_id`; `clientEmail`/`clientName` projected from the account join |
 | reply-speed demo latency table | ✅ DONE — real median over `messages`, or honest `null` (no demo crutch) |
 | `report.reporterEmail` | `reports.reporter_account_id` (nullable — anonymous reports) |
-| `AuditEntry` in admin KV | `audit_log` table (trigger-appended) |
-| `ImportJob` / `Org` seeded in KV | `import_jobs` / `orgs` tables |
-| reply-speed demo samples | SQL view over `messages` |
+| `AuditEntry` in admin KV | ✅ DONE — `audit_log` table (append-only trigger; `record()`/`listAudit()` on Drizzle) |
+| `ImportJob` / `Org` / `CallSession` seeded in KV | ✅ DONE — `import_jobs` / `orgs` (roster from `profiles.org_id`) / `call_sessions` tables |
+| moderation queue seeded in KV | ✅ DONE — DERIVED: `new_profile` from profiles `pending_review` + `media` from pending media rows; decisions are real state UPDATEs |
+| admin queue claims (10-min soft locks) | stays in **KV** (ephemeral coordination, TTL-expiring — not persistent data; realtime presence is the eventual "who's reviewing" signal) |
+| reply-speed demo samples | ✅ DONE — real median over `messages` |
 
 ## 6. The security wall (BUILT: `drizzle/0001_security.sql` · deny tests: `tests/rls.test.ts`)
 
