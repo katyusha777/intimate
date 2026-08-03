@@ -91,6 +91,12 @@ bun run deploy:staging                       # = CLOUDFLARE_ENV=staging astro bu
 
 **Single-tier for now (decided 2026-08-03):** ONE hosted Supabase project (`jqrfzqbuvekhcptqcpda`) is THE database — dev, the deployed Workers, tests and seeds all point at it via `.env` / Hyperdrive. No local Docker stack, no staging/prod DB split until the project proves itself (the multi-tier runbook stays in INFRASTRUCTURE.md §1 as the upgrade path). Auth/config changes happen in that project's dashboard, not config.toml.
 
+## Skills (already available — invoke, don't install)
+
+**Pre-merge ritual (before a branch touches `main`, in order):** `web-perf` (protect the Lighthouse-95-mobile budget — watch for the supabase-js chunk leaking onto zero-JS public pages) → `/security-review` (mandatory for the sensitive-diff category below: auth, RLS, actions, storage, migrations) → `/code-review` (correctness + reuse; `/code-review ultra` for a deep cloud pass).
+
+**Situational:** `workers-best-practices` (any Worker/wrangler code — per-request DB clients, streaming, floating promises) · `cloudflare` + `wrangler` (R2/Images/Queues/Cron/Hyperdrive/secrets, e.g. the import pipeline + verification-doc purge Cron) · `durable-objects` (WebRTC call signaling) · `deep-research` (legal/provider unknowns: NL 21+ licensing, adult-tolerant SMTP+payments, KvK) · `design-align` (any layout change — measure geometry, never eyeball) · `ponytail:*` (`/ponytail-review` a diff, `/ponytail-debt` harvests the `ponytail:` markers) · `claude-md-improver` (resync this file when it drifts).
+
 ## Conventions
 
 Roles, not genders: code, copy, and i18n say `client`/`professional` (`ACCOUNT_TYPES`) — never gendered pronouns for a role; no copy assumes the client is male · TypeScript strict · server actions in `src/actions/` (Zod-validated) · URLs ALWAYS locale-prefixed (`/{locale}/…`, no locale-less; `/` 302s by Accept-Language): `/{locale}/{city}/`, `/{locale}/{category-slug}/{city}/` (localized slugs), `/{locale}/profile/{slug}/` · one base profile-card component (grid/featured/compact variants) · conventional commits with real messages — a commit named "." is a bug · solo flow: the working branch is fine for design churn, but sensitive diffs (auth, RLS, actions, storage, caching, migrations — SECURITY.md §9.2) go through a PR carrying the review ritual · GitHub Issues per tracker item = the plan of record.

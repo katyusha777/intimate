@@ -5,17 +5,20 @@
  * the mock; mutations arrive with the real backend.
  */
 import { getAdmin } from '@/actions/admin/lib';
+import { accountApi } from '@/app/api/account';
 import { ADMIN_ROLES, ALL_SERVICES, CITIES, GENDERS, REJECTION_REASONS, SERVICE_CATEGORIES } from '@/lib/taxonomy';
 import AdminShell from '@/components/organisms/admin/AdminShell.astro';
 
 const session = await getAdmin(Astro);
 const isSuper = session?.adminRole === 'super';
 
-const admins = [
-  { email: 'admin@intimate.nl', role: 'super' },
-  { email: 'mod@intimate.nl', role: 'moderator' },
-  { email: 'support@intimate.nl', role: 'support' },
-];
+// Real admin accounts from the DB (account_type = 'admin').
+const admins = isSuper
+  ? (await accountApi.all())
+      .filter((a) => a.accountType === 'admin')
+      .map((a) => ({ email: a.email, role: a.adminRole ?? '—' }))
+      .sort((a, b) => a.email.localeCompare(b.email))
+  : [];
 const flags = [
   { key: 'messaging', label: 'Messaging', on: true },
   { key: 'ai_search', label: 'AI search', on: true },
@@ -51,7 +54,7 @@ const taxo = [
                 </div>
               ))}
             </div>
-            <p class="mt-2 text-2xs text-muted-foreground">Real admin management (invite/revoke, MFA enrolment) arrives with Supabase Auth + Cloudflare Access.</p>
+            <p class="mt-2 text-2xs text-muted-foreground">Live from Supabase Auth (promote via <code>scripts/make-admin.ts</code>). Invite/revoke UI + MFA enrolment + Cloudflare Access are the remaining hardening.</p>
           </section>
 
           <section>
@@ -86,7 +89,7 @@ const taxo = [
               <li>· Verification docs: private R2, presigned ≤5min, purged on the retention schedule (never public, never in the product).</li>
               <li>· Messages + chat media: auto-deleted after 90 days.</li>
               <li>· Audit log: long retention — our defensibility (documented GDPR exception, legitimate interest).</li>
-              <li>· Age floor: 18 at the DB level (configurable to 21 per policy).</li>
+              <li>· Age: 18 absolute DB floor; <b>21</b> policy minimum to advertise (NL) — enforced at the profiles CHECK + Zod.</li>
             </ul>
           </section>
         </div>

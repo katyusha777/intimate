@@ -77,6 +77,7 @@ function record(row: AccountRow, favSlugList: string[], profileSlug?: string): A
   return {
     email: row.email ?? row.id,
     accountType: row.accountType,
+    adminRole: row.adminRole ?? undefined,
     displayName: row.displayName ?? (row.email ?? '').split('@')[0] ?? 'User',
     profileSlug,
     ...toAccount(row, favSlugList),
