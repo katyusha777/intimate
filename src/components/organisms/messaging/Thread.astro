@@ -490,8 +490,9 @@ const utcTime = (iso: string): string =>
       });
     }
 
-    // Realtime (§5): incremental poll — new messages only, plus read watermark
-    // and the photo-grant flag. Never re-downloads existing photos or the note.
+    // Realtime (§5): a DB-trigger broadcast on this thread fires an immediate
+    // incremental fetch (new messages only + read watermark + photo-grant flag);
+    // the interval is the slow fallback. Never re-downloads existing photos.
     let reloadedOnState = false;
     subscribe(async () => {
       const { data } = await actions.messaging.thread({ threadId, after: lastCreatedAt });
@@ -517,7 +518,7 @@ const utcTime = (iso: string): string =>
         reloadedOnState = true;
         location.reload();
       }
-    });
+    }, { channel: `thread:${threadId}` });
   }
 
   initThread();

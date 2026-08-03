@@ -522,6 +522,11 @@ Do at prod-project creation, verify at launch gate:
    `bun scripts/make-admin.ts <email> [role]`. **Still open:** admin TOTP
    enrollment + the aal2 wall · Turnstile captchaToken · phone+password (needs
    the SMS provider).
-4. Realtime seam implementation (`src/app/realtime/`): private channels, DB
-   triggers, presence for professionals; polling mock retired.
+4. ✅ Realtime seam (2026-08-03): `src/app/realtime.ts` — `subscribe(poll, {
+   channel })` layers a private broadcast channel (topic `thread:{id}`, fed by
+   the 0001 `broadcast_message` trigger) over the poll, which stays as graceful
+   fallback; `startHeartbeat()` is the RLS-guarded `last_active_at` self-update
+   (E2E-verified from the browser). Live cross-client delivery depends on the
+   project's `realtime.messages` partitions being provisioned — the fallback
+   poll covers it until then.
 5. Messaging/admin productionization rides on top (their own docs' phases).

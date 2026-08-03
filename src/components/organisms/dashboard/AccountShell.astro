@@ -81,8 +81,20 @@ const nav =
   <p class="mt-10 text-xs text-muted-foreground">{m.account_demo_note()}</p>
 </div>
 
+{/* Presence heartbeat — she's "online" while managing her dashboard (SUPABASE.md §5.4). */}
+{session.role === 'advertiser' && session.profileId && <div data-heartbeat={session.profileId} hidden></div>}
+
 <script>
   import { actions } from 'astro:actions';
+  import { startHeartbeat } from '@/app/realtime';
+
+  let stopBeat: (() => void) | null = null;
+  function initHeartbeat() {
+    const el = document.querySelector<HTMLElement>('[data-heartbeat]');
+    if (!el || stopBeat) return;
+    stopBeat = startHeartbeat(el.dataset.heartbeat!);
+  }
+
   function initSignout() {
     document.querySelectorAll<HTMLElement>('[data-signout]').forEach((btn) => {
       if (btn.dataset.init) return;
@@ -95,5 +107,7 @@ const nav =
     });
   }
   initSignout();
+  initHeartbeat();
   document.addEventListener('astro:page-load', initSignout);
+  document.addEventListener('astro:page-load', initHeartbeat);
 </script>
