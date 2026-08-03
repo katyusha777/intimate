@@ -128,7 +128,53 @@ const { id = 'lightbox' } = Astro.props;
     };
     track.addEventListener('scroll', update, { passive: true });
 
-    const openLightbox = (photos: { src: string; alt: string }[], index: number) => {
+    // Shared-element open: a ghost copy of the TAPPED image flies from its
+    // on-page rect to the lightbox position (FLIP) — the photo "becomes" the
+    // viewer instead of a second copy popping in.
+    function flipIn(sourceImg: HTMLImageElement) {
+      if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      const r = sourceImg.getBoundingClientRect();
+      if (!r.width || !r.height) return;
+      const nw = sourceImg.naturalWidth || r.width;
+      const nh = sourceImg.naturalHeight || r.height;
+      // Target = the object-contain rect the real viewer will show.
+      const scale = Math.min(innerWidth / nw, innerHeight / nh);
+      const tw = nw * scale;
+      const th = nh * scale;
+      const tx = (innerWidth - tw) / 2;
+      const ty = (innerHeight - th) / 2;
+      const ghost = document.createElement('img');
+      ghost.src = sourceImg.currentSrc || sourceImg.src;
+      ghost.style.cssText = [
+        'position:fixed',
+        `left:${r.left}px`,
+        `top:${r.top}px`,
+        `width:${r.width}px`,
+        `height:${r.height}px`,
+        'object-fit:cover',
+        'z-index:20',
+        'will-change:left,top,width,height',
+        'transition:left 0.32s cubic-bezier(0.32,0.72,0,1), top 0.32s cubic-bezier(0.32,0.72,0,1), width 0.32s cubic-bezier(0.32,0.72,0,1), height 0.32s cubic-bezier(0.32,0.72,0,1)',
+      ].join(';');
+      dialog.appendChild(ghost);
+      track.style.opacity = '0';
+      requestAnimationFrame(() => {
+        ghost.style.left = `${tx}px`;
+        ghost.style.top = `${ty}px`;
+        ghost.style.width = `${tw}px`;
+        ghost.style.height = `${th}px`;
+      });
+      setTimeout(() => {
+        track.style.opacity = '';
+        ghost.remove();
+      }, 340);
+    }
+
+    const openLightbox = (
+      photos: { src: string; alt: string }[],
+      index: number,
+      sourceImg?: HTMLImageElement | null,
+    ) => {
       total = photos.length;
       current = -1;
       track.replaceChildren(
@@ -174,6 +220,7 @@ const { id = 'lightbox' } = Astro.props;
         track.scrollLeft = index * track.clientWidth;
         setActive(index);
       });
+      if (sourceImg) flipIn(sourceImg);
     };
     (window as any).__openLightbox = openLightbox;
 
@@ -287,7 +334,13 @@ const { id = 'lightbox' } = Astro.props;
       const imgs = [...group.querySelectorAll<HTMLImageElement>('[data-lightbox-photos] img')];
       const photos = imgs.map((im) => ({ src: im.currentSrc || im.src, alt: im.alt || '' }));
       if (!photos.length) return;
-      openLightbox(photos, Number(trigger.dataset.lightboxIndex || 0));
+      // The tapped image (hero / strip cell / grid cell) is the FLIP source;
+      // buttons without an image (SHOW ALL) fall back to the plain zoom-in.
+      openLightbox(
+        photos,
+        Number(trigger.dataset.lightboxIndex || 0),
+        trigger.querySelector<HTMLImageElement>('img'),
+      );
     });
   }
   initLightbox();
