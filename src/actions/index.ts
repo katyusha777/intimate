@@ -122,10 +122,13 @@ export const server = {
       }),
       handler: async ({ dataUrl, isPrivate }, context) => {
         const session = await requireSession(context);
-        // ponytail: the data-URL IS the image_key until the Cloudflare Images
-        // upload lands (needs API credentials) — swap point is one function,
-        // `mediaUrl`/this call. Fat rows are the known ceiling.
-        await accountApi.addPhoto(session, { imageKey: dataUrl, isPrivate });
+        // Decode the client's EXIF-stripped JPEG data-URL → bytes → R2 (the
+        // data layer owns the upload). base64 → ArrayBuffer.
+        const base64 = dataUrl.slice(dataUrl.indexOf(",") + 1);
+        const bin = atob(base64);
+        const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        await accountApi.addPhoto(session, { bytes: bytes.buffer, contentType: "image/jpeg", isPrivate });
         return { ok: true };
       },
     }),

@@ -46,7 +46,7 @@ This document is the base architecture: stack, how we use each piece to its abso
   - **Live moments that matter:** import-wizard progress streaming (scrape → extract → images, step by step) · "your profile is now live" appearing in the advertiser dashboard the second an admin approves · admin queues filling in real time · new-profile toasts on search/home ("2 new in Amsterdam — show") · favorites syncing across devices mid-session.
   - **Pattern: SSR-first paint, realtime layered on top.** Cached HTML renders instantly; small islands then subscribe and keep it fresh. Realtime never blocks first paint, never replaces SSR, and always degrades gracefully to plain SSR.
   - Private channels authorized through RLS; broadcast payloads carry IDs + minimal state (never trusted as instructions).
-- **Storage:** verification documents live in a dedicated private **Cloudflare R2** bucket (§11), NOT Supabase Storage. Photos live in Cloudflare Images. Supabase Storage stays unused except one planned case: private chat video via signed URLs (MESSAGING.md §7 — sidesteps Cloudflare Stream's unconfirmed adult-content position).
+- **Storage:** verification documents live in a dedicated private **Cloudflare R2** bucket (§11), NOT Supabase Storage. Photos live in the `intimate-media` **R2** bucket, served via the `/media` route + Images transform binding (hard rule 2). Supabase Storage stays unused except one planned case: private chat video via signed URLs (MESSAGING.md §7 — sidesteps Cloudflare Stream's unconfirmed adult-content position).
 
 ## 4. Cloudflare — squeezed
 
@@ -56,7 +56,7 @@ This document is the base architecture: stack, how we use each piece to its abso
 - **Hyperdrive:** pooled Postgres connections for Drizzle (Workers are ephemeral; Hyperdrive makes edge→Postgres sane and fast).
 - **KV:** hot micro-caches (city counts, featured lists), rate limiting.
 - **Queues + Cron:** import jobs (Firecrawl → LLM → images) writing progress rows that Realtime streams to the UI; scheduled expiry/cleanup.
-- **Cloudflare Images:** ALL photos — upload via server action, EXIF stripped first, variants (card/thumb/full/blur-placeholder) from the CDN. ToS requires a paid media product for image serving — this is it. Video (if ever): Stream.
+- **R2 + Images transform:** ALL photos — upload via server action (EXIF stripped client-side first), bytes stored in the `intimate-media` R2 bucket, served through the `/media` route (edge-cached; `pub/…` public, `priv/…` gated per-thread), resized to `thumb`/`card`/`full` WebP by the Images transform binding. R2 avoids the per-view delivery fee that made Images-as-store wrong for a photo-heavy directory (decided 2026-08-03; hard rule 2). Video (if ever): Stream.
 - **Turnstile** on registration and contact-reveal. Bot protection on (we will be scraped like we scrape).
 - **AI-crawler settings:** Cloudflare blocks AI crawlers by default on new zones — explicitly ALLOW GPTBot, OAI-SearchBot, ClaudeBot, PerplexityBot (§6).
 
@@ -89,7 +89,7 @@ Site-level: segmented XML sitemaps (real lastmod) · robots.txt allowing GPTBot/
 *CLAUDE.md "Hard rules" is the enforced summary of this list (other docs cite items here as §8.N). If the two ever drift, the stricter reading wins and the drift is a bug — fix both in one PR.*
 
 1. **RLS on every table.** Anon key is public. Service role key server-side only.
-2. **EXIF stripped from every uploaded image** before storage (GPS leaks endanger advertisers). All photos via Cloudflare Images only.
+2. **EXIF stripped from every uploaded image** before storage (GPS leaks endanger advertisers). Photo bytes in R2, served only via the `/media` route (edge-cached, private gated), resized by the Images transform binding — never a public bucket (hard rule 2).
 3. **Verification documents are toxic waste — bounded retention, not instant deletion** (CLAUDE.md hard rule 3): dedicated private Cloudflare R2 bucket (EU jurisdiction, zero public access — §11), admin-only via short-TTL signed URLs, every read audit-logged. Retained for the defined window (48 months after profile deactivation, pending final legal review — provability requires the document), then **purged automatically**; state/date/reviewer/hash retained forever. Never logged, never cached.
 4. **Age hard floor 18 at DB level** (policy-configurable to 21 per licensing).
 5. **Taxonomy is law:** `src/lib/taxonomy.ts` is the only source of controlled vocabulary; DB stores those snake_case English values; UI labels via i18n keys; import normalizes into it; extend via taxonomy + translations + migration, never ad hoc.

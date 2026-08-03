@@ -25,6 +25,10 @@ import { CITIES, POLICY_MIN_AGE } from '@/lib/taxonomy';
 import type { Session } from '@/app/models/session';
 
 const db = (): Db => createDb((env as unknown as { HYPERDRIVE: Hyperdrive }).HYPERDRIVE);
+const bucket = (): R2Bucket => (env as unknown as { MEDIA: R2Bucket }).MEDIA;
+
+/** A stored key we manage in R2 (vs a seed/static path that passes through). */
+const isR2Key = (key: string) => !key.startsWith('/') && !key.startsWith('http');
 
 type AccountRow = typeof accounts.$inferSelect;
 
@@ -238,7 +242,7 @@ export const accountApi: AccountApi = {
     );
   },
 
-  async addPhoto(session, { imageKey, isPrivate = false }) {
+  async addPhoto(session, { bytes, contentType, isPrivate = false }) {
     const d = db();
     const row = await myProfileRow(d, session.accountId);
     if (!row) return;
@@ -247,9 +251,13 @@ export const accountApi: AccountApi = {
       .from(media)
       .where(eq(media.profileId, row.id));
     if ((agg?.n ?? 0) >= 20) return; // cap: a gallery, not a dump
+    // Key encodes visibility so the /media route can gate without a DB hit on
+    // the hot (public) path: `pub/<profileId>/<uuid>` vs `priv/…`.
+    const key = `${isPrivate ? 'priv' : 'pub'}/${row.id}/${crypto.randomUUID()}`;
+    await bucket().put(key, bytes, { httpMetadata: { contentType } });
     await d.insert(media).values({
       profileId: row.id,
-      imageKey,
+      imageKey: key,
       isPrivate,
       position: agg?.next ?? 0,
       state: 'pending_review', // images are the one human-moderated surface
@@ -261,7 +269,11 @@ export const accountApi: AccountApi = {
     const row = await myProfileRow(d, session.accountId);
     if (!row) return;
     // Scoped to HER profile — an id from another gallery deletes nothing.
-    await d.delete(media).where(and(eq(media.id, id), eq(media.profileId, row.id)));
+    const [gone] = await d
+      .delete(media)
+      .where(and(eq(media.id, id), eq(media.profileId, row.id)))
+      .returning({ key: media.imageKey });
+    if (gone && isR2Key(gone.key)) await bucket().delete(gone.key);
   },
 
   async all() {

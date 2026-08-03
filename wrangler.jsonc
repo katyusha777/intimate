@@ -23,6 +23,10 @@
   "kv_namespaces": [
     { "binding": "SESSION", "id": "147037dee79949c2bed21ef6a60d7e00" }
   ],
+  // Profile media store (R2 — free egress, no per-view delivery fee; served
+  // through the /media route with edge caching). Verification docs get their
+  // own private bucket later (hard rule 3). Transforms via the IMAGES binding.
+  "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "intimate-media" }],
   "images": { "binding": "IMAGES" },
   "vars": {
     // prod values — replace when the prod Supabase project exists (INFRASTRUCTURE §7)
@@ -39,6 +43,7 @@
       "kv_namespaces": [
         { "binding": "SESSION", "id": "691e3d062b07444fb1f659a438edc411" }
       ],
+      "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "intimate-media" }],
       "images": { "binding": "IMAGES" },
       "vars": {
         "PUBLIC_SUPABASE_URL": "https://jqrfzqbuvekhcptqcpda.supabase.co",

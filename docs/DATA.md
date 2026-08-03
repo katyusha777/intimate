@@ -36,7 +36,7 @@ anonymous pages (RLS `state='live'` only for profiles/media).
 | `accounts` | auth user | no | one row per `auth.users` id; role + verification state |
 | `orgs` | agency account | name/roster | agencies (KvK, verification); a profile links via `org_id` |
 | `profiles` | account | live only | the listing row — one flat, joinless row per profile |
-| `media` | profile | approved only | one row per image (Cloudflare Images key + review state) |
+| `media` | profile | approved only | one row per image (R2 object key + review state) |
 | `verification_docs` | account | **never** | toxic-waste metadata (R2-backed doc; hard rule 3) |
 | `conversation_settings` | profile | no | messaging mode (default OFF), screening question |
 | `threads` | (profile, client) | participants | one conversation per client×profile pair |
@@ -89,13 +89,17 @@ sort/filter. `opening_hours` + `description_translations` are JSONB.
   `ProfileEditSchema` · `CHECK price_from ≥ 0`.
 
 **media** — replaces the mock's `photos[]` / `private_photos[]`. `image_key` =
-Cloudflare Images id (hard rule 2, EXIF stripped before upload). **Interim
-(`ponytail:`):** until the Images upload lands (needs API credentials) the
-client's EXIF-stripped data-URL IS the `image_key`; the swap is one function
-(`mediaUrl` in `data/db/profiles.ts`) plus the upload call in
-`actions.account.addPhoto`. Uploads enter `pending_review` — images are the one
-human-moderated surface (ADMIN.md §6) — and the owner dashboard badges them
-until approved. `state` (media review), `is_private` (her locked set, revealed
+the **R2 object key**, visibility-prefixed: `pub/<profileId>/<uuid>` (public) or
+`priv/<profileId>/<uuid>` (her locked set). Bytes live in the `intimate-media`
+R2 bucket (hard rule 2 — EXIF stripped client-side first); `mediaUrl()` routes
+keys through `/media/<key>` (`data/db/profiles.ts`), served by
+`src/pages/media/[...key].ts`: public = edge-cached immutable + Images-transform
+resize (`?v=thumb|card|full` → WebP, graceful fallback to original), private =
+authorization-gated (owner, or a client with `contacts.private_set_unlocked`)
+and `no-store`. Uploads enter `pending_review` (images are the one
+human-moderated surface, ADMIN.md §6); the owner dashboard badges them until
+approved. Seed/static keys (absolute path or full URL) pass through `mediaUrl`
+untouched. `state` (media review), `is_private` (her locked set, revealed
 per-thread — UX-PLAN 4.4), `position` (gallery order), `nsfw_score`. The profile
 read model still exposes `photos: string[]` / `privatePhotos: string[]` — the
 backend projects them from approved/private media rows.

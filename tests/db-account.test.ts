@@ -9,8 +9,17 @@
  */
 import { afterAll, expect, test } from 'bun:test';
 import postgres from 'postgres';
-import { makeProfilesApi } from '../src/app/data/db/profiles';
+import { makeProfilesApi, mediaUrl } from '../src/app/data/db/profiles';
 import { createDb } from '../src/db/client';
+
+// Pure (no DB) — the media-URL branch: R2 keys route through /media, seed and
+// static/remote keys pass through untouched.
+test('mediaUrl routes R2 keys and passes through static/remote', () => {
+  expect(mediaUrl('pub/abc/def')).toBe('/media/pub/abc/def');
+  expect(mediaUrl('priv/abc/def')).toBe('/media/priv/abc/def');
+  expect(mediaUrl('/nsfwimg/seed.jpg')).toBe('/nsfwimg/seed.jpg');
+  expect(mediaUrl('https://cdn.example/x.jpg')).toBe('https://cdn.example/x.jpg');
+});
 
 const URL = process.env.DATABASE_URL ?? '';
 const probe = postgres(URL || 'postgresql://unset@localhost/none', { max: 1, connect_timeout: 5, prepare: false });
@@ -87,16 +96,18 @@ t('lifecycle transitions stamp state_changed_at (DB trigger)', async () => {
 
 t('media states gate the public gallery, owner sees everything', async () => {
   await api.setState(PROFILE, 'live');
+  const ok = `pub/${PROFILE}/ok`, pending = `pub/${PROFILE}/pending`, priv = `priv/${PROFILE}/p`;
   await sql`insert into media (profile_id, state, image_key, is_private, position) values
-    (${PROFILE}, 'approved', 'k-ok', false, 0),
-    (${PROFILE}, 'pending_review', 'k-pending', false, 1),
-    (${PROFILE}, 'approved', 'k-private', true, 2)`;
+    (${PROFILE}, 'approved', ${ok}, false, 0),
+    (${PROFILE}, 'pending_review', ${pending}, false, 1),
+    (${PROFILE}, 'approved', ${priv}, true, 2)`;
 
+  // Projection routes R2 keys through /media.
   const publicView = await api.bySlug(SLUG);
-  expect(publicView?.photos).toEqual(['k-ok']);
-  expect(publicView?.privatePhotos).toEqual(['k-private']);
+  expect(publicView?.photos).toEqual([`/media/${ok}`]);
+  expect(publicView?.privatePhotos).toEqual([`/media/${priv}`]);
 
   // The owner/admin projection includes photos still in review.
   const ownerView = await api.byId(PROFILE);
-  expect(ownerView?.photos).toEqual(['k-ok', 'k-pending']);
+  expect(ownerView?.photos).toEqual([`/media/${ok}`, `/media/${pending}`]);
 });

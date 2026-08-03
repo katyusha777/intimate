@@ -107,9 +107,9 @@ export interface AccountApi {
   /** Submit a draft/paused profile for review → `pending_review`. */
   submitProfile(session: Session): Promise<void>;
 
-  // --- media (her gallery) ---
+  // --- media (her gallery) — bytes go to R2, the row records the key ---
   photos(session: Session): Promise<MediaItem[]>;
-  addPhoto(session: Session, input: { imageKey: string; isPrivate?: boolean }): Promise<void>;
+  addPhoto(session: Session, input: { bytes: ArrayBuffer; contentType: string; isPrivate?: boolean }): Promise<void>;
   removePhoto(session: Session, input: { id: string }): Promise<void>;
 
   // --- admin-capable access (ADMIN.md): by email, not session. ---

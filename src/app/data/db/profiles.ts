@@ -28,10 +28,12 @@ const iso = (v: Date | string | null): string | undefined =>
   v == null ? undefined : (v instanceof Date ? v : new Date(v)).toISOString();
 
 /**
- * media.image_key → served URL. Cloudflare Images delivery lands with the
- * upload flow (Phase D); dev-seeded keys are full URLs and pass through.
+ * media.image_key → served URL. R2-stored keys (`pub/…`, `priv/…`) route
+ * through /media (edge-cached, gated); seed/static keys (absolute path or full
+ * URL) pass through unchanged.
  */
-export const mediaUrl = (key: string): string => key;
+export const mediaUrl = (key: string): string =>
+  key.startsWith('/') || key.startsWith('http') ? key : `/media/${key}`;
 
 /**
  * media row → gallery entry. Public reads see `approved` only; the owner
