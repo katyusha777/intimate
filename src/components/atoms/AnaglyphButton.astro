@@ -57,7 +57,6 @@ const Tag = as ?? (href ? 'a' : 'button');
     --ana-clip: polygon(1.5% 6%, 100% 0, 98.5% 94%, 0 100%);
     /* ------------------------------------------------------------ */
 
-    position: relative;
     display: inline-block;
     padding: 0;
     border: none;
@@ -66,6 +65,15 @@ const Tag = as ?? (href ? 'a' : 'button');
     transform: rotate(-0.5deg);
     transition: transform 0.15s ease;
     -webkit-tap-highlight-color: transparent;
+  }
+  /* Layered default: unlayered component CSS beats ALL utility classes, so
+     `position: relative` here silently overrode `absolute` on callers
+     (SHOW ALL PHOTOS rendered bottom-LEFT). In @layer components it loses
+     to the utilities layer, as it should. */
+  @layer components {
+    .ana-btn {
+      position: relative;
+    }
   }
 
   .ana-btn__layer {

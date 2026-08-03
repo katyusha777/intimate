@@ -1,9 +1,10 @@
 ---
 /**
- * Airbnb-style photo mosaic for the desktop profile header. Count-aware:
- * 1 → single · 2 → split · 3 → big-left + 2 · 4 → 2×2 · 5+ → big-left + 2×2
- * with a "Show all photos" button. Each cell (and the button) opens the shared
- * lightbox at its index. Desktop only — mobile keeps the immersive hero.
+ * Desktop photo strip: her photos are PORTRAITS, so a mosaic of wide crops
+ * fought every image. Instead: a horizontal snap strip of uncropped 3:4
+ * cells — works for any photo count, in the slide-over and full-width alike.
+ * Each cell opens the shared lightbox at its index; SHOW ALL floats bottom-
+ * right. Desktop only — mobile keeps the immersive hero + square grid.
  */
 import * as m from '@/paraglide/messages';
 import Button from '@/components/atoms/Button.astro';
@@ -16,38 +17,21 @@ interface Props {
   class?: string;
 }
 const { photos, keyBase, alt, class: className } = Astro.props;
-
 const n = photos.length;
-const bucket = Math.min(n, 5); // how many cells the mosaic shows
-const shown = photos.slice(0, bucket);
-
-const gridClass =
-  bucket === 1
-    ? 'grid-cols-1 grid-rows-1'
-    : bucket === 2
-      ? 'grid-cols-2 grid-rows-1'
-      : bucket === 5
-        ? 'grid-cols-4 grid-rows-2'
-        : 'grid-cols-2 grid-rows-2'; // 3 and 4
-
-const cellSpan = (i: number) =>
-  i === 0 && bucket === 3
-    ? 'row-span-2'
-    : i === 0 && bucket === 5
-      ? 'col-span-2 row-span-2'
-      : '';
 ---
 
 <div class:list={['relative', className]}>
-  <div class:list={['grid h-[20rem] gap-2 overflow-hidden rounded-xl lg:h-[28rem]', gridClass]}>
+  <div
+    class="flex h-[26rem] snap-x snap-mandatory gap-2 overflow-x-auto overscroll-x-contain rounded-xl [scrollbar-width:none] lg:h-[30rem] [&::-webkit-scrollbar]:hidden"
+  >
     {
-      shown.map((photo, i) => (
+      photos.map((photo, i) => (
         <button
           type="button"
           data-lightbox
           data-lightbox-index={i}
           aria-label={`${alt} — ${i + 1}`}
-          class:list={['group relative cursor-pointer overflow-hidden bg-neutral-950', cellSpan(i)]}
+          class="group relative aspect-[3/4] h-full flex-none snap-start cursor-pointer overflow-hidden rounded-xl bg-neutral-950"
         >
           <SafeImage
             imageKey={`${keyBase}-${i}`}

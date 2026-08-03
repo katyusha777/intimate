@@ -14,14 +14,15 @@ interface Props {
 const { photos, keyBase, alt } = Astro.props;
 ---
 
-<div class="grid grid-cols-2 gap-2 md:grid-cols-3" data-lightbox-photos>
+<!-- Instagram-clean: square cells, hairline gaps, edge to edge. -->
+<div class="grid grid-cols-3 gap-0.5" data-lightbox-photos>
   {
     photos.map((photo, i) => (
       <button
         type="button"
         data-lightbox
         data-lightbox-index={i}
-        class="group relative aspect-[3/4] cursor-pointer overflow-hidden bg-neutral-950"
+        class="group relative aspect-square cursor-pointer overflow-hidden bg-neutral-950"
       >
         <SafeImage
           imageKey={`${keyBase}-${i}`}

@@ -51,17 +51,22 @@ function hoursLabel(h: (typeof hours)[keyof typeof hours]): string {
 ---
 
 <div data-profile-root data-lightbox-group data-profile-slug={p.slug}>
-  <!-- Mobile: immersive full-viewport hero (tap → lightbox). -->
+  <!-- Mobile: immersive full-viewport hero (tap → lightbox), the photo grid
+       directly beneath it — gallery first, facts after. (The grid is ALSO the
+       canonical lightbox photo source, hidden-but-present on desktop.) -->
   <div class="md:hidden">
     <ProfileHero profile={p} {replySpeed} />
   </div>
+  <section class="mt-0.5 md:hidden">
+    <ProfileGallery photos={p.photos} keyBase={p.id} alt={p.name} />
+  </section>
 
   <!-- One shared trust receipt for this profile (3.1): opened by delegation
        from every verified mark (hero, desktop h1, deal-card link). Lives inside
        [data-profile-root] so the mobile ProfileSheet lifts it with the page. -->
   <ReceiptSheet profile={p} {replySpeed} />
 
-  <!-- Desktop: title + Airbnb-style photo mosaic (no big hero, no gallery below). -->
+  <!-- Desktop: title + horizontal photo strip (uncropped 3:4 cells). -->
   <div class="mx-auto hidden max-w-7xl px-6 pt-8 md:block">
     <div class="mb-4 flex items-end justify-between gap-4">
       <div>
@@ -162,16 +167,6 @@ function hoursLabel(h: (typeof hours)[keyof typeof hours]): string {
             </section>
           )
         }
-
-        <!-- Gallery grid: mobile browsing alternative + the canonical lightbox
-             photo source. Hidden on desktop (the mosaic replaces it) but kept
-             in the DOM so the lightbox still sources every photo. -->
-        <section class="md:hidden">
-          <h2 class="display text-2xl">{m.profile_gallery()}</h2>
-          <div class="mt-4">
-            <ProfileGallery photos={p.photos} keyBase={p.id} alt={p.name} />
-          </div>
-        </section>
 
         <div class="border-t border-border pt-5">
           <ReportControl profileId={p.id} profileSlug={p.slug} profileName={p.name} />

@@ -38,15 +38,15 @@ const messages = {
   dot: unread > 0,
 };
 const contacts = tab('/contacts/', m.contacts_title(), '<circle cx="9" cy="8" r="3.2"/><path d="M3.5 20c0-3.3 2.5-5.4 5.5-5.4s5.5 2.1 5.5 5.4"/><path d="M16 5.2a3 3 0 0 1 0 5.6"/><path d="M18.5 20c0-2.6-1-4.4-2.6-5.2"/>', false, true);
-/* Lifebuoy — support is one tap away for everyone with a free slot. */
-const support = tab('/support/', m.nav_support(), '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="m5.6 5.6 3.5 3.5m5.8 0 3.5-3.5M5.6 18.4l3.5-3.5m5.8 0 3.5 3.5"/>', false, true);
+/* “?” in a circle — support, rightmost for everyone with a free slot. */
+const support = tab('/support/', m.nav_support(), '<circle cx="12" cy="12" r="9"/><path d="M9.3 9a2.7 2.7 0 0 1 5.4.3c0 1.8-2.7 2.2-2.7 3.7"/><path d="M12 17h.01"/>', false, true);
 
 const tabs =
   session?.role === 'advertiser'
-    ? [messages, contacts, support, { ...account, dot: !idVerified }]
+    ? [messages, contacts, { ...account, dot: !idVerified }, support]
     : session
       ? [search, favorites, messages, account]
-      : [search, favorites, support, account];
+      : [search, favorites, account, support];
 ---
 
 <!-- Floating liquid-glass pill dock — compact, so it never blankets the
