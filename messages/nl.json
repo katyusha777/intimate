@@ -156,6 +156,8 @@
   "photos_title": "Foto's",
   "photos_add": "Foto toevoegen",
   "photos_note": "Foto's worden op je apparaat opnieuw gecodeerd — locatiegegevens (EXIF) verlaten het nooit.",
+  "photos_in_review": "In review",
+  "photos_rejected": "Afgewezen",
   "verify_title": "Verificatie",
   "verify_step_sms": "Telefoonverificatie",
   "verify_step_id": "ID-verificatie",

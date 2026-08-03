@@ -43,7 +43,7 @@ export async function verificationQueue(): Promise<VerificationItem[]> {
       return {
         email: a.email,
         profileId: p?.id,
-        profileName: a.profileOverride?.name ?? p?.name ?? a.email,
+        profileName: p?.name ?? a.displayName ?? a.email,
         profileSlug: p?.slug,
         submittedAt: a.verificationSubmittedAt ?? '',
         phoneVerified: Boolean(a.phoneVerifiedAt),

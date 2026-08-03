@@ -1,10 +1,14 @@
 /**
- * Account domain model: verification state + the advertiser's own edits on
- * top of her public profile (docs/API.md seam; ARCHITECTURE §11 shapes the
- * verification fields).
+ * Account domain model: the `accounts` row (verification state + identity) plus
+ * the advertiser's own profile/media operations (docs/API.md seam; DATA.md).
+ *
+ * The mock's editor-delta layer is GONE (decided 2026-08-03): edits write the
+ * profiles row directly and publish immediately — no profileOverride, no
+ * extraPhotos/removedPhotos. Photos are `media` rows; human moderation is
+ * images-only (ADMIN.md §6).
  */
 import { z } from 'zod';
-import { ALL_SERVICES, AMENITIES, APPEARANCES, AVAILABLE_FOR, BODY_TYPES, BREAST_TYPES, CITIES, CUP_SIZES, DRINKING, EYE_COLORS, GENDERS, HAIR_COLORS, HAIR_LENGTHS, INCALL_LOCATIONS, LANGUAGES, MEETING_TYPES, NUMERIC_RANGES, PAYMENT_METHODS, PIERCINGS, POLICY_MIN_AGE, PUBIC_HAIR, SMOKING, TATTOOS, VERIFICATION_STATES, type CitySlug, type Service } from '@/lib/taxonomy';
+import { ALL_SERVICES, AMENITIES, APPEARANCES, AVAILABLE_FOR, BODY_TYPES, BREAST_TYPES, CITIES, CUP_SIZES, DRINKING, EYE_COLORS, GENDERS, HAIR_COLORS, HAIR_LENGTHS, INCALL_LOCATIONS, LANGUAGES, MEDIA_STATES, MEETING_TYPES, NUMERIC_RANGES, PAYMENT_METHODS, PIERCINGS, POLICY_MIN_AGE, PUBIC_HAIR, SMOKING, TATTOOS, VERIFICATION_STATES, type AccountType, type CitySlug, type Service } from '@/lib/taxonomy';
 import { OpeningHoursSchema, RateRowSchema, profileAge, type Profile } from '@/app/models/profile';
 import type { Session } from '@/app/models/session';
 
@@ -53,39 +57,62 @@ export const ProfileEditSchema = z.object({
 });
 export type ProfileEdit = z.infer<typeof ProfileEditSchema>;
 
+/** The `accounts` row as the app consumes it (favorites joined in). */
 export const AccountSchema = z.object({
   phone: z.string().optional(),
   phoneVerifiedAt: z.iso.datetime().optional(),
   idVerification: z.enum(VERIFICATION_STATES).default('unverified'),
   /** When the advertiser submitted ID for review (drives the admin queue order). */
   verificationSubmittedAt: z.iso.datetime().optional(),
-  /** When her photos passed verification (UX-PLAN 3.1) — a dated trust-receipt fact. */
-  photoVerifiedAt: z.iso.datetime().optional(),
+  // NOTE: photo verification is a PROFILE trust-receipt (`profiles.photo_verified_at`,
+  // read via profile.photoVerifiedAt) — never an account field.
   /** Admin's rejection reason (taxonomy) — shown to the advertiser verbatim (ADMIN.md §5). */
   verificationReason: z.string().optional(),
-  profileOverride: ProfileEditSchema.partial().default({}),
-  /** Small re-encoded JPEG data-URLs added via the media manager (mock store). */
-  extraPhotos: z.array(z.string()).default([]),
-  /** Indexes into the base profile's photos that were removed. */
-  removedPhotos: z.array(z.number().int().min(0)).default([]),
-  /** Favorited profile slugs synced from the device on login/register. */
+  /** Favorited profile slugs (the `favorites` table, projected). */
   favorites: z.array(z.string()).default([]),
 });
 export type Account = z.infer<typeof AccountSchema>;
 
-/** An account plus its owning email — the shape admin lookups return. */
+/**
+ * An account plus its identity — the shape admin lookups return. `accountType`
+ * is the REAL role column (the mock inferred it from the email local-part).
+ */
 export interface AccountRecord extends Account {
   email: string;
+  accountType: AccountType;
+  displayName: string;
+  /** Her profile slug, when she has one (advertisers). */
+  profileSlug?: string;
+}
+
+/** One `media` row as the dashboard renders it. */
+export interface MediaItem {
+  id: string;
+  /** Served URL (Cloudflare Images later; see data/db/account.ts mediaUrl). */
+  url: string;
+  isPrivate: boolean;
+  state: (typeof MEDIA_STATES)[number];
 }
 
 export interface AccountApi {
   get(session: Session): Promise<Account>;
   save(session: Session, patch: Partial<Account>): Promise<Account>;
-  /** The advertiser's profile with her edits + photo changes merged in. */
+  /** Her profile row (any state — this is the owner view), or null if none yet. */
   myProfile(session: Session): Promise<Profile | null>;
+  /**
+   * Write her profile columns. Creates the row on first save (state `draft`);
+   * edits to a live profile publish immediately (ADMIN.md §6).
+   */
+  saveProfile(session: Session, patch: Partial<ProfileEdit>): Promise<void>;
+  /** Submit a draft/paused profile for review → `pending_review`. */
+  submitProfile(session: Session): Promise<void>;
 
-  // --- admin-capable access (ADMIN.md): by email, not session. In prod these
-  // are RLS-gated to the service role; the admin action checks the role first.
+  // --- media (her gallery) ---
+  photos(session: Session): Promise<MediaItem[]>;
+  addPhoto(session: Session, input: { imageKey: string; isPrivate?: boolean }): Promise<void>;
+  removePhoto(session: Session, input: { id: string }): Promise<void>;
+
+  // --- admin-capable access (ADMIN.md): by email, not session. ---
   all(): Promise<AccountRecord[]>;
   byEmail(email: string): Promise<AccountRecord | null>;
   saveByEmail(email: string, patch: Partial<Account>): Promise<Account>;

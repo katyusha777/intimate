@@ -156,6 +156,8 @@
   "photos_title": "Fotos",
   "photos_add": "Foto hinzufügen",
   "photos_note": "Fotos werden auf deinem Gerät neu kodiert — Standortdaten (EXIF) verlassen es nie.",
+  "photos_in_review": "In Prüfung",
+  "photos_rejected": "Abgelehnt",
   "verify_title": "Verifizierung",
   "verify_step_sms": "Telefonverifizierung",
   "verify_step_id": "Ausweisverifizierung",

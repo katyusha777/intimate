@@ -29,7 +29,11 @@ export async function seed(url: string): Promise<number> {
   try {
     await sql.begin(async (tx) => {
       // Replace any previous seed (children first — FKs are NO ACTION).
-      await tx`delete from media where profile_id in (select id from profiles where account_id in (select id from accounts where email like '%@seed.local'))`;
+      // `favorites` included: a real client may have favorited a seeded
+      // profile, and that row would block the delete.
+      const seeded = tx`select id from profiles where account_id in (select id from accounts where email like '%@seed.local')`;
+      await tx`delete from favorites where profile_id in (${seeded})`;
+      await tx`delete from media where profile_id in (${seeded})`;
       await tx`delete from profiles where account_id in (select id from accounts where email like '%@seed.local')`;
       await tx`delete from accounts where email like '%@seed.local'`;
 

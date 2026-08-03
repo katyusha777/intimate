@@ -22,7 +22,7 @@ const selected = items.find((i) => i.email === selectedEmail) ?? null;
 
 const acct = selected ? await accountApi.byEmail(selected.email) : null;
 const profile = selected?.profileSlug ? await profilesApi.bySlug(selected.profileSlug) : null;
-const birthDate = acct?.profileOverride?.birthDate ?? profile?.birthDate ?? null;
+const birthDate = profile?.birthDate ?? null;
 
 function ago(iso: string): string {
   const mins = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));

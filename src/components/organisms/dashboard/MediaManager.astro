@@ -1,54 +1,36 @@
 ---
 /**
- * Photo manager: current photos (base + uploaded), remove per photo, add via
- * file input (mobile camera capture). Files are downscaled and RE-ENCODED to
- * JPEG on-device via canvas — which strips EXIF/GPS (hard rule 2) — then sent
- * as a small data-URL to the mock store.
+ * Photo manager: her `media` rows, remove per photo, add via file input
+ * (mobile camera capture). Files are downscaled and RE-ENCODED to JPEG
+ * on-device via canvas — which strips EXIF/GPS (hard rule 2) — then stored as
+ * a media row. New uploads sit in `pending_review` (images are the one
+ * human-moderated surface, ADMIN.md §6) and are badged until approved.
  */
 import * as m from '@/paraglide/messages';
-import type { Account } from '@/app/models/account';
-import type { Profile } from '@/app/models/profile';
+import type { MediaItem } from '@/app/models/account';
 import SafeImage from '@/components/atoms/SafeImage.astro';
 
 interface Props {
-  /** Base (unmerged) profile — indexes must match the original photos array. */
-  profile: Profile;
-  account: Account;
+  photos: MediaItem[];
 }
-const { profile: p, account } = Astro.props;
-const removed = new Set(account.removedPhotos);
+const { photos } = Astro.props;
 ---
 
 <div class="max-w-3xl space-y-5" data-media-manager>
   <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
     {
-      p.photos.map((photo, i) =>
-        removed.has(i) ? null : (
-          <div class="group relative aspect-[3/4] overflow-hidden bg-neutral-950">
-            <SafeImage imageKey={`${p.id}-${i}`} src={photo} alt={`${p.name} ${i + 1}`} class="h-full w-full" />
-            <button
-              type="button"
-              data-remove-photo
-              data-kind="base"
-              data-index={i}
-              aria-label="Remove"
-              class="card-heart absolute right-2 top-2 grid size-8 cursor-pointer place-items-center bg-neutral-950 text-white transition-transform active:scale-90"
-            >
-              <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
-            </button>
-          </div>
-        ),
-      )
-    }
-    {
-      account.extraPhotos.map((dataUrl, i) => (
+      photos.map((photo, i) => (
         <div class="group relative aspect-[3/4] overflow-hidden bg-neutral-950">
-          <img src={dataUrl} alt={`Upload ${i + 1}`} class="h-full w-full object-cover" />
+          <SafeImage imageKey={photo.id} src={photo.url} alt={`Photo ${i + 1}`} class="h-full w-full" />
+          {photo.state !== 'approved' && (
+            <span class="absolute bottom-2 left-2 bg-neutral-950/85 px-1.5 py-0.5 font-condensed text-2xs font-bold uppercase tracking-wide text-white">
+              {photo.state === 'rejected' ? m.photos_rejected() : m.photos_in_review()}
+            </span>
+          )}
           <button
             type="button"
             data-remove-photo
-            data-kind="extra"
-            data-index={i}
+            data-id={photo.id}
             aria-label="Remove"
             class="card-heart absolute right-2 top-2 grid size-8 cursor-pointer place-items-center bg-neutral-950 text-white transition-transform active:scale-90"
           >
@@ -91,10 +73,7 @@ const removed = new Set(account.removedPhotos);
 
       root.querySelectorAll<HTMLElement>('[data-remove-photo]').forEach((btn) => {
         btn.addEventListener('click', async () => {
-          await actions.account.removePhoto({
-            kind: btn.dataset.kind as 'base' | 'extra',
-            index: Number(btn.dataset.index),
-          });
+          await actions.account.removePhoto({ id: btn.dataset.id! });
           location.reload();
         });
       });

@@ -20,4 +20,16 @@ export const profilesApi: ProfilesApi = {
   async bySlug(slug) {
     return LIVE.find((p) => p.slug === slug) ?? null;
   },
+
+  // Admin surface: this backend is the read-only parity reference, so the
+  // reads work over the fixture and the write is a deliberate no-op.
+  async listAll() {
+    return ALL;
+  },
+  async byId(id) {
+    return ALL.find((p) => p.id === id) ?? null;
+  },
+  async setState() {
+    throw new Error('json backend is read-only — the db backend owns writes');
+  },
 };

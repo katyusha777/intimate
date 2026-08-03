@@ -2,17 +2,16 @@
 /**
  * Clients directory (docs/ADMIN.md §8). Every client account — favorites,
  * phone verification, reports made. Detail resolves their relations (favorited
- * profiles). Demo clients are seeded so the directory is populated.
+ * profiles).
  */
 import { getAdmin } from '@/actions/admin/lib';
-import { listClients, seedClients } from '@/actions/admin/entities';
+import { listClients } from '@/actions/admin/entities';
 import { accountApi } from '@/app/api/account';
 import { profilesApi } from '@/app/api/profiles';
 import AdminShell from '@/components/organisms/admin/AdminShell.astro';
 import SafeImage from '@/components/atoms/SafeImage.astro';
 
 const session = await getAdmin(Astro);
-if (session) await seedClients();
 const clients = session ? await listClients() : [];
 const email = Astro.url.searchParams.get('email');
 const selected = clients.find((c) => c.email === email) ?? null;

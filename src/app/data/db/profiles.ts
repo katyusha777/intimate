@@ -10,7 +10,7 @@
  * ponytail: loads all live rows then filters in JS (shared core) — push city/
  * gender/services into SQL when the live-profile count makes it matter.
  */
-import { inArray } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import { createDb, type Db } from '@/db/client';
 import { media, profiles } from '@/db/schema';
 import {
@@ -31,11 +31,20 @@ const iso = (v: Date | string | null): string | undefined =>
  * media.image_key → served URL. Cloudflare Images delivery lands with the
  * upload flow (Phase D); dev-seeded keys are full URLs and pass through.
  */
-const mediaUrl = (key: string): string => key;
+export const mediaUrl = (key: string): string => key;
 
-function toProfile(row: ProfileRow, mediaRows: MediaRow[], now: Date): Profile {
+/**
+ * media row → gallery entry. Public reads see `approved` only; the owner
+ * dashboard passes `allStates` so she can see her pending uploads too.
+ */
+export function toProfile(
+  row: ProfileRow,
+  mediaRows: MediaRow[],
+  now: Date,
+  opts: { allStates?: boolean } = {},
+): Profile {
   const gallery = mediaRows
-    .filter((m) => m.profileId === row.id && m.state === 'approved')
+    .filter((m) => m.profileId === row.id && (opts.allStates || m.state === 'approved'))
     .sort((a, b) => a.position - b.position);
   return ProfileSchema.parse({
     id: row.id,
@@ -107,7 +116,20 @@ async function liveProfiles(db: Db, now: Date, slug?: string): Promise<Profile[]
   return rows.map((r) => toProfile(r, mediaRows, now));
 }
 
-/** Backend over any Db — tests construct one against local Postgres. */
+/** Every profile, any state (admin surfaces) — with all media states. */
+async function allProfiles(db: Db, now: Date, id?: string): Promise<Profile[]> {
+  const rows = await db.query.profiles.findMany({
+    where: id === undefined ? undefined : (p, { eq }) => eq(p.id, id),
+  });
+  if (rows.length === 0) return [];
+  const mediaRows = await db
+    .select()
+    .from(media)
+    .where(inArray(media.profileId, rows.map((r) => r.id)));
+  return rows.map((r) => toProfile(r, mediaRows, now, { allStates: true }));
+}
+
+/** Backend over any Db — tests construct one directly. */
 export function makeProfilesApi(db: Db): ProfilesApi {
   return {
     async list(params = {}) {
@@ -116,6 +138,16 @@ export function makeProfilesApi(db: Db): ProfilesApi {
     },
     async bySlug(slug) {
       return (await liveProfiles(db, new Date(), slug))[0] ?? null;
+    },
+    async listAll() {
+      return allProfiles(db, new Date());
+    },
+    async byId(id) {
+      return (await allProfiles(db, new Date(), id))[0] ?? null;
+    },
+    async setState(id, state) {
+      // state_changed_at is stamped by the DB trigger (0001_security).
+      await db.update(profiles).set({ state }).where(eq(profiles.id, id));
     },
   };
 }
@@ -134,5 +166,8 @@ export function profilesDbApi(binding: () => Pick<Hyperdrive, 'connectionString'
   return {
     list: (p) => api().list(p),
     bySlug: (s) => api().bySlug(s),
+    listAll: () => api().listAll(),
+    byId: (id) => api().byId(id),
+    setState: (id, state) => api().setState(id, state),
   };
 }

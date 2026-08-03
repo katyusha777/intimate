@@ -204,6 +204,8 @@
   "photos_title": "Photos",
   "photos_add": "Add photo",
   "photos_note": "Photos are re-encoded on your device — location metadata (EXIF) never leaves it.",
+  "photos_in_review": "In review",
+  "photos_rejected": "Rejected",
   "verify_title": "Verification",
   "verify_step_sms": "Phone verification",
   "verify_step_id": "ID verification",

@@ -124,7 +124,7 @@ and the filter stay one dimension.
 | `api/profiles` | `list(params)` → `{items,total}` · `bySlug(slug)` | **`data/db/profiles.ts` (Drizzle → Hyperdrive → Postgres)**; shared list core `applyProfileListParams` + parity-tested vs the json reference |
 | `api/articles` | `list({limit})` · `bySlug(slug)` | `data/json/articles.json` (4 dummy articles) |
 | `api/session` | `current(ctx)` · `register` · `signIn` · `signOut` | **`data/supabase/session.ts` (Supabase Auth, @supabase/ssr cookies, getClaims)**; signup wiring = DB triggers (drizzle/0002) |
-| `api/account` | `get` · `save` · `myProfile` | KV-backed mock (`data/json/session.ts`) |
+| `api/account` | `get` · `save` · `myProfile` · `saveProfile` · `submitProfile` · `photos`/`addPhoto`/`removePhoto` · admin `all`/`byEmail`/`saveByEmail` | **`data/db/account.ts`** — accounts row + favorites/media tables; edits write `profiles` columns directly |
 | `api/messaging` | threads/messages/contacts/settings (MESSAGING.md §2) | KV-backed mock; enforcement in the action layer until the RLS swap |
 
 `list` params: `city · gender · service · onlineOnly · featuredOnly ·

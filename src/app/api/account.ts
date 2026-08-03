@@ -1,2 +1,2 @@
-/** THE SEAM (docs/API.md): swap to the Supabase backend by changing this line. */
-export { accountApi } from '@/app/data/json/account';
+/** THE SEAM (docs/API.md): live on Postgres — the KV mock is gone. */
+export { accountApi } from '@/app/data/db/account';

@@ -89,8 +89,13 @@ sort/filter. `opening_hours` + `description_translations` are JSONB.
   `ProfileEditSchema` · `CHECK price_from ≥ 0`.
 
 **media** — replaces the mock's `photos[]` / `private_photos[]`. `image_key` =
-Cloudflare Images id (never a URL or data-URL — hard rule 2, EXIF stripped
-before upload). `state` (media review), `is_private` (her locked set, revealed
+Cloudflare Images id (hard rule 2, EXIF stripped before upload). **Interim
+(`ponytail:`):** until the Images upload lands (needs API credentials) the
+client's EXIF-stripped data-URL IS the `image_key`; the swap is one function
+(`mediaUrl` in `data/db/profiles.ts`) plus the upload call in
+`actions.account.addPhoto`. Uploads enter `pending_review` — images are the one
+human-moderated surface (ADMIN.md §6) — and the owner dashboard badges them
+until approved. `state` (media review), `is_private` (her locked set, revealed
 per-thread — UX-PLAN 4.4), `position` (gallery order), `nsfw_score`. The profile
 read model still exposes `photos: string[]` / `privatePhotos: string[]` — the
 backend projects them from approved/private media rows.
@@ -154,7 +159,9 @@ The Zod models and `XxxApi` interfaces are stable; only the backend swaps
 |---|---|
 | identity = **email** (`clientEmail`, `mockacct:{email}`) | identity = **`accounts.id` uuid**; email lives in `auth.users` |
 | `profile.photos[]` / `privatePhotos[]` | `media` rows (projected back to `string[]`) |
-| `account.profileOverride` + `extraPhotos` + `removedPhotos` (editor deltas over a base profile) | the profile row **is** editable directly (edits publish immediately) + `media`; no override layer |
+| `account.profileOverride` + `extraPhotos` + `removedPhotos` (editor deltas over a base profile) | ✅ DONE — the profile row **is** edited directly (edits publish immediately) + `media` rows; no override layer. A fresh advertiser gets an unsaved blank profile to fill in; her first save INSERTs the row (`draft`, slug auto-derived) |
+| admin profile-state overrides in KV | ✅ DONE — `profilesApi.setState` UPDATEs the row (`listAll`/`byId` = admin reads, every state); who/why lives in `audit_log` |
+| admin client list inferred from the email local-part | ✅ DONE — `accounts.account_type` is a real column |
 | mock messaging mode default `everyone` (explorable demo) | DB default `off` — the product law; the swap must NOT carry the mock default |
 | `clientName` derived from email | `accounts.display_name` |
 | `account.favorites[]` (slug array) | `favorites` table (client × profile) |

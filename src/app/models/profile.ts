@@ -38,6 +38,7 @@ import {
   type CitySlug,
   type Day,
   type Locale,
+  type ProfileState,
   type Service,
 } from '@/lib/taxonomy';
 
@@ -434,10 +435,18 @@ export function applyProfileListParams(
   return { items: rows.slice(q.offset, q.offset + q.limit), total: rows.length };
 }
 
-/** Contract every backend implements (json today, Drizzle/Supabase later). */
+/** Contract every backend implements (Drizzle live; json = parity reference). */
 export interface ProfilesApi {
+  /** PUBLIC read: `live` profiles only (the lifecycle rule, hard rule 6). */
   list(params?: ProfileListParams): Promise<ProfileList>;
   bySlug(slug: string): Promise<Profile | null>;
+
+  // --- admin-capable (ADMIN.md): every state. Guarded by the admin action. ---
+  /** Every profile regardless of state — the god-view + moderation queues. */
+  listAll(): Promise<Profile[]>;
+  byId(id: string): Promise<Profile | null>;
+  /** Lifecycle transition (approve/pause/block/delete). Soft states only. */
+  setState(id: string, state: ProfileState): Promise<void>;
 }
 
 /**

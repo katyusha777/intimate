@@ -76,7 +76,24 @@ export const server = {
         // AI-adjacent rule applies to users too: input is data — strict parse.
         const parsed = ProfileEditSchema.partial().safeParse(patch);
         if (!parsed.success) throw new ActionError({ code: "BAD_REQUEST" });
-        await accountApi.save(session, { profileOverride: parsed.data });
+        // Writes her profiles row directly — edits publish immediately; the
+        // first save creates the draft (ADMIN.md §6, DATA.md).
+        try {
+          await accountApi.saveProfile(session, parsed.data);
+        } catch {
+          // Missing identity fields on a first save (name/birthDate/gender/city).
+          throw new ActionError({ code: "BAD_REQUEST" });
+        }
+        return { ok: true };
+      },
+    }),
+
+    // Draft/paused → the moderation queue. Never auto-publishes (hard rule 5).
+    submitProfile: defineAction({
+      input: z.object({}),
+      handler: async (_input, context) => {
+        const session = await requireSession(context);
+        await accountApi.submitProfile(session);
         return { ok: true };
       },
     }),
@@ -101,33 +118,23 @@ export const server = {
           .string()
           .regex(/^data:image\/jpeg;base64,/)
           .max(900_000),
+        isPrivate: z.boolean().default(false),
       }),
-      handler: async ({ dataUrl }, context) => {
+      handler: async ({ dataUrl, isPrivate }, context) => {
         const session = await requireSession(context);
-        const acct = await accountApi.get(session);
-        if (acct.extraPhotos.length >= 8) throw new ActionError({ code: "BAD_REQUEST" });
-        await accountApi.save(session, { extraPhotos: [...acct.extraPhotos, dataUrl] });
+        // ponytail: the data-URL IS the image_key until the Cloudflare Images
+        // upload lands (needs API credentials) — swap point is one function,
+        // `mediaUrl`/this call. Fat rows are the known ceiling.
+        await accountApi.addPhoto(session, { imageKey: dataUrl, isPrivate });
         return { ok: true };
       },
     }),
 
     removePhoto: defineAction({
-      input: z.object({
-        /** base = index in the ORIGINAL profile.photos array; extra = index in extraPhotos. */
-        kind: z.enum(["base", "extra"]),
-        index: z.number().int().min(0),
-      }),
-      handler: async ({ kind, index }, context) => {
+      input: z.object({ id: z.string().max(60) }),
+      handler: async ({ id }, context) => {
         const session = await requireSession(context);
-        const acct = await accountApi.get(session);
-        if (kind === "base") {
-          await accountApi.save(session, {
-            removedPhotos: [...new Set([...acct.removedPhotos, index])],
-          });
-        } else {
-          const extras = acct.extraPhotos.filter((_, i) => i !== index);
-          await accountApi.save(session, { extraPhotos: extras });
-        }
+        await accountApi.removePhoto(session, { id });
         return { ok: true };
       },
     }),
