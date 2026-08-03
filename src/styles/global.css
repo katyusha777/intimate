@@ -471,11 +471,14 @@
   }
 
   /* An open sheet or lightbox LOCKS the page behind it — native <dialog>
-     inerts interaction but wheel/touch scroll still reached the document. */
+     inerts interaction but wheel/touch scroll still reached the document.
+     ROOT ONLY: putting overflow:hidden on .page-zoom (the header's ancestor)
+     made iOS Safari un-stick the sticky header — WebKit refuses position:
+     sticky inside an overflow:hidden ancestor, so the header rode away with
+     the page every time a profile opened. Chrome tolerated it, which is why
+     emulation never caught it. */
   html[data-sheet-open],
-  html[data-lightbox-open],
-  html[data-sheet-open] .page-zoom,
-  html[data-lightbox-open] .page-zoom {
+  html[data-lightbox-open] {
     overflow: hidden;
   }
 
