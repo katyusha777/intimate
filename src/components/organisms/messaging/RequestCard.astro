@@ -1,0 +1,153 @@
+---
+/**
+ * RequestCard (UX-PLAN 4.2/4.3): the pre-qualified contact card rendered in the
+ * thread. Client side: read-only summary of what he asked for. Professional
+ * side on a PENDING thread: the same card + Accept / Decline (with an optional
+ * quick decline reply). Accept opens the chat + unlocks her private set; decline
+ * closes the thread silently.
+ *
+ * The price shown is the SNAPSHOT from the payload — never recomputed, so a rate
+ * change later never rewrites a sent card (immutable, UX-PLAN 4.1 DoD).
+ */
+import * as m from '@/paraglide/messages';
+import type { RequestPayload } from '@/app/models/messaging';
+import { rateDurationLabel, serviceLabel } from '@/lib/labels';
+
+interface Props {
+  request: RequestPayload;
+  viewer: 'professional' | 'client';
+  /** Thread state — Accept/Decline only render when 'pending'. */
+  state: string;
+  threadId: string;
+}
+const { request: r, viewer, state, threadId } = Astro.props;
+
+const whenLabel =
+  r.when === 'now' ? m.request_when_now() : r.when === 'tonight' ? m.request_when_tonight() : (r.slot ?? m.request_when_slot());
+const canRespond = viewer === 'professional' && state === 'pending';
+const row = 'flex items-center justify-between gap-4 border-b border-border py-2 text-sm last:border-b-0';
+const label = 'eyebrow text-2xs text-muted-foreground';
+---
+
+<div
+  class="mx-auto my-2 w-full max-w-sm overflow-hidden rounded-2xl border border-brand/40 bg-card"
+  data-request-card
+  data-thread-id={threadId}
+>
+  <div class="bg-brand/10 px-4 py-2.5">
+    <p class="eyebrow text-2xs text-brand">{m.request_card_title()}</p>
+  </div>
+  <div class="px-4 py-1">
+    <div class={row}>
+      <span class={label}>{m.request_step_service()}</span>
+      <span class="font-medium">{serviceLabel(r.service)}</span>
+    </div>
+    <div class={row}>
+      <span class={label}>{m.request_step_duration()}</span>
+      <span class="font-medium">{rateDurationLabel(r.duration)}</span>
+    </div>
+    <div class={row}>
+      <span class={label}>{m.request_card_price()}</span>
+      <span class="font-condensed text-base font-bold">€{r.priceAtRequest}</span>
+    </div>
+    <div class={row}>
+      <span class={label}>{m.request_step_when()}</span>
+      <span class="font-medium">{whenLabel}</span>
+    </div>
+    {
+      r.note && (
+        <p class="border-b border-border py-2 text-sm">
+          <span class={label}>{m.request_note_label()}</span>
+          <span class="mt-0.5 block">{r.note}</span>
+        </p>
+      )
+    }
+    {
+      r.screeningAnswer && (
+        <p class="py-2 text-sm">
+          <span class={label}>{m.request_card_screening()}</span>
+          <span class="mt-0.5 block">{r.screeningAnswer}</span>
+        </p>
+      )
+    }
+  </div>
+
+  {
+    canRespond && (
+      <div class="border-t border-border p-3" data-request-actions>
+        <div class="flex gap-2">
+          <button
+            type="button"
+            data-request-decline
+            class="flex-1 cursor-pointer border border-foreground/20 px-3 py-2 text-sm font-medium transition-colors hover:border-foreground/60"
+          >
+            {m.request_decline()}
+          </button>
+          <button
+            type="button"
+            data-request-accept
+            class="flex-1 cursor-pointer bg-brand px-3 py-2 text-sm font-bold text-white transition-transform active:scale-95"
+          >
+            {m.request_accept()}
+          </button>
+        </div>
+        <div data-decline-reply hidden class="mt-2">
+          <span class="slab-field block">
+            <span class="slab-field__face block">
+              <input
+                type="text"
+                data-decline-input
+                maxlength="140"
+                placeholder={m.request_decline_ph()}
+                class="w-full bg-transparent p-2.5 text-sm caret-brand outline-none placeholder:text-muted-foreground"
+              />
+            </span>
+          </span>
+          <button
+            type="button"
+            data-decline-send
+            class="mt-2 w-full cursor-pointer border border-foreground/20 px-3 py-2 text-sm font-medium transition-colors hover:border-foreground/60"
+          >
+            {m.request_decline_send()}
+          </button>
+        </div>
+      </div>
+    )
+  }
+</div>
+
+<script>
+  import { actions } from 'astro:actions';
+
+  function initRequestCards() {
+    document.querySelectorAll<HTMLElement>('[data-request-actions]').forEach((box) => {
+      if (box.dataset.init) return;
+      box.dataset.init = '1';
+      const card = box.closest<HTMLElement>('[data-request-card]')!;
+      const threadId = card.dataset.threadId!;
+
+      // Accept → reload into the open chat (system card + unlocked set are SSR).
+      box.querySelector('[data-request-accept]')?.addEventListener('click', async () => {
+        await actions.messaging.respondRequest({ threadId, accept: true });
+        location.reload();
+      });
+
+      // Decline reveals the optional quick-reply; a second tap sends + closes.
+      const declineBtn = box.querySelector<HTMLElement>('[data-request-decline]')!;
+      const replyBox = box.querySelector<HTMLElement>('[data-decline-reply]')!;
+      const input = box.querySelector<HTMLInputElement>('[data-decline-input]');
+      const doDecline = async (reply?: string) => {
+        await actions.messaging.respondRequest({ threadId, accept: false, reply });
+        location.href = `/${document.documentElement.lang || 'en'}/messages/`;
+      };
+      declineBtn.addEventListener('click', () => {
+        // First tap opens the reply box; a repeat tap with it open declines silently.
+        if (replyBox.hidden) replyBox.hidden = false;
+        else doDecline();
+      });
+      box.querySelector('[data-decline-send]')?.addEventListener('click', () => doDecline(input?.value.trim() || undefined));
+    });
+  }
+  initRequestCards();
+  document.addEventListener('astro:page-load', initRequestCards);
+</script>

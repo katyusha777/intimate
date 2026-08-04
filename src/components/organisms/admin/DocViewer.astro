@@ -1,0 +1,77 @@
+---
+/**
+ * Verification document viewer (docs/ADMIN.md §5, hard rule 3). Blurred,
+ * tap-to-reveal. Revealing loads the docs from short-TTL SIGNED urls served by
+ * the admin vdoc route — which audit-logs EACH read and streams from the private
+ * EU bucket. Watermarked (ADMIN VIEW · {admin}) as a screenshot deterrent; the
+ * bytes are never cached.
+ */
+interface Props {
+  /** Short-TTL signed URLs for this account's docs (id + selfie). */
+  srcs: string[];
+  /** Admin identity for the watermark. */
+  admin: string;
+}
+const { srcs, admin } = Astro.props;
+const gridCls = srcs.length > 1 ? 'grid-cols-2' : 'grid-cols-1';
+---
+
+<figure class="relative overflow-hidden border border-border bg-muted" data-doc>
+  <div class={`grid gap-1 p-1 ${gridCls}`}>
+    {
+      srcs.map((src) => (
+        <img data-doc-img data-src={src} alt="" class="aspect-[3/2] w-full bg-card object-contain" />
+      ))
+    }
+    {
+      srcs.length === 0 && (
+        <div class="grid aspect-[3/2] place-items-center text-sm text-muted-foreground">
+          No documents submitted.
+        </div>
+      )
+    }
+  </div>
+
+  {
+    srcs.length > 0 && (
+      <div data-doc-cover class="absolute inset-0 grid place-items-center bg-card/70 backdrop-blur-md">
+        <button
+          type="button"
+          data-doc-reveal
+          class="slab-cut flex items-center gap-2 border border-foreground/30 bg-background px-3 py-1.5 text-sm font-medium"
+        >
+          <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" /><circle cx="12" cy="12" r="3" /></svg>
+          Reveal documents (logged)
+        </button>
+      </div>
+    )
+  }
+
+  <div
+    data-doc-mark
+    hidden
+    class="pointer-events-none absolute inset-0 grid select-none place-items-center text-center text-lg font-bold uppercase tracking-widest text-brand/30"
+    style="transform: rotate(-24deg)"
+  >
+    ADMIN VIEW · {admin.split('@')[0]}
+  </div>
+</figure>
+
+<script>
+  function initDoc() {
+    document.querySelectorAll<HTMLElement>('[data-doc]').forEach((fig) => {
+      if (fig.dataset.init) return;
+      fig.dataset.init = '1';
+      fig.querySelector<HTMLButtonElement>('[data-doc-reveal]')?.addEventListener('click', () => {
+        // Setting src hits the audited serve route (every read is logged there).
+        fig.querySelectorAll<HTMLImageElement>('[data-doc-img]').forEach((img) => {
+          if (img.dataset.src) img.src = img.dataset.src;
+        });
+        fig.querySelector<HTMLElement>('[data-doc-cover]')!.hidden = true;
+        fig.querySelector<HTMLElement>('[data-doc-mark]')!.hidden = false;
+      });
+    });
+  }
+  initDoc();
+  document.addEventListener('astro:page-load', initDoc);
+</script>

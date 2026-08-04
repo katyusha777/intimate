@@ -1,0 +1,28 @@
+---
+/**
+ * Email-confirmation landing (SUPABASE.md §2.2): the mail's link carries
+ * token_hash + type; verifyOtp exchanges it for a cookie session. Locale-less
+ * by design (middleware BYPASS) — the redirect negotiates the locale.
+ *
+ * Dashboard prerequisites (email templates):
+ *   Confirm signup:  {{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email
+ *   Reset password:  {{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery&next=/auth/reset
+ * `next` is followed after a successful verify (recovery → set a new password).
+ */
+import type { EmailOtpType } from '@supabase/supabase-js';
+import { supabaseServer } from '@/lib/supabase';
+import { negotiateLocale } from '@/lib/i18n';
+
+const tokenHash = Astro.url.searchParams.get('token_hash');
+const type = Astro.url.searchParams.get('type') as EmailOtpType | null;
+const nextParam = Astro.url.searchParams.get('next');
+// Only same-site absolute paths — never an open redirect.
+const next = nextParam && /^\/(?!\/)/.test(nextParam) ? nextParam : '/account/';
+const locale = negotiateLocale(Astro.request.headers.get('accept-language'));
+
+if (tokenHash && type) {
+  const { error } = await supabaseServer(Astro).auth.verifyOtp({ token_hash: tokenHash, type });
+  if (!error) return Astro.redirect(`/${locale}${next}`, 302);
+}
+return Astro.redirect(`/${locale}/`, 302);
+---

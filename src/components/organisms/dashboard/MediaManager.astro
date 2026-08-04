@@ -1,0 +1,91 @@
+---
+/**
+ * Photo manager: her `media` rows, remove per photo, add via file input
+ * (mobile camera capture). Files are downscaled and RE-ENCODED to JPEG
+ * on-device via canvas — which strips EXIF/GPS (hard rule 2) — then stored as
+ * a media row. New uploads sit in `pending_review` (images are the one
+ * human-moderated surface, ADMIN.md §6) and are badged until approved.
+ */
+import * as m from '@/paraglide/messages';
+import type { MediaItem } from '@/app/models/account';
+import SafeImage from '@/components/atoms/SafeImage.astro';
+
+interface Props {
+  photos: MediaItem[];
+}
+const { photos } = Astro.props;
+---
+
+<div class="max-w-3xl space-y-5" data-media-manager>
+  <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
+    {
+      photos.map((photo, i) => (
+        <div class="group relative aspect-[3/4] overflow-hidden bg-neutral-950">
+          <SafeImage imageKey={photo.id} src={photo.url} alt={`Photo ${i + 1}`} class="h-full w-full" />
+          {photo.state !== 'approved' && (
+            <span class="absolute bottom-2 left-2 bg-neutral-950/85 px-1.5 py-0.5 font-condensed text-2xs font-bold uppercase tracking-wide text-white">
+              {photo.state === 'rejected' ? m.photos_rejected() : m.photos_in_review()}
+            </span>
+          )}
+          <button
+            type="button"
+            data-remove-photo
+            data-id={photo.id}
+            aria-label="Remove"
+            class="card-heart absolute right-2 top-2 grid size-8 cursor-pointer place-items-center bg-neutral-950 text-white transition-transform active:scale-90"
+          >
+            <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+          </button>
+        </div>
+      ))
+    }
+
+    <label
+      class="flex aspect-[3/4] cursor-pointer flex-col items-center justify-center gap-2 border border-dashed border-foreground/30 text-muted-foreground transition-colors hover:border-foreground/70 hover:text-foreground"
+    >
+      <input type="file" accept="image/*" capture="environment" data-add-photo class="sr-only" />
+      <svg class="size-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+      <span class="text-sm font-medium" data-add-label>{m.photos_add()}</span>
+    </label>
+  </div>
+
+  <p class="max-w-md text-xs text-muted-foreground">{m.photos_note()}</p>
+</div>
+
+<script>
+  import { actions } from 'astro:actions';
+  import { reencode } from '@/lib/reencode';
+
+  function initMedia() {
+    document.querySelectorAll<HTMLElement>('[data-media-manager]').forEach((root) => {
+      if (root.dataset.init) return;
+      root.dataset.init = '1';
+
+      root.querySelectorAll<HTMLElement>('[data-remove-photo]').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          await actions.account.removePhoto({ id: btn.dataset.id! });
+          location.reload();
+        });
+      });
+
+      const input = root.querySelector<HTMLInputElement>('[data-add-photo]');
+      input?.addEventListener('change', async () => {
+        const file = input.files?.[0];
+        if (!file) return;
+        const label = root.querySelector<HTMLElement>('[data-add-label]')!;
+        label.textContent = '…';
+        try {
+          const dataUrl = await reencode(file);
+          const { error } = await actions.account.addPhoto({ dataUrl });
+          if (error) throw error;
+          location.reload();
+        } catch {
+          label.textContent = '✕';
+          setTimeout(() => location.reload(), 800);
+        }
+      });
+    });
+  }
+  initMedia();
+  document.addEventListener('astro:page-load', initMedia);
+</script>

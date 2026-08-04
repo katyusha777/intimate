@@ -1,0 +1,305 @@
+---
+import Layout from '@/layouts/Layout.astro';
+import * as m from '@/paraglide/messages';
+import { isLocale, localizePath, samePathAlternates } from '@/lib/i18n';
+import { organizationJsonLd, websiteJsonLd } from '@/lib/seo';
+import ProfileCard from '@/components/organisms/profile/ProfileCard.astro';
+import Section from '@/components/molecules/Section.astro';
+import SafeImage from '@/components/atoms/SafeImage.astro';
+import CitySheet from '@/components/molecules/CitySheet.astro';
+import Button from '@/components/atoms/Button.astro';
+import { articlesForLocale } from '@/lib/articles';
+import { profilesApi } from '@/app/api/profiles';
+import { sessionApi } from '@/app/api/session';
+
+const locale = Astro.params.locale;
+if (!isLocale(locale)) return new Response(null, { status: 404 });
+
+/* Supply is the constraint: the signed-out home leads with a professional
+ * recruitment CTA (browsing needs no account and continues below). */
+const loggedOut = !(await sessionApi.current(Astro));
+
+const alternates = samePathAlternates(Astro.url.origin, '/');
+const jsonLd = [websiteJsonLd(Astro.url.origin, locale), organizationJsonLd(Astro.url.origin)];
+
+/* The home is the NATIONAL shelf — never a city page. A chosen city has its
+ * own canonical URL (/{locale}/{city}/); the saved preference surfaces only as
+ * the labelled "back to your city" chip below, so coming Home always feels
+ * like leaving the city. */
+const [{ items: online, total: onlineCount }, { items: fresh }, { items: featured }, articles] =
+  await Promise.all([
+    // Default shelf (1.4): ONLINE NOW — online-first, the every-visit question.
+    profilesApi.list({ onlineOnly: true, sort: 'recently_online', limit: 18 }),
+    // NEW THIS WEEK (1.4) — its own shelf, the cold-start boost. Mock: newest
+    // arrivals (the real backend windows to a true 7 days).
+    profilesApi.list({ sort: 'newest', limit: 12 }),
+    profilesApi.list({ featuredOnly: true, limit: 8 }),
+    articlesForLocale(locale),
+  ]);
+
+const rail = featured.slice(0, 8);
+const featuredArticle = articles.find((a) => a.data.featured) ?? articles[0];
+const moreArticles = articles.filter((a) => a !== featuredArticle).slice(0, 3);
+
+---
+
+<Layout
+  description="Verified directory for legal adult services in the Netherlands — private visits, escorts, massage. Every profile verified."
+  canonical={new URL(`/${locale}/`, Astro.url.origin).href}
+  {alternates}
+  {jsonLd}
+>
+  <!-- ===================================================================
+       MOBILE FOLD (UX-PLAN 1.1) — the every-visit question, "who's here now?"
+       Live local header line + compact search + link-chips, then the first
+       card row. No hero pitch wall, no account CTA above the fold. Desktop
+       (lg:) keeps the cinematic hero band below.
+       =================================================================== -->
+  <section class="mx-auto max-w-7xl px-4 pt-4 md:px-6 lg:hidden">
+    <!-- Live national header line: "THE NETHERLANDS · 34 ONLINE NOW". -->
+    <p class="eyebrow flex items-center gap-2 font-condensed text-base font-bold uppercase tracking-wide">
+      <span>{m.where_netherlands()}</span>
+      <span class="text-foreground/30" aria-hidden="true">·</span>
+      <span class="flex items-center gap-1.5 text-brand">
+        <span class="size-1.5 rounded-full bg-online"></span>
+        {m.fold_online_count({ count: onlineCount })}
+      </span>
+    </p>
+    <!-- Hero pitch collapses to one line. -->
+    <p class="mt-1 text-sm text-muted-foreground">{m.fold_pitch()}</p>
+
+    {
+      loggedOut && (
+        <div class="mt-5 text-center">
+          <!-- Same anaglyph skew as every primary CTA — unmistakably clickable. -->
+          <Button as="a" href={localizePath('/account/')} class="block w-full">
+            {m.cta_start_advertising()} →
+          </Button>
+          <p class="mt-2.5 text-2xs text-muted-foreground">Verified-only · free in early access</p>
+        </div>
+      )
+    }
+
+  </section>
+
+  <!-- DESKTOP HERO: full-bleed cinematic media on an ink panel. Kept for lg+
+       only; the fold above owns mobile. No account CTA — START ADVERTISING
+       lives in the menu + footer (1.1). -->
+  <section class="dark relative hidden overflow-hidden bg-neutral-950 text-white lg:block">
+    <div class="absolute -inset-px" data-safe-video-wrap>
+      <video
+        class="hidden h-full w-full object-cover"
+        data-safe-video
+        muted
+        loop
+        playsinline
+        autoplay
+        preload="metadata"
+        poster="/video/hero-poster.jpg"
+      >
+        <source src="/video/hero.webm" type="video/webm" />
+        <source src="/video/hero.mp4" type="video/mp4" />
+      </video>
+      <SafeImage imageKey="hero-video" alt="" class="h-full w-full" loading="eager" />
+    </div>
+    <div class="hero-panel absolute inset-y-0 left-0 w-[58%] bg-neutral-950" aria-hidden="true"></div>
+
+    <div class="relative mx-auto max-w-7xl px-6">
+      <div class="py-24 xl:py-40 lg:max-w-[46%]">
+        <p class="eyebrow flex items-center gap-2 font-condensed text-lg font-bold uppercase tracking-wide text-white">
+          <span>{m.where_netherlands()}</span>
+          <span class="text-white/30" aria-hidden="true">·</span>
+          <span class="flex items-center gap-1.5">
+            <span class="size-1.5 rounded-full bg-online"></span>
+            {m.fold_online_count({ count: onlineCount })}
+          </span>
+        </p>
+        <h1 class="mt-4 text-5xl font-bold tracking-tight xl:text-6xl">
+          Your intimate connection<span class="text-brand">.</span>
+        </h1>
+        <p class="mt-4 max-w-md leading-relaxed text-white/70">{m.fold_pitch()}</p>
+        {
+          loggedOut && (
+            <div class="mt-7 flex flex-wrap items-center gap-4">
+              <Button as="a" href={localizePath('/account/')} size="lg">
+                {m.cta_start_advertising()}
+              </Button>
+              <span class="text-sm text-white/70">Verified-only · free in early access</span>
+            </div>
+          )
+        }
+      </div>
+    </div>
+  </section>
+
+  <div class="mx-auto max-w-7xl px-4 md:px-6">
+    <!-- Featured: slideshow of cards -->
+    <Section title={m.section_featured()}>
+      <div
+        class="-mb-6 flex snap-x snap-mandatory gap-4 overflow-x-auto pb-10 pt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
+        {
+          rail.map((p) => (
+            <div class="w-52 flex-none snap-start sm:w-60 lg:w-[calc((100%-4rem)/5)]">
+              <ProfileCard profile={p} />
+            </div>
+          ))
+        }
+      </div>
+    </Section>
+
+    <!-- ONLINE NOW — the default shelf (1.4). One claim it can prove; when
+         nobody's online the claim is empty, so drop the whole shelf. -->
+    {
+      online.length > 0 && (
+        <Section title={m.section_online()}>
+          <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+            {online.map((p, i) => (
+              <ProfileCard profile={p} loading={i < 4 ? 'eager' : 'lazy'} />
+            ))}
+          </div>
+        </Section>
+      )
+    }
+
+    <!-- NEW THIS WEEK — its own shelf (1.4), the cold-start boost. -->
+    <Section title={m.section_new_week()}>
+      <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+        {fresh.map((p) => <ProfileCard profile={p} />)}
+      </div>
+    </Section>
+
+    <!-- Articles -->
+    <Section title={m.section_articles()}>
+      <p slot="meta" class="hidden text-sm text-muted-foreground sm:block">{m.articles_by()}</p>
+      <a slot="actions" href={localizePath("/blog/")} class="eyebrow font-semibold text-foreground hover:text-brand">
+        {m.to_blog()} →
+      </a>
+
+      <div class="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
+        <a
+          href={localizePath(`/blog/${featuredArticle.data.slug}/`)}
+          class="group relative block overflow-hidden rounded-lg shadow-soft transition-shadow hover:shadow-soft-lg"
+        >
+          <img
+            src={featuredArticle.data.hero.src}
+            width={featuredArticle.data.hero.width}
+            height={featuredArticle.data.hero.height}
+            alt={featuredArticle.data.heroAlt}
+            class="aspect-[16/10] h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02] lg:aspect-auto lg:absolute lg:inset-0"
+            loading="lazy"
+            decoding="async"
+          />
+          <span class="article-slab absolute left-2 top-2 bg-neutral-950 px-3 py-1.5 eyebrow text-2xs font-semibold text-white">
+            {m.section_featured()}
+          </span>
+          <div class="article-slab bottom-2 left-2 right-2 bg-neutral-950 p-5 text-white lg:absolute">
+            <p class="eyebrow text-2xs font-mono font-semibold text-brand">
+              {featuredArticle.data.minutes} {m.min_read()}
+            </p>
+            <h3 class="mt-1.5 font-condensed text-xl font-semibold leading-snug">{featuredArticle.data.title}</h3>
+            <p class="mt-1.5 line-clamp-2 text-sm text-white/70">{featuredArticle.data.excerpt}</p>
+            <p class="eyebrow mt-3 font-semibold text-white">
+              {m.read_article()} →
+            </p>
+          </div>
+          <!-- reserve height on lg since the image is absolutely positioned -->
+          <span class="hidden lg:block lg:min-h-[24rem]" aria-hidden="true"></span>
+        </a>
+
+        <div class="grid gap-4">
+          {
+            moreArticles.map((a) => (
+              <a
+                href={localizePath(`/blog/${a.data.slug}/`)}
+                class="group flex items-center gap-4 border border-foreground/15 p-3 transition-colors hover:border-foreground/50"
+              >
+                <img
+                  src={a.data.hero.src}
+                  width={a.data.hero.width}
+                  height={a.data.hero.height}
+                  alt={a.data.heroAlt}
+                  class="aspect-[4/3] w-28 flex-none object-cover"
+                  loading="lazy"
+                  decoding="async"
+                />
+                <div class="min-w-0">
+                  <p class="eyebrow text-2xs font-mono font-semibold text-brand">
+                    {a.data.minutes} {m.min_read()}
+                  </p>
+                  <h3 class="mt-1 line-clamp-2 font-semibold leading-snug group-hover:text-brand">
+                    {a.data.title}
+                  </h3>
+                </div>
+              </a>
+            ))
+          }
+        </div>
+      </div>
+    </Section>
+
+    <!-- Bottom hero: advertisers CTA banner (below the fold, deliberate). -->
+    <section class="pb-12 md:pb-16">
+      <div class="grid overflow-hidden rounded-lg shadow-soft lg:grid-cols-[1fr_1.15fr]">
+        <div class="relative aspect-[16/10] lg:aspect-auto lg:min-h-[22rem]">
+          <SafeImage
+            imageKey="bottom-hero"
+            src="/video/hero-poster.jpg"
+            alt=""
+            class="h-full w-full lg:absolute lg:inset-0"
+          />
+          <span class="article-slab absolute left-2 top-2 bg-neutral-950 px-3.5 py-1.5 eyebrow text-2xs font-semibold text-white">
+            Free in early access
+          </span>
+        </div>
+        <div
+          class="ad-panel dark relative flex flex-col justify-center bg-neutral-950 p-8 text-white md:p-12 lg:-ml-14"
+        >
+          <p class="eyebrow flex items-center gap-3 text-white/70">
+            <span class="h-px w-6 bg-white/50" aria-hidden="true"></span>
+            For advertisers
+          </p>
+          <h2 class="display mt-4 text-3xl md:text-5xl">
+            Place your ad
+          </h2>
+          <p class="mt-4 max-w-md leading-relaxed text-white/85">
+            And get found easily by the right people — verified, discreet and visible
+            in your region.
+          </p>
+          <div class="mt-7 flex flex-wrap gap-3">
+            <Button as="a" href={localizePath("/account/")} size="lg">
+              {m.cta_start_advertising()}
+            </Button>
+            <Button
+              as="a"
+              href={localizePath("/blog/starten-als-escort-in-nederland/")}
+              size="lg"
+            >
+              More info →
+            </Button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- First-visit "ask the city once" sheet (1.2). Island; auto-opens once. -->
+  <CitySheet />
+</Layout>
+
+<style>
+  /* Hero ink panel: jagged geometric right edge — a hard cut, not a fade. */
+  .hero-panel {
+    clip-path: polygon(0 0, 100% 0, 91% 32%, 97% 58%, 87% 100%, 0 100%);
+  }
+  /* Overlay slabs on article/banner imagery: same shear as the card slab. */
+  .article-slab {
+    clip-path: polygon(0 4px, 100% 0, 100% calc(100% - 4px), 0 100%);
+  }
+  /* Ad banner panel: diagonal seam against the photo instead of a straight edge. */
+  @media (min-width: 64rem) {
+    .ad-panel {
+      clip-path: polygon(3.5rem 0, 100% 0, 100% 100%, 0 100%);
+    }
+  }
+</style>

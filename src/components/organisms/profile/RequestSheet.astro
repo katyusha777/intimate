@@ -1,0 +1,290 @@
+---
+/**
+ * RequestSheet (UX-PLAN 4.2) — the flagship. The deal card's SEND MESSAGE opens
+ * this three-tap sheet; EVERY option is picked from HER data, so the client
+ * never composes cold and she never reads "hi":
+ *   1. service  — her service chips
+ *   2. duration — her rate durations, with the price attached (from the 2.1 table)
+ *   3. when     — Now / Tonight / a slot inside her opening hours
+ *      + optional one-line note (≤140) + her screening question if set
+ *
+ * Submits as a compact request card via `messaging.startRequest`; the price is
+ * SNAPSHOTTED into the payload at send (immutable afterward). Reuses
+ * molecules/ActionSheet for the sheet physics.
+ *
+ * ponytail: the whole thing is one small vanilla island (steps toggled by a
+ * data attr) — no framework for a 3-step picker. Slots are derived from
+ * openingHours (next open days, from-time) — a lazy but honest set.
+ */
+import * as m from '@/paraglide/messages';
+import type { Profile } from '@/app/models/profile';
+import { ratesMinPrice } from '@/app/models/profile';
+import { getLocale } from '@/paraglide/runtime';
+import { dayLabel, rateDurationLabel, serviceLabel } from '@/lib/labels';
+import { DAYS, SERVICES, SERVICE_CATEGORIES, type Locale, type Service } from '@/lib/taxonomy';
+import ActionSheet from '@/components/molecules/ActionSheet.astro';
+
+interface Props {
+  profile: Profile;
+  /** Her screening question (≤140) when set — the optional last step. */
+  screeningQuestion?: string;
+}
+const { profile: p, screeningQuestion } = Astro.props;
+const locale = getLocale() as Locale;
+
+// Her services, grouped for a tidy chip list.
+const serviceGroups = SERVICE_CATEGORIES.map((cat) => ({
+  cat,
+  items: SERVICES[cat].filter((s) => (p.services as readonly string[]).includes(s)),
+})).filter((g) => g.items.length > 0);
+
+// Her durations, each with a snapshot price = the min of its incall/outcall.
+// Preset time rows only — custom line items are not bookable durations.
+const rates = (p.rates ?? []).filter((r) => r.duration !== undefined);
+const durationOptions = rates.map((r) => ({
+  duration: r.duration!,
+  price: ratesMinPrice([r]) ?? 0,
+}));
+
+// A few upcoming open slots from opening hours (next open days, opening time).
+// Ordered from today forward; capped so the step stays one glance.
+const DOW = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const;
+const todayIdx = DOW.indexOf(DOW[new Date().getDay()]!);
+const slotOptions: { key: string; label: string }[] = [];
+for (let i = 0; i < 7 && slotOptions.length < 4; i++) {
+  const day = DOW[(todayIdx + i) % 7]!;
+  const h = p.openingHours?.[day];
+  if (!h || h.closed) continue;
+  const from = h.allDay ? '00:00' : h.from;
+  if (!from) continue;
+  slotOptions.push({ key: `${day} ${from}`, label: `${dayLabel(day, true)} ${from}` });
+}
+
+const chip =
+  'cursor-pointer border border-foreground/20 px-3 py-1.5 text-sm font-medium transition-colors hover:border-foreground/60 data-[sel]:border-foreground data-[sel]:bg-foreground data-[sel]:text-background';
+const stepTitle = 'font-condensed text-lg font-bold';
+---
+
+<ActionSheet id={`request-${p.id}`} label={m.request_title()} class="max-w-lg">
+  <div
+    data-request-root
+    data-profile-slug={p.slug}
+    data-locale={locale}
+    class="px-5 pb-6 pt-1"
+  >
+    <p class="eyebrow text-2xs text-muted-foreground">{m.request_eyebrow()}</p>
+
+    <!-- Step 1: service -->
+    <div data-step="service" class="mt-3">
+      <h3 class={stepTitle}>{m.request_step_service()}</h3>
+      <div class="mt-3 space-y-3">
+        {
+          serviceGroups.length === 0 ? (
+            <p class="text-sm text-muted-foreground">{m.request_no_services()}</p>
+          ) : (
+            serviceGroups.map((g) => (
+              <div class="flex flex-wrap gap-1.5">
+                {g.items.map((s) => (
+                  <button type="button" class={chip} data-pick-service={s}>
+                    {serviceLabel(s as Service)}
+                  </button>
+                ))}
+              </div>
+            ))
+          )
+        }
+      </div>
+    </div>
+
+    <!-- Step 2: duration + price -->
+    <div data-step="duration" hidden class="mt-3">
+      <h3 class={stepTitle}>{m.request_step_duration()}</h3>
+      <div class="mt-3 flex flex-col gap-2">
+        {
+          durationOptions.length === 0 ? (
+            <p class="text-sm text-muted-foreground">{m.request_no_rates()}</p>
+          ) : (
+            durationOptions.map((d) => (
+              <button
+                type="button"
+                data-pick-duration={d.duration}
+                data-price={d.price}
+                class="flex cursor-pointer items-center justify-between gap-4 border border-foreground/20 px-4 py-3 text-left transition-colors hover:border-foreground/60 data-[sel]:border-foreground"
+              >
+                <span class="font-medium">{rateDurationLabel(d.duration)}</span>
+                <span class="font-condensed text-lg font-bold">€{d.price}</span>
+              </button>
+            ))
+          )
+        }
+      </div>
+    </div>
+
+    <!-- Step 3: when + note + screening -->
+    <div data-step="when" hidden class="mt-3">
+      <h3 class={stepTitle}>{m.request_step_when()}</h3>
+      <div class="mt-3 flex flex-wrap gap-1.5">
+        <button type="button" class={chip} data-pick-when="now">{m.request_when_now()}</button>
+        <button type="button" class={chip} data-pick-when="tonight">{m.request_when_tonight()}</button>
+        {
+          slotOptions.map((s) => (
+            <button type="button" class={chip} data-pick-when="slot" data-slot={s.key}>
+              {s.label}
+            </button>
+          ))
+        }
+      </div>
+
+      <label class="mt-4 block">
+        <span class="eyebrow text-2xs text-muted-foreground">{m.request_note_label()}</span>
+        <span class="slab-field mt-1.5 block">
+          <span class="slab-field__face block">
+            <input
+              type="text"
+              data-note
+              maxlength="140"
+              placeholder={m.request_note_ph()}
+              class="w-full bg-transparent p-2.5 text-sm caret-brand outline-none placeholder:text-muted-foreground"
+            />
+          </span>
+        </span>
+      </label>
+
+      {
+        screeningQuestion && (
+          <label class="mt-4 block" data-screening>
+            <span class="text-sm font-medium">{screeningQuestion}</span>
+            <span class="slab-field mt-1.5 block">
+              <span class="slab-field__face block">
+                <input
+                  type="text"
+                  data-screening-answer
+                  maxlength="140"
+                  placeholder={m.request_screening_ph()}
+                  class="w-full bg-transparent p-2.5 text-sm caret-brand outline-none placeholder:text-muted-foreground"
+                />
+              </span>
+            </span>
+          </label>
+        )
+      }
+
+      <button
+        type="button"
+        data-request-submit
+        disabled
+        class="mt-5 w-full cursor-pointer bg-brand px-4 py-3 font-condensed text-base font-bold text-white transition-transform active:scale-95 disabled:opacity-40"
+      >
+        {m.request_send()}
+      </button>
+      <p data-request-error hidden class="mt-2 text-center text-sm text-brand">{m.request_failed()}</p>
+    </div>
+  </div>
+</ActionSheet>
+
+<script>
+  import { actions } from 'astro:actions';
+  import type { RateDuration, Service } from '@/lib/taxonomy';
+
+  type When = 'now' | 'tonight' | 'slot';
+
+  function initRequestSheet() {
+    document.querySelectorAll<HTMLElement>('[data-request-root]').forEach((root) => {
+      if (root.dataset.init) return;
+      root.dataset.init = '1';
+
+      const profileSlug = root.dataset.profileSlug!;
+      const locale = root.dataset.locale as 'nl' | 'en' | 'de';
+      const steps = {
+        service: root.querySelector<HTMLElement>('[data-step="service"]')!,
+        duration: root.querySelector<HTMLElement>('[data-step="duration"]')!,
+        when: root.querySelector<HTMLElement>('[data-step="when"]')!,
+      };
+
+      const state: {
+        service?: Service;
+        duration?: RateDuration;
+        priceAtRequest?: number;
+        when?: When;
+        slot?: string;
+      } = {};
+
+      const submitBtn = root.querySelector<HTMLButtonElement>('[data-request-submit]')!;
+      const errEl = root.querySelector<HTMLElement>('[data-request-error]')!;
+
+      const show = (name: keyof typeof steps) => {
+        for (const [key, el] of Object.entries(steps)) el.hidden = key !== name;
+      };
+
+      // Single-select within a group of buttons sharing a data attribute.
+      const clearSel = (sel: string) =>
+        root.querySelectorAll<HTMLElement>(sel).forEach((b) => b.removeAttribute('data-sel'));
+
+      // Step 1: service → advance to duration.
+      root.querySelectorAll<HTMLElement>('[data-pick-service]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          state.service = btn.dataset.pickService as Service;
+          clearSel('[data-pick-service]');
+          btn.setAttribute('data-sel', '');
+          show('duration');
+        });
+      });
+
+      // Step 2: duration (with snapshot price) → advance to when.
+      root.querySelectorAll<HTMLElement>('[data-pick-duration]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          state.duration = btn.dataset.pickDuration as RateDuration;
+          state.priceAtRequest = Number(btn.dataset.price || 0);
+          clearSel('[data-pick-duration]');
+          btn.setAttribute('data-sel', '');
+          show('when');
+        });
+      });
+
+      // Step 3: when.
+      root.querySelectorAll<HTMLElement>('[data-pick-when]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          state.when = btn.dataset.pickWhen as When;
+          state.slot = btn.dataset.slot;
+          clearSel('[data-pick-when]');
+          btn.setAttribute('data-sel', '');
+          submitBtn.disabled = false;
+        });
+      });
+
+      submitBtn.addEventListener('click', async () => {
+        if (!state.service || !state.duration || !state.when) return;
+        submitBtn.disabled = true;
+        errEl.hidden = true;
+        const note = root.querySelector<HTMLInputElement>('[data-note]')?.value.trim() || undefined;
+        const screeningAnswer =
+          root.querySelector<HTMLInputElement>('[data-screening-answer]')?.value.trim() || undefined;
+        try {
+          const { data } = await actions.messaging.startRequest({
+            profileSlug,
+            locale,
+            service: state.service,
+            duration: state.duration,
+            priceAtRequest: state.priceAtRequest ?? 0,
+            when: state.when,
+            slot: state.when === 'slot' ? state.slot : undefined,
+            note,
+            screeningAnswer,
+          });
+          if (data?.href) {
+            location.href = data.href;
+            return;
+          }
+          errEl.hidden = false; // her inbox is off / blocked → honest failure
+          submitBtn.disabled = false;
+        } catch {
+          errEl.hidden = false;
+          submitBtn.disabled = false;
+        }
+      });
+    });
+  }
+
+  initRequestSheet();
+  document.addEventListener('astro:page-load', initRequestSheet);
+</script>

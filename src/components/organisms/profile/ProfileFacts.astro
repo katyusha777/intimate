@@ -1,0 +1,115 @@
+---
+/**
+ * The deal card (UX-PLAN 2.4): an ink sticker (dark-scoped so the anaglyph CTA
+ * renders white-faced) that carries the whole deal — compact rates table,
+ * the one availability truth line, the contact CTA and a trust-receipt link —
+ * on screen at every scroll position (sticky side column on desktop; first
+ * block under the hero on mobile). Identity metadata (gender/city/member-since)
+ * demotes to the card's bottom: the deal leads, the bio follows.
+ */
+import * as m from '@/paraglide/messages';
+import type { Profile } from '@/app/models/profile';
+import type { ReplySpeed } from '@/app/models/messaging';
+import { genderLabel } from '@/lib/labels';
+import { localizePath } from '@/lib/i18n';
+import { cityName } from '@/lib/seo';
+import Button from '@/components/atoms/Button.astro';
+import VerifiedBadge from '@/components/atoms/VerifiedBadge.astro';
+import AvailabilityLine from '@/components/molecules/AvailabilityLine.astro';
+import RatesTable from '@/components/organisms/profile/RatesTable.astro';
+import RequestSheet from '@/components/organisms/profile/RequestSheet.astro';
+
+interface Props {
+  profile: Profile;
+  /** Measured reply speed (3.2); null → hidden. */
+  replySpeed?: ReplySpeed | null;
+  /** Her screening question (UX-PLAN 4.x), asked as the last step of a request. */
+  screeningQuestion?: string;
+  class?: string;
+}
+const { profile: p, replySpeed, screeningQuestion, class: className } = Astro.props;
+
+const visitLabel = p.meetingTypes
+  .map((t) => (t === 'incall' ? m.cat_private() : m.cat_escort()))
+  .join(' · ');
+const factRow = 'flex items-center justify-between gap-4 border-b border-white/10 py-2.5 text-sm';
+const factLabel = 'eyebrow text-2xs text-white/50';
+const hasRates = (p.rates ?? []).length > 0;
+---
+
+<aside class:list={['lg:sticky lg:top-24', className]}>
+  <div class="facts-slab dark bg-neutral-950 p-6 text-white">
+    <div class="flex items-baseline gap-2">
+      <span class="font-condensed text-3xl font-bold">€{p.priceFrom}</span>
+      <span class="text-sm text-white/60">{m.price_from()}</span>
+      <!-- The one availability truth line (2.3), shared component. -->
+      <AvailabilityLine profile={p} variant="card" class="ml-auto" />
+    </div>
+
+    {
+      hasRates && <RatesTable profile={p} variant="compact" class="mt-4" />
+    }
+
+    {
+      replySpeed && (
+        <p class="mt-4 flex items-center gap-1.5 text-sm text-white/80">
+          <VerifiedBadge class="size-3.5 text-white" />
+          {m.receipt_reply_speed({ min: replySpeed.medianMinutes })}
+        </p>
+      )
+    }
+
+    <!-- (Private-set teaser removed 2026-08-02 — it read as noise on the deal
+         card. The per-thread photo grant itself (UX-PLAN 4.4) still works;
+         clients discover it in the thread on accept.) -->
+
+    <div class="mt-5 space-y-3">
+      <!-- The flagship (UX-PLAN 4.2): SEND MESSAGE opens the three-tap request
+           sheet. A plain zero-JS fallback link (message her cold) rides under
+           it for the no-JS/island-fail case. -->
+      <Button type="button" class="w-full" data-sheet-open={`request-${p.id}`}>
+        {m.profile_message()}
+      </Button>
+      <noscript>
+        <a
+          href={localizePath(`/messages/?to=${p.slug}`)}
+          class="block text-center text-xs text-white/60 underline underline-offset-4"
+        >
+          {m.profile_message()}
+        </a>
+      </noscript>
+      <!-- Trust-receipt opener (3.1): the whole row opens the dated receipt. -->
+      <button
+        type="button"
+        data-sheet-open={`receipt-${p.id}`}
+        class="flex w-full cursor-pointer items-center justify-center gap-1.5 text-xs text-white/60 underline-offset-4 transition-colors hover:text-white hover:underline"
+      >
+        <VerifiedBadge class="size-3.5" />
+        {m.profile_verified_note()}
+      </button>
+    </div>
+
+    <!-- Identity metadata demoted to the bottom of the card. -->
+    <div class="mt-5">
+      <div class={factRow}>
+        <span class={factLabel}>{m.filter_gender()}</span>
+        {genderLabel(p.gender)}
+      </div>
+      <div class={factRow}>
+        <span class={factLabel}>{m.filter_visit()}</span>
+        {visitLabel}
+      </div>
+      <div class={factRow}>
+        <span class={factLabel}>{m.filter_city()}</span>
+        {cityName(p.city)}
+      </div>
+      <div class:list={[factRow, 'border-b-0']}>
+        <span class={factLabel}>{m.member_since()}</span>
+        {p.createdAt.slice(0, 10)}
+      </div>
+    </div>
+  </div>
+
+  <!-- The request sheet the SEND MESSAGE button opens (UX-PLAN 4.2). -->
+  <RequestSheet profile={p} {screeningQuestion} />
+</aside>

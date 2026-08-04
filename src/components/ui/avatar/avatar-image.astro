@@ -1,0 +1,36 @@
+---
+import { Image } from "astro:assets"
+import type { ComponentProps } from "astro/types"
+
+import { cn } from "@/lib/utils"
+
+type Props = Partial<ComponentProps<typeof Image>>
+
+const {
+  class: className,
+  alt = "",
+  width = 44,
+  height = 44,
+  sizes = "44px",
+  widths = [44, 88, 176],
+  ...props
+} = Astro.props
+---
+
+{
+  props.src && (
+    <Image
+      data-slot="avatar-image"
+      class={cn(
+        "absolute inset-0 z-10 aspect-square size-full rounded-full object-cover",
+        className
+      )}
+      alt={alt}
+      width={width}
+      height={height}
+      sizes={sizes}
+      widths={widths}
+      {...(props as any)}
+    />
+  )
+}

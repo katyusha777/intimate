@@ -1,0 +1,102 @@
+---
+/**
+ * Report control (docs/ADMIN.md §7). A discreet "Report" link → sheet with a
+ * taxonomy reason + optional note → files a report that lands in the admin
+ * Reports queue (underage/coercion escalate to the top + banner).
+ */
+import { REPORT_REASONS } from '@/lib/taxonomy';
+import Button from '@/components/atoms/Button.astro';
+import ActionSheet from '@/components/molecules/ActionSheet.astro';
+
+interface Props {
+  profileId: string;
+  profileSlug: string;
+  profileName: string;
+}
+const { profileId, profileSlug, profileName } = Astro.props;
+const humanize = (s: string) => s.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
+---
+
+<button
+  type="button"
+  data-sheet-open="report-sheet"
+  class="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground underline-offset-4 transition-colors hover:text-brand hover:underline"
+>
+  <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15V4a1 1 0 0 1 1-1h14l-3 5 3 5H5a1 1 0 0 0-1 1z"/><path d="M4 22v-7"/></svg>
+  {'Report this profile'}
+</button>
+
+<ActionSheet id="report-sheet" label="Report profile">
+  <form
+    data-report-form
+    data-profile-id={profileId}
+    data-profile-slug={profileSlug}
+    data-profile-name={profileName}
+    class="space-y-4 px-5 pb-8 pt-1"
+  >
+    <h2 class="display text-2xl">Report {profileName}</h2>
+    <fieldset class="space-y-1.5">
+      <legend class="text-sm font-medium">Reason</legend>
+      {
+        REPORT_REASONS.map((r, i) => (
+          <label class="flex cursor-pointer items-center gap-2.5 py-1.5 text-sm">
+            <input type="radio" name="reason" value={r} required checked={i === 0} class="radio-dot" />
+            {humanize(r)}
+          </label>
+        ))
+      }
+    </fieldset>
+    <label class="block space-y-1.5">
+      <span class="text-sm font-medium">Details (optional)</span>
+      <span class="slab-field block">
+        <span class="slab-field__face block">
+          <textarea name="note" rows="2" maxlength="1000" class="w-full resize-none bg-transparent p-2.5 text-sm caret-brand outline-none" />
+        </span>
+      </span>
+    </label>
+    <Button type="submit">Submit report</Button>
+  </form>
+
+  <!-- Success state: replaces the form so it's unmistakable the report landed. -->
+  <div data-report-success hidden class="flex flex-col items-center gap-3 px-5 pb-10 pt-6 text-center">
+    <span class="grid size-12 place-items-center rounded-full bg-online/15 text-online">
+      <svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
+    </span>
+    <p class="font-condensed text-lg font-bold">Report received</p>
+    <p class="max-w-xs text-sm text-muted-foreground">Thanks — our moderation team will review it. You don’t need to do anything else.</p>
+  </div>
+</ActionSheet>
+
+<script>
+  import { actions } from 'astro:actions';
+  function initReport() {
+    const form = document.querySelector<HTMLFormElement>('[data-report-form]');
+    if (!form || form.dataset.init) return;
+    form.dataset.init = '1';
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fd = new FormData(form);
+      const reason = String(fd.get('reason') ?? '');
+      if (!reason) return;
+      const { error } = await actions.report.file({
+        targetKind: 'profile',
+        targetId: form.dataset.profileId!,
+        targetLabel: form.dataset.profileName!,
+        profileSlug: form.dataset.profileSlug!,
+        reason: reason as any,
+        note: String(fd.get('note') ?? ''),
+      });
+      if (error) {
+        alert('Please sign in to report.');
+        return;
+      }
+      // Swap the form for a clear confirmation, then close after it's been read.
+      form.hidden = true;
+      const done = document.querySelector<HTMLElement>('[data-report-success]');
+      if (done) done.hidden = false;
+      setTimeout(() => (document.getElementById('report-sheet') as any)?.closeSheet?.(), 2600);
+    });
+  }
+  initReport();
+  document.addEventListener('astro:page-load', initReport);
+</script>

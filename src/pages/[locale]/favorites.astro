@@ -1,0 +1,77 @@
+---
+/**
+ * Favorites — device-local, works logged out (privacy-first). The page SSRs the
+ * full live pool hidden; FavoritesController reveals the ones this device has
+ * favorited (and, when logged in, seeds the account-synced set). No login wall.
+ */
+import * as m from '@/paraglide/messages';
+import { profilesApi } from '@/app/api/profiles';
+import { accountApi } from '@/app/api/account';
+import { sessionApi } from '@/app/api/session';
+import { isLocale, localizePath } from '@/lib/i18n';
+import Button from '@/components/atoms/Button.astro';
+import ProfileCard from '@/components/organisms/profile/ProfileCard.astro';
+import Layout from '@/layouts/Layout.astro';
+
+const locale = Astro.params.locale;
+if (!isLocale(locale)) return new Response(null, { status: 404 });
+
+const { items: profiles } = await profilesApi.list({ limit: 60 });
+const session = await sessionApi.current(Astro);
+const accountFavs = session ? (await accountApi.get(session)).favorites : [];
+---
+
+<Layout noindex title={`${m.nav_favorites()} | Intimate`}>
+  <div data-fav-page class="mx-auto max-w-7xl px-4 py-8 md:px-6 md:py-12">
+    {session && <div data-fav-seed={JSON.stringify(accountFavs)} hidden></div>}
+
+    <div class="flex flex-wrap items-end justify-between gap-4">
+      <div>
+        <h1 class="display text-3xl md:text-4xl">{m.nav_favorites()}</h1>
+        <p class="mt-1.5 text-sm text-muted-foreground">
+          <span data-fav-count>0</span> {m.fav_count_saved()}
+        </p>
+      </div>
+    </div>
+
+    <!-- Privacy stance, said out loud (spec): local by default, account = optional upgrade. -->
+    <div class="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 border-l-2 border-brand/50 pl-3 text-sm text-muted-foreground">
+      <span>{m.fav_privacy_local()}</span>
+      {
+        !session && (
+          <span>
+            {m.fav_privacy_cta()}{' '}
+            <button
+              type="button"
+              data-modal-open="auth"
+              data-auth-tab="register"
+              class="font-semibold text-foreground underline-offset-2 hover:text-brand hover:underline"
+            >
+              {m.nav_register()}
+            </button>
+          </span>
+        )
+      }
+    </div>
+
+    <!-- SSR pool: every live profile, hidden; the controller reveals favorited. -->
+    <div class="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+      {
+        profiles.map((p) => (
+          <div data-fav-item={p.slug} hidden>
+            <ProfileCard profile={p} />
+          </div>
+        ))
+      }
+    </div>
+
+    <div data-fav-empty class="grid place-items-center py-20 text-center">
+      <div class="space-y-5">
+        <svg class="mx-auto size-10 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7Z" /></svg>
+        <h2 class="display text-2xl">{m.fav_empty_title()}</h2>
+        <p class="mx-auto max-w-sm text-sm text-muted-foreground">{m.fav_empty_body()}</p>
+        <Button as="a" href={localizePath('/search/')}>{m.nav_search()}</Button>
+      </div>
+    </div>
+  </div>
+</Layout>

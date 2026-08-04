@@ -1,0 +1,454 @@
+---
+/**
+ * Listing page body. Architecture (docs/API.md): tabs are presets over ONE
+ * profile pool, never partitions; tab + city live in the URL PATH (indexable),
+ * everything else is querystring; gender/city/online-now are persistent quick
+ * chips; the rest lives in the filter panel (sidebar on lg, behind a Filters
+ * button on mobile). One GET <form> + SSR = zero client state.
+ */
+import * as m from '@/paraglide/messages';
+import { serviceLabel } from '@/lib/labels';
+import { CITIES } from '@/lib/taxonomy';
+import { LISTING_CATEGORIES, type Locale } from '@/lib/taxonomy';
+import { getLocale } from '@/paraglide/runtime';
+import { PAGE_SIZE, type Profile, type ProfileList, type ProfileListParams } from '@/app/models/profile';
+import Icon from '@/components/atoms/Icon.astro';
+import ActionSheet from '@/components/molecules/ActionSheet.astro';
+import FilterSidebar from '@/components/organisms/search/FilterSidebar.astro';
+import ProfileCard from '@/components/organisms/profile/ProfileCard.astro';
+
+interface Props {
+  title: string;
+  /** Answer-first stat sentence (SEO.md §3). */
+  intro?: string;
+  /** Visible freshness stamp. */
+  updated?: string;
+  params: ProfileListParams;
+  result: ProfileList;
+  /** Full live pool for the desktop SAVED-compare rail (UX-PLAN 6.2); the
+   *  client reveals only the saved ones. Omit to hide the rail entirely. */
+  savedPool?: Profile[];
+  /** Path for this tab WITHOUT the city segment, e.g. `/search/` or `/service/escort/`. */
+  tabPath: string;
+  currentUrl: URL;
+  /** 'navigate' on meeting-type tabs — visit radios switch tabs (see FilterSidebar). */
+  visitMode?: 'query' | 'navigate';
+  openCategory?: string;
+}
+
+const { title, intro, updated, params, result, savedPool, tabPath, currentUrl, visitMode = 'query', openCategory } =
+  Astro.props;
+
+const locale = getLocale() as Locale;
+
+// Tab paths for visit-type navigation, derived from taxonomy (never hardcoded).
+const incallSlug = LISTING_CATEGORIES.find(
+  (c) => 'meetingType' in c.filter && c.filter.meetingType === 'incall',
+)!.slugs[locale];
+const outcallSlug = LISTING_CATEGORIES.find(
+  (c) => 'meetingType' in c.filter && c.filter.meetingType === 'outcall',
+)!.slugs[locale];
+
+/** City lives in the path: `${tabPath}${city}/`. */
+const basePath = params.city ? `${tabPath}${params.city}/` : tabPath;
+/** FULL reset: back to the plain national search — clears the category tab,
+ *  the city and (via the [data-filter-reset] cookie clear) the gender pick. */
+const resetHref = `/${locale}/search/`;
+
+const page = Math.floor((params.offset ?? 0) / PAGE_SIZE) + 1;
+const pageCount = Math.max(1, Math.ceil(result.total / PAGE_SIZE));
+
+function pageHref(p: number): string {
+  const sp = new URLSearchParams(currentUrl.searchParams);
+  if (p <= 1) sp.delete('page');
+  else sp.set('page', String(p));
+  const qs = sp.toString();
+  return qs ? `${basePath}?${qs}` : basePath;
+}
+
+/* Clean filter chip (fix/search): full even keyline, flat corners — calm,
+   unmistakably a filter. `.filter-chip` owns border/radius/height; here we add
+   the tap feedback. Selected state (skew + ink fill) is CSS via peer:checked. */
+const chip =
+  'filter-chip flex text-sm active:scale-[0.96]';
+
+/* Active filters as removable pills above the results: each X is a link to
+ * the same listing minus that one value. Structural state (category tab,
+ * path city) lives in the header, not here. */
+function hrefWithout(mutate: (sp: URLSearchParams) => void): string {
+  const sp = new URLSearchParams(currentUrl.searchParams);
+  mutate(sp);
+  sp.delete('page');
+  const qs = sp.toString();
+  return qs ? `${basePath}?${qs}` : basePath;
+}
+function dropOne(sp: URLSearchParams, key: string, value: string) {
+  const left = sp.getAll(key).filter((v) => v !== value);
+  sp.delete(key);
+  left.forEach((v) => sp.append(key, v));
+}
+type Pill = { label: string; href: string; gender?: boolean };
+const pills: Pill[] = [];
+if (params.q) pills.push({ label: `“${params.q}”`, href: hrefWithout((sp) => sp.delete('q')) });
+if (params.genders?.includes('male'))
+  pills.push({ label: m.gender_tab_men(), href: hrefWithout((sp) => sp.delete('gender')), gender: true });
+if (params.genders?.includes('trans_woman'))
+  pills.push({ label: m.gender_tab_trans(), href: hrefWithout((sp) => sp.delete('gender')), gender: true });
+for (const c of params.cities ?? [])
+  pills.push({
+    label: CITIES.find((x) => x.slug === c)?.name ?? c,
+    href: hrefWithout((sp) => dropOne(sp, 'cities', c)),
+  });
+for (const s of params.services ?? [])
+  pills.push({ label: serviceLabel(s), href: hrefWithout((sp) => dropOne(sp, 'services', s)) });
+if (params.meetingType && currentUrl.searchParams.has('visit'))
+  pills.push({
+    label: params.meetingType === 'incall' ? m.cat_private() : m.cat_escort(),
+    href: hrefWithout((sp) => sp.delete('visit')),
+  });
+if (params.priceMin !== undefined)
+  pills.push({ label: `≥ €${params.priceMin}`, href: hrefWithout((sp) => sp.delete('priceMin')) });
+if (params.priceMax !== undefined)
+  pills.push({ label: `≤ €${params.priceMax}`, href: hrefWithout((sp) => sp.delete('priceMax')) });
+if (params.availableNow)
+  pills.push({ label: m.filter_available(), href: hrefWithout((sp) => sp.delete('available')) });
+if (params.onlineOnly)
+  pills.push({ label: m.filter_online(), href: hrefWithout((sp) => sp.delete('online')) });
+---
+
+<form
+  method="get"
+  action={basePath}
+  data-listing-form
+  data-tab-path={tabPath}
+  data-city={params.city ?? ''}
+  data-visit-any-path={`/${locale}/search/`}
+  data-visit-incall-path={`/${locale}/${incallSlug}/`}
+  data-visit-outcall-path={`/${locale}/${outcallSlug}/`}
+>
+  <!-- Desktop: the header tabs own gender, so this hidden input carries the
+       non-default pick through filter submits. Mobile: the sheet's radio owns
+       it — the script disables this input there so the two never double. -->
+  {
+    params.genders?.includes('male') ? (
+      <input type="hidden" name="gender" value="men" data-gender-hidden />
+    ) : params.genders?.includes('trans_woman') ? (
+      <input type="hidden" name="gender" value="trans" data-gender-hidden />
+    ) : null
+  }
+  <div class="mb-6">
+    <h1 class="display text-3xl md:text-4xl">{title}</h1>
+    <p class="mt-1.5 max-w-2xl text-sm text-muted-foreground">
+      {intro ?? m.results_count({ count: result.total })}
+    </p>
+    {updated && <p class="eyebrow mt-1.5">{updated}</p>}
+  </div>
+
+  <!-- The header combobox drives this hidden select (path navigation); it is
+       the MAIN location state — never inside a data-filters-* copy, so it is
+       never viewport-disabled. -->
+  <select data-city-nav aria-hidden="true" tabindex="-1" class="sr-only">
+    <option value="" selected={!params.city} />
+    {CITIES.map((c) => <option value={c.slug} selected={params.city === c.slug} />)}
+  </select>
+
+  <!-- Mobile control rail: just the filter-sheet trigger (sort lives in the
+       filters now — the list column stays clean). -->
+  <div class="mb-4 flex items-center gap-2 lg:hidden">
+    <button type="button" data-sheet-open="filters-sheet" class:list={[chip, 'flex-none']}>
+      <Icon name="sliders" class="text-muted-foreground" />
+      {m.filter_title()}
+    </button>
+  </div>
+
+  <div class="grid items-start gap-x-6 gap-y-4 lg:grid-cols-[17rem_1fr]">
+    <!-- Filter panel — DESKTOP: the always-open sidebar column on lg. Hidden
+         on mobile, where the sheet below owns filters. `data-filters-desktop`
+         inputs are disabled on mobile so they never double-submit against the
+         sheet's copy. -->
+    <aside data-filters-desktop class="hidden min-w-0 lg:block">
+      <FilterSidebar params={params} resetHref={resetHref} {visitMode} {openCategory} />
+    </aside>
+
+    <div class="min-w-0">
+      <!-- Active filters, removable in place: each pill's X links to the same
+           listing minus that value. Gender pills also reset the cookie
+           (data-gender-tab — the header script picks it up). -->
+      {
+        pills.length > 0 && (
+          <div class="mb-4 flex flex-wrap items-center gap-2">
+            {pills.map((pill) => (
+              <a
+                href={pill.href}
+                data-gender-tab={pill.gender ? 'women' : undefined}
+                class="filter-chip flex h-8 items-center gap-1.5 text-xs"
+              >
+                {pill.label}
+                <Icon name="xmark" class="text-2xs text-muted-foreground" />
+              </a>
+            ))}
+            {pills.length > 1 && (
+              <a
+                href={resetHref}
+                data-filter-reset
+                class="px-1 text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+              >
+                {m.filter_reset()}
+              </a>
+            )}
+          </div>
+        )
+      }
+      <!-- SAVED-compare rail (UX-PLAN 6.2): desktop only, thin, collapsible.
+           Sits INSIDE the results column, directly above the cards — appearing/
+           disappearing never moves the heading or the filter rail. Mini square
+           ProfileCards (the grid card shrunk). `hidden` until the script
+           reveals it; hearts sync via FavoritesController (localStorage). -->
+      {
+        savedPool && (
+          <div data-saved-rail hidden class="mb-4 hidden rounded-xl border border-border bg-card/60 lg:block">
+            <div class="flex items-center justify-between gap-3 px-4 py-2">
+              <button
+                type="button"
+                data-saved-toggle
+                aria-expanded="true"
+                class="flex cursor-pointer items-center gap-2 text-sm font-semibold"
+              >
+                <Icon name="chevron-down" class="text-xs text-muted-foreground transition-transform [[data-saved-rail].is-collapsed_&]:-rotate-90" />
+                <span class="eyebrow">{m.nav_favorites()}</span>
+                <span class="grid min-w-5 place-items-center rounded-full bg-foreground px-1.5 text-2xs font-bold text-background" data-saved-count>0</span>
+              </button>
+            </div>
+            <div
+              data-saved-row
+              class="flex gap-2.5 overflow-x-auto px-3 pb-3 [scrollbar-width:thin] [[data-saved-rail].is-collapsed_&]:hidden"
+            >
+              {savedPool.map((p) => (
+                <div data-saved-item={p.slug} hidden class="w-36 flex-none">
+                  <ProfileCard profile={p} variant="mini" />
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      }
+
+      {
+        result.items.length > 0 ? (
+          <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">
+            {result.items.map((p, i) => (
+              <ProfileCard profile={p} loading={i < 6 ? 'eager' : 'lazy'} />
+            ))}
+          </div>
+        ) : (
+          <div class="grid place-items-center rounded-2xl bg-card py-24 text-center shadow-soft dark:ring-1 dark:ring-border">
+            <div class="space-y-2">
+              <Icon name="face-monocle" class="text-3xl text-muted-foreground" />
+              <p class="font-semibold">{m.results_count({ count: 0 })}</p>
+              <a href={basePath} class="text-sm text-brand underline-offset-2 hover:underline">
+                {m.filter_reset()}
+              </a>
+            </div>
+          </div>
+        )
+      }
+
+      {
+        pageCount > 1 && (
+          <nav class="mt-8 flex items-center justify-center gap-2" aria-label="Pagination">
+            {page > 1 && (
+              <a href={pageHref(page - 1)} class="flex h-10 items-center gap-2 border border-foreground/20 px-4 text-sm font-medium transition-colors hover:border-foreground/60">
+                <Icon name="chevron-left" class="text-xs" />
+                {m.pagination_prev()}
+              </a>
+            )}
+            <span class="px-3 text-sm text-muted-foreground">
+              {page} / {pageCount}
+            </span>
+            {page < pageCount && (
+              <a href={pageHref(page + 1)} class="flex h-10 items-center gap-2 border border-foreground/20 px-4 text-sm font-medium transition-colors hover:border-foreground/60">
+                {m.pagination_next()}
+                <Icon name="chevron-right" class="text-xs" />
+              </a>
+            )}
+          </nav>
+        )
+      }
+    </div>
+  </div>
+
+  <!-- Filter panel — MOBILE: a proper ActionSheet (its own scroll, backdrop,
+       drag-dismiss) so opening filters no longer hijacks the page scroll. Its
+       FilterSidebar inputs are disabled on lg (desktop uses the sidebar copy).
+       Changes here DON'T auto-navigate (the form skips sheet-origin changes);
+       APPLY submits once, closing the sheet with the new results. -->
+  <ActionSheet id="filters-sheet" label={m.filter_title()} class="lg:hidden">
+    <div data-filters-mobile class="px-5 pb-4 pt-1">
+      <FilterSidebar params={params} resetHref={resetHref} {visitMode} {openCategory} sheet />
+    </div>
+    <div class="sticky bottom-0 flex gap-2 border-t border-border bg-card px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+      <a
+        href={resetHref}
+        data-filter-reset
+        class="filter-chip flex h-11 flex-1 justify-center text-sm text-muted-foreground"
+      >
+        {m.filter_reset()}
+      </a>
+      <button
+        type="submit"
+        class="slab-cut flex h-11 flex-[2] items-center justify-center bg-foreground px-4 text-sm font-semibold text-background transition-colors hover:bg-brand active:scale-[0.98]"
+      >
+        {m.filter_apply()}
+      </button>
+    </div>
+  </ActionSheet>
+</form>
+
+<script>
+  // Auto-submit on change (SSR filters, zero client state). City navigates the
+  // PATH (`${tabPath}${city}/`) keeping the remaining querystring. The filter
+  // panel is a <details> that stays forced-open on desktop.
+  // Filter submits are full SSR navigations — restore the scroll position so
+  // clicking a filter never jumps the page. Re-asserted after paint because
+  // the browser applies its own to-top scroll around load time.
+  function restoreScroll() {
+    const saved = sessionStorage.getItem('listing-scroll');
+    if (saved === null) return;
+    sessionStorage.removeItem('listing-scroll');
+    const y = Number(saved);
+    const assert = () => window.scrollTo({ top: y, behavior: 'instant' });
+    assert();
+    requestAnimationFrame(assert);
+    setTimeout(assert, 60);
+  }
+
+  function initListingForm() {
+    restoreScroll();
+
+    // Filters live in two places at once: the DESKTOP sidebar and the MOBILE
+    // filter sheet. Only the visible set may submit, so the hidden set's
+    // inputs are disabled per viewport — otherwise city/services/visit/price
+    // would double up in the query. (Gender lives in the header, not here.)
+    const mqLg = matchMedia('(min-width: 64rem)');
+    const syncSets = () => {
+      const lg = mqLg.matches;
+      const dis = (sel: string, off: boolean) =>
+        document
+          .querySelectorAll<HTMLInputElement>(sel)
+          .forEach((i) => (i.disabled = off));
+      dis('[data-filters-desktop] input', !lg); // mobile: whole sidebar copy off
+      dis('[data-filters-mobile] input', lg); // desktop: whole sheet copy off
+      dis('[data-gender-hidden]', !lg); // mobile: the sheet's gender radio owns it
+    };
+    if (!(window as any).__filterSetsMq) {
+      (window as any).__filterSetsMq = true;
+      mqLg.addEventListener('change', syncSets);
+    }
+    syncSets();
+
+    document.querySelectorAll<HTMLFormElement>('form[data-listing-form]').forEach((form) => {
+      if (form.dataset.init) return;
+      form.dataset.init = '1';
+
+      form.addEventListener('change', (e) => {
+        const t = e.target as HTMLElement;
+
+        // Filter changes inside the mobile SHEET don't auto-navigate — the user
+        // picks freely and taps "Show results" (a real submit) to apply once.
+        // Exception: a visit-nav radio is a TAB switch (a page), so it still
+        // navigates immediately even from the sheet.
+        if (t.closest('[data-filters-mobile]') && !t.closest('[data-visit-nav]')) return;
+
+        sessionStorage.setItem('listing-scroll', String(window.scrollY));
+        const citySeg = () => (form.dataset.city ? `${form.dataset.city}/` : '');
+
+        const cityNav = t.closest('[data-city-nav]') as HTMLSelectElement | null;
+        if (cityNav) {
+          form.dataset.city = cityNav.value;
+          form.action = form.dataset.tabPath! + citySeg();
+        }
+
+        const visitNav = t.closest('[data-visit-nav]') as HTMLInputElement | null;
+        if (visitNav) {
+          const tab =
+            visitNav.value === 'incall'
+              ? form.dataset.visitIncallPath!
+              : visitNav.value === 'outcall'
+                ? form.dataset.visitOutcallPath!
+                : form.dataset.visitAnyPath!;
+          form.action = tab + citySeg();
+        }
+
+        form.requestSubmit();
+      });
+
+      // Sheet "Show results" submit: save scroll like any filter navigation.
+      form
+        .querySelector('[data-filters-mobile]')
+        ?.closest('form')
+        ?.addEventListener('submit', () => {
+          sessionStorage.setItem('listing-scroll', String(window.scrollY));
+        });
+    });
+  }
+  initListingForm();
+  document.addEventListener('astro:page-load', initListingForm);
+</script>
+
+<script>
+  // SAVED-compare rail (UX-PLAN 6.2): reveal saved profiles as one compact row.
+  // Reads the same localStorage set FavoritesController owns; re-paints when a
+  // heart on this page is toggled (the controller writes on click, we read next
+  // tick). Collapse is session-scoped and always reopenable. Desktop-only via CSS.
+  const FAV_KEY = 'intimate_favs';
+  const readFavs = (): Set<string> => {
+    try {
+      return new Set(JSON.parse(localStorage.getItem(FAV_KEY) || '[]'));
+    } catch {
+      return new Set();
+    }
+  };
+
+  function paintSavedRail() {
+    const rail = document.querySelector<HTMLElement>('[data-saved-rail]');
+    if (!rail) return;
+    const favs = readFavs();
+    let n = 0;
+    rail.querySelectorAll<HTMLElement>('[data-saved-item]').forEach((el) => {
+      const on = favs.has(el.dataset.savedItem!);
+      el.hidden = !on;
+      if (on) n += 1;
+    });
+    const count = rail.querySelector<HTMLElement>('[data-saved-count]');
+    if (count) count.textContent = String(n);
+    rail.hidden = n === 0;
+    rail.classList.toggle('is-collapsed', sessionStorage.getItem('saved-rail-collapsed') === '1');
+  }
+
+  function initSavedRail() {
+    const rail = document.querySelector<HTMLElement>('[data-saved-rail]');
+    if (!rail || rail.dataset.railInit) {
+      paintSavedRail();
+      return;
+    }
+    rail.dataset.railInit = '1';
+    // Collapse, never dismiss: a closed rail must stay one tap from reopening.
+    rail.querySelector('[data-saved-toggle]')?.addEventListener('click', () => {
+      const collapsed = rail.classList.toggle('is-collapsed');
+      sessionStorage.setItem('saved-rail-collapsed', collapsed ? '1' : '0');
+      rail.querySelector('[data-saved-toggle]')?.setAttribute('aria-expanded', String(!collapsed));
+    });
+    paintSavedRail();
+  }
+
+  // Re-paint when a heart toggles anywhere — FavoritesController emits
+  // `favchange` after it writes (its own click listener is capture-phase +
+  // stopImmediatePropagation, so we can't observe the click). Once, survives nav.
+  if (!(window as any).__savedRailFav) {
+    (window as any).__savedRailFav = true;
+    document.addEventListener('favchange', paintSavedRail);
+  }
+
+  initSavedRail();
+  document.addEventListener('astro:page-load', initSavedRail);
+</script>

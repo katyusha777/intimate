@@ -1,0 +1,41 @@
+---
+/**
+ * Offline fallback (UX-PLAN 2.6): ONLY when this profile is away (not online) do
+ * we keep the browsing loop alive — "N similar profiles online in {city} now" at
+ * the very bottom. Never on a live/online profile: a person is not inventory.
+ *
+ * The data seam lives at the page (app/api is page/action-only) — the page
+ * passes the already-filtered online-similar profiles in. Renders nothing when
+ * she's online or nobody is available (no empty shelf).
+ */
+import * as m from '@/paraglide/messages';
+import { availabilityState, type Profile } from '@/app/models/profile';
+import { cityName } from '@/lib/seo';
+import ProfileCard from '@/components/organisms/profile/ProfileCard.astro';
+
+interface Props {
+  profile: Profile;
+  /** Online, same-city, service-overlapping profiles (page-computed). */
+  similar: Profile[];
+  /** Injected for deterministic tests/screenshots; defaults to real now. */
+  now?: Date;
+}
+const { profile: p, similar, now } = Astro.props;
+
+const away = availabilityState(p, now).kind !== 'online';
+---
+
+{
+  away && similar.length > 0 && (
+    <section class="border-t border-border pt-8">
+      <h2 class="display text-xl md:text-2xl">
+        {m.similar_online_now({ count: String(similar.length), city: cityName(p.city) })}
+      </h2>
+      <div class="mt-4 space-y-1">
+        {similar.map((c) => (
+          <ProfileCard profile={c} variant="compact" />
+        ))}
+      </div>
+    </section>
+  )
+}

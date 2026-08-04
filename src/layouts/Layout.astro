@@ -1,0 +1,283 @@
+---
+import { ClientRouter } from 'astro:transitions';
+import * as m from '@/paraglide/messages';
+import { getLocale } from '@/paraglide/runtime';
+import type { Locale } from '@/lib/taxonomy';
+import { accountApi } from '@/app/api/account';
+import { messagingApi } from '@/app/api/messaging';
+import { sessionApi } from '@/app/api/session';
+import Header from '@/components/organisms/layout/Header.astro';
+import Footer from '@/components/organisms/layout/Footer.astro';
+import BottomTabBar from '@/components/organisms/layout/BottomTabBar.astro';
+import AuthModal from '@/components/organisms/auth/AuthModal.astro';
+import PageSheet from '@/components/molecules/PageSheet.astro';
+import ProfileSheet from '@/components/organisms/profile/ProfileSheet.astro';
+import Lightbox from '@/components/molecules/Lightbox.astro';
+import FavoritesController from '@/components/molecules/FavoritesController.astro';
+import '@fontsource/barlow/400.css';
+import '@fontsource/barlow/500.css';
+import '@fontsource/barlow/600.css';
+import '@fontsource/barlow/700.css';
+import '@fontsource/barlow/600-italic.css';
+import '@fontsource/barlow-condensed/500.css';
+import '@fontsource/barlow-condensed/600.css';
+import '@fontsource/barlow-condensed/700.css';
+import '@/styles/global.css';
+
+interface Props {
+  title?: string;
+  description?: string;
+  /** Clean indexable URL for filtered listings (SEO: variants canonicalize here). */
+  canonical?: string;
+  /** Absolute URL per locale → full reciprocal hreflang set + x-default (en). */
+  alternates?: Record<Locale, string>;
+  /** JSON-LD objects to embed (SEO.md §4). */
+  jsonLd?: unknown[];
+  /** Utility pages (account, favorites): keep out of the index. */
+  noindex?: boolean;
+  /** Immersive full-screen page (chat thread): drop header/footer/dock chrome. */
+  bare?: boolean;
+}
+
+const { title = m.app_name(), description, canonical, alternates, jsonLd = [], noindex, bare } = Astro.props;
+const locale = getLocale();
+
+/* Session-aware chrome: layouts may read the seam (docs/API.md). */
+const session = await sessionApi.current(Astro);
+const idVerified =
+  session?.role === 'advertiser'
+    ? (await accountApi.get(session)).idVerification === 'approved'
+    : true;
+// Dock unread badge. ponytail: reads all thread docs per page (mock); the
+// Supabase backend replaces this with a realtime per-account count subscription.
+const unread =
+  session && !bare
+    ? (await messagingApi.listThreads(session)).reduce((n, t) => n + t.unread, 0)
+    : 0;
+---
+
+<!doctype html>
+<html lang={locale}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
+    <title>{title}</title>
+    <!-- Real title kept out of <title> so the safe-mode script can restore it
+         after neutralizing the tab, and stays fresh across view transitions. -->
+    <meta name="x-real-title" content={title} />
+    {noindex && <meta name="robots" content="noindex, follow" />}
+    {description && <meta name="description" content={description} />}
+    {canonical && <link rel="canonical" href={canonical} />}
+    {
+      alternates &&
+        Object.entries(alternates).map(([l, href]) => (
+          <link rel="alternate" hreflang={l} href={href} />
+        ))
+    }
+    {alternates && <link rel="alternate" hreflang="x-default" href={alternates.en} />}
+    {jsonLd.map((obj) => (
+      <script type="application/ld+json" set:html={JSON.stringify(obj)} />
+    ))}
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <!-- Font Awesome 8 Pro (kit: thin + brands), self-hosted from public/fa/.
+         Fonts download lazily, only when a fa-* glyph is actually rendered. -->
+    <link rel="stylesheet" href="/fa/css/all.min.css" />
+    <link rel="icon" data-real-icon href="/icons/icon.svg" type="image/svg+xml" />
+    <!-- Dark is the site default (theme rides localStorage, not the device). -->
+    <meta name="theme-color" content="#171717" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Intimate" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon-180.png" />
+    <ClientRouter />
+    <script is:inline>
+      // No-flash theme: dark is the house default — even on light-preferring
+      // devices; only an explicit pick of light overrides it. On view
+      // transitions the class is stamped on the INCOMING document BEFORE the
+      // swap (after-swap re-adding it straddled a style recalc, so the theme
+      // switch thumb visibly slid on every navigation).
+      (function () {
+        const dark = () => localStorage.theme !== 'light';
+        document.documentElement.classList.toggle('dark', dark());
+        document.addEventListener('astro:before-swap', (e) => {
+          e.newDocument.documentElement.classList.toggle('dark', dark());
+        });
+      })();
+    </script>
+  </head>
+  <body class="min-h-dvh bg-background font-sans text-foreground antialiased">
+    <!-- .page-zoom = the iOS push-back target when a sheet opens; fixed
+         chrome (dock, dialogs) lives outside it. -->
+    <div class="page-zoom">
+      {!bare && <Header {session} />}
+
+      <main>
+        <slot />
+      </main>
+
+      {!bare && <Footer />}
+    </div>
+    {!bare && <BottomTabBar {session} {idVerified} {unread} />}
+    <AuthModal />
+    <PageSheet />
+    <ProfileSheet />
+    <Lightbox />
+    <FavoritesController />
+
+    <script is:inline data-neutral-title={m.safe_neutral_title()}>
+      // Safe mode (DESIGN.md §6, Phase 5): THREE-valued.
+      //   off     — real photos (THE DEFAULT — discretion is opt-in)
+      //   neutral — muted abstract placeholders
+      //   dev     — anime placeholders (the operator's build-in-public skin)
+      // Server HTML ships the neutral placeholder (no-JS stays discreet); the
+      // script swaps in photos unless a cookie says otherwise.
+      (function () {
+        const script = document.currentScript;
+        const NEUTRAL_TITLE = (script && script.dataset.neutralTitle) || 'Search';
+        const NEUTRAL_FAVICON =
+          "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='96' fill='%23888'/%3E%3C/svg%3E";
+        // Real title lives in a meta tag Astro re-renders per page, so it stays
+        // fresh across view transitions even after we neutralize document.title.
+        const realTitle = (root) => {
+          root = root || document;
+          const m = root.querySelector("meta[name='x-real-title']");
+          return (m && m.getAttribute('content')) || root.title;
+        };
+        const STATES = ['off', 'neutral', 'dev'];
+
+        const state = () => {
+          const m = document.cookie.match(/safe_mode=(\w+)/);
+          const v = m && m[1];
+          if (v === 'off' || v === 'neutral' || v === 'dev') return v;
+          if (v === 'on') return 'neutral'; // legacy cookie
+          return 'off'; // photos by default — safe mode is a choice, not a wall
+        };
+        const setState = (s) => {
+          document.cookie = 'safe_mode=' + s + '; path=/; max-age=31536000; samesite=lax';
+        };
+
+        // `root` lets astro:before-swap run this against the INCOMING document
+        // — images get their real src BEFORE first paint, so navigation never
+        // flashes the neutral placeholder (the "images flicker" bug).
+        const apply = (root) => {
+          root = root || document;
+          const s = state();
+          const off = s === 'off';
+          const pick = s === 'dev' ? 'dev' : 'safe'; // safe = neutral data-attr
+          root.querySelectorAll('img[data-safe]').forEach((el) => {
+            const want = off
+              ? el.dataset.real || el.dataset.safe
+              : el.dataset[pick] || el.dataset.safe;
+            if (el.getAttribute('src') !== want) el.setAttribute('src', want);
+          });
+          root.querySelectorAll('[data-safe-video-wrap]').forEach((wrap) => {
+            const video = wrap.querySelector('video');
+            const fallback = wrap.querySelector('img');
+            if (!video) return;
+            video.classList.toggle('hidden', !off);
+            if (fallback) fallback.classList.toggle('hidden', off);
+            if (off) video.play().catch(() => {});
+            else video.pause();
+          });
+          // Toggle UI: aria-checked = "is safe mode active at all", data-safe-state
+          // carries the exact value so the label/icon can reflect all three.
+          root.querySelectorAll('[data-safe-toggle]').forEach((b) => {
+            b.setAttribute('aria-checked', String(!off));
+            b.setAttribute('data-safe-state', s);
+          });
+          // Neutral tab chrome (5.3): generic title + monochrome favicon while
+          // safe mode is on (neutral OR dev); restore the real ones when off.
+          const icon = root.querySelector('link[data-real-icon]');
+          if (off) {
+            root.title = realTitle(root);
+            if (icon) icon.setAttribute('href', '/icons/icon.svg');
+          } else {
+            root.title = NEUTRAL_TITLE;
+            if (icon) icon.setAttribute('href', NEUTRAL_FAVICON);
+          }
+        };
+
+        // Toggle cycles off → neutral → dev → off (5.2). Boss key flips on/off.
+        const cycle = () => {
+          setState(STATES[(STATES.indexOf(state()) + 1) % STATES.length]);
+          apply();
+        };
+        const flip = () => {
+          setState(state() === 'off' ? 'neutral' : 'off');
+          apply();
+        };
+
+        document.addEventListener('click', (e) => {
+          if (!e.target.closest) return;
+          if (e.target.closest('[data-scroll-top]')) {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            return;
+          }
+          if (e.target.closest('[data-safe-toggle]')) cycle();
+        });
+
+        // Boss key (5.4): double-Esc within 500ms flips safe mode, both ways.
+        let lastEsc = 0;
+        document.addEventListener('keydown', (e) => {
+          if (e.key !== 'Escape') return;
+          const now = Date.now();
+          if (now - lastEsc < 500) {
+            flip();
+            lastEsc = 0;
+          } else {
+            lastEsc = now;
+          }
+        });
+
+        // BEFORE-swap: the incoming document gets its real image srcs (and tab
+        // chrome) pre-paint — no placeholder flash on navigation. page-load
+        // stays as the fallback for injected content (profile sheet etc.).
+        document.addEventListener('astro:before-swap', (e) => apply(e.newDocument));
+        document.addEventListener('astro:page-load', () => apply());
+        apply();
+      })();
+
+      // Live availability badge (page-cache.ts): the profile page HTML is edge
+      // -cached 24h, so its "online" dot is a snapshot. On any profile view
+      // (full page or lifted into the sheet) re-fetch the fresh state once and
+      // patch the [data-avail] badges — the cached shell is never stale-online.
+      (function () {
+        // Mirrors AvailabilityLine.astro's dot/glyph markup — keep the two in
+        // sync if that component's mark styling changes.
+        const markMarkup = (online, glyph, muted) =>
+          online
+            ? '<span class="size-1.5 flex-none rounded-full bg-online" aria-hidden="true"></span>'
+            : '<span class="flex-none leading-none ' + muted + '" aria-hidden="true">' + glyph + '</span>';
+        async function refreshAvail() {
+          if (!document.querySelector('[data-avail-refresh]')) return;
+          try {
+            const base = location.pathname.replace(/\/+$/, '');
+            const res = await fetch(base + '/avail.json', { headers: { 'X-Sheet': '1' } });
+            if (!res.ok) return;
+            const a = await res.json(); // { online, glyph, label, sub }
+            document.querySelectorAll('[data-avail]').forEach((el) => {
+              const muted = el.getAttribute('data-avail-variant') === 'card' ? 'text-white/50' : 'text-muted-foreground';
+              const mark = el.querySelector('[data-avail-mark]');
+              if (mark) mark.innerHTML = markMarkup(a.online, a.glyph, muted);
+              const label = el.querySelector('[data-avail-label]');
+              if (label) label.textContent = a.label;
+              const sub = el.querySelector('[data-avail-sub]');
+              if (sub) {
+                const t = a.sub ? '· ' + a.sub : '';
+                sub.textContent = t;
+                sub.classList.toggle('hidden', !t);
+              }
+            });
+          } catch (_) {
+            /* cached snapshot stands */
+          }
+        }
+        document.addEventListener('astro:page-load', refreshAvail);
+      })();
+
+      if ('serviceWorker' in navigator) {
+        addEventListener('load', () => navigator.serviceWorker.register('/sw.js'));
+      }
+    </script>
+  </body>
+</html>

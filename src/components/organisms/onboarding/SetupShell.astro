@@ -1,0 +1,46 @@
+---
+/**
+ * The setup-flow chrome (docs/ONBOARDING.md §4) — deliberately NOT the 5-tab
+ * AccountShell: tabs are escape routes = drop-off. Just a wordmark, the filling
+ * progress bar (the fill IS the reward — law 2), and an always-present "later"
+ * escape that costs nothing. One job per screen lives in the slot.
+ */
+import * as m from '@/paraglide/messages';
+import { localizePath } from '@/lib/i18n';
+
+interface Props {
+  /** 1-based position among the numbered steps; omit on welcome/done (no bar). */
+  index?: number;
+  total?: number;
+}
+const { index, total } = Astro.props;
+const showBar = index != null && total != null;
+const pct = showBar ? Math.round((index! / total!) * 100) : 0;
+---
+
+<div class="mx-auto min-h-dvh max-w-xl px-4 py-6 md:py-10">
+  <div class="flex items-center justify-between gap-4">
+    <a href={localizePath('/')} class="font-condensed text-lg font-bold tracking-tight">Intimate</a>
+    <a
+      href={`${localizePath('/account/')}?later=1`}
+      class="text-sm text-muted-foreground underline-offset-2 transition-colors hover:text-foreground hover:underline"
+    >
+      {m.onb_later()}
+    </a>
+  </div>
+
+  {
+    showBar && (
+      <div class="mt-4">
+        <div class="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+          <div class="h-full rounded-full bg-online transition-[width] duration-500" style={`width:${pct}%`} />
+        </div>
+        <p class="mt-2 text-xs font-medium text-muted-foreground">
+          {m.onb_step_word()} {index} / {total}
+        </p>
+      </div>
+    )
+  }
+
+  <div class="mt-8"><slot /></div>
+</div>

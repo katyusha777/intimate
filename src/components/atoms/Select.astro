@@ -1,0 +1,26 @@
+---
+/**
+ * Styled native <select> — Misprint slab frame (matches SlabField), so it sits
+ * consistently beside slab inputs in the profile editor. Options via slot.
+ */
+import Icon from './Icon.astro';
+
+interface Props {
+  class?: string;
+  [key: string]: unknown;
+}
+
+const { class: className, ...props } = Astro.props;
+---
+
+<span class:list={['slab-field block', className]}>
+  <span class="slab-field__face relative flex h-11 items-center">
+    <select
+      class="h-full w-full cursor-pointer appearance-none bg-transparent pl-4 pr-9 text-base outline-none md:text-sm"
+      {...props}
+    >
+      <slot />
+    </select>
+    <Icon name="chevron-down" class="pointer-events-none absolute right-4 text-xs text-muted-foreground" />
+  </span>
+</span>

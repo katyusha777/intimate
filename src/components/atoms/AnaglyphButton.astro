@@ -1,0 +1,213 @@
+---
+/**
+ * Persona 5-inspired anaglyph button: skewed face with chromatic offset
+ * layers (pink = brand primary, cyan = the 3D-glasses gag). Face/text flip
+ * automatically with the theme via tokens. Click = brief glitch shiver.
+ * `plain` drops the pink/cyan layers — same cut ink slab, quieter (the
+ * SECONDARY button).
+ */
+interface Props {
+  as?: 'button' | 'a';
+  href?: string;
+  type?: 'button' | 'submit';
+  size?: 'xs' | 'sm' | 'default' | 'lg';
+  /** No chromatic layers — the secondary slab. */
+  plain?: boolean;
+  class?: string;
+  [key: string]: unknown;
+}
+
+const {
+  as,
+  href,
+  type = 'button',
+  size = 'default',
+  plain = false,
+  class: className,
+  ...rest
+} = Astro.props;
+
+const Tag = as ?? (href ? 'a' : 'button');
+---
+
+<Tag
+  class:list={['ana-btn', `ana-btn--${size}`, className]}
+  href={href}
+  type={Tag === 'button' ? type : undefined}
+  {...rest}
+>
+  {!plain && <span class="ana-btn__layer ana-btn__layer--pink" aria-hidden="true"></span>}
+  {!plain && <span class="ana-btn__layer ana-btn__layer--cyan" aria-hidden="true"></span>}
+  <span class="ana-btn__face">
+    <span class="ana-btn__label"><slot /></span>
+  </span>
+</Tag>
+
+<style>
+  .ana-btn {
+    /* -- tunables ------------------------------------------------ */
+    --ana-pink: var(--brand);
+    --ana-cyan: #00e5ff;
+    --ana-fill: var(--foreground);
+    --ana-text: var(--background);
+    --ana-offset-x: 3px;
+    --ana-offset-y: 2px;
+    --ana-offset-x-hover: 5px;
+    --ana-offset-y-hover: 3.5px;
+    --ana-clip: polygon(1.5% 6%, 100% 0, 98.5% 94%, 0 100%);
+    /* ------------------------------------------------------------ */
+
+    display: inline-block;
+    padding: 0;
+    border: none;
+    background: none;
+    cursor: pointer;
+    transform: rotate(-0.5deg);
+    transition: transform 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+  /* Layered default: unlayered component CSS beats ALL utility classes, so
+     `position: relative` here silently overrode `absolute` on callers
+     (SHOW ALL PHOTOS rendered bottom-LEFT). In @layer components it loses
+     to the utilities layer, as it should. */
+  @layer components {
+    .ana-btn {
+      position: relative;
+    }
+  }
+
+  .ana-btn__layer {
+    position: absolute;
+    inset: 0;
+    clip-path: var(--ana-clip);
+    transition: transform 0.2s cubic-bezier(0.25, 1, 0.5, 1);
+  }
+
+  .ana-btn__layer--pink {
+    background: var(--ana-pink);
+    transform: translate(calc(var(--ana-offset-x) * -1), var(--ana-offset-y));
+  }
+
+  .ana-btn__layer--cyan {
+    background: var(--ana-cyan);
+    transform: translate(var(--ana-offset-x), calc(var(--ana-offset-y) * -1));
+  }
+
+  .ana-btn__face {
+    position: relative;
+    display: block;
+    background: var(--ana-fill);
+    clip-path: var(--ana-clip);
+    transition: transform 0.12s ease;
+  }
+
+  .ana-btn--xs .ana-btn__face {
+    /* compact chrome size: face ≈ h-8, sits inside 36px control rows */
+    padding: 0.4375rem 0.75rem;
+  }
+  .ana-btn--sm .ana-btn__face {
+    padding: 0.625rem 1.375rem;
+  }
+  .ana-btn--default .ana-btn__face {
+    padding: 0.8125rem 2.125rem;
+  }
+  .ana-btn--lg .ana-btn__face {
+    padding: 1rem 2.875rem;
+  }
+
+  .ana-btn__label {
+    display: inline-block;
+    font-weight: 600;
+    font-style: italic;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--ana-text);
+    transform: skew(-4deg);
+    white-space: nowrap;
+  }
+  .ana-btn--xs .ana-btn__label {
+    font-size: 0.6875rem;
+  }
+  .ana-btn--sm .ana-btn__label {
+    font-size: 0.8125rem;
+  }
+  .ana-btn--default .ana-btn__label {
+    font-size: 0.875rem;
+  }
+  .ana-btn--lg .ana-btn__label {
+    font-size: 1rem;
+  }
+
+  /* hover: layers spread, button leans in */
+  .ana-btn:hover {
+    transform: rotate(-0.5deg) scale(1.02);
+  }
+  .ana-btn:hover .ana-btn__layer--pink {
+    transform: translate(calc(var(--ana-offset-x-hover) * -1), var(--ana-offset-y-hover));
+  }
+  .ana-btn:hover .ana-btn__layer--cyan {
+    transform: translate(var(--ana-offset-x-hover), calc(var(--ana-offset-y-hover) * -1));
+  }
+
+  /* press: face compresses, layers tuck in */
+  .ana-btn:active .ana-btn__face {
+    transform: scale(0.97);
+  }
+  .ana-btn:active .ana-btn__layer--pink {
+    transform: translate(-1.5px, 1px);
+  }
+  .ana-btn:active .ana-btn__layer--cyan {
+    transform: translate(1.5px, -1px);
+  }
+
+  .ana-btn:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 6px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ana-btn,
+    .ana-btn__layer,
+    .ana-btn__face {
+      transition: none;
+    }
+  }
+</style>
+
+<script>
+  // Click glitch: layers shiver for ~300ms. No label swap, no preventDefault —
+  // safe as the default button on links, submits and modal triggers.
+  function initAnaglyph() {
+    document.querySelectorAll<HTMLElement>('.ana-btn').forEach((btn) => {
+      if (btn.dataset.anaInit) return;
+      btn.dataset.anaInit = '1';
+      const pink = btn.querySelector<HTMLElement>('.ana-btn__layer--pink');
+      const cyan = btn.querySelector<HTMLElement>('.ana-btn__layer--cyan');
+      if (!pink || !cyan) return; // plain (secondary) slab — no glitch layers
+      const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      btn.addEventListener('click', () => {
+        if (reduced || btn.dataset.glitching) return;
+        btn.dataset.glitching = '1';
+        let ticks = 0;
+        const iv = setInterval(() => {
+          const r = () => (Math.random() * 7 - 3.5).toFixed(1);
+          for (const el of [pink, cyan]) {
+            el.style.transition = 'none';
+            el.style.transform = `translate(${r()}px, ${r()}px)`;
+          }
+          if (++ticks > 4) {
+            clearInterval(iv);
+            for (const el of [pink, cyan]) {
+              el.style.transition = '';
+              el.style.transform = '';
+            }
+            delete btn.dataset.glitching;
+          }
+        }, 60);
+      });
+    });
+  }
+  initAnaglyph();
+  document.addEventListener('astro:page-load', initAnaglyph);
+</script>

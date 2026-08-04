@@ -1,0 +1,28 @@
+# deps / build
+node_modules/
+dist/
+.astro/
+.wrangler/
+.playwright-mcp
+
+# generated
+src/paraglide/
+worker-configuration.d.ts
+
+# secrets — never commit
+keys.md
+.env
+.env.*
+!.env.example
+.dev.vars*
+
+# local
+safeimg-originals/
+.DS_Store
+.idea/
+.remember/
+.claude/settings.local.json
+
+# supabase CLI runtime artifacts
+supabase/.temp/
+public/nsfwimg-originals/

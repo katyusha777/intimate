@@ -1,0 +1,10 @@
+---
+/** App-facing Input — wraps ui/input (vendor). See atoms/Button.astro.
+ * Misprint (DESIGN §1.1 rule 4): a form field is a printed box — sharp. */
+import { Input as UiInput } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
+
+const { class: className, ...props } = Astro.props;
+---
+
+<UiInput {...props} class={cn('rounded-none', className)} />

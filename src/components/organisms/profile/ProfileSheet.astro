@@ -1,0 +1,277 @@
+---
+/**
+ * Profile presentation without leaving the shelf: profile-card links are
+ * intercepted, the profile page fetched and [data-profile-root] lifted into
+ * — phones: the bottom ActionSheet · desktop: the right-hand SideDrawer
+ * (slide-over) — with the URL pushed (shareable, back closes). No-JS and
+ * modified clicks fall through to real navigation, so SEO/deep-links are
+ * untouched.
+ */
+import ActionSheet from '@/components/molecules/ActionSheet.astro';
+import SideDrawer from '@/components/molecules/SideDrawer.astro';
+---
+
+<!-- A real modal sheet: the ActionSheet default (80dvh cap, rounded top, a
+     clear band of dimmed page above) so it unmistakably reads as a dismissible
+     sheet; `flush` floats the grab pill over the immersive hero. -->
+<ActionSheet id="profile-sheet" label="Profile" flush>
+  <div data-profile-sheet-slot></div>
+  <!-- Floating close, bottom-right: always in thumb reach however deep the
+       profile is scrolled. Sits WELL above the screen edge — a tap near the
+       bottom with Safari's collapsed toolbar only summons the toolbar, so the
+       button must live outside that reveal zone to always register. -->
+  <button
+    slot="chrome"
+    type="button"
+    data-sheet-close
+    aria-label="Close"
+    class="profile-close-fab slab-cut absolute right-5 z-30 grid size-11 cursor-pointer place-items-center bg-foreground text-background shadow-soft-lg transition-transform active:scale-90"
+  >
+    <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+  </button>
+</ActionSheet>
+
+<!-- Desktop slide-over: the listing stays visible behind the backdrop. -->
+<SideDrawer id="profile-drawer" label="Profile">
+  <div data-profile-drawer-slot></div>
+</SideDrawer>
+
+<style>
+  /* Constant offset in-browser (env(sab) flips with Safari's toolbar and
+     would make the FAB jump; 5.5rem also clears the toolbar-reveal zone);
+     standalone PWA has a stable inset. */
+  .profile-close-fab {
+    bottom: 5.5rem;
+  }
+  @media (display-mode: standalone) {
+    .profile-close-fab {
+      bottom: calc(4.5rem + env(safe-area-inset-bottom));
+    }
+  }
+</style>
+
+<script>
+  function initProfileSheet() {
+    if ((window as any).__profileSheet) return;
+    (window as any).__profileSheet = true;
+
+    const mobile = matchMedia('(max-width: 767px)');
+    const isProfileHref = (href: string) => /\/profile\/[^/?#]+\/?$/.test(href);
+
+    // Presentation by viewport: bottom sheet on phones, right slide-over on
+    // desktop. Same contract (openSheet/closeSheet + sheet:closed).
+    const sheet = () =>
+      document.getElementById(mobile.matches ? 'profile-sheet' : 'profile-drawer') as any;
+    const anyOpen = () =>
+      (['profile-sheet', 'profile-drawer']
+        .map((id) => document.getElementById(id))
+        .find((d: any) => d?.open) ?? null) as any;
+    const body = () =>
+      sheet()?.querySelector('[data-sheet-body], [data-drawer-body]') as HTMLElement | null;
+
+    let open = false;
+    let suppressPop = false;
+    // Astro's ClientRouter (router.js onPopState) bails when the popped entry
+    // has `state === null`. So we null the underlying page's history state
+    // while the sheet is up and restore it on close — the back-navigation that
+    // dismisses the sheet then never triggers a listing re-render (no flash).
+    let savedState: unknown = null;
+    let savedUrl = '';
+
+    // The tapped card's photo is ALREADY decoded in memory — seed the sheet
+    // with it so the first frame paints the photo (no black/gray flash while
+    // the page fetches); the real content then swaps in over the same pixels.
+    // The skeleton is SHAPED like the real ProfileDetail so the swap doesn't
+    // reshuffle the layout — and the two presentations differ, so it branches:
+    //  · mobile ActionSheet: hero → full-bleed square grid → dark facts slab
+    //  · desktop SideDrawer: title → 3:4 photo strip → 2-col content + facts
+    const factsSkeleton = `
+      <div class="facts-slab dark space-y-4 bg-neutral-950 p-6">
+        <div class="skeleton h-9 w-2/5"></div>
+        <div class="skeleton h-11 w-full"></div>
+        <div class="skeleton h-4 w-1/2"></div>
+        <div class="space-y-2.5 pt-3">
+          <div class="skeleton h-4 w-full"></div>
+          <div class="skeleton h-4 w-full"></div>
+          <div class="skeleton h-4 w-full"></div>
+        </div>
+      </div>`;
+    const seedImg = (photo?: string) =>
+      photo ? `<img src="${photo.replace(/"/g, '&quot;')}" alt="" class="h-full w-full object-cover" />` : '';
+
+    const skeleton = (photo?: string, mobile = true) =>
+      mobile
+        ? `
+      <div>
+        <div class="${photo ? 'h-[72dvh]' : 'skeleton h-[72dvh]'}">${seedImg(photo)}</div>
+        <div class="mt-0.5 grid grid-cols-3 gap-0.5">
+          <div class="skeleton aspect-square"></div>
+          <div class="skeleton aspect-square"></div>
+          <div class="skeleton aspect-square"></div>
+        </div>
+        <div class="space-y-10 px-4 py-8">
+          ${factsSkeleton}
+          <div class="space-y-3">
+            <div class="skeleton h-7 w-32"></div>
+            <div class="skeleton h-4 w-full"></div>
+            <div class="skeleton h-4 w-5/6"></div>
+          </div>
+        </div>
+      </div>`
+        : `
+      <div class="mx-auto max-w-7xl px-6 pt-8">
+        <div class="mb-4 flex items-end justify-between gap-4">
+          <div class="space-y-2.5">
+            <div class="skeleton h-9 w-52"></div>
+            <div class="skeleton h-4 w-72"></div>
+          </div>
+          <div class="skeleton h-5 w-24"></div>
+        </div>
+        <div class="grid h-[26rem] grid-cols-3 gap-2 lg:h-[30rem]">
+          <div class="${photo ? '' : 'skeleton'} overflow-hidden rounded-xl">${seedImg(photo)}</div>
+          <div class="skeleton rounded-xl"></div>
+          <div class="skeleton rounded-xl"></div>
+        </div>
+        <div class="mt-12 grid gap-12 lg:grid-cols-[1fr_22rem]">
+          <div class="space-y-5">
+            <div class="skeleton h-8 w-28"></div>
+            <div class="skeleton h-4 w-full"></div>
+            <div class="skeleton h-4 w-5/6"></div>
+            <div class="skeleton mt-4 h-8 w-40"></div>
+            <div class="skeleton h-4 w-full"></div>
+            <div class="skeleton h-4 w-2/3"></div>
+          </div>
+          ${factsSkeleton}
+        </div>
+      </div>`;
+
+    async function openProfile(url: string, seedPhoto?: string) {
+      const b = body();
+      const s = sheet();
+      if (!b || !s) {
+        location.href = url;
+        return;
+      }
+      if (open) {
+        // Already in a sheet session (or one still mid-close): swap the profile
+        // in place and KEEP the original return target, so dismissing still
+        // lands on the listing rather than the just-closed profile's URL.
+        history.replaceState(null, '', url);
+      } else {
+        savedState = history.state;
+        savedUrl = location.href;
+        // Strip the listing entry's ClientRouter state so the dismiss-back is a
+        // no-op for the router, then push the profile URL (also null-state).
+        history.replaceState(null, '', savedUrl);
+        history.pushState(null, '', url);
+      }
+      open = true;
+      b.innerHTML = skeleton(seedPhoto, mobile.matches);
+      b.scrollTop = 0;
+      s.openSheet();
+      try {
+        const res = await fetch(url, { headers: { 'X-Sheet': '1' } });
+        if (!res.ok) throw new Error();
+        const doc = new DOMParser().parseFromString(await res.text(), 'text/html');
+        const root = doc.querySelector('[data-profile-root]');
+        if (!root) throw new Error();
+        b.innerHTML = '';
+        b.appendChild(root);
+        // The injected profile carries its own component <script> tags, but
+        // DOM-inserted scripts never execute — so a listing page's request sheet /
+        // report control stay dead. Re-create the ones this page isn't already
+        // running so they self-init against the injected DOM. "Already running" =
+        // present in <head> (real executing scripts); the injected copies sit in
+        // the sheet BODY and must not count. Key by component (strip the hash) so
+        // a post-deploy hash skew doesn't re-run an already-live module. A unique
+        // query forces execution (a module runs once per URL per document).
+        const key = (u: string) => u.split('?')[0].replace(/\.[\w-]+\.js$/, '');
+        const running = new Set(
+          [...document.head.querySelectorAll('script[src]')].map((s) => key(s.getAttribute('src') || '')),
+        );
+        root.querySelectorAll('script[type="module"][src]').forEach((s) => {
+          const src = s.getAttribute('src');
+          if (!src || running.has(key(src))) return;
+          running.add(key(src));
+          const el = document.createElement('script');
+          el.type = 'module';
+          el.src = `${src}${src.includes('?') ? '&' : '?'}sheet=${key(src).split('/').pop()}`;
+          document.head.appendChild(el);
+        });
+        // Re-run component initializers (carousel, safe-mode image swap, hero
+        // back button, gallery) on the injected content — all idempotent.
+        document.dispatchEvent(new Event('astro:page-load'));
+        b.scrollTop = 0;
+      } catch {
+        location.href = url; // graceful fallback: real navigation
+      }
+    }
+
+    const restoreHistory = () => {
+      // Put the listing URL + its original ClientRouter state back.
+      if (savedUrl) history.replaceState(savedState, '', savedUrl);
+      savedUrl = '';
+    };
+
+    // Sheet closed by any gesture (drag/flick/backdrop/Esc): pop our entry so
+    // the URL returns to the listing (ClientRouter no-ops on the null state).
+    document.addEventListener('sheet:closed', (e) => {
+      const id = (e.target as HTMLElement)?.id;
+      if ((id !== 'profile-sheet' && id !== 'profile-drawer') || !open) return;
+      open = false;
+      suppressPop = true;
+      history.back();
+    });
+
+    // Browser back / hero back button (history.back) → close the sheet visually.
+    window.addEventListener('popstate', () => {
+      if (suppressPop) {
+        suppressPop = false;
+        restoreHistory();
+        return;
+      }
+      if (open) {
+        open = false;
+        anyOpen()?.closeSheet();
+        restoreHistory();
+      }
+    });
+
+    // Hero back → history.back (full page: previous page; sheet: pops → closes).
+    // Delegated globally so it works on the full page AND inside the injected
+    // sheet (whose page may not bundle the hero script).
+    document.addEventListener('click', (e) => {
+      if ((e.target as HTMLElement).closest?.('[data-hero-back]')) {
+        e.preventDefault();
+        history.back();
+      }
+    });
+
+    // Intercept profile links on EVERY viewport (sheet or drawer); modified
+    // clicks (new-tab etc.) fall through. Capture + stopImmediatePropagation
+    // beats Astro's ClientRouter.
+    document.addEventListener(
+      'click',
+      (e) => {
+        const me = e as MouseEvent;
+        if (me.button !== 0 || me.metaKey || me.ctrlKey || me.shiftKey || me.altKey) return;
+        if ((e.target as HTMLElement).closest?.('[data-fav-toggle]')) return; // heart favorites, not navigates
+        if ((e.target as HTMLElement).closest?.('.pc-btn')) return; // carousel arrows switch photos, never open the card
+        // A verified mark opens its receipt, not the profile. NON-EMPTY only:
+        // an open sheet stamps an EMPTY data-sheet-open on <html>, which must
+        // not veto profile links inside that sheet (favorites → profile).
+        if ((e.target as HTMLElement).closest?.('[data-sheet-open]:not([data-sheet-open=""])')) return;
+        const a = (e.target as HTMLElement).closest?.('a[href]') as HTMLAnchorElement | null;
+        if (!a || a.target === '_blank') return;
+        if (!isProfileHref(a.getAttribute('href') || '')) return;
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        // Hand over the card's already-decoded photo for the first frame.
+        openProfile(a.href, a.querySelector('img')?.currentSrc || undefined);
+      },
+      { capture: true },
+    );
+  }
+  initProfileSheet();
+  document.addEventListener('astro:page-load', initProfileSheet);
+</script>

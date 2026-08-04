@@ -1,0 +1,223 @@
+---
+/**
+ * Filterable select (combobox): trigger button → panel with a search input and
+ * a filtered option list — the shadcn/fulldev Combobox pattern, built vanilla
+ * to stay inside the JS budget (swap for the React island later if needed).
+ *
+ * Integration: on pick it writes `value` into the nearest form element
+ * matching `target` and dispatches a bubbling `change` — existing form logic
+ * (auto-submit, path navigation) takes over from there.
+ */
+import Icon from '@/components/atoms/Icon.astro';
+
+interface Props {
+  options: { value: string; label: string }[];
+  value?: string;
+  placeholder: string;
+  /** Shown for the empty option (clears the value); omit for no empty option. */
+  anyLabel?: string;
+  /** Omit to drop the search input (short lists don't need one). */
+  searchPlaceholder?: string;
+  /** CSS selector of the form control to drive (searched document-wide). */
+  target: string;
+  /** Fallback when no target exists on the page: navigate `${navBase}${value}/`. */
+  navBase?: string;
+  /** When navigating (navBase mode), persist the pick in this cookie (1yr). */
+  cookie?: string;
+  /**
+   * Language-switcher mode: on pick, follow the page's own hreflang alternate
+   * link (SEO-correct — localized slugs included), falling back to /{lang}/.
+   */
+  lang?: boolean;
+  /** Optional leading icon (e.g. location-dot). */
+  icon?: string;
+  /**
+   * Trigger look: `default` rounded keyline · `box` sharp condensed-uppercase
+   * rectangle (the AMSTERDAM ▾ location control) · `bare` borderless text
+   * (the EN ▾ language switch).
+   */
+  variant?: 'default' | 'box' | 'bare';
+  /** Override the trigger text (e.g. "EN" while options carry full names). */
+  triggerLabel?: string;
+  /** Panel anchor edge — `left` for triggers near the LEFT screen edge
+   *  (default `right` hangs the panel off-screen there). */
+  align?: 'left' | 'right';
+  class?: string;
+}
+
+const {
+  options,
+  value,
+  placeholder,
+  anyLabel,
+  searchPlaceholder,
+  target,
+  navBase,
+  cookie,
+  lang,
+  icon,
+  variant = 'default',
+  triggerLabel,
+  align = 'right',
+  class: className,
+} = Astro.props;
+const current = options.find((o) => o.value === value);
+
+const TRIGGER = {
+  default:
+    'flex h-9 w-full cursor-pointer select-none items-center gap-2 border border-foreground/20 px-3 text-sm font-medium transition-colors hover:border-foreground/60',
+  box: 'flex h-9 w-full cursor-pointer select-none items-center gap-2 border border-foreground/30 px-3.5 font-condensed text-sm font-bold uppercase tracking-wide transition-colors hover:border-foreground/70 md:h-10',
+  bare: 'flex h-9 w-full cursor-pointer select-none items-center gap-1 px-1 text-xs font-bold text-foreground/80 transition-colors hover:text-foreground',
+};
+---
+
+<div
+  class:list={['cbx relative', className]}
+  data-cbx
+  data-cbx-target={target}
+  data-cbx-nav-base={navBase}
+  data-cbx-cookie={cookie}
+  data-cbx-lang={lang || undefined}
+>
+  <button type="button" aria-haspopup="listbox" data-cbx-btn class={TRIGGER[variant]}>
+    {icon && <Icon name={icon} class="text-muted-foreground" />}
+    <span data-cbx-label class="truncate">{triggerLabel ?? (current ? current.label : placeholder)}</span>
+    <Icon name="chevron-down" class="ml-auto text-xs text-muted-foreground" />
+  </button>
+
+  <div
+    data-cbx-panel
+    hidden
+    class:list={[
+      'absolute z-30 mt-1 w-56 overflow-hidden border border-foreground/20 bg-background shadow-soft-lg',
+      align === 'left' ? 'left-0' : 'right-0',
+    ]}
+  >
+    {
+      searchPlaceholder && (
+        <input
+          data-cbx-search
+          type="text"
+          placeholder={searchPlaceholder}
+          autocomplete="off"
+          class="h-10 w-full border-b border-foreground/20 bg-transparent px-3 text-base caret-brand outline-none placeholder:text-muted-foreground md:text-sm"
+        />
+      )
+    }
+    <ul class="max-h-64 overflow-y-auto p-1" role="listbox">
+      {
+        anyLabel && (
+          <li>
+            <button
+              type="button"
+              data-cbx-option
+              data-value=""
+              class:list={[
+                'flex w-full cursor-pointer items-center justify-between px-2.5 py-2 text-left text-sm transition-colors hover:bg-muted',
+                !value && 'font-semibold',
+              ]}
+            >
+              {anyLabel}
+            </button>
+          </li>
+        )
+      }
+      {
+        options.map((o) => (
+          <li data-cbx-item data-label={o.label.toLowerCase()}>
+            <button
+              type="button"
+              data-cbx-option
+              data-value={o.value}
+              class:list={[
+                'flex w-full cursor-pointer items-center justify-between px-2.5 py-2 text-left text-sm transition-colors hover:bg-muted',
+                o.value === value && 'font-semibold',
+              ]}
+            >
+              {o.label}
+              {o.value === value && <Icon name="check" class="text-xs" />}
+            </button>
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+</div>
+
+<script>
+  function initCombobox() {
+    document.querySelectorAll<HTMLElement>('[data-cbx]').forEach((cbx) => {
+      if (cbx.dataset.init) return;
+      cbx.dataset.init = '1';
+      const btn = cbx.querySelector<HTMLElement>('[data-cbx-btn]')!;
+      const panel = cbx.querySelector<HTMLElement>('[data-cbx-panel]')!;
+      const search = cbx.querySelector<HTMLInputElement>('[data-cbx-search]');
+
+      const close = () => {
+        panel.hidden = true;
+      };
+      btn.addEventListener('click', () => {
+        panel.hidden = !panel.hidden;
+        if (!panel.hidden && search) {
+          search.value = '';
+          filter();
+          search.focus();
+        }
+      });
+      document.addEventListener('click', (e) => {
+        if (!cbx.contains(e.target as Node)) close();
+      });
+      cbx.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') close();
+      });
+
+      const filter = () => {
+        const term = (search?.value ?? '').trim().toLowerCase();
+        cbx.querySelectorAll<HTMLElement>('[data-cbx-item]').forEach((li) => {
+          li.hidden = term.length > 0 && !li.dataset.label!.includes(term);
+        });
+      };
+      search?.addEventListener('input', filter);
+
+      cbx.querySelectorAll<HTMLElement>('[data-cbx-option]').forEach((opt) => {
+        opt.addEventListener('click', () => {
+          close();
+          const v = opt.dataset.value ?? '';
+          // Language mode: this page already computed its localized alternate
+          // URLs (hreflang, incl. localized slugs) — just follow them.
+          if (cbx.dataset.cbxLang !== undefined) {
+            const alt = document.querySelector<HTMLLinkElement>(
+              `link[rel="alternate"][hreflang="${v}"]`,
+            );
+            location.href = alt?.href ?? `/${v}/`;
+            return;
+          }
+          // Prefer a live form control (listing pages keep their tab + query);
+          // otherwise navigate to the base path (header on any other page).
+          const ctl = document.querySelector(cbx.dataset.cbxTarget!) as HTMLSelectElement | null;
+          if (ctl) {
+            ctl.value = v;
+            ctl.dispatchEvent(new Event('change', { bubbles: true }));
+            return;
+          }
+          const base = cbx.dataset.cbxNavBase;
+          if (base) {
+            // Persist the location choice so it survives to next visit (1.2).
+            const ck = cbx.dataset.cbxCookie;
+            if (ck) {
+              document.cookie = v
+                ? `${ck}=${v}; path=/; max-age=31536000; samesite=lax`
+                : `${ck}=; path=/; max-age=0; samesite=lax`;
+              try {
+                localStorage.setItem('city_asked', '1');
+              } catch {}
+            }
+            location.href = v ? `${base}${v}/` : base;
+          }
+        });
+      });
+    });
+  }
+  initCombobox();
+  document.addEventListener('astro:page-load', initCombobox);
+</script>

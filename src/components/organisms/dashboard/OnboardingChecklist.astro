@@ -1,0 +1,106 @@
+---
+/**
+ * "Get your profile live" — the dashboard view of the onboarding journey
+ * (docs/ONBOARDING.md §3). Same derived progress as the setup flow; leaving the
+ * flow never loses the thread. Required steps only (hours is optional, nudged
+ * later). When every step is done, the whole card becomes the Submit button.
+ * Advertiser + draft only — the dashboard decides when to render this.
+ */
+import * as m from '@/paraglide/messages';
+import { localizePath } from '@/lib/i18n';
+import Button from '@/components/atoms/Button.astro';
+import type { OnboardingProgress, OnboardingStepKey } from '@/lib/onboarding';
+
+interface Props {
+  progress: OnboardingProgress;
+}
+const { progress } = Astro.props;
+
+// Phase 1: rows deep-link to the existing tabs. Phase 2 repoints them into the
+// setup flow at that step. Full key set so the lookup is always defined.
+const META: Record<OnboardingStepKey, { label: () => string; href: string }> = {
+  basics: { label: m.onb_step_basics, href: '/account/profile/' },
+  rates: { label: m.onb_step_rates, href: '/account/profile/' },
+  services: { label: m.onb_step_services, href: '/account/profile/' },
+  photos: { label: m.onb_step_photos, href: '/account/photos/' },
+  hours: { label: m.onb_step_services, href: '/account/profile/' }, // optional — not listed here
+  phone: { label: m.onb_step_phone, href: '/account/verification/' },
+  id: { label: m.onb_step_id, href: '/account/verification/' },
+};
+// Required steps only (the "get live" list); precomputed so the template stays
+// free of type gymnastics.
+const rows = progress.steps.filter((s) => !s.optional).map((s) => ({ done: s.done, ...META[s.key] }));
+const pct = Math.round((progress.requiredDone / progress.requiredTotal) * 100);
+---
+
+<div class="facts-card dark bg-neutral-950 p-6 text-white">
+  <p class="eyebrow text-2xs text-white/50">{progress.requiredDone} / {progress.requiredTotal}</p>
+  <p class="mt-2 font-condensed text-2xl font-bold tracking-tight">{m.onb_title()}</p>
+  <p class="mt-1.5 text-sm text-white/60">{m.onb_frame()}</p>
+
+  <!-- Progress bar — the fill IS the reward (ONBOARDING.md law 2). -->
+  <div class="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+    <div class="h-full rounded-full bg-online transition-[width] duration-500" style={`width:${pct}%`}></div>
+  </div>
+
+  <ul class="mt-5 space-y-1">
+    {
+      rows.map((row) => (
+        <li>
+          <a href={localizePath(row.href)} class="flex items-center gap-3 rounded py-2.5 transition-colors hover:bg-white/5">
+            <span
+              class:list={[
+                'grid size-6 flex-none place-items-center rounded-full border text-xs',
+                row.done ? 'border-online bg-online/15 text-online' : 'border-white/25 text-white/40',
+              ]}
+            >
+              {row.done && (
+                <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
+              )}
+            </span>
+            <span class:list={['flex-1 text-sm font-medium', row.done ? 'text-white/50 line-through' : 'text-white']}>
+              {row.label()}
+            </span>
+            {!row.done && (
+              <svg class="size-4 flex-none text-white/40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+            )}
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+
+  {
+    progress.readyToSubmit && (
+      <div class="mt-5 border-t border-white/10 pt-5">
+        <p class="mb-3 text-sm text-white/70">{m.onb_submit_hint()}</p>
+        <Button type="button" size="lg" class="w-full" data-onb-submit>
+          {m.onb_submit()}
+        </Button>
+        <p data-onb-error class="mt-2 hidden text-sm font-medium text-brand">{m.auth_error()}</p>
+      </div>
+    )
+  }
+</div>
+
+<script>
+  import { actions } from 'astro:actions';
+  function initOnbSubmit() {
+    const btn = document.querySelector<HTMLButtonElement>('[data-onb-submit]');
+    if (!btn || btn.dataset.init) return;
+    btn.dataset.init = '1';
+    btn.addEventListener('click', async () => {
+      if (btn.dataset.loading) return;
+      btn.dataset.loading = '1';
+      const { error } = await actions.account.submitProfile({});
+      if (error) {
+        document.querySelector('[data-onb-error]')?.classList.remove('hidden');
+        delete btn.dataset.loading;
+        return;
+      }
+      location.reload(); // → the "in review" banner takes over
+    });
+  }
+  initOnbSubmit();
+  document.addEventListener('astro:page-load', initOnbSubmit);
+</script>

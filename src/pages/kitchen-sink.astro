@@ -1,0 +1,610 @@
+---
+/**
+ * The consistency contract (DESIGN.md §10): every component, every variant,
+ * both themes, safe mode on/off. Dev reference — not linked from anywhere.
+ */
+import Layout from '@/layouts/Layout.astro';
+import ProfileCard from '@/components/organisms/profile/ProfileCard.astro';
+import PhotoCarousel from '@/components/molecules/PhotoCarousel.astro';
+import SafeImage from '@/components/atoms/SafeImage.astro';
+import Combobox from '@/components/molecules/Combobox.astro';
+import ActionSheet from '@/components/molecules/ActionSheet.astro';
+import AvailabilityLine from '@/components/molecules/AvailabilityLine.astro';
+import CitySheet from '@/components/molecules/CitySheet.astro';
+import ProfilePhotoMosaic from '@/components/organisms/profile/ProfilePhotoMosaic.astro';
+import RatesTable from '@/components/organisms/profile/RatesTable.astro';
+import GoodToKnow from '@/components/organisms/profile/GoodToKnow.astro';
+import ProfileFacts from '@/components/organisms/profile/ProfileFacts.astro';
+import RequestSheet from '@/components/organisms/profile/RequestSheet.astro';
+import RequestCard from '@/components/organisms/messaging/RequestCard.astro';
+import ReceiptSheet from '@/components/organisms/profile/ReceiptSheet.astro';
+import SimilarProfiles from '@/components/organisms/profile/SimilarProfiles.astro';
+import OnboardingChecklist from '@/components/organisms/dashboard/OnboardingChecklist.astro';
+import StatusBanner from '@/components/organisms/dashboard/StatusBanner.astro';
+import type { OnboardingProgress } from '@/lib/onboarding';
+import { CITIES } from '@/lib/taxonomy';
+import { neutralImageFor, safeImageFor, nsfwImageFor } from '@/lib/safe-images';
+import { profileAge } from '@/app/models/profile';
+import SafeModeToggle from '@/components/molecules/SafeModeToggle.astro';
+import Section from '@/components/molecules/Section.astro';
+// Onboarding demo states (ONBOARDING.md) — display-only mock progress objects.
+const onbSteps = (done: Set<string>) =>
+  (['basics', 'rates', 'services', 'photos', 'hours', 'phone', 'id'] as const).map((key) => ({
+    key,
+    done: done.has(key),
+    optional: key === 'hours',
+  }));
+const onbPartial: OnboardingProgress = {
+  steps: onbSteps(new Set(['basics', 'rates'])),
+  requiredTotal: 6,
+  requiredDone: 2,
+  firstIncomplete: 'services',
+  readyToSubmit: false,
+  submitted: false,
+  state: 'draft',
+};
+const onbReady: OnboardingProgress = {
+  steps: onbSteps(new Set(['basics', 'rates', 'services', 'photos', 'phone', 'id'])),
+  requiredTotal: 6,
+  requiredDone: 6,
+  firstIncomplete: null,
+  readyToSubmit: true,
+  submitted: false,
+  state: 'draft',
+};
+import Select from '@/components/atoms/Select.astro';
+import Input from '@/components/atoms/Input.astro';
+import SlabField from '@/components/molecules/SlabField.astro';
+import FilterSidebar from '@/components/organisms/search/FilterSidebar.astro';
+import VerifiedBadge from '@/components/atoms/VerifiedBadge.astro';
+import Button from '@/components/atoms/Button.astro';
+import Badge from '@/components/atoms/Badge.astro';
+import Skeleton from '@/components/atoms/Skeleton.astro';
+import { profilesApi } from '@/app/api/profiles';
+
+const { items: profiles } = await profilesApi.list({ limit: 12 });
+const p = profiles[0]!;
+
+/* Request card fixture (UX-PLAN 4.2/4.3): a snapshotted pre-qualified card. */
+const requestFixture = {
+  service: p.services[0]!,
+  duration: (p.rates?.[0]?.duration ?? 'hour_1') as 'hour_1',
+  priceAtRequest: p.priceFrom,
+  when: 'tonight' as const,
+  note: 'First time, a bit nervous — is that ok?',
+  screeningAnswer: 'Found you via the Amsterdam shelf.',
+};
+
+/* Availability fixtures — force the three honest states with a fixed `now`
+ * (a Wednesday 14:00 in Amsterdam) so the reference is stable across time. */
+const availNow = new Date('2026-08-05T12:00:00.000Z');
+const availFixtures = [
+  { label: 'online', profile: { ...profiles[1]!, online: true } },
+  {
+    label: 'today_until',
+    profile: {
+      ...profiles[2]!,
+      online: false,
+      openingHours: { wed: { closed: false, allDay: false, from: '09:00', to: '23:00' } },
+      lastActiveAt: '2026-08-05T12:20:00.000Z',
+    },
+  },
+  {
+    label: 'back_at',
+    profile: {
+      ...profiles[3]!,
+      online: false,
+      openingHours: { fri: { closed: false, allDay: false, from: '10:00', to: '20:00' } },
+      lastActiveAt: '2026-08-04T15:00:00.000Z',
+    },
+  },
+] as const;
+const mosaicPhotos = profiles.flatMap((pr) => pr.photos).slice(0, 5);
+
+/* Offline-fallback demo (2.6): an away profile + three online candidates. */
+const awayProfile = { ...p, online: false, openingHours: {} };
+const similarDemo = profiles.filter((pr) => pr.id !== p.id).slice(0, 3);
+const swatches = [
+  ['primary', 'bg-primary'],
+  ['brand', 'bg-brand'],
+  ['online', 'bg-online'],
+  ['foreground', 'bg-foreground'],
+  ['muted', 'bg-muted'],
+  ['card', 'bg-card'],
+  ['border', 'bg-border'],
+] as const;
+---
+
+<Layout title="Kitchen sink">
+  <div class="mx-auto max-w-7xl space-y-14 px-4 py-10 md:px-6">
+    <header>
+      <p class="eyebrow">internal</p>
+      <h1 class="display text-3xl">Kitchen sink</h1>
+      <p class="mt-2 text-sm text-muted-foreground">
+        Every variant, both themes, safe mode on/off. If two components here disagree
+        with each other, they are wrong — not the page.
+      </p>
+    </header>
+
+    <section class="space-y-4">
+      <h2 class="text-xl font-semibold">Font Awesome Pro (thin + brands)</h2>
+      <div class="flex flex-wrap items-center gap-5 text-2xl">
+        <i class="fa-thin fa-heart" title="fa-thin fa-heart"></i>
+        <i class="fa-thin fa-magnifying-glass" title="fa-thin fa-magnifying-glass"></i>
+        <i class="fa-thin fa-user" title="fa-thin fa-user"></i>
+        <i class="fa-thin fa-location-dot" title="fa-thin fa-location-dot"></i>
+        <i class="fa-thin fa-badge-check text-brand" title="fa-thin fa-badge-check"></i>
+        <i class="fa-thin fa-venus" title="fa-thin fa-venus"></i>
+        <i class="fa-thin fa-calendar" title="fa-thin fa-calendar"></i>
+        <i class="fa-brands fa-whatsapp text-online" title="fa-brands fa-whatsapp"></i>
+        <i class="fa-brands fa-telegram" title="fa-brands fa-telegram"></i>
+      </div>
+    </section>
+
+    <section class="space-y-4">
+      <h2 class="text-xl font-semibold">Colors</h2>
+      <div class="flex flex-wrap gap-3">
+        {
+          swatches.map(([name, cls]) => (
+            <div class="space-y-1 text-center">
+              <div class:list={['size-14 rounded-lg ring-1 ring-border', cls]} />
+              <p class="text-xs text-muted-foreground">{name}</p>
+            </div>
+          ))
+        }
+      </div>
+    </section>
+
+    <section class="space-y-4">
+      <h2 class="text-xl font-semibold">Typography</h2>
+      <div class="space-y-3">
+        <p class="display text-5xl">Display</p>
+        <p class="font-condensed text-2xl font-semibold tracking-tight">Page title (h1)</p>
+        <p class="font-condensed text-xl font-semibold">Section (h2)</p>
+        <p class="eyebrow">Eyebrow label</p>
+        <p class="max-w-lg leading-relaxed">
+          Body — modern, discreet and safe. Barlow for body; Barlow Condensed for
+          titles, names and tabs (DESIGN §2.4).
+        </p>
+        <p class="text-sm text-muted-foreground">Meta / caption</p>
+      </div>
+    </section>
+
+    <section class="space-y-4">
+      <h2 class="text-xl font-semibold">Buttons & badges</h2>
+      <div class="flex flex-wrap items-center gap-3">
+        <Button size="sm">Small</Button>
+        <Button>Default</Button>
+        <Button size="lg">Large</Button>
+        <Badge>Badge</Badge>
+      </div>
+      <p class="text-sm text-muted-foreground">
+        THE three button types: primary (anaglyph) · secondary (same slab, no pink/cyan) ·
+        tertiary (flat foreground outline — white on dark, black on light).
+      </p>
+      <div class="flex flex-wrap items-center gap-3">
+        <Button size="sm">Primary</Button>
+        <Button variant="secondary" size="sm">Secondary</Button>
+        <Button variant="tertiary" size="sm">Tertiary</Button>
+      </div>
+      <div class="flex flex-wrap items-center gap-3">
+        <Button variant="secondary">Secondary</Button>
+        <Button variant="secondary" size="lg">Large</Button>
+        <Button variant="tertiary">Tertiary</Button>
+        <Button variant="tertiary" size="lg">Large</Button>
+      </div>
+      <p class="text-sm text-muted-foreground">On an ink slab (tertiary renders white-outlined):</p>
+      <div class="flex flex-wrap items-center gap-3 rounded-lg bg-neutral-950 p-4 text-white dark">
+        <Button variant="secondary">On ink</Button>
+        <Button variant="tertiary">On ink</Button>
+        <span class="flex items-center gap-1.5 text-sm text-white">Name <VerifiedBadge class="size-4" /> <span class="online-dot size-2 rounded-full bg-online"></span> online dot</span>
+      </div>
+      <div class="flex flex-wrap items-center gap-3">
+        <Badge>Badge</Badge>
+        <Badge variant="secondary">Secondary</Badge>
+        <Badge variant="outline">Outline</Badge>
+        <span class="flex items-center gap-1 text-sm font-medium"><VerifiedBadge /> Verified</span>
+        <span class="flex items-center gap-1.5 text-sm"><span class="size-2 rounded-full bg-online"></span> Online now</span>
+      </div>
+    </section>
+
+    <section class="space-y-4">
+      <h2 class="text-xl font-semibold">Glass materials</h2>
+      <div class="relative overflow-hidden rounded-2xl">
+        <SafeImage imageKey="glass-demo" alt="Glass demo background" class="h-64 w-full" />
+        <div class="absolute inset-0 flex flex-col items-start justify-center gap-3 p-6">
+          <div class="glass-media rounded-full border px-4 py-2 text-sm">media — overlays on photos (theme-fixed)</div>
+          <div class="glass-ultrathin rounded-full border px-4 py-2 text-sm">ultrathin</div>
+          <div class="glass-thin rounded-xl border px-4 py-2 text-sm">thin — tab bar, action bar</div>
+          <div class="glass rounded-xl border px-4 py-2 text-sm">regular — header, sheets</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="space-y-4">
+      <h2 class="text-xl font-semibold">Section (rhythm owner)</h2>
+      <div class="rounded-xl ring-1 ring-border">
+        <Section title="Section title" class="px-4">
+          <p slot="meta" class="hidden text-sm text-muted-foreground sm:block">meta slot</p>
+          <a slot="actions" href="#" class="eyebrow font-semibold text-foreground hover:text-brand">actions slot →</a>
+          <p class="text-sm text-muted-foreground">
+            Content — sections own their vertical rhythm (py-6 md:py-10) and heading style; pages never hand-roll either.
+          </p>
+        </Section>
+      </div>
+    </section>
+
+    <section class="space-y-4">
+      <h2 class="text-xl font-semibold">Safe mode — three states (Phase 5)</h2>
+      <p class="text-sm text-muted-foreground">
+        Fail-closed: the server always ships the <strong>neutral</strong> placeholder.
+        The cookie swaps to <strong>dev</strong> (anime, build-in-public) or <strong>off</strong>
+        (real photos). No-JS keeps neutral. Below shows all three deterministic picks for the same key.
+      </p>
+      <div class="grid grid-cols-3 gap-4">
+        {
+          (
+            [
+              ['off', nsfwImageFor('sink-safe-demo')],
+              ['neutral', neutralImageFor('sink-safe-demo')],
+              ['dev', safeImageFor('sink-safe-demo')],
+            ] as const
+          ).map(([label, url]) => (
+            <figure class="space-y-2">
+              <img src={url} alt={`Safe-mode ${label} placeholder`} class="h-48 w-full rounded-xl object-cover ring-1 ring-border" />
+              <figcaption class="eyebrow font-semibold text-muted-foreground">{label}</figcaption>
+            </figure>
+          ))
+        }
+      </div>
+      <p class="text-sm text-muted-foreground">
+        Live toggle (cycles off → neutral → dev). Labelled switch (footer) and the
+        <code>compact</code> icon variant (header, next to the theme toggle):
+      </p>
+      <div class="flex flex-wrap items-center gap-6">
+        <SafeModeToggle />
+        <SafeModeToggle compact />
+      </div>
+    </section>
+
+    <section class="space-y-4">
+      <h2 class="text-xl font-semibold">Filter chips (clean — selected skews + fills)</h2>
+      <p class="text-sm text-muted-foreground">
+        The listing gender/quick filters. Full even border, normal radius, obvious
+        mini-checkbox. Toggle one — selected shears slightly and ink-fills.
+      </p>
+      <div class="flex flex-wrap items-center gap-2">
+        {['Woman', 'Man', 'Trans woman'].map((label, i) => (
+          <label class="flex-none">
+            <input type="checkbox" checked={i === 0} class="peer sr-only" />
+            <span class="filter-chip flex text-sm active:scale-[0.96]">
+              <span class="filter-chip__box" aria-hidden="true" />
+              {label}
+            </span>
+          </label>
+        ))}
+        <label class="flex-none">
+          <input type="checkbox" class="peer sr-only" />
+          <span class="filter-chip flex text-sm active:scale-[0.96]">
+            <span class="size-1.5 flex-none rounded-full bg-online" aria-hidden="true" />
+            Available now
+          </span>
+        </label>
+      </div>
+    </section>
+
+    <section class="space-y-4">
+      <h2 class="text-xl font-semibold">Search, forms & toggles</h2>
+      <div class="flex flex-wrap items-center gap-6">
+        <SafeModeToggle />
+        <div class="w-56"><Select><option>Select atom</option><option>Option B</option></Select></div>
+        <div class="w-56"><Input placeholder="Input atom" /></div>
+        <div class="w-56"><SlabField label="Slab field" name="demo" placeholder="Type here…" /></div>
+        <Combobox
+          options={CITIES.map((c) => ({ value: c.slug, label: c.name }))}
+          placeholder="City"
+          anyLabel="City: Any"
+          searchPlaceholder="City"
+          target="[data-none]"
+        />
+      </div>
+    </section>
+
+    <section class="space-y-4">
+      <h2 class="text-xl font-semibold">ActionSheet (drag the handle · flick to close)</h2>
+      <Button data-sheet-open="sink-sheet">Open action sheet</Button>
+      <ActionSheet id="sink-sheet" label="Demo sheet">
+        <div class="space-y-4 p-6">
+          <h3 class="display text-2xl">Action sheet</h3>
+          <p class="text-sm text-muted-foreground">
+            Drag the handle down to dismiss, or flick it — a fast swipe closes even a short drag.
+            Scroll the content; a downward drag from the top also dismisses.
+          </p>
+          {profiles.slice(0, 6).map((prof) => (
+            <p class="border-b border-border py-3 text-sm">{prof.name}, {profileAge(prof.birthDate)} — {prof.city}</p>
+          ))}
+          <Button data-sheet-close class="w-full">Close</Button>
+        </div>
+      </ActionSheet>
+    </section>
+
+    <section class="space-y-4">
+      <h2 class="text-xl font-semibold">ReceiptSheet (tap a verified mark → dated trust facts)</h2>
+      <p class="text-sm text-muted-foreground">
+        The mark on every card and profile opens this. With a measured reply speed (≥5 samples)
+        and without — the reply line simply disappears below the honest threshold.
+      </p>
+      <div class="flex flex-wrap items-center gap-4">
+        <span class="flex items-center gap-1.5 text-sm">
+          <VerifiedBadge receiptFor={p.id} /> With reply speed
+        </span>
+        <span class="flex items-center gap-1.5 text-sm">
+          <VerifiedBadge receiptFor={`${p.id}-noreply`} /> Below sample threshold
+        </span>
+      </div>
+      <ReceiptSheet profile={p} replySpeed={{ medianMinutes: 10, sampleSize: 7 }} />
+      <ReceiptSheet profile={{ ...p, id: `${p.id}-noreply` }} replySpeed={null} />
+    </section>
+
+    <section class="space-y-4" data-lightbox-group>
+      <h2 class="text-xl font-semibold">Lightbox (tap a photo · swipe · tap to close)</h2>
+      <div class="grid max-w-md grid-cols-3 gap-2" data-lightbox-photos>
+        {
+          profiles.slice(0, 6).map((prof, i) => (
+            <button type="button" data-lightbox data-lightbox-index={i} class="aspect-[3/4] cursor-pointer overflow-hidden bg-neutral-950">
+              <SafeImage imageKey={`sink-lb-${prof.id}`} src={prof.photos[0]} alt={prof.name} class="h-full w-full" />
+            </button>
+          ))
+        }
+      </div>
+      <p class="text-sm text-muted-foreground">Uses the global lightbox from the layout.</p>
+    </section>
+
+    <section class="space-y-4">
+      <h2 class="text-xl font-semibold">FilterSidebar</h2>
+      <div class="max-w-xs">
+        <FilterSidebar params={{}} resetHref="#" openCategory="massage" />
+      </div>
+    </section>
+
+    <section class="space-y-6">
+      <h2 class="text-xl font-semibold">Photo mosaic (desktop profile header) — 1 → 5+ photos</h2>
+      {
+        [1, 2, 3, 4, 5].map((count) => (
+          <div class="space-y-2">
+            <p class="eyebrow">{count} photo{count > 1 ? 's' : ''}</p>
+            <ProfilePhotoMosaic photos={mosaicPhotos.slice(0, count)} keyBase={`sink-mosaic-${count}`} alt="Demo" />
+          </div>
+        ))
+      }
+    </section>
+
+    <section class="space-y-4">
+      <h2 class="text-xl font-semibold">ProfileCard — grid</h2>
+      <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+        {profiles.slice(0, 5).map((prof) => <ProfileCard profile={prof} />)}
+      </div>
+    </section>
+
+    <section class="space-y-4">
+      <h2 class="text-xl font-semibold">ProfileCard — featured</h2>
+      <div class="grid gap-4 lg:grid-cols-2">
+        <ProfileCard profile={p} variant="featured" />
+        <ProfileCard profile={profiles[3]!} variant="featured" />
+      </div>
+    </section>
+
+    <section class="space-y-4">
+      <h2 class="text-xl font-semibold">ProfileCard — compact</h2>
+      <div class="max-w-sm rounded-xl bg-card p-2 ring-1 ring-border">
+        {profiles.slice(0, 4).map((prof) => <ProfileCard profile={prof} variant="compact" />)}
+      </div>
+    </section>
+
+    <section class="space-y-4">
+      <h2 class="text-xl font-semibold">ProfileCard — mini (favorites rail)</h2>
+      <div class="flex gap-2.5 overflow-x-auto">
+        {profiles.slice(0, 5).map((prof) => (
+          <div class="w-36 flex-none">
+            <ProfileCard profile={prof} variant="mini" />
+          </div>
+        ))}
+      </div>
+    </section>
+
+    <section class="space-y-4">
+      <h2 class="text-xl font-semibold">AvailabilityLine — three honest states</h2>
+      <p class="text-sm text-muted-foreground">
+        One helper (<code>availabilityState</code>), dot + text, never on the photo.
+        Fixed <code>now</code> = Wed 14:00 Amsterdam.
+      </p>
+      <div class="grid gap-6 sm:grid-cols-2">
+        <div class="space-y-2">
+          <p class="eyebrow">line variant</p>
+          {
+            availFixtures.map((f) => (
+              <AvailabilityLine profile={f.profile} variant="line" now={availNow} />
+            ))
+          }
+        </div>
+        <div class="space-y-2 rounded-xl bg-neutral-950 p-4 text-white">
+          <p class="eyebrow text-white/50">card variant (on ink)</p>
+          {
+            availFixtures.map((f) => (
+              <AvailabilityLine profile={f.profile} variant="card" now={availNow} />
+            ))
+          }
+        </div>
+      </div>
+    </section>
+
+    <section class="space-y-4">
+      <h2 class="text-xl font-semibold">RatesTable — duration × price (2.1/2.2)</h2>
+      <p class="text-sm text-muted-foreground">
+        The source of truth for <code>priceFrom</code>. Full table earns the CLEAR PRICING mark;
+        closing line is always "the listed price is the price".
+      </p>
+      <div class="grid gap-6 sm:grid-cols-2">
+        <div class="space-y-2">
+          <p class="eyebrow">full variant</p>
+          <RatesTable profile={p} variant="full" class="max-w-sm" />
+        </div>
+        <div class="space-y-2 rounded-xl bg-neutral-950 p-6 text-white">
+          <p class="eyebrow text-white/50">compact variant (deal card)</p>
+          <RatesTable profile={p} variant="compact" />
+        </div>
+      </div>
+    </section>
+
+    <section class="space-y-4">
+      <h2 class="text-xl font-semibold">GoodToKnow — structured facts (2.5)</h2>
+      <p class="text-sm text-muted-foreground">
+        Two-column list; values are taxonomy keys, labels via i18n; empty rows dropped.
+      </p>
+      <GoodToKnow profile={p} class="max-w-2xl" />
+    </section>
+
+    <section class="space-y-4">
+      <h2 class="text-xl font-semibold">ProfileFacts — the deal card (2.4)</h2>
+      <p class="text-sm text-muted-foreground">
+        Compact rates + availability truth line + CTA + trust-receipt link; metadata demoted.
+      </p>
+      <div class="max-w-sm">
+        <ProfileFacts profile={p} />
+      </div>
+    </section>
+
+    <section class="space-y-4">
+      <h2 class="text-xl font-semibold">SimilarProfiles — offline fallback (2.6)</h2>
+      <p class="text-sm text-muted-foreground">
+        Shown ONLY when she's away; never on a live/online profile. Fixed away fixture.
+      </p>
+      <div class="max-w-xl">
+        <SimilarProfiles profile={awayProfile} similar={similarDemo} now={availNow} />
+      </div>
+    </section>
+
+    <section class="space-y-4">
+      <h2 class="text-xl font-semibold">SideDrawer — desktop slide-over</h2>
+      <p class="text-sm text-muted-foreground">
+        Right-edge panel with the ActionSheet contract (openSheet/closeSheet,
+        scroll-lock, freeze-until-slide-ends). Desktop profiles open in it —
+        mounted once by ProfileSheet as <code>#profile-drawer</code>; on
+        desktop just click any profile card above.
+      </p>
+    </section>
+
+    <section class="space-y-4">
+      <h2 class="text-xl font-semibold">PageSheet — mobile tab sections as sheets</h2>
+      <p class="text-sm text-muted-foreground">
+        On phones, <code>a[data-page-sheet]</code> links (Favorites / Messages /
+        Contacts tabs) open their page in this sheet with the URL pushed;
+        desktop navigates. Mounted once by the Layout. Resize to mobile and:
+      </p>
+      <a href="/en/favorites/" data-page-sheet class="text-sm text-brand underline-offset-2 hover:underline">
+        Open Favorites as a sheet (mobile only)
+      </a>
+    </section>
+
+    <section class="space-y-4">
+      <h2 class="text-xl font-semibold">RegionSheet — mobile city | language</h2>
+      <p class="text-sm text-muted-foreground">
+        One header trigger ("ROTTERDAM | EN") opens language radio + city picker.
+        Mounted once by the Header on every page; just trigger it.
+      </p>
+      <Button data-sheet-open="region-sheet">Open region sheet</Button>
+    </section>
+
+    <section class="space-y-4">
+      <h2 class="text-xl font-semibold">CitySheet — "ask the city once"</h2>
+      <p class="text-sm text-muted-foreground">
+        First-visit bottom sheet (auto-opens once). Trigger it manually here:
+      </p>
+      <Button data-sheet-open="city-sheet">Open city sheet</Button>
+      <CitySheet manual />
+    </section>
+
+    <section class="space-y-4">
+      <h2 class="text-xl font-semibold">Carousel (standalone)</h2>
+      <PhotoCarousel photos={p.photos} keyBase="sink-carousel" alt={p.name} class="aspect-[4/3] max-w-md rounded-2xl" />
+    </section>
+
+    <section class="space-y-4">
+      <h2 class="text-xl font-semibold">Request sheet (UX-PLAN 4.2)</h2>
+      <p class="text-sm text-muted-foreground">
+        Three-tap pre-qualified request from her data (service → duration+price →
+        when + optional note + screening). Opens from the deal card's SEND MESSAGE.
+      </p>
+      <Button data-sheet-open={`request-${p.id}`}>Open request sheet</Button>
+      <RequestSheet profile={p} screeningQuestion="How did you find me?" />
+    </section>
+
+    <section class="space-y-4">
+      <h2 class="text-xl font-semibold">Request card (UX-PLAN 4.3)</h2>
+      <div class="max-w-md space-y-4 rounded-2xl border border-border p-3">
+        <p class="text-sm text-muted-foreground">Client view (read-only):</p>
+        <RequestCard request={requestFixture} viewer="client" state="pending" threadId="sink" />
+        <p class="text-sm text-muted-foreground">Professional view (pending → Accept / Decline):</p>
+        <RequestCard request={requestFixture} viewer="professional" state="pending" threadId="sink" />
+      </div>
+    </section>
+
+    <section class="space-y-4">
+      <h2 class="text-xl font-semibold">Skeletons</h2>
+      <div class="grid max-w-md grid-cols-2 gap-4">
+        <div class="space-y-2">
+          <Skeleton class="aspect-[3/4] rounded-xl" />
+          <Skeleton class="h-4 w-2/3" />
+          <Skeleton class="h-3 w-1/2" />
+        </div>
+        <div class="space-y-2">
+          <Skeleton class="aspect-[3/4] rounded-xl" />
+          <Skeleton class="h-4 w-2/3" />
+          <Skeleton class="h-3 w-1/2" />
+        </div>
+      </div>
+    </section>
+
+    <section class="space-y-4">
+      <h2 class="text-xl font-semibold">SAVED-compare rail (6.2, desktop)</h2>
+      <p class="text-sm text-muted-foreground">
+        Thin dismissible rail — saved profiles as one comparable row of compact
+        cards. Lives in <code>SearchListing</code> (revealed from the saved set);
+        shown here forced-open with a couple of cards.
+      </p>
+      <div class="rounded-xl border border-border bg-card/60">
+        <div class="flex items-center justify-between gap-3 px-4 py-2">
+          <div class="flex items-center gap-2 text-sm font-semibold">
+            <span class="eyebrow">Saved</span>
+            <span class="grid min-w-5 place-items-center rounded-full bg-foreground px-1.5 text-2xs font-bold text-background">2</span>
+          </div>
+          <i class="fa-thin fa-xmark text-muted-foreground" aria-hidden="true"></i>
+        </div>
+        <div class="flex gap-2 overflow-x-auto px-3 pb-3">
+          {profiles.slice(0, 3).map((sp) => (
+            <div class="w-64 flex-none">
+              <ProfileCard profile={sp} variant="compact" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <section class="space-y-4">
+      <h2 class="text-xl font-semibold">Onboarding (professional)</h2>
+      <p class="text-sm text-muted-foreground">
+        The dashboard "get your profile live" checklist card (ONBOARDING.md §3) in two states —
+        partway, and ready-to-submit (whole card becomes the submit button) — plus the
+        after-submit status banners. Dark card on purpose (dashboard chrome).
+      </p>
+      <div class="grid gap-5 md:grid-cols-2">
+        <OnboardingChecklist progress={onbPartial} />
+        <OnboardingChecklist progress={onbReady} />
+      </div>
+      <div class="space-y-3">
+        <StatusBanner state="pending_review" />
+        <StatusBanner state="live" />
+      </div>
+    </section>
+  </div>
+</Layout>

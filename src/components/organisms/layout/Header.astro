@@ -1,0 +1,343 @@
+---
+import * as m from '@/paraglide/messages';
+import type { Session } from '@/app/models/session';
+import Button from '@/components/atoms/Button.astro';
+import Icon from '@/components/atoms/Icon.astro';
+import Combobox from '@/components/molecules/Combobox.astro';
+import { SUPPORT_CONTACT } from '@/lib/contact';
+import RegionSheet from '@/components/molecules/RegionSheet.astro';
+import UserMenu from '@/components/molecules/UserMenu.astro';
+import ThemeToggle from '@/components/molecules/ThemeToggle.astro';
+import { getLocale } from '@/paraglide/runtime';
+import { listingCategoryLabel } from '@/lib/labels';
+import { localizePath } from '@/lib/i18n';
+import { GENDER_FILTERS, type GenderFilter } from '@/app/models/profile';
+import { CITIES, LISTING_CATEGORIES, type Locale } from '@/lib/taxonomy';
+
+interface Props {
+  session?: Session | null;
+}
+const { session = null } = Astro.props;
+
+/** Site languages — native names, no flags. */
+const LANGUAGES = [
+  { value: 'nl', label: 'Nederlands' },
+  { value: 'en', label: 'English' },
+  { value: 'de', label: 'Deutsch' },
+];
+
+const locale = getLocale() as Locale;
+const path = Astro.url.pathname;
+/** City from the URL path (works on /{city}/, /{tab}/{city}/ …) — this one
+ *  builds hrefs. The cookie only DISPLAYS as the control's label off-city. */
+const pathSegs = path.split('/').filter(Boolean);
+const pathCity = CITIES.find((c) => pathSegs.includes(c.slug))?.slug;
+const cookieCity = CITIES.find((c) => c.slug === Astro.cookies.get('city')?.value)?.slug;
+const currentCity = pathCity ?? cookieCity;
+const searchPath = localizePath('/search/');
+
+/* Gender is a RADIO over the whole shelf (market is ~80% women → default
+ * women). URL ?gender= wins, then the visitor's cookie, then women. Tab
+ * clicks persist the pick client-side (script below). */
+const genderPick = ([Astro.url.searchParams.get('gender'), Astro.cookies.get('gender')?.value].find(
+  (g) => g && g in GENDER_FILTERS,
+) ?? 'women') as GenderFilter;
+const withGender = (href: string) => (genderPick === 'women' ? href : `${href}?gender=${genderPick}`);
+
+const categories = LISTING_CATEGORIES.map((c) => ({
+  label: listingCategoryLabel(c.slug),
+  href: localizePath(`/${c.slugs[locale]}/`),
+  active: path.startsWith(localizePath(`/${c.slugs[locale]}/`)),
+}));
+
+/* Gender tabs keep the current listing (tab + city) — PATH city only, the
+ * cookie must never silently re-route a national page. */
+const citySeg = pathCity ? `${pathCity}/` : '';
+const listingBase = `${categories.find((c) => c.active)?.href ?? searchPath}${citySeg}`;
+const genderTabs = (Object.keys(GENDER_FILTERS) as GenderFilter[]).map((g) => ({
+  value: g,
+  label: { women: m.gender_tab_women(), men: m.gender_tab_men(), trans: m.gender_tab_trans() }[g],
+  href: g === 'women' ? listingBase : `${listingBase}?gender=${g}`,
+  active: g === genderPick,
+}));
+---
+
+<header
+  class="site-header glass sticky top-0 z-40 border-b"
+  style="padding-top: env(safe-area-inset-top)"
+>
+  <!-- Row 1 — MOBILE: [city · EN] left, logo dead-center, auth right.
+       DESKTOP: logo left, text menu beside it, EN + auth right. -->
+  <div class="relative mx-auto flex h-14 max-w-7xl items-center gap-3 px-4 md:h-[4.25rem] md:gap-5 md:px-6">
+    <!-- Mobile left: ONE region trigger — "ROTTERDAM | EN ▾" opens the
+         RegionSheet (language radio + city picker). Desktop keeps city in
+         row 2 and EN on the right. -->
+    <button
+      type="button"
+      data-sheet-open="region-sheet"
+      class="flex flex-none cursor-pointer items-center gap-1.5 px-1 text-xs font-bold text-foreground/80 transition-colors hover:text-foreground md:hidden"
+    >
+      <span>{(CITIES.find((c) => c.slug === currentCity)?.name ?? m.filter_city()).toUpperCase()}</span>
+      <span class="text-foreground/30" aria-hidden="true">|</span>
+      <span>{locale.toUpperCase()}</span>
+      <svg class="size-3 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+    </button>
+
+    <!-- Logo: dead-center on mobile (absolute), left on md+. -->
+    <a
+      href={localizePath("/")}
+      aria-label={m.app_name()}
+      class="absolute left-1/2 flex -translate-x-1/2 items-center md:static md:left-auto md:flex-none md:translate-x-0"
+    >
+      <!-- naming follows the source files: LIGHT = light (white) lettering, DARK = dark lettering -->
+      <img src="/img/logo-dark.svg" alt={m.app_name()} class="h-7 w-auto dark:hidden md:h-9" />
+      <img src="/img/logo-light.svg" alt={m.app_name()} class="hidden h-7 w-auto dark:block md:h-9" />
+    </a>
+
+    <!-- Text menu sits BESIDE the logo — the right edge belongs to controls. -->
+    <nav class="ml-4 hidden flex-none items-center gap-5 text-sm font-semibold md:flex">
+      <!-- START ADVERTISING: recruitment for visitors only — logged-in users
+           already have an account (UX-PLAN 1.1). -->
+      {
+        !session && (
+          <a href={localizePath("/account/")} class="transition-colors hover:text-brand">
+            {m.cta_start_advertising()}
+          </a>
+        )
+      }
+      <a href={localizePath("/blog/")} class="transition-colors hover:text-brand">
+        {m.section_articles()}
+      </a>
+      <a href={localizePath("/support/")} class="transition-colors hover:text-brand">
+        {m.nav_support()}
+      </a>
+    </nav>
+
+    <!-- Desktop right: support channels (config: lib/contact) + bare EN ▾. -->
+    <div class="ml-auto hidden flex-none items-center gap-4 md:flex">
+      <a
+        href={SUPPORT_CONTACT.whatsapp.href}
+        target="_blank"
+        rel="noopener"
+        class="flex items-center gap-2 text-sm font-semibold text-foreground/80 transition-colors hover:text-foreground"
+      >
+        <Icon name="whatsapp" family="brands" class="text-lg text-online" />
+        <span class="font-condensed tracking-wide">{SUPPORT_CONTACT.whatsapp.display}</span>
+      </a>
+      <a
+        href={SUPPORT_CONTACT.telegram.href}
+        target="_blank"
+        rel="noopener"
+        class="flex items-center gap-2 text-sm font-semibold text-foreground/80 transition-colors hover:text-foreground"
+      >
+        <Icon name="telegram" family="brands" class="text-lg text-telegram" />
+        <span class="font-condensed tracking-wide">{SUPPORT_CONTACT.telegram.display}</span>
+      </a>
+      <Combobox
+        variant="bare"
+        options={LANGUAGES}
+        value={locale}
+        placeholder={locale.toUpperCase()}
+        triggerLabel={locale.toUpperCase()}
+        target="[data-none]"
+        lang
+      />
+    </div>
+
+    <!-- gap-2 tracks the left CITY·EN pair so both flanks share one rhythm. -->
+    <div class="ml-auto flex flex-none items-center gap-2 md:ml-0 md:gap-4">
+      {/* Sun/moon theme switch (footer no longer carries it). Logged in: always,
+         to the LEFT of the avatar. Logged out: desktop only — the mobile header
+         (city·EN + centred logo + login/register) has no room for it. */}
+      {
+        session ? (
+          <>
+            <ThemeToggle />
+            <UserMenu {session} />
+          </>
+        ) : (
+          <>
+            <span class="hidden items-center md:flex">
+              <ThemeToggle />
+            </span>
+            <button
+              type="button"
+              data-modal-open="auth"
+              data-auth-tab="login"
+              class="cursor-pointer text-xs font-bold transition-colors hover:text-primary md:text-sm md:font-semibold"
+            >
+              {m.nav_login()}
+            </button>
+            <Button size="xs" data-modal-open="auth" data-auth-tab="register">
+              {m.nav_register()}
+            </Button>
+          </>
+        )
+      }
+    </div>
+  </div>
+
+  <!-- Row 2: gender radio (WOMEN  MEN  TRANS) | categories — generously
+       spaced text tabs, active = plain white (no underline, no dot: quiet,
+       nothing shifts) — and the boxed AMSTERDAM ▾ location control right. -->
+  <div class="border-t border-border/60">
+    <div class="mx-auto flex h-14 max-w-7xl items-stretch gap-3 px-4 md:h-16 md:px-6">
+      <div
+        class="flex min-w-0 flex-1 select-none items-stretch gap-5 overflow-x-auto [scrollbar-width:none] md:gap-7 [&::-webkit-scrollbar]:hidden"
+      >
+        <!-- Gender: single-select, default women; a click persists (cookie).
+             Desktop-only — on mobile the filter sheet owns gender. -->
+        <nav class="hidden flex-none items-stretch gap-4 md:flex md:gap-5" aria-label={m.filter_gender()}>
+          {
+            genderTabs.map((g) => (
+              <a
+                href={g.href}
+                data-gender-tab={g.value}
+                aria-current={g.active ? 'true' : undefined}
+                class:list={[
+                  'chroma-hover flex flex-none items-center font-condensed text-sm font-bold uppercase tracking-wide transition-colors active:scale-[0.97]',
+                  g.active ? 'text-foreground' : 'text-foreground/55 hover:text-foreground',
+                ]}
+              >
+                {g.label}
+              </a>
+            ))
+          }
+        </nav>
+
+        <span class="my-3.5 hidden w-px flex-none bg-border md:block" aria-hidden="true"></span>
+
+        <!-- lg: categories take the middle of the bar (mx-auto) instead of
+             hugging the gender group — the empty run of bar works for us. -->
+        <!-- Mobile: justified across the full bar width; desktop: spaced run
+             centered in the bar. -->
+        <nav
+          class="flex w-full min-w-0 items-stretch justify-between md:w-auto md:flex-none md:justify-start md:gap-10 lg:mx-auto"
+          aria-label={m.all_categories()}
+        >
+          {
+            categories.map((l) => (
+              <a
+                href={withGender(l.href)}
+                aria-current={l.active ? 'page' : undefined}
+                class:list={[
+                  'chroma-hover relative flex flex-none items-center font-condensed text-sm font-bold uppercase tracking-wide transition-colors active:scale-[0.97]',
+                  l.active ? 'text-foreground' : 'text-foreground/55 hover:text-foreground',
+                ]}
+              >
+                {l.label}
+              </a>
+            ))
+          }
+        </nav>
+      </div>
+
+      <!-- Desktop-only: mobile carries the city in row 1, left of the logo. -->
+      <div class="hidden flex-none items-center md:flex">
+        <Combobox
+          variant="box"
+          options={CITIES.map((c) => ({ value: c.slug, label: c.name }))}
+          value={currentCity}
+          placeholder={m.filter_city()}
+          anyLabel={`${m.filter_city()}: ${m.filter_any()}`}
+          searchPlaceholder={m.filter_city()}
+          target="[data-city-nav]"
+          navBase={localizePath('/')}
+          cookie="city"
+        />
+      </div>
+    </div>
+  </div>
+</header>
+
+<style>
+  /* Auto-hide slide (script below): transform only — content never reflows,
+     the bar just glides out. Same spring family as the sheets. will-change
+     pre-promotes the layer: iOS Safari refuses to animate backdrop-blurred
+     elements smoothly otherwise (the "header pops" bug). */
+  .site-header {
+    transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+    will-change: transform;
+  }
+  .site-header.header-hide {
+    transform: translateY(-100%);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .site-header {
+      transition-duration: 0.01ms;
+    }
+  }
+</style>
+
+<!-- Mobile region sheet (opened by the header's city|EN trigger). -->
+<RegionSheet {currentCity} />
+
+<script>
+  // ── Auto-hiding header (mobile): scroll down → slide away (more screen),
+  // scroll up → slide back. Opening ANY sheet hides it and LEAVES it hidden —
+  // one less thing moving when a sheet closes; only an upward scroll brings
+  // it back. Desktop keeps the always-visible sticky header.
+  if (!(window as any).__headerAutoHide) {
+    (window as any).__headerAutoHide = true;
+    const mq = matchMedia('(max-width: 767px)');
+    const header = () => document.querySelector<HTMLElement>('header.site-header');
+    let lastY = window.scrollY;
+    let hidden = false;
+    const setHidden = (h: boolean) => {
+      if (h === hidden) return;
+      hidden = h;
+      header()?.classList.toggle('header-hide', h);
+    };
+    window.addEventListener(
+      'scroll',
+      () => {
+        const y = window.scrollY;
+        const dy = y - lastY;
+        lastY = y;
+        if (!mq.matches) return setHidden(false);
+        // ONLY real scrolling moves the header — never a sheet/lightbox
+        // opening or closing (their scroll-locks can emit phantom events).
+        if (
+          document.documentElement.hasAttribute('data-sheet-open') ||
+          document.documentElement.hasAttribute('data-lightbox-open')
+        )
+          return;
+        if (y < 60) return setHidden(false); // near the top: always show
+        if (dy > 6) setHidden(true);
+        else if (dy < -6) setHidden(false);
+      },
+      { passive: true },
+    );
+    // Opening a sheet does NOT touch the header: whatever state it's in
+    // (hidden from scrolling, or visible at the top) simply freezes — scroll
+    // is locked behind the sheet, so nothing changes until the user scrolls
+    // again after closing. (Force-hiding on open left dead empty space when
+    // a profile was opened without ever scrolling.)
+    // astro:page-load fires on real navigations (fresh, visible header) AND on
+    // sheet content injection (header still hidden) — sync the flag from the
+    // DOM instead of assuming, or the next show/hide call no-ops on a stale
+    // guard ("scroll up after closing a profile doesn't reveal the header").
+    document.addEventListener('astro:page-load', () => {
+      lastY = window.scrollY;
+      hidden = !!header()?.classList.contains('header-hide');
+    });
+  }
+
+  // Gender tab click → persist the pick (server default for the next visit).
+  // Filter RESET → clear it, so reset really returns to the plain default.
+  if (!(window as any).__genderTabs) {
+    (window as any).__genderTabs = true;
+    document.addEventListener('click', (e) => {
+      const t = e.target as HTMLElement;
+      const tab = t.closest?.('[data-gender-tab]') as HTMLElement | null;
+      if (tab) {
+        document.cookie = `gender=${tab.dataset.genderTab}; path=/; max-age=31536000; samesite=lax`;
+        return;
+      }
+      if (t.closest?.('[data-filter-reset]')) {
+        document.cookie = 'gender=; path=/; max-age=0; samesite=lax';
+      }
+    });
+  }
+</script>
+

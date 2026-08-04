@@ -1,0 +1,189 @@
+---
+/**
+ * THE profile card — one component, four variants (CLAUDE.md / DESIGN.md §3.2).
+ * grid: uniform portrait card for listings · featured: carousel + info side-by-side
+ * compact: horizontal row for suggestions/similar · mini: small square card
+ * (the grid card shrunk) for the favorites rail.
+ */
+import * as m from '@/paraglide/messages';
+import { localizedDescription, profileAge, type Profile } from '@/app/models/profile';
+import { localizePath } from '@/lib/i18n';
+import { CITIES } from '@/lib/taxonomy';
+import SafeImage from '@/components/atoms/SafeImage.astro';
+import PhotoCarousel from '@/components/molecules/PhotoCarousel.astro';
+import VerifiedBadge from '@/components/atoms/VerifiedBadge.astro';
+import Badge from '@/components/atoms/Badge.astro';
+import ReceiptSheet from '@/components/organisms/profile/ReceiptSheet.astro';
+
+interface Props {
+  profile: Profile;
+  variant?: 'grid' | 'featured' | 'compact' | 'mini';
+  loading?: 'lazy' | 'eager';
+}
+
+const { profile: p, variant = 'grid', loading = 'lazy' } = Astro.props;
+const cityName = CITIES.find((c) => c.slug === p.city)?.name ?? p.city;
+const href = localizePath(`/profile/${p.slug}/`);
+
+/* Misprint "randomness": each card's ink slab gets its own position, tilt and
+ * cut — deterministic from the profile id, so it's stable across renders. */
+/* Very subtle: a whisper of tilt and a few-px cut — hand-placed, not askew. */
+const SLABS = [
+  { pos: 'left-1 right-2 bottom-1', rot: -0.4, clip: 'polygon(0 4px, 100% 0, 100% calc(100% - 3px), 0 100%)' },
+  { pos: 'left-2 right-1 bottom-2', rot: 0.3, clip: 'polygon(0 0, 100% 3px, 100% 100%, 0 calc(100% - 3px))' },
+  { pos: 'left-1 right-1 bottom-1.5', rot: -0.2, clip: 'polygon(0 3px, 100% 0, 100% calc(100% - 4px), 0 100%)' },
+  { pos: 'left-2.5 right-1 bottom-1', rot: 0.45, clip: 'polygon(0 0, 100% 4px, 100% calc(100% - 2px), 0 100%)' },
+  { pos: 'left-1 right-2.5 bottom-2.5', rot: -0.3, clip: 'polygon(0 3px, 100% 0, 100% 100%, 0 calc(100% - 4px))' },
+];
+const hash = [...p.id].reduce((s, c) => s + c.charCodeAt(0), 0);
+const slab = SLABS[hash % SLABS.length]!;
+/* Heart + carousel arrows get their own per-card cut/tilt (offset hashes so
+ * heart, slab and arrows never move in lockstep). */
+const heartCut = `cut-${(hash + 1) % 4}`;
+---
+
+{
+  variant === 'grid' && (
+    <>
+    <a
+      href={href}
+      class="group relative block aspect-[3/4] transition-transform duration-200 active:scale-[0.98]"
+    >
+      <div class="absolute inset-0 overflow-hidden rounded-lg bg-neutral-950 shadow-soft transition-shadow duration-200 group-hover:shadow-soft-lg">
+        <PhotoCarousel photos={p.photos} keyBase={p.id} alt={p.name} class="h-full" {loading} />
+      </div>
+      <!-- Live signal on the photo's top-left corner (heart owns top-right):
+           just the pulsing dot, no slab behind it. -->
+      {p.online && (
+        <span class="absolute left-2.5 top-2.5 z-10" title={m.online_now()}>
+          <span class="online-dot block size-2.5 rounded-full bg-online"></span>
+          <span class="sr-only">{m.online_now()}</span>
+        </span>
+      )}
+      <button
+        type="button"
+        data-fav-toggle
+        data-fav-slug={p.slug}
+        aria-label={m.nav_favorites()}
+        class:list={[heartCut, 'absolute right-2 top-2 z-10 grid size-9 cursor-pointer place-items-center bg-neutral-950 text-white transition-transform active:scale-90']}
+      >
+        <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7Z" /></svg>
+      </button>
+      <!-- Ink slab floating WITHIN the photo (Misprint) — solid black,
+           per-card position/tilt/cut so the grid feels hand-placed. -->
+      <div
+        class:list={['absolute bg-neutral-950 p-4 text-white', slab.pos]}
+        style={`clip-path: ${slab.clip}; transform: rotate(${slab.rot}deg)`}
+      >
+        <div class="flex items-start justify-between gap-2">
+          <div class="min-w-0">
+            <!-- Name + price scale down on the 2-col mobile grid so the name
+                 gets its letters instead of an ellipsis. -->
+            <p class="flex items-center gap-1 font-condensed text-base font-semibold leading-snug sm:text-lg">
+              <span class="truncate">{p.name}, {profileAge(p.birthDate)}</span>
+              <VerifiedBadge receiptFor={p.id} class="size-4" />
+              <!-- Online lives top-left ON the photo now — no dot repeated here. -->
+            </p>
+            <p class="truncate text-sm text-white/60">{cityName}</p>
+          </div>
+          <div class="flex-none pt-0.5 text-right">
+            <p class="text-sm font-semibold sm:text-base">€{p.priceFrom}</p>
+          </div>
+        </div>
+        <!-- No gender/service meta line — the card sells with name, city,
+             price and the live dot; details belong to the profile. -->
+      </div>
+    </a>
+    <ReceiptSheet profile={p} />
+    </>
+  )
+}
+
+{
+  variant === 'featured' && (
+    <>
+    <article class="group relative overflow-hidden rounded-2xl bg-card shadow-soft transition-shadow hover:shadow-soft-lg dark:ring-1 dark:ring-border sm:grid sm:grid-cols-[2fr_3fr]">
+      <div class="relative aspect-[3/4] sm:aspect-auto sm:h-full sm:min-h-72">
+        <PhotoCarousel photos={p.photos} keyBase={p.id} alt={p.name} class="h-full" />
+        <Badge class="glass-media absolute left-3 top-3 border">{m.section_featured()}</Badge>
+      </div>
+      <div class="flex flex-col justify-between gap-3 p-5">
+        <div class="space-y-1.5">
+          <h3 class="flex items-center gap-1.5 font-condensed text-xl font-semibold tracking-tight">
+            <a href={href} class="after:absolute after:inset-0">{p.name}, {profileAge(p.birthDate)}</a>
+            <VerifiedBadge receiptFor={p.id} class="relative z-10 size-4.5" />
+            {p.online && (
+              <span class="online-dot size-2 flex-none rounded-full bg-online" title={m.online_now()}>
+                <span class="sr-only">{m.online_now()}</span>
+              </span>
+            )}
+          </h3>
+          <p class="text-sm text-muted-foreground">{cityName}</p>
+          <p class="text-sm leading-relaxed">{localizedDescription(p)}</p>
+        </div>
+        <p class="text-sm">
+          <span class="text-muted-foreground">{m.price_from()}</span>
+          <span class="text-base font-semibold"> €{p.priceFrom}</span>
+        </p>
+      </div>
+    </article>
+    <ReceiptSheet profile={p} />
+    </>
+  )
+}
+
+{
+  variant === 'mini' && (
+    <a
+      href={href}
+      class="group relative block aspect-square overflow-hidden rounded-lg bg-neutral-950 shadow-soft transition-transform duration-200 active:scale-[0.98]"
+    >
+      <SafeImage imageKey={p.id} src={p.photos[0]} alt={p.name} class="h-full w-full" {loading} />
+      <!-- the grid card's ink slab, shrunk -->
+      <div
+        class="absolute inset-x-1 bottom-1 bg-neutral-950 px-2.5 py-1.5 text-white"
+        style="clip-path: polygon(0 4px, 100% 0, 100% calc(100% - 3px), 0 100%)"
+      >
+        <p class="flex items-center gap-1 font-condensed text-sm font-semibold leading-snug">
+          <span class="truncate">{p.name}, {profileAge(p.birthDate)}</span>
+          {p.online && (
+            <span class="online-dot size-1.5 flex-none rounded-full bg-online" title={m.online_now()}>
+              <span class="sr-only">{m.online_now()}</span>
+            </span>
+          )}
+        </p>
+        <p class="flex items-baseline justify-between gap-2 text-2xs text-white/60">
+          <span class="truncate">{cityName}</span>
+          <span class="flex-none font-semibold text-white">€{p.priceFrom}</span>
+        </p>
+      </div>
+    </a>
+  )
+}
+
+{
+  variant === 'compact' && (
+    <>
+    <a
+      href={href}
+      class="group flex items-center gap-3 rounded-lg p-2 transition-colors hover:bg-muted"
+    >
+      <SafeImage imageKey={p.id} src={p.photos[0]} alt={p.name} class="size-14 flex-none rounded-lg" {loading} />
+      <div class="min-w-0 flex-1">
+        <p class="flex items-center gap-1 truncate font-condensed text-base font-semibold">
+          {p.name}, {profileAge(p.birthDate)}
+          <VerifiedBadge receiptFor={p.id} class="size-3.5" />
+          {p.online && (
+            <span class="online-dot size-2 flex-none rounded-full bg-online" title={m.online_now()}>
+              <span class="sr-only">{m.online_now()}</span>
+            </span>
+          )}
+        </p>
+        <p class="truncate text-xs text-muted-foreground">{cityName}</p>
+      </div>
+      <p class="flex-none text-sm font-semibold">€{p.priceFrom}</p>
+    </a>
+    <ReceiptSheet profile={p} />
+    </>
+  )
+}

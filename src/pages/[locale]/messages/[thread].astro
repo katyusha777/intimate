@@ -1,0 +1,41 @@
+---
+/**
+ * Thread view (docs/MESSAGING.md §6) — immersive `bare` chat screen. Access is
+ * participant-only: getThread returns null for anyone but the two parties.
+ */
+import { messagingApi } from '@/app/api/messaging';
+import { profilesApi } from '@/app/api/profiles';
+import { sessionApi } from '@/app/api/session';
+import { isLocale, localizePath } from '@/lib/i18n';
+import Thread from '@/components/organisms/messaging/Thread.astro';
+import Layout from '@/layouts/Layout.astro';
+
+const { locale, thread: threadId } = Astro.params;
+if (!isLocale(locale) || !threadId) return new Response(null, { status: 404 });
+
+const session = await sessionApi.current(Astro);
+if (!session) return Astro.redirect(localizePath('/account/'));
+
+const thread = await messagingApi.getThread(session, threadId);
+if (!thread) return new Response(null, { status: 404 });
+await messagingApi.markRead(session, threadId);
+
+const viewer: 'professional' | 'client' =
+  session.profileId === thread.profileId ? 'professional' : 'client';
+const paused =
+  viewer === 'client' && (await messagingApi.settings(thread.profileId)).mode === 'off';
+const other = viewer === 'professional' ? thread.clientName : thread.profileName;
+
+// Her private set (UX-PLAN 4.4): revealed to the client ONLY once she accepted
+// his request (privateSetUnlocked). Fetched at the page (app/api seam); the
+// unlock is per-thread, so a locked thread never sees the images.
+let privatePhotos: string[] = [];
+if (viewer === 'client' && thread.privateSetUnlocked) {
+  const profile = await profilesApi.bySlug(thread.profileSlug);
+  privatePhotos = profile?.privatePhotos ?? [];
+}
+---
+
+<Layout bare noindex title={`${other} | Intimate`}>
+  <Thread {thread} {viewer} {paused} {privatePhotos} />
+</Layout>

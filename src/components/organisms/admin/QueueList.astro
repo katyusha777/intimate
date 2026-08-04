@@ -1,0 +1,54 @@
+---
+/**
+ * Generic admin queue list (docs/ADMIN.md §2 — one component across all five
+ * queues). Rows link to their review; shows claim state ("X reviewing") and an
+ * escalation flag. Variants are props, never forks.
+ */
+export interface QueueRow {
+  href: string;
+  title: string;
+  subtitle?: string;
+  age?: string;
+  claimedBy?: string | null;
+  escalated?: boolean;
+  active?: boolean;
+}
+interface Props {
+  rows: QueueRow[];
+  empty: string;
+}
+const { rows, empty } = Astro.props;
+---
+
+{
+  rows.length === 0 ? (
+    <p class="border border-dashed border-border px-4 py-10 text-center text-sm text-muted-foreground">{empty}</p>
+  ) : (
+    <ul class="divide-y divide-border border border-border">
+      {rows.map((r) => (
+        <li>
+          <a
+            href={r.href}
+            aria-current={r.active ? 'true' : undefined}
+            class:list={[
+              'flex items-center gap-3 px-3 py-2.5 text-sm transition-colors hover:bg-muted',
+              r.active && 'bg-muted',
+            ]}
+          >
+            {r.escalated && <span class="size-2 flex-none rounded-full bg-brand" title="Escalation" />}
+            <span class="min-w-0 flex-1">
+              <span class="block truncate font-medium">{r.title}</span>
+              {r.subtitle && <span class="block truncate text-xs text-muted-foreground">{r.subtitle}</span>}
+            </span>
+            {r.claimedBy && (
+              <span class="flex-none rounded-full bg-foreground/10 px-2 py-0.5 text-2xs font-medium text-muted-foreground">
+                {r.claimedBy.split('@')[0]} reviewing
+              </span>
+            )}
+            {r.age && <span class="flex-none tabular-nums text-2xs text-muted-foreground">{r.age}</span>}
+          </a>
+        </li>
+      ))}
+    </ul>
+  )
+}

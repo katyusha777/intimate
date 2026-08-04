@@ -1,0 +1,82 @@
+---
+/**
+ * Organizations (docs/ADMIN.md §8): agencies with KvK + verification, roster
+ * with per-profile states, aggregate quality. Master-detail via ?id=.
+ */
+import { getAdmin } from '@/actions/admin/lib';
+import { listOrgs, orgById } from '@/actions/admin/orgs';
+import { cityName } from '@/lib/seo';
+import AdminShell from '@/components/organisms/admin/AdminShell.astro';
+
+const session = await getAdmin(Astro);
+const orgs = session ? await listOrgs() : [];
+const id = Astro.url.searchParams.get('id');
+const detail = session && id ? await orgById(id) : null;
+const stateClass = (s: string) =>
+  ({ live: 'text-online', pending_review: 'text-amber-500', paused: 'text-muted-foreground', blocked: 'text-brand' })[s] ?? 'text-muted-foreground';
+---
+
+<AdminShell title="Organizations" section="organizations">
+  {
+    session && (
+      <div>
+        <h1 class="display text-3xl">Organizations</h1>
+        <p class="mt-1 text-sm text-muted-foreground">{orgs.length} agencies</p>
+
+        <div class="mt-6 grid gap-6 lg:grid-cols-[22rem_1fr]">
+          <ul class="divide-y divide-border border border-border">
+            {orgs.map((o) => (
+              <li>
+                <a href={`/admin/organizations?id=${o.id}`} class:list={['flex items-center justify-between gap-3 px-3 py-2.5 text-sm transition-colors hover:bg-muted', o.id === id && 'bg-muted']}>
+                  <span class="min-w-0">
+                    <span class="flex items-center gap-1.5 font-medium">
+                      {o.name}
+                      {o.verified && <svg class="size-3 flex-none text-online" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/><path d="M9 12l2 2 4-4"/></svg>}
+                    </span>
+                    <span class="block text-2xs text-muted-foreground">{cityName(o.city)} · {o.members.length} members</span>
+                  </span>
+                  <span class="flex-none text-2xs text-muted-foreground">{o.liveCount} live</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+
+          {!detail ? (
+            <div class="grid place-items-center border border-dashed border-border py-24 text-sm text-muted-foreground">Select an agency.</div>
+          ) : (
+            <div class="min-w-0 space-y-4">
+              <div>
+                <p class="font-condensed text-xl font-bold">{detail.name}</p>
+                <p class="text-sm text-muted-foreground">
+                  KvK {detail.kvk} · {cityName(detail.city)} ·{' '}
+                  <span class:list={detail.verified ? 'text-online' : 'text-brand'}>{detail.verified ? 'Verified' : 'Unverified'}</span>
+                </p>
+              </div>
+              <dl class="grid max-w-md grid-cols-3 gap-px overflow-hidden border border-border bg-border text-xs">
+                {[['Members', String(detail.members.length)], ['Live', String(detail.liveCount)], ['Avg complete', `${detail.avgCompleteness}%`]].map(([k, v]) => (
+                  <div class="bg-card px-2.5 py-1.5"><dt class="text-2xs uppercase tracking-wide text-muted-foreground">{k}</dt><dd class="font-medium">{v}</dd></div>
+                ))}
+              </dl>
+
+              <div>
+                <p class="text-2xs uppercase tracking-wide text-muted-foreground">Roster</p>
+                <div class="mt-2 divide-y divide-border border border-border">
+                  {detail.members.map((mmb) => (
+                    <a href={`/admin/profiles?id=${mmb.id}`} class="flex items-center justify-between gap-3 px-3 py-2 text-sm hover:bg-muted">
+                      <span class="flex items-center gap-1.5 font-medium">{mmb.name}{mmb.verified && <span class="text-online">✓</span>}</span>
+                      <span class="flex items-center gap-3 text-2xs">
+                        <span class="text-muted-foreground">{cityName(mmb.city)}</span>
+                        <span class="tabular-nums text-muted-foreground">{mmb.completeness}%</span>
+                        <span class:list={['font-medium', stateClass(mmb.state)]}>{mmb.state}</span>
+                      </span>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+</AdminShell>

@@ -1,0 +1,30 @@
+---
+/** Advertiser verification flow (clients → dashboard). */
+import * as m from '@/paraglide/messages';
+import { accountApi } from '@/app/api/account';
+import { sessionApi } from '@/app/api/session';
+import { isLocale, localizePath } from '@/lib/i18n';
+import AccountShell from '@/components/organisms/dashboard/AccountShell.astro';
+import SignInPrompt from '@/components/organisms/dashboard/SignInPrompt.astro';
+import VerificationFlow from '@/components/organisms/dashboard/VerificationFlow.astro';
+import Layout from '@/layouts/Layout.astro';
+
+const locale = Astro.params.locale;
+if (!isLocale(locale)) return new Response(null, { status: 404 });
+
+const session = await sessionApi.current(Astro);
+if (session && session.role !== 'advertiser') return Astro.redirect(localizePath('/account/'));
+const account = session ? await accountApi.get(session) : null;
+const profile = session ? await accountApi.myProfile(session) : null;
+---
+
+<Layout noindex title={`${m.verify_title()} | Intimate`}>
+  {!session && <SignInPrompt />}
+  {
+    session && account && (
+      <AccountShell {session} title={m.verify_title()} path={localizePath('/account/verification/')} bannerState={profile?.state}>
+        <VerificationFlow {session} {account} />
+      </AccountShell>
+    )
+  }
+</Layout>

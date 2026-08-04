@@ -1,0 +1,36 @@
+---
+/**
+ * All photos as a grid — the browsing alternative to the hero. This grid is
+ * ALSO the canonical photo source for the lightbox ([data-lightbox-photos]);
+ * tapping any photo opens the lightbox at that index.
+ */
+import SafeImage from '@/components/atoms/SafeImage.astro';
+
+interface Props {
+  photos: string[];
+  keyBase: string;
+  alt: string;
+}
+const { photos, keyBase, alt } = Astro.props;
+---
+
+<!-- Instagram-clean: square cells, hairline gaps, edge to edge. -->
+<div class="grid grid-cols-3 gap-0.5" data-lightbox-photos>
+  {
+    photos.map((photo, i) => (
+      <button
+        type="button"
+        data-lightbox
+        data-lightbox-index={i}
+        class="group relative aspect-square cursor-pointer overflow-hidden bg-neutral-950"
+      >
+        <SafeImage
+          imageKey={`${keyBase}-${i}`}
+          src={photo}
+          alt={`${alt} — ${i + 1}`}
+          class="h-full w-full transition-transform duration-200 group-hover:scale-[1.03]"
+        />
+      </button>
+    ))
+  }
+</div>

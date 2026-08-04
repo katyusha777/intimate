@@ -1,0 +1,22 @@
+name: Warm cache
+
+# Keeps the edge cache hot so no visitor ever pays a cold, uncached profile
+# render (docs/ARCHITECTURE §4). The endpoint self-fetches every live profile;
+# TTL is 24h, so warming every 6h keeps everything warm with margin.
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch: {} # manual "Run workflow" button
+
+jobs:
+  warm:
+    runs-on: ubuntu-latest
+    steps:
+      # Fetch the live-profile URL list from the worker (it can't self-fetch —
+      # Cloudflare 522s a loopback), then warm each from here (external → the
+      # worker renders + stores in KV). -P 8 = eight in flight.
+      - name: Warm staging
+        run: |
+          curl -fsS --max-time 60 "https://staging.intimate.nl/api/cache/urls" \
+            -H "Authorization: Bearer ${{ secrets.WARM_SECRET }}" \
+            | xargs -r -P 8 -n 1 curl -fsS -o /dev/null --max-time 30 -H "X-Warm: 1"

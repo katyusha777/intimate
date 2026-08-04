@@ -1,0 +1,348 @@
+---
+/**
+ * Fullscreen image lightbox (native <dialog>, top-layer so it stacks over the
+ * profile sheet). Swipe changes photos; a clean TAP closes. The tap-close
+ * gotcha: closing on pointerup makes the follow-up click retarget to the hero
+ * underneath and instantly reopen — so openers are suppressed for a beat
+ * after a tap-close.
+ * Opened by delegation: any [data-lightbox] trigger inside a
+ * [data-lightbox-group] opens the group's [data-lightbox-photos] images at the
+ * trigger's data-lightbox-index. Reads live <img> src so safe-mode is honored.
+ */
+interface Props {
+  id?: string;
+}
+const { id = 'lightbox' } = Astro.props;
+---
+
+<dialog
+  id={id}
+  data-lightbox-dialog
+  aria-label="Photos"
+  class="lightbox m-0 h-dvh max-h-dvh w-dvw max-w-none bg-black/0 p-0 backdrop:bg-transparent"
+>
+  <div class="lightbox-scrim fixed inset-0 bg-black"></div>
+  <div data-lightbox-stage class="relative flex h-dvh w-dvw flex-col">
+    <div
+      class="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-center justify-between px-4 py-3"
+      style="padding-top: calc(0.75rem + env(safe-area-inset-top))"
+    >
+      <!-- Chrome = the ink-slab family: white cut slabs, dark glyphs, no pills. -->
+      <span
+        data-lightbox-counter
+        class="slab-cut bg-white px-3 py-1 text-sm font-semibold text-neutral-950"
+      ></span>
+      <button
+        type="button"
+        data-lightbox-close
+        aria-label="Close"
+        class="slab-cut pointer-events-auto grid size-10 cursor-pointer place-items-center bg-white text-neutral-950 transition-transform active:scale-90"
+      >
+        <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+      </button>
+    </div>
+    <div
+      data-lightbox-track
+      class="flex h-full w-full snap-x snap-mandatory items-center overflow-x-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+    >
+    </div>
+    <!-- Thumbnail rail: tap a thumb to jump; the active one is ringed. Hidden
+         when there's only one photo (nothing to navigate). Centered when it
+         fits (w-fit + mx-auto), scrolls when it doesn't; a bottom scrim seats
+         it instead of letting thumbs float loose over the photo. -->
+    <div
+      class="pointer-events-none absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/80 to-transparent pt-8"
+      style="padding-bottom: env(safe-area-inset-bottom)"
+    >
+      <div
+        data-lightbox-thumbs
+        class="pointer-events-auto mx-auto flex w-fit max-w-full gap-2 overflow-x-auto px-4 pb-3 pt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
+      </div>
+    </div>
+  </div>
+</dialog>
+
+<style>
+  /* Fade the scrim in/out; images just appear (viewer, not a sheet). */
+  .lightbox-scrim {
+    opacity: 0;
+    transition: opacity 0.25s ease;
+  }
+  .lightbox[data-open] .lightbox-scrim {
+    opacity: 1;
+  }
+  @starting-style {
+    .lightbox[data-open] .lightbox-scrim {
+      opacity: 0;
+    }
+  }
+  /* The photo ANIMATES into position (zoom + fade) instead of snapping in. */
+  .lightbox[data-open] [data-lightbox-track] {
+    animation: lightbox-in 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  @keyframes lightbox-in {
+    from {
+      opacity: 0;
+      transform: scale(0.9);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .lightbox[data-open] [data-lightbox-track] {
+      animation: none;
+    }
+  }
+</style>
+
+<script>
+  function initLightbox() {
+    const dialog = document.querySelector<HTMLDialogElement>('[data-lightbox-dialog]');
+    if (!dialog || dialog.dataset.init) return;
+    dialog.dataset.init = '1';
+
+    const track = dialog.querySelector<HTMLElement>('[data-lightbox-track]')!;
+    const counter = dialog.querySelector<HTMLElement>('[data-lightbox-counter]')!;
+    const thumbs = dialog.querySelector<HTMLElement>('[data-lightbox-thumbs]')!;
+    let total = 0;
+    let current = -1;
+
+    const setActive = (i: number) => {
+      if (i === current) return;
+      current = i;
+      counter.textContent = total ? `${i + 1} / ${total}` : '';
+      const btns = thumbs.children;
+      for (let k = 0; k < btns.length; k++) {
+        const on = k === i;
+        (btns[k] as HTMLElement).classList.toggle('opacity-100', on);
+        (btns[k] as HTMLElement).classList.toggle('ring-2', on);
+        (btns[k] as HTMLElement).classList.toggle('ring-white', on);
+        (btns[k] as HTMLElement).classList.toggle('opacity-45', !on);
+      }
+      // Keep the active thumbnail visible in the rail.
+      (btns[i] as HTMLElement)?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+    };
+
+    const update = () => {
+      const i = track.clientWidth ? Math.round(track.scrollLeft / track.clientWidth) : 0;
+      setActive(i);
+    };
+    track.addEventListener('scroll', update, { passive: true });
+
+    // Shared-element open: a ghost copy of the TAPPED image flies from its
+    // on-page rect to the lightbox position (FLIP) — the photo "becomes" the
+    // viewer instead of a second copy popping in.
+    function flipIn(sourceImg: HTMLImageElement) {
+      if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      const r = sourceImg.getBoundingClientRect();
+      if (!r.width || !r.height) return;
+      const nw = sourceImg.naturalWidth || r.width;
+      const nh = sourceImg.naturalHeight || r.height;
+      // Target = the object-contain rect the real viewer will show.
+      const scale = Math.min(innerWidth / nw, innerHeight / nh);
+      const tw = nw * scale;
+      const th = nh * scale;
+      const tx = (innerWidth - tw) / 2;
+      const ty = (innerHeight - th) / 2;
+      const ghost = document.createElement('img');
+      ghost.src = sourceImg.currentSrc || sourceImg.src;
+      ghost.style.cssText = [
+        'position:fixed',
+        `left:${r.left}px`,
+        `top:${r.top}px`,
+        `width:${r.width}px`,
+        `height:${r.height}px`,
+        'object-fit:cover',
+        'z-index:20',
+        'will-change:left,top,width,height',
+        'transition:left 0.32s cubic-bezier(0.32,0.72,0,1), top 0.32s cubic-bezier(0.32,0.72,0,1), width 0.32s cubic-bezier(0.32,0.72,0,1), height 0.32s cubic-bezier(0.32,0.72,0,1)',
+      ].join(';');
+      dialog.appendChild(ghost);
+      track.style.opacity = '0';
+      requestAnimationFrame(() => {
+        ghost.style.left = `${tx}px`;
+        ghost.style.top = `${ty}px`;
+        ghost.style.width = `${tw}px`;
+        ghost.style.height = `${th}px`;
+      });
+      setTimeout(() => {
+        track.style.opacity = '';
+        ghost.remove();
+      }, 340);
+    }
+
+    const openLightbox = (
+      photos: { src: string; alt: string }[],
+      index: number,
+      sourceImg?: HTMLImageElement | null,
+    ) => {
+      total = photos.length;
+      current = -1;
+      track.replaceChildren(
+        ...photos.map((p) => {
+          const img = document.createElement('img');
+          img.src = p.src;
+          img.alt = p.alt;
+          img.draggable = false;
+          img.className = 'h-full w-full flex-none snap-center object-contain select-none';
+          return img;
+        }),
+      );
+      // Thumbnail rail — tap a thumb to jump to that photo. Hidden for singles.
+      thumbs.classList.toggle('hidden', photos.length < 2);
+      thumbs.replaceChildren(
+        ...photos.map((p, i) => {
+          const t = document.createElement('button');
+          t.type = 'button';
+          t.setAttribute('aria-label', `${i + 1} / ${photos.length}`);
+          t.className =
+            'h-14 w-11 flex-none cursor-pointer overflow-hidden opacity-45 ring-1 ring-white/30 transition-opacity';
+          const img = document.createElement('img');
+          img.src = p.src;
+          img.alt = '';
+          img.draggable = false;
+          img.className = 'h-full w-full object-cover';
+          t.appendChild(img);
+          t.addEventListener('click', () => {
+            track.scrollTo({ left: i * track.clientWidth, behavior: 'smooth' });
+          });
+          return t;
+        }),
+      );
+      dialog.showModal();
+      dialog.setAttribute('data-open', '');
+      document.documentElement.setAttribute('data-lightbox-open', ''); // scroll-lock the page
+      // Clear any leftover swipe-dismiss inline state from the last open.
+      const stageEl = dialog.querySelector<HTMLElement>('[data-lightbox-stage]');
+      const scrimEl = dialog.querySelector<HTMLElement>('.lightbox-scrim');
+      if (stageEl) stageEl.style.transform = '';
+      if (scrimEl) scrimEl.style.opacity = '';
+      requestAnimationFrame(() => {
+        track.scrollLeft = index * track.clientWidth;
+        setActive(index);
+      });
+      if (sourceImg) flipIn(sourceImg);
+    };
+    (window as any).__openLightbox = openLightbox;
+
+    const close = () => {
+      dialog.removeAttribute('data-open');
+      document.documentElement.removeAttribute('data-lightbox-open');
+      dialog.close();
+    };
+    dialog.addEventListener('close', () => {
+      dialog.removeAttribute('data-open');
+      document.documentElement.removeAttribute('data-lightbox-open');
+    });
+    dialog.querySelector('[data-lightbox-close]')!.addEventListener('click', close);
+
+    // Keyboard (desktop): ←/→ walk the gallery, native Esc already closes.
+    dialog.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        e.preventDefault();
+        track.scrollBy({
+          left: (e.key === 'ArrowLeft' ? -1 : 1) * track.clientWidth,
+          behavior: 'smooth',
+        });
+      }
+    });
+
+    // Gestures: tap closes; HORIZONTAL swipe changes photos (native snap);
+    // a clearly VERTICAL swipe/flick drags the viewer away (Instagram-style
+    // dismiss — the photo follows the finger, scrim fades, flick releases).
+    // Closing on pointerup means the follow-up click retargets to whatever
+    // sits under the finger — `lastTapClose` suppresses openers for a beat.
+    const stage = dialog.querySelector<HTMLElement>('[data-lightbox-stage]')!;
+    let lastTapClose = 0;
+    let sx = 0;
+    let sy = 0;
+    let moved = false;
+    let vDrag = false;
+    let dy = 0;
+    const vSamples: { y: number; t: number }[] = [];
+    track.addEventListener('pointerdown', (e) => {
+      sx = e.clientX;
+      sy = e.clientY;
+      moved = false;
+      vDrag = false;
+      dy = 0;
+      vSamples.length = 0;
+      vSamples.push({ y: e.clientY, t: e.timeStamp });
+    });
+    track.addEventListener('pointermove', (e) => {
+      const dx = e.clientX - sx;
+      const dyNow = e.clientY - sy;
+      if (Math.abs(dx) > 10 || Math.abs(dyNow) > 10) moved = true;
+      if (!vDrag) {
+        // Direction lock: clearly vertical and past the slop → dismiss drag.
+        if (Math.abs(dyNow) > 14 && Math.abs(dyNow) > Math.abs(dx) * 1.3) vDrag = true;
+        else return;
+      }
+      dy = dyNow;
+      stage.style.transform = `translateY(${dy}px)`;
+      const scrim = dialog.querySelector<HTMLElement>('.lightbox-scrim');
+      if (scrim) scrim.style.opacity = String(Math.max(0, 1 - Math.abs(dy) / (innerHeight * 0.5)));
+      vSamples.push({ y: e.clientY, t: e.timeStamp });
+      if (vSamples.length > 5) vSamples.shift();
+    });
+    // iOS: block native horizontal snap-scroll while the vertical drag owns
+    // the gesture.
+    track.addEventListener(
+      'touchmove',
+      (e) => {
+        if (vDrag) e.preventDefault();
+      },
+      { passive: false },
+    );
+    track.addEventListener('pointerup', () => {
+      if (vDrag) {
+        const first = vSamples[0];
+        const last = vSamples[vSamples.length - 1];
+        const v = last && first && last.t > first.t ? (last.y - first.y) / (last.t - first.t) : 0;
+        const shouldClose = Math.abs(v) > 0.5 || Math.abs(dy) > innerHeight * 0.22;
+        if (shouldClose) {
+          lastTapClose = performance.now();
+          // Continue the motion out of the screen, then close.
+          stage.style.transition = 'transform 0.22s ease-out';
+          stage.style.transform = `translateY(${dy < 0 ? '-100%' : '100%'})`;
+          setTimeout(() => {
+            close();
+            stage.style.transition = '';
+            stage.style.transform = '';
+          }, 200);
+        } else {
+          stage.style.transition = 'transform 0.25s ease';
+          stage.style.transform = '';
+          const scrim = dialog.querySelector<HTMLElement>('.lightbox-scrim');
+          if (scrim) scrim.style.opacity = '';
+          setTimeout(() => (stage.style.transition = ''), 260);
+        }
+        return;
+      }
+      if (moved) return;
+      lastTapClose = performance.now();
+      close();
+    });
+
+    // Delegated openers (work on the full page AND inside the profile sheet).
+    document.addEventListener('click', (e) => {
+      if (performance.now() - lastTapClose < 500) return; // retargeted close-click
+      const trigger = (e.target as HTMLElement).closest?.('[data-lightbox]') as HTMLElement | null;
+      if (!trigger) return;
+      const group = trigger.closest('[data-lightbox-group]');
+      if (!group) return;
+      e.preventDefault();
+      const imgs = [...group.querySelectorAll<HTMLImageElement>('[data-lightbox-photos] img')];
+      const photos = imgs.map((im) => ({ src: im.currentSrc || im.src, alt: im.alt || '' }));
+      if (!photos.length) return;
+      // The tapped image (hero / strip cell / grid cell) is the FLIP source;
+      // buttons without an image (SHOW ALL) fall back to the plain zoom-in.
+      openLightbox(
+        photos,
+        Number(trigger.dataset.lightboxIndex || 0),
+        trigger.querySelector<HTMLImageElement>('img'),
+      );
+    });
+  }
+  initLightbox();
+  document.addEventListener('astro:page-load', initLightbox);
+</script>

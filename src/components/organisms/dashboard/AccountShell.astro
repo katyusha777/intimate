@@ -1,0 +1,122 @@
+---
+/**
+ * Account area shell: condensed heading + role eyebrow + sign-out, and a
+ * keyline side-nav on desktop (mobile navigation is the role-aware dock).
+ * Receives everything as props — organisms never touch the data seam.
+ */
+import * as m from '@/paraglide/messages';
+import type { Session } from '@/app/models/session';
+import type { ProfileState } from '@/lib/taxonomy';
+import { localizePath } from '@/lib/i18n';
+import StatusBanner from '@/components/organisms/dashboard/StatusBanner.astro';
+
+interface Props {
+  session: Session;
+  title: string;
+  /** Current path for side-nav active state. */
+  path: string;
+  /** Her profile lifecycle state — drives the "in review / you're live" banner
+   *  (advertiser only). Pages pass what they already fetched; the banner shows
+   *  itself only for pending_review / live. */
+  bannerState?: ProfileState;
+}
+const { session, title, path, bannerState } = Astro.props;
+
+const nav =
+  session.role === 'advertiser'
+    ? [
+        { href: localizePath('/account/'), label: m.nav_dashboard() },
+        { href: localizePath('/account/profile/'), label: m.nav_my_profile() },
+        { href: localizePath('/account/photos/'), label: m.photos_title() },
+        { href: localizePath('/account/verification/'), label: m.verify_title() },
+        { href: localizePath('/account/settings/'), label: m.settings_title() },
+      ]
+    : [
+        { href: localizePath('/account/'), label: m.nav_account() },
+        { href: localizePath('/account/settings/'), label: m.settings_title() },
+      ];
+---
+
+<div class="mx-auto max-w-7xl px-4 py-8 md:px-6 md:py-12">
+  <div class="flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <p class="eyebrow">
+        {session.role === 'advertiser' ? m.role_advertiser() : m.role_client()} · {session.email}
+      </p>
+      <h1 class="display mt-1 text-3xl md:text-4xl">{title}</h1>
+    </div>
+    <button
+      type="button"
+      data-signout
+      class="flex h-9 cursor-pointer items-center border border-foreground/20 px-3.5 text-sm font-medium transition-colors hover:border-foreground/60"
+    >
+      {m.account_signout()}
+    </button>
+  </div>
+
+  <!-- Desktop: horizontal tabs up top (mobile navigates via the dock). -->
+  <nav
+    class="mt-6 hidden select-none items-stretch gap-6 overflow-x-auto border-b border-border md:flex"
+    aria-label={m.nav_account()}
+  >
+    {
+      nav.map((n) => (
+        <a
+          href={n.href}
+          aria-current={path === n.href ? 'page' : undefined}
+          class:list={[
+            'relative flex flex-none items-center pb-3 font-condensed text-sm font-bold uppercase tracking-wide transition-colors',
+            path === n.href ? 'text-foreground' : 'text-foreground/50 hover:text-foreground',
+          ]}
+        >
+          {n.label}
+          <span
+            class:list={[
+              'absolute bottom-0 left-0 right-0 h-0.5 bg-foreground transition-opacity',
+              path === n.href ? 'opacity-100' : 'opacity-0',
+            ]}
+            aria-hidden="true"
+          />
+        </a>
+      ))
+    }
+  </nav>
+
+  <div class="mt-8 min-w-0">
+    {session.role === 'advertiser' && bannerState && <StatusBanner state={bannerState} />}
+    <slot />
+  </div>
+
+  <p class="mt-10 text-xs text-muted-foreground">{m.account_demo_note()}</p>
+</div>
+
+{/* Presence heartbeat — she's "online" while managing her dashboard (SUPABASE.md §5.4). */}
+{session.role === 'advertiser' && session.profileId && <div data-heartbeat={session.profileId} hidden></div>}
+
+<script>
+  import { actions } from 'astro:actions';
+  import { startHeartbeat } from '@/app/realtime';
+
+  let stopBeat: (() => void) | null = null;
+  function initHeartbeat() {
+    const el = document.querySelector<HTMLElement>('[data-heartbeat]');
+    if (!el || stopBeat) return;
+    stopBeat = startHeartbeat(el.dataset.heartbeat!);
+  }
+
+  function initSignout() {
+    document.querySelectorAll<HTMLElement>('[data-signout]').forEach((btn) => {
+      if (btn.dataset.init) return;
+      btn.dataset.init = '1';
+      btn.addEventListener('click', async () => {
+        const locale = (document.documentElement.lang || 'en') as 'nl' | 'en' | 'de';
+        const { data } = await actions.auth.logout({ locale });
+        location.href = data?.href ?? '/';
+      });
+    });
+  }
+  initSignout();
+  initHeartbeat();
+  document.addEventListener('astro:page-load', initSignout);
+  document.addEventListener('astro:page-load', initHeartbeat);
+</script>

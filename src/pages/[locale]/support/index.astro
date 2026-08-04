@@ -1,0 +1,84 @@
+---
+/**
+ * Support — the "we're actually here" page. Direct channels first (WhatsApp /
+ * Telegram, numbers from lib/contact config), then what we help with. Being
+ * genuinely reachable IS the product stance; no ticket maze.
+ */
+import * as m from '@/paraglide/messages';
+import { isLocale, samePathAlternates } from '@/lib/i18n';
+import { SUPPORT_CONTACT } from '@/lib/contact';
+import Icon from '@/components/atoms/Icon.astro';
+import Layout from '@/layouts/Layout.astro';
+
+const locale = Astro.params.locale;
+if (!isLocale(locale)) return new Response(null, { status: 404 });
+
+const alternates = samePathAlternates(Astro.url.origin, '/support/');
+
+const channels = [
+  { icon: 'phone', family: 'thin', label: 'Call us', color: 'text-foreground', ...SUPPORT_CONTACT.phone },
+  { icon: 'whatsapp', family: 'brands', label: 'WhatsApp', color: 'text-online', ...SUPPORT_CONTACT.whatsapp },
+  { icon: 'telegram', family: 'brands', label: 'Telegram', color: 'text-telegram', ...SUPPORT_CONTACT.telegram },
+  { icon: 'envelope', family: 'thin', label: 'Email', color: 'text-foreground', ...SUPPORT_CONTACT.email },
+] as const;
+const topics = [
+  m.support_topic_1(),
+  m.support_topic_2(),
+  m.support_topic_3(),
+  m.support_topic_4(),
+  m.support_topic_5(),
+];
+---
+
+<Layout
+  title={`${m.nav_support()} | Intimate`}
+  description={m.support_sub()}
+  canonical={new URL(`/${locale}/support/`, Astro.url.origin).href}
+  {alternates}
+>
+  <div class="mx-auto max-w-2xl px-4 py-8 md:px-6 md:py-12">
+    <h1 class="display text-3xl md:text-4xl">{m.support_heading()}</h1>
+    <p class="mt-2 max-w-lg text-muted-foreground">{m.support_sub()}</p>
+
+    <!-- Direct channels — the point of the page, so they come first. -->
+    <div class="mt-8 space-y-3">
+      <p class="eyebrow">{m.support_reach()}</p>
+      {
+        channels.map((c) => (
+          <a
+            href={c.href}
+            target="_blank"
+            rel="noopener"
+            class="flex items-center gap-4 border border-foreground/20 px-5 py-4 transition-colors hover:border-foreground/60 active:scale-[0.99]"
+          >
+            <Icon name={c.icon} family={c.family} class:list={['text-2xl', c.color]} />
+            <span class="font-semibold">{c.label}</span>
+            <span class="ml-auto font-condensed text-lg font-bold tracking-wide">{c.display}</span>
+          </a>
+        ))
+      }
+      <p class="text-sm text-muted-foreground">
+        {SUPPORT_CONTACT.hours} · {m.support_hours_note()}
+      </p>
+    </div>
+
+    <div class="mt-10">
+      <h2 class="display text-2xl">{m.support_topics_title()}</h2>
+      <ul class="mt-4 space-y-2.5">
+        {
+          topics.map((t) => (
+            <li class="flex items-center gap-3 text-sm">
+              <span class="size-1.5 flex-none rounded-full bg-brand" aria-hidden="true" />
+              {t}
+            </li>
+          ))
+        }
+      </ul>
+    </div>
+
+    <p class="mt-10 border-l-2 border-amber-400/60 pl-3 text-sm text-muted-foreground">
+      {m.support_note()}
+    </p>
+    <p class="mt-6 text-xs text-muted-foreground">{SUPPORT_CONTACT.company}</p>
+  </div>
+</Layout>

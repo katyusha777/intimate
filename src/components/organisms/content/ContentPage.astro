@@ -1,0 +1,53 @@
+---
+/**
+ * Renders a static editorial/legal page from src/lib/site-pages.ts — one place
+ * for the chrome (Layout, canonical, hreflang, heading rhythm) so every migrated
+ * page looks the same. Zero JS. Content is trusted (ours), rendered as real text.
+ */
+import { sitePage, type PageSlug } from '@/lib/site-pages';
+import { isLocale, samePathAlternates } from '@/lib/i18n';
+import Layout from '@/layouts/Layout.astro';
+
+interface Props {
+  slug: PageSlug;
+  /** Canonical path, e.g. '/about/'. */
+  path: string;
+}
+const { slug, path } = Astro.props;
+const locale = isLocale(Astro.params.locale) ? Astro.params.locale : 'en';
+const page = sitePage(slug, locale);
+const alternates = samePathAlternates(Astro.url.origin, path);
+const canonical = new URL(`/${locale}${path}`, Astro.url.origin).href;
+---
+
+<Layout title={`${page.title} | Intimate`} description={page.description} {canonical} {alternates}>
+  <article class="mx-auto max-w-2xl px-4 py-8 md:px-6 md:py-12">
+    <h1 class="display text-3xl md:text-4xl">{page.title}</h1>
+    <p class="mt-2 text-muted-foreground">{page.description}</p>
+
+    <div class="mt-8 space-y-5">
+      {
+        page.body.map((block) =>
+          'h' in block ? (
+            <h2 class="font-condensed text-xl font-semibold tracking-tight">{block.h}</h2>
+          ) : 'p' in block ? (
+            <p class="leading-relaxed text-muted-foreground">{block.p}</p>
+          ) : 'list' in block ? (
+            <ul class="space-y-2">
+              {block.list.map((li) => (
+                <li class="flex gap-3 leading-relaxed text-muted-foreground">
+                  <span class="mt-2 size-1.5 flex-none rounded-full bg-brand" aria-hidden="true" />
+                  {li}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p class="border-l-2 border-amber-400/60 pl-4 text-sm leading-relaxed text-muted-foreground">
+              {block.note}
+            </p>
+          ),
+        )
+      }
+    </div>
+  </article>
+</Layout>

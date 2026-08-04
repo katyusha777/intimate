@@ -1,0 +1,126 @@
+---
+/**
+ * Mobile region control: ONE "ROTTERDAM | EN ▾" trigger in the header opens
+ * this ActionSheet — language as a radio group first, the city picker below.
+ * Language pick follows the page's hreflang alternate (SEO-correct, localized
+ * slugs included). City pick sets the 1-year cookie, then drives the listing's
+ * [data-city-nav] select when present (keeps tab + query) or navigates to the
+ * city shelf.
+ */
+import * as m from '@/paraglide/messages';
+import { getLocale } from '@/paraglide/runtime';
+import { localizePath } from '@/lib/i18n';
+import { CITIES, type Locale } from '@/lib/taxonomy';
+import ActionSheet from '@/components/molecules/ActionSheet.astro';
+
+interface Props {
+  /** Current city slug (path ?? cookie) — highlights its button. */
+  currentCity?: string;
+}
+const { currentCity } = Astro.props;
+
+const LANGUAGES = [
+  { value: 'nl', label: 'Nederlands', flag: '🇳🇱' },
+  { value: 'en', label: 'English', flag: '🇬🇧' },
+  { value: 'de', label: 'Deutsch', flag: '🇩🇪' },
+];
+const locale = getLocale() as Locale;
+const heading = 'font-condensed text-sm font-bold uppercase tracking-wide';
+const home = localizePath('/');
+---
+
+<ActionSheet id="region-sheet" label={m.city_sheet_title()}>
+  <div class="space-y-6 px-5 pb-6 pt-1">
+    <div class="space-y-3">
+      <h3 class={heading}>{m.region_language()}</h3>
+      <!-- Same button family as the city grid below — flag + native name. -->
+      <div class="grid grid-cols-3 gap-2.5">
+        {
+          LANGUAGES.map((l) => (
+            <button
+              type="button"
+              data-region-lang={l.value}
+              class:list={[
+                'flex h-12 cursor-pointer items-center justify-center gap-1.5 border px-2 text-sm font-semibold transition-colors active:scale-[0.97]',
+                l.value === locale
+                  ? 'border-foreground'
+                  : 'border-foreground/20 hover:border-foreground/60',
+              ]}
+            >
+              <span aria-hidden="true">{l.flag}</span>
+              {l.label}
+            </button>
+          ))
+        }
+      </div>
+    </div>
+
+    <div class="space-y-3">
+      <h3 class={heading}>{m.filter_city()}</h3>
+      <div class="grid grid-cols-2 gap-2.5">
+        {
+          CITIES.map((c) => (
+            <button
+              type="button"
+              data-region-city={c.slug}
+              class:list={[
+                'flex h-12 items-center justify-center border px-3 font-condensed text-sm font-semibold uppercase tracking-wide transition-colors active:scale-[0.97]',
+                c.slug === currentCity
+                  ? 'border-foreground'
+                  : 'border-foreground/20 hover:border-foreground/60',
+              ]}
+            >
+              {c.name}
+            </button>
+          ))
+        }
+      </div>
+      <button
+        type="button"
+        data-region-city=""
+        class="flex h-12 w-full items-center justify-center border border-foreground/15 px-3 text-sm font-medium text-muted-foreground transition-colors hover:border-foreground/40 hover:text-foreground active:scale-[0.98]"
+      >
+        {m.city_sheet_all()}
+      </button>
+    </div>
+  </div>
+</ActionSheet>
+
+<script is:inline define:vars={{ home }}>
+  (function () {
+    if (window.__regionSheet) return;
+    window.__regionSheet = true;
+    const YEAR = 31536000;
+
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest) return;
+
+      // Language: follow the page's own hreflang alternate.
+      const lang = e.target.closest('[data-region-lang]');
+      if (lang) {
+        const v = lang.dataset.regionLang;
+        const alt = document.querySelector(`link[rel="alternate"][hreflang="${v}"]`);
+        location.href = (alt && alt.href) || `/${v}/`;
+        return;
+      }
+
+      // City: persist, then keep the listing's tab+query when possible.
+      const city = e.target.closest('[data-region-city]');
+      if (city && city.closest('#region-sheet')) {
+        const slug = city.dataset.regionCity;
+        document.cookie = slug
+          ? `city=${slug}; path=/; max-age=${YEAR}; samesite=lax`
+          : 'city=; path=/; max-age=0; samesite=lax';
+        const ctl = document.querySelector('[data-city-nav]');
+        const dlg = document.getElementById('region-sheet');
+        dlg && dlg.closeSheet && dlg.closeSheet();
+        if (ctl) {
+          ctl.value = slug;
+          ctl.dispatchEvent(new Event('change', { bubbles: true }));
+        } else {
+          location.href = slug ? `${home}${slug}/` : home;
+        }
+      }
+    });
+  })();
+</script>

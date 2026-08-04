@@ -1,0 +1,79 @@
+---
+/**
+ * Set a new password. Reached from the reset email via /auth/confirm, which
+ * verifies the recovery token and leaves a session — so a valid visitor here is
+ * already authenticated for the one purpose of choosing a new password.
+ * No session (link expired / opened cold) → an honest dead-end, not a form.
+ */
+import * as m from '@/paraglide/messages';
+import { sessionApi } from '@/app/api/session';
+import { isLocale, localizePath } from '@/lib/i18n';
+import Button from '@/components/atoms/Button.astro';
+import SlabField from '@/components/molecules/SlabField.astro';
+import Layout from '@/layouts/Layout.astro';
+
+const locale = Astro.params.locale;
+if (!isLocale(locale)) return new Response(null, { status: 404 });
+
+const session = await sessionApi.current(Astro);
+---
+
+<Layout noindex title={`${m.reset_title()} | Intimate`}>
+  <div class="mx-auto max-w-md px-4 py-12 md:px-6">
+    <h1 class="display text-3xl">{m.reset_title()}</h1>
+    {
+      session ? (
+        <form data-reset-form class="mt-6 space-y-4">
+          <p class="text-sm text-muted-foreground">{m.reset_sub()}</p>
+          <SlabField
+            label={m.reset_new_password()}
+            name="password"
+            type="password"
+            autocomplete="new-password"
+            required
+          />
+          <p data-reset-error class="hidden text-sm font-medium text-brand">{m.auth_error()}</p>
+          <Button type="submit" size="lg" class="w-full">
+            {m.reset_submit()}
+          </Button>
+        </form>
+      ) : (
+        <div class="mt-6 space-y-3">
+          <p class="text-muted-foreground">{m.reset_expired()}</p>
+          <a href={localizePath('/account/')} class="inline-block font-semibold underline-offset-4 hover:underline">
+            {m.nav_login()} →
+          </a>
+        </div>
+      )
+    }
+  </div>
+</Layout>
+
+<script>
+  import { actions } from 'astro:actions';
+
+  function initReset() {
+    const form = document.querySelector<HTMLFormElement>('[data-reset-form]');
+    if (!form || form.dataset.init) return;
+    form.dataset.init = '1';
+    const err = form.querySelector<HTMLElement>('[data-reset-error]')!;
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (form.dataset.loading) return;
+      form.dataset.loading = '1';
+      err.classList.add('hidden');
+      const password = String(new FormData(form).get('password') ?? '');
+      const locale = (document.documentElement.lang || 'en') as 'nl' | 'en' | 'de';
+      try {
+        const { data, error } = await actions.auth.setPassword({ password, locale });
+        if (error) throw error;
+        location.href = data!.href;
+      } catch {
+        err.classList.remove('hidden');
+        delete form.dataset.loading;
+      }
+    });
+  }
+  initReset();
+  document.addEventListener('astro:page-load', initReset);
+</script>

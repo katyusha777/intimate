@@ -1,0 +1,67 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "intimate",
+  // Main account: Contact@optiweb.dev (migrated 2026-08-02 from the personal
+  // account — old workers left in place there until confirmed dead).
+  "account_id": "ac521dc0e1abd98133a8f565daa46294",
+  "main": "@astrojs/cloudflare/entrypoints/server",
+  "compatibility_date": "2026-07-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "binding": "ASSETS",
+    "directory": "./dist"
+  },
+  "placement": { "mode": "smart" },
+  "observability": { "enabled": true },
+  // Deploy id → folded into the page-cache key so every deploy auto-invalidates
+  // cached profile HTML (no manual purge, no stale-after-redeploy window).
+  "version_metadata": { "binding": "CF_VERSION" },
+  // ponytail: single-tier — one hosted Supabase project is THE database until
+  // the project proves itself (INFRASTRUCTURE §1); split tiers/ids then.
+  // In `bun run dev` the binding connects via the
+  // CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE env var (.env).
+  "hyperdrive": [
+    { "binding": "HYPERDRIVE", "id": "542bb0bee7fa44148f4e6ae3e0129ae7" }
+  ],
+  "kv_namespaces": [
+    { "binding": "SESSION", "id": "147037dee79949c2bed21ef6a60d7e00" }
+  ],
+  // Profile media store (R2 — free egress, no per-view delivery fee; served
+  // through the /media route with edge caching). Verification docs get their
+  // own private bucket later (hard rule 3). Transforms via the IMAGES binding.
+  // MEDIA = public profile photos. VERIFICATION = toxic-waste ID docs (hard rule
+  // 3): a SEPARATE private EU-jurisdiction bucket, admin-only via signed URLs,
+  // every read audit-logged, auto-purged after retention. Never public.
+  "r2_buckets": [
+    { "binding": "MEDIA", "bucket_name": "intimate-media" },
+    { "binding": "VERIFICATION", "bucket_name": "intimate-verification", "jurisdiction": "eu" }
+  ],
+  "images": { "binding": "IMAGES" },
+  "vars": {
+    // prod values — replace when the prod Supabase project exists (INFRASTRUCTURE §7)
+    "PUBLIC_SUPABASE_URL": "https://jqrfzqbuvekhcptqcpda.supabase.co",
+    "PUBLIC_SUPABASE_KEY": "sb_publishable_jzpgxggUIg8-uodVAaT1SA_KZxO34fe"
+  },
+  "env": {
+    "staging": {
+      "name": "intimate-staging",
+      "routes": [{ "pattern": "staging.intimate.nl", "custom_domain": true }],
+      "hyperdrive": [
+        { "binding": "HYPERDRIVE", "id": "542bb0bee7fa44148f4e6ae3e0129ae7" }
+      ],
+      "kv_namespaces": [
+        { "binding": "SESSION", "id": "691e3d062b07444fb1f659a438edc411" }
+      ],
+      "r2_buckets": [
+        { "binding": "MEDIA", "bucket_name": "intimate-media" },
+        { "binding": "VERIFICATION", "bucket_name": "intimate-verification", "jurisdiction": "eu" }
+      ],
+      "images": { "binding": "IMAGES" },
+      "version_metadata": { "binding": "CF_VERSION" },
+      "vars": {
+        "PUBLIC_SUPABASE_URL": "https://jqrfzqbuvekhcptqcpda.supabase.co",
+        "PUBLIC_SUPABASE_KEY": "sb_publishable_jzpgxggUIg8-uodVAaT1SA_KZxO34fe"
+      }
+    }
+  }
+}

@@ -1,0 +1,43 @@
+---
+import { buildListing } from '@/pages/_listing';
+import { isLocale } from '@/lib/i18n';
+import { CITIES } from '@/lib/taxonomy';
+import SearchListing from '@/components/organisms/search/SearchListing.astro';
+import Layout from '@/layouts/Layout.astro';
+
+const locale = Astro.params.locale;
+if (!isLocale(locale)) return new Response(null, { status: 404 });
+
+const citySlug = Astro.params.city;
+if (citySlug && !CITIES.some((c) => c.slug === citySlug)) {
+  return new Response(null, { status: 404 });
+}
+
+const listing = await buildListing({
+  url: Astro.url,
+  locale,
+  citySlug,
+  defaultGender: Astro.cookies.get('gender')?.value,
+});
+---
+
+<Layout
+  title={listing.title}
+  description={listing.intro}
+  canonical={listing.canonical}
+  alternates={listing.alternates}
+  jsonLd={listing.jsonLd}
+>
+  <div class="mx-auto max-w-7xl px-4 py-8 md:px-6 md:py-10">
+    <SearchListing
+      title={listing.heading}
+      intro={listing.intro}
+      updated={listing.updated}
+      params={listing.params}
+      result={listing.result}
+      savedPool={listing.savedPool}
+      tabPath={listing.tabPath}
+      currentUrl={Astro.url}
+    />
+  </div>
+</Layout>

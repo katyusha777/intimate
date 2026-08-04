@@ -1,0 +1,348 @@
+---
+/**
+ * iOS-native bottom action sheet on the native <dialog> (focus trap, Esc,
+ * inert background — free from the platform).
+ *
+ * Feel details:
+ * - real slide-up (forced reflow so the entry transition always runs)
+ * - the page behind scales back (iOS "push-back", via html[data-sheet-open])
+ * - grab handle always drags; body drags engage only at scrollTop 0, after a
+ *   10px slop, and only when clearly vertical — horizontal carousel swipes
+ *   inside the sheet never dismiss it
+ * - velocity flick (fast swipe closes even a short drag), 45% threshold
+ * - downward-only travel (no gap under the panel), backdrop dims with drag
+ * - reduced-motion safe
+ *
+ * `flush` removes the handle bar from the flow: content reaches the very top
+ * edge and the pill floats over it (photo-sheet style).
+ *
+ * Open with data-sheet-open="<id>" / close with data-sheet-close, or from JS:
+ * el.openSheet() / el.closeSheet(). Inject dynamic content into
+ * [data-sheet-body].
+ */
+interface Props {
+  id: string;
+  /** Extra classes on the panel. */
+  class?: string;
+  /** Handle/title label for a11y. */
+  label?: string;
+  /** Content reaches the top edge; the handle pill floats over it. */
+  flush?: boolean;
+}
+const { id, class: className, label, flush } = Astro.props;
+---
+
+<dialog
+  id={id}
+  data-sheet
+  aria-label={label}
+  class="sheet-dialog m-0 h-dvh max-h-dvh w-dvw max-w-none bg-transparent p-0 backdrop:bg-transparent"
+>
+  <div data-sheet-backdrop class="sheet-backdrop fixed inset-0 bg-black/60"></div>
+  <div
+    data-sheet-panel
+    tabindex="-1"
+    class:list={[
+      'sheet-panel fixed inset-x-0 bottom-0 mx-auto flex max-h-[88dvh] w-full max-w-2xl flex-col overflow-hidden rounded-t-2xl bg-card text-card-foreground shadow-soft-lg outline-none',
+      className,
+    ]}
+  >
+    <div
+      data-sheet-handle
+      class:list={[
+        'grid shrink-0 cursor-grab touch-none place-items-center active:cursor-grabbing',
+        flush ? 'absolute inset-x-0 top-0 z-20 py-2.5' : 'py-3',
+      ]}
+    >
+      <span
+        class:list={[
+          'h-1 w-9 rounded-full',
+          flush ? 'bg-white/80 shadow-[0_1px_4px_rgb(0_0_0/0.35)]' : 'bg-foreground/25',
+        ]}></span>
+    </div>
+    <div
+      data-sheet-body
+      class="min-h-0 flex-1 overflow-y-auto overscroll-none pb-[env(safe-area-inset-bottom)]"
+      style="-webkit-overflow-scrolling: touch"
+    >
+      <slot />
+    </div>
+    <!-- Panel-anchored chrome (e.g. a floating close FAB) — outside the
+         scroller, so it stays put while the body scrolls. -->
+    <slot name="chrome" />
+  </div>
+</dialog>
+
+<style is:global>
+  /* iOS spring easing (the vaul curve). Global: also drives the page
+     push-back below, and survives content injection. */
+  .sheet-panel {
+    transform: translateY(100%);
+    transition: transform 0.5s cubic-bezier(0.32, 0.72, 0, 1);
+    will-change: transform;
+  }
+  .sheet-backdrop {
+    opacity: 0;
+    transition: opacity 0.5s cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  .sheet-dialog[data-open] .sheet-panel {
+    transform: translateY(0);
+  }
+  .sheet-dialog[data-open] .sheet-backdrop {
+    opacity: 1;
+  }
+  /* The reliable cross-browser entry: @starting-style gives the browser an
+     explicit "before" frame (fully below) even though the dialog just left
+     display:none — so it always slides up instead of snapping in. */
+  @starting-style {
+    .sheet-dialog[data-open] .sheet-panel {
+      transform: translateY(100%);
+    }
+    .sheet-dialog[data-open] .sheet-backdrop {
+      opacity: 0;
+    }
+  }
+  /* While the finger is down we position by inline transform — kill transition. */
+  .sheet-dialog[data-dragging] .sheet-panel,
+  .sheet-dialog[data-dragging] .sheet-backdrop {
+    transition: none;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .sheet-panel,
+    .sheet-backdrop {
+      transition-duration: 0.01ms;
+    }
+  }
+</style>
+
+<script>
+  function initSheets() {
+    document.querySelectorAll<HTMLDialogElement>('dialog[data-sheet]').forEach((dialog) => {
+      if (dialog.dataset.init) return;
+      dialog.dataset.init = '1';
+
+      const panel = dialog.querySelector<HTMLElement>('[data-sheet-panel]')!;
+      const backdrop = dialog.querySelector<HTMLElement>('[data-sheet-backdrop]')!;
+      const handle = dialog.querySelector<HTMLElement>('[data-sheet-handle]')!;
+      const body = dialog.querySelector<HTMLElement>('[data-sheet-body]')!;
+
+      const open = () => {
+        // Re-opening mid-close (a new sheet requested during the ~0.3s slide-
+        // down): cancel the pending native close() and glide back up. Without
+        // this, dialog.open is still true so showModal() below no-ops and the
+        // new content never appears — "tap a card right after closing does
+        // nothing".
+        if (dialog.dataset.closing) {
+          delete dialog.dataset.closing;
+          panel.style.transitionDuration = '';
+          backdrop.style.transitionDuration = '';
+          dialog.setAttribute('data-open', '');
+          dialog.dispatchEvent(new CustomEvent('sheet:opened', { bubbles: true }));
+          return;
+        }
+        if (dialog.open) return;
+        dialog.showModal();
+        // showModal auto-focuses the first button, painting a focus ring on a
+        // random control (the "Nederlands is highlighted" bug) — park focus on
+        // the panel itself instead. Keyboard tabbing still works from there.
+        panel.focus({ preventScroll: true });
+        // Same tick as showModal: @starting-style (CSS) supplies the closed
+        // start frame, so the panel reliably slides up from the bottom.
+        dialog.setAttribute('data-open', '');
+        document.documentElement.setAttribute('data-sheet-open', '');
+        // Chrome (the auto-hiding header) listens for this.
+        dialog.dispatchEvent(new CustomEvent('sheet:opened', { bubbles: true }));
+      };
+      const close = () => {
+        if (!dialog.open) return;
+        dialog.dataset.closing = '1'; // open() clears this to interrupt a close
+        // Exits are FAST (iOS convention: sheets close quicker than they
+        // open) — and the page is scroll-locked until the slide ends, so
+        // every ms here is dead input time. Flick paths set their own
+        // (even faster) duration before calling close().
+        if (!panel.style.transitionDuration) {
+          panel.style.transitionDuration = '0.3s';
+          backdrop.style.transitionDuration = '0.3s';
+        }
+        dialog.removeAttribute('data-open');
+        // CRITICAL: the <html> scroll-lock marker is NOT touched here. Unlocking
+        // mid-slide lets Safari re-expand its chrome → the dynamic viewport
+        // resizes → every dvh/fixed element (this panel included) reflows under
+        // the animation — the "choppy close". The world stays frozen until the
+        // panel has fully left the screen (the dialog 'close' handler unlocks).
+        const done = () => {
+          panel.removeEventListener('transitionend', done);
+          // open() may have cancelled this close mid-slide — only finish if
+          // we're still closing.
+          if (dialog.dataset.closing) {
+            delete dialog.dataset.closing;
+            dialog.close();
+          }
+        };
+        panel.addEventListener('transitionend', done);
+        // fallback if transitionend doesn't fire (reduced motion / hidden)
+        setTimeout(() => dialog.open && done(), 600);
+      };
+
+      (dialog as any).openSheet = open;
+      (dialog as any).closeSheet = close;
+      dialog.addEventListener('close', () => {
+        delete dialog.dataset.closing;
+        dialog.removeAttribute('data-open');
+        panel.style.transitionDuration = '';
+        backdrop.style.transitionDuration = '';
+        // Sheets can STACK (favorites → profile), and drawers share the same
+        // lock: only the LAST open overlay unlocks the page — [open] is
+        // already gone from this dialog here.
+        if (!document.querySelector('dialog[data-sheet][open], dialog[data-drawer][open]')) {
+          document.documentElement.removeAttribute('data-sheet-open');
+        }
+        dialog.dispatchEvent(new CustomEvent('sheet:closed', { bubbles: true }));
+      });
+
+      backdrop.addEventListener('click', close);
+
+      // ---- drag to dismiss --------------------------------------------
+      const SLOP = 10; // px of movement before a body-drag may engage
+      let tracking = false; // pointer down, watching
+      let engaged = false; // dismiss-drag active (panel follows finger)
+      let fromBody = false;
+      let startX = 0;
+      let startY = 0;
+      let dragY = 0;
+      const samples: { y: number; t: number }[] = [];
+
+      const panelHeight = () => panel.getBoundingClientRect().height;
+
+      const reset = () => {
+        tracking = false;
+        engaged = false;
+        dialog.removeAttribute('data-dragging');
+        panel.style.transform = '';
+        backdrop.style.opacity = '';
+      };
+
+      const onDown = (e: PointerEvent, viaBody: boolean) => {
+        if (e.button != null && e.button !== 0) return;
+        if (viaBody && body.scrollTop > 0) return;
+        tracking = true;
+        engaged = !viaBody; // the handle engages immediately, the body waits for direction
+        fromBody = viaBody;
+        startX = e.clientX;
+        startY = e.clientY;
+        dragY = 0;
+        samples.length = 0;
+        samples.push({ y: e.clientY, t: e.timeStamp });
+        if (engaged) dialog.setAttribute('data-dragging', '');
+      };
+
+      const onMove = (e: PointerEvent) => {
+        if (!tracking) return;
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+
+        if (!engaged) {
+          // Direction lock: a body gesture must be clearly vertical AND
+          // downward past the slop; horizontal (photo swipes) or upward
+          // (scroll intent) hands control back to the browser.
+          if (Math.abs(dx) > Math.abs(dy) * 1.2 && Math.abs(dx) > SLOP) return reset();
+          if (dy < -SLOP) return reset();
+          if (dy < SLOP) return; // undecided
+          engaged = true;
+          startY = e.clientY; // re-anchor so the panel doesn't jump by the slop
+          dialog.setAttribute('data-dragging', '');
+        }
+
+        // Downward-only travel — never lift the panel above its resting spot
+        // (an upward gap under the sheet is the opposite of iOS).
+        dragY = Math.max(0, e.clientY - startY);
+        panel.style.transform = `translateY(${dragY}px)`;
+        backdrop.style.opacity = String(Math.max(0, 1 - dragY / panelHeight()));
+        samples.push({ y: e.clientY, t: e.timeStamp });
+        if (samples.length > 5) samples.shift();
+      };
+
+      const onUp = () => {
+        if (!tracking) return;
+        const wasEngaged = engaged;
+        const first = samples[0];
+        const last = samples[samples.length - 1];
+        const velocity =
+          last && first && last.t > first.t ? (last.y - first.y) / (last.t - first.t) : 0;
+        reset();
+        if (!wasEngaged) return;
+        // Flick down OR dragged past 45% → dismiss. A flick finishes FAST —
+        // the panel is already partway down and the finger said "go": the
+        // default 0.5s glide reads as lag after a hard flick. (Duration is
+        // cleared in the dialog 'close' handler.)
+        if (velocity > 0.55 || dragY > panelHeight() * 0.45) {
+          const quick = velocity > 0.55 ? '0.25s' : '0.35s';
+          panel.style.transitionDuration = quick;
+          backdrop.style.transitionDuration = quick;
+          close();
+        }
+      };
+
+      handle.addEventListener('pointerdown', (e) => {
+        handle.setPointerCapture(e.pointerId);
+        onDown(e, false);
+      });
+      body.addEventListener('pointerdown', (e) => onDown(e, true));
+      document.addEventListener('pointermove', onMove);
+      document.addEventListener('pointerup', onUp);
+      document.addEventListener('pointercancel', onUp);
+      // iOS: pointer events can't cancel native scrolling — an engaged drag
+      // must block touch scroll itself.
+      body.addEventListener(
+        'touchmove',
+        (e) => {
+          if (engaged) e.preventDefault();
+        },
+        { passive: false },
+      );
+    });
+  }
+
+  // Delegated open/close triggers.
+  if (!(window as any).__sheetDelegation) {
+    (window as any).__sheetDelegation = true;
+    // A real navigation while a sheet is open (e.g. inbox sheet → thread):
+    // the swap discards the dialog, but the <html> marker must not linger —
+    // it scroll-locks the new page.
+    document.addEventListener('astro:after-swap', () =>
+      document.documentElement.removeAttribute('data-sheet-open'),
+    );
+    // Capture phase: an opener nested inside a link (a verified mark on a
+    // profile card) must beat Astro's ClientRouter link handler — so we
+    // preventDefault AND stopPropagation before navigation is ever considered.
+    document.addEventListener(
+      'click',
+      (e) => {
+        const t = e.target as HTMLElement;
+        if (!t.closest) return;
+        // Only a NON-EMPTY data-sheet-open is an opener. `open()` also stamps an
+        // EMPTY `data-sheet-open` on <html> (the iOS push-back state); without
+        // this guard every click inside an open sheet walks up to that marker,
+        // gets preventDefault + stopPropagation, and never reaches its own
+        // controls (e.g. the RequestSheet's step chips).
+        const opener = t.closest<HTMLElement>('[data-sheet-open]:not([data-sheet-open=""])');
+        if (opener) {
+          const dlg = document.getElementById(opener.dataset.sheetOpen!) as any;
+          // No such sheet on this page → let the click through (an opener may
+          // be a link with a real href fallback, e.g. the header search icon).
+          if (!dlg?.openSheet) return;
+          e.preventDefault();
+          e.stopPropagation();
+          dlg.openSheet();
+          return;
+        }
+        const closer = t.closest<HTMLElement>('[data-sheet-close]');
+        if (closer) (closer.closest('dialog') as any)?.closeSheet?.();
+      },
+      { capture: true },
+    );
+  }
+
+  initSheets();
+  document.addEventListener('astro:page-load', initSheets);
+</script>

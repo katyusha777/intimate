@@ -1,0 +1,99 @@
+---
+/**
+ * Clients directory (docs/ADMIN.md §8). Every client account — favorites,
+ * phone verification, reports made. Detail resolves their relations (favorited
+ * profiles).
+ */
+import { getAdmin } from '@/actions/admin/lib';
+import { listClients } from '@/actions/admin/entities';
+import { accountApi } from '@/app/api/account';
+import { profilesApi } from '@/app/api/profiles';
+import AdminShell from '@/components/organisms/admin/AdminShell.astro';
+import SafeImage from '@/components/atoms/SafeImage.astro';
+
+const session = await getAdmin(Astro);
+const clients = session ? await listClients() : [];
+const email = Astro.url.searchParams.get('email');
+const selected = clients.find((c) => c.email === email) ?? null;
+
+const acct = selected ? await accountApi.byEmail(selected.email) : null;
+const { items: profiles } = session ? await profilesApi.list({ limit: 60 }) : { items: [] };
+const favProfiles = acct ? profiles.filter((p) => acct.favorites.includes(p.slug)) : [];
+---
+
+<AdminShell title="Clients" section="clients">
+  {
+    session && (
+      <div>
+        <h1 class="display text-3xl">Clients</h1>
+        <p class="mt-1 text-sm text-muted-foreground">{clients.length} accounts</p>
+
+        <div class="mt-5 grid gap-6 lg:grid-cols-[1fr_22rem]">
+          <div class="overflow-x-auto border border-border">
+            <table class="w-full min-w-[520px] text-left text-sm">
+              <thead class="border-b border-border bg-muted text-2xs uppercase tracking-wide text-muted-foreground">
+                <tr>
+                  <th class="px-3 py-2 font-semibold">Client</th>
+                  <th class="px-3 py-2 font-semibold">Phone</th>
+                  <th class="px-3 py-2 font-semibold">Favorites</th>
+                  <th class="px-3 py-2 font-semibold">Reports made</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-border">
+                {clients.length === 0 ? (
+                  <tr><td colspan="4" class="px-3 py-10 text-center text-muted-foreground">No clients yet.</td></tr>
+                ) : (
+                  clients.map((c) => (
+                    <tr class:list={['transition-colors hover:bg-muted', c.email === email && 'bg-muted']}>
+                      <td class="px-3 py-2">
+                        <a href={`/admin/clients?email=${encodeURIComponent(c.email)}`} class="flex items-center gap-2.5">
+                          <span class="grid size-8 flex-none place-items-center rounded-full bg-foreground font-condensed text-xs font-bold text-background">{c.name.charAt(0)}</span>
+                          <span class="min-w-0"><span class="block truncate font-medium">{c.name}</span><span class="block truncate text-2xs text-muted-foreground">{c.email}</span></span>
+                        </a>
+                      </td>
+                      <td class:list={['px-3 py-2 text-xs', c.phoneVerified ? 'text-online' : 'text-muted-foreground']}>{c.phoneVerified ? 'Verified' : '—'}</td>
+                      <td class="px-3 py-2 tabular-nums">{c.favorites}</td>
+                      <td class:list={['px-3 py-2 tabular-nums', c.reportsMade > 0 && 'text-brand']}>{c.reportsMade}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {selected && acct && (
+            <aside class="space-y-4 border border-border p-4">
+              <div class="flex items-center gap-3">
+                <span class="grid size-11 flex-none place-items-center rounded-full bg-foreground font-condensed text-base font-bold text-background">{selected.name.charAt(0)}</span>
+                <div class="min-w-0"><p class="font-condensed text-lg font-bold">{selected.name}</p><p class="truncate text-xs text-muted-foreground">{selected.email}</p></div>
+              </div>
+              <dl class="grid grid-cols-2 gap-px overflow-hidden border border-border bg-border text-xs">
+                {[
+                  ['Phone', selected.phoneVerified ? 'Verified' : '—'],
+                  ['Favorites', String(selected.favorites)],
+                  ['Reports made', String(selected.reportsMade)],
+                ].map(([k, v]) => (
+                  <div class="bg-card px-2.5 py-1.5"><dt class="text-2xs uppercase tracking-wide text-muted-foreground">{k}</dt><dd class="font-medium">{v}</dd></div>
+                ))}
+              </dl>
+              {favProfiles.length > 0 && (
+                <div>
+                  <p class="text-2xs uppercase tracking-wide text-muted-foreground">Favorited</p>
+                  <div class="mt-2 flex flex-wrap gap-2">
+                    {favProfiles.map((p) => (
+                      <a href={`/admin/profiles?id=${p.id}`} class="flex items-center gap-1.5 border border-border py-1 pl-1 pr-2 text-xs hover:bg-muted">
+                        <SafeImage imageKey={p.id} alt={p.name} class="size-6 flex-none rounded-full object-cover" />
+                        {p.name}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <p class="text-2xs text-muted-foreground">Status actions (warn / suspend / block) arrive with platform messaging (§10).</p>
+            </aside>
+          )}
+        </div>
+      </div>
+    )
+  }
+</AdminShell>

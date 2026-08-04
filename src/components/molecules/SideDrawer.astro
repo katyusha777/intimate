@@ -1,0 +1,153 @@
+---
+/**
+ * Slide-over drawer: a panel that glides in from the RIGHT edge (desktop
+ * profile presentation — the listing stays visible behind the backdrop).
+ * Deliberately speaks the ActionSheet contract — `openSheet()`/`closeSheet()`,
+ * `sheet:opened`/`sheet:closed`, the html[data-sheet-open] scroll-lock and the
+ * freeze-until-slide-ends close — so ProfileSheet's history/interception logic
+ * drives either container unchanged.
+ */
+interface Props {
+  id: string;
+  /** a11y label. */
+  label?: string;
+  class?: string;
+}
+const { id, label, class: className } = Astro.props;
+---
+
+<dialog
+  id={id}
+  data-drawer
+  aria-label={label}
+  class="drawer-dialog m-0 h-dvh max-h-dvh w-dvw max-w-none bg-transparent p-0 backdrop:bg-transparent"
+>
+  <div data-drawer-backdrop class="drawer-backdrop fixed inset-0 bg-black/60"></div>
+  <div
+    data-drawer-panel
+    tabindex="-1"
+    class:list={[
+      'drawer-panel fixed inset-y-0 right-0 flex w-full max-w-4xl flex-col overflow-hidden bg-background text-foreground shadow-soft-lg outline-none',
+      className,
+    ]}
+  >
+    <button
+      type="button"
+      data-sheet-close
+      aria-label="Close"
+      class="slab-cut absolute right-5 top-5 z-30 grid size-10 cursor-pointer place-items-center bg-foreground text-background shadow-soft transition-transform active:scale-90"
+    >
+      <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+    </button>
+    <div
+      data-drawer-body
+      class="min-h-0 flex-1 overflow-y-auto overscroll-none"
+    >
+      <slot />
+    </div>
+  </div>
+</dialog>
+
+<style is:global>
+  /* Same spring as the sheets; enters from the right. */
+  .drawer-panel {
+    transform: translateX(100%);
+    transition: transform 0.45s cubic-bezier(0.32, 0.72, 0, 1);
+    will-change: transform;
+  }
+  .drawer-backdrop {
+    opacity: 0;
+    transition: opacity 0.45s cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  .drawer-dialog[data-open] .drawer-panel {
+    transform: translateX(0);
+  }
+  .drawer-dialog[data-open] .drawer-backdrop {
+    opacity: 1;
+  }
+  @starting-style {
+    .drawer-dialog[data-open] .drawer-panel {
+      transform: translateX(100%);
+    }
+    .drawer-dialog[data-open] .drawer-backdrop {
+      opacity: 0;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .drawer-panel,
+    .drawer-backdrop {
+      transition-duration: 0.01ms;
+    }
+  }
+</style>
+
+<script>
+  function initDrawers() {
+    document.querySelectorAll<HTMLDialogElement>('dialog[data-drawer]').forEach((dialog) => {
+      if (dialog.dataset.init) return;
+      dialog.dataset.init = '1';
+
+      const panel = dialog.querySelector<HTMLElement>('[data-drawer-panel]')!;
+      const backdrop = dialog.querySelector<HTMLElement>('[data-drawer-backdrop]')!;
+
+      const open = () => {
+        // Interrupt an in-progress close (re-open during the slide-out) — else
+        // dialog.open is still true and showModal() no-ops: "click a card right
+        // after closing does nothing". Mirrors ActionSheet.
+        if (dialog.dataset.closing) {
+          delete dialog.dataset.closing;
+          panel.style.transitionDuration = '';
+          backdrop.style.transitionDuration = '';
+          dialog.setAttribute('data-open', '');
+          dialog.dispatchEvent(new CustomEvent('sheet:opened', { bubbles: true }));
+          return;
+        }
+        if (dialog.open) return;
+        dialog.showModal();
+        panel.focus({ preventScroll: true }); // no stray focus ring
+        dialog.setAttribute('data-open', '');
+        document.documentElement.setAttribute('data-sheet-open', '');
+        dialog.dispatchEvent(new CustomEvent('sheet:opened', { bubbles: true }));
+      };
+      const close = () => {
+        if (!dialog.open) return;
+        dialog.dataset.closing = '1';
+        // Fast exit + freeze-until-slide-ends (see ActionSheet): the page
+        // stays locked until the panel has fully left the screen.
+        panel.style.transitionDuration = '0.3s';
+        backdrop.style.transitionDuration = '0.3s';
+        dialog.removeAttribute('data-open');
+        const done = () => {
+          panel.removeEventListener('transitionend', done);
+          if (dialog.dataset.closing) {
+            delete dialog.dataset.closing;
+            dialog.close();
+          }
+        };
+        panel.addEventListener('transitionend', done);
+        setTimeout(() => dialog.open && done(), 600);
+      };
+
+      (dialog as any).openSheet = open;
+      (dialog as any).closeSheet = close;
+      dialog.addEventListener('close', () => {
+        delete dialog.dataset.closing;
+        dialog.removeAttribute('data-open');
+        panel.style.transitionDuration = '';
+        backdrop.style.transitionDuration = '';
+        if (!document.querySelector('dialog[data-sheet][open], dialog[data-drawer][open]')) {
+          document.documentElement.removeAttribute('data-sheet-open');
+        }
+        dialog.dispatchEvent(new CustomEvent('sheet:closed', { bubbles: true }));
+      });
+      // Esc: route through the animated close instead of the instant default.
+      dialog.addEventListener('cancel', (e) => {
+        e.preventDefault();
+        close();
+      });
+      backdrop.addEventListener('click', close);
+    });
+  }
+  initDrawers();
+  document.addEventListener('astro:page-load', initDrawers);
+</script>

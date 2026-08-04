@@ -1,0 +1,42 @@
+---
+import * as m from '@/paraglide/messages';
+
+interface Props {
+  class?: string;
+  /**
+   * Profile id → makes the mark a trust-receipt opener (UX-PLAN 3.1): tapping it
+   * opens `receipt-{id}` (the shared ReceiptSheet delegated by ActionSheet).
+   * Omitted → a plain decorative mark. Works nested inside a link — the sheet
+   * delegation preventDefaults so it opens instead of navigating.
+   */
+  receiptFor?: string;
+}
+const { class: className = 'size-4', receiptFor } = Astro.props;
+---
+
+{
+  receiptFor ? (
+    <button
+      type="button"
+      data-sheet-open={`receipt-${receiptFor}`}
+      aria-label={m.verified()}
+      class:list={['inline-grid flex-none cursor-pointer place-items-center', className]}
+    >
+      <svg class="size-full text-brand" viewBox="0 0 24 24" aria-hidden="true">
+        <path
+          fill="currentColor"
+          d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z"
+        />
+        <path d="m9 12 2 2 4-4" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+    </button>
+  ) : (
+    <svg class:list={['flex-none text-brand', className]} viewBox="0 0 24 24" aria-label={m.verified()}>
+      <path
+        fill="currentColor"
+        d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z"
+      />
+      <path d="m9 12 2 2 4-4" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+    </svg>
+  )
+}

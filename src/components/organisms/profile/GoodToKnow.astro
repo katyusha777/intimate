@@ -1,0 +1,55 @@
+---
+/**
+ * Good-to-know rows (UX-PLAN 2.5): the questions clients ask at midnight, filled
+ * once as structured facts. A compact two-column list after SERVICES. Values are
+ * taxonomy keys; labels come from i18n (taxonomy = law). Rows with no data are
+ * dropped — an empty row is worse than an absent one.
+ *
+ * "Place" merges incall locations + outcall into one honest sentence; parking
+ * and shower read from AMENITIES (their taxonomy home, no duplication).
+ */
+import * as m from '@/paraglide/messages';
+import type { Profile } from '@/app/models/profile';
+import { incallLocationLabel, languageLabel, paymentMethodLabel } from '@/lib/labels';
+
+interface Props {
+  profile: Profile;
+  class?: string;
+}
+const { profile: p, class: className } = Astro.props;
+
+const has = (v: string) => (p.amenities as readonly string[]).includes(v);
+
+// Place: incall locations + "she visits" when outcall is offered.
+const placeParts: string[] = [
+  ...p.incallLocations.map(incallLocationLabel),
+  ...(p.meetingTypes.includes('outcall') ? [m.gtk_visits()] : []),
+];
+
+type Row = { label: string; value: string };
+const rows: Row[] = [];
+const push = (label: string, value: string | undefined) => {
+  if (value) rows.push({ label, value });
+};
+push(m.gtk_languages(), p.languages.length ? p.languages.map(languageLabel).join(', ') : undefined);
+push(m.gtk_place(), placeParts.length ? placeParts.join(' · ') : undefined);
+push(m.gtk_parking(), has('parking_available') ? m.gtk_yes() : m.gtk_no());
+push(m.gtk_shower(), has('shower_available') ? m.gtk_yes() : m.gtk_no());
+push(m.gtk_payment(), p.paymentMethods.length ? p.paymentMethods.map(paymentMethodLabel).join(', ') : undefined);
+push(m.gtk_deposit(), p.depositPolicy);
+---
+
+{
+  rows.length > 0 && (
+    <dl class:list={['grid grid-cols-1 gap-x-8 sm:grid-cols-2', className]}>
+      {rows.map((r) => (
+        <div class="flex items-baseline justify-between gap-4 border-b border-border py-2.5 text-sm">
+          <dt class="eyebrow flex-none text-2xs text-muted-foreground">{r.label}</dt>
+          <!-- max-w: long values (deposit policies) wrap early instead of
+               running the full row width. -->
+          <dd class="min-w-0 max-w-64 break-words text-right font-medium">{r.value}</dd>
+        </div>
+      ))}
+    </dl>
+  )
+}

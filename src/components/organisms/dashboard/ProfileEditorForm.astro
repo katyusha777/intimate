@@ -1,0 +1,488 @@
+---
+/**
+ * The advertiser's profile editor: taxonomy-driven fields, Misprint controls
+ * (slab fields, print checkboxes, service chip-rows), saved via
+ * account.saveProfile. Receives the MERGED profile (base + her edits).
+ */
+import * as m from '@/paraglide/messages';
+import { birthDateForAge, type Profile } from '@/app/models/profile';
+import {
+  amenityLabel,
+  dayLabel,
+  genderLabel,
+  incallLocationLabel,
+  languageLabel,
+  paymentMethodLabel,
+  rateDurationLabel,
+  serviceCategoryLabel,
+  serviceLabel,
+} from '@/lib/labels';
+import {
+  AMENITIES,
+  CITIES,
+  DAYS,
+  GENDERS,
+  INCALL_LOCATIONS,
+  LANGUAGES,
+  MEETING_TYPES,
+  PAYMENT_METHODS,
+  RATE_DURATIONS,
+  SERVICES,
+  SERVICE_CATEGORIES,
+} from '@/lib/taxonomy';
+import Button from '@/components/atoms/Button.astro';
+import Icon from '@/components/atoms/Icon.astro';
+import Select from '@/components/atoms/Select.astro';
+import SlabField from '@/components/molecules/SlabField.astro';
+
+interface Props {
+  profile: Profile;
+  /**
+   * Render only these sections (the setup wizard shows one at a time):
+   * 'basics' | 'rates' | 'services' | 'gtk' | 'hours' | 'description'. Omit for
+   * the full editor. (Reuse-is-law: the wizard shares these exact sections.)
+   */
+  only?: string[];
+  /** Wizard drives its own per-step save — hide the editor's save button + skip its submit binding. */
+  wizard?: boolean;
+}
+const { profile: p, only, wizard = false } = Astro.props;
+const show = (k: string) => !only || only.includes(k);
+
+const selectedServices = new Set(p.services as readonly string[]);
+// Latest DOB an 18-year-old could have (for the date input's max).
+const max18 = birthDateForAge(18);
+// Bigger, unmistakable section headers with a keyline; a muted one-liner under
+// each explains the section in plain words. Sub-groups get a smaller bold label.
+const heading = 'font-condensed text-xl font-bold uppercase tracking-wide';
+const sectionSub = 'text-sm leading-relaxed text-muted-foreground';
+const subhead = 'font-condensed text-sm font-bold uppercase tracking-wide text-foreground';
+const row = 'flex cursor-pointer select-none items-center gap-2.5 text-sm hover:text-foreground/70';
+
+// Existing rate rows keyed by duration for quick prefill of the table editor.
+const rateByDuration = new Map(
+  (p.rates ?? []).filter((r) => r.duration !== undefined).map((r) => [r.duration, r]),
+);
+/** Her free-text line items (label rows), in her saved order. */
+const customRows = (p.rates ?? []).filter((r) => r.duration === undefined);
+const setOf = (arr: readonly string[]) => new Set(arr as readonly string[]);
+const selLanguages = setOf(p.languages ?? []);
+const selIncall = setOf(p.incallLocations ?? []);
+const selAmenities = setOf(p.amenities ?? []);
+const selPayments = setOf(p.paymentMethods ?? []);
+---
+
+<form data-profile-editor data-wizard={wizard ? '' : undefined} class="max-w-2xl space-y-12">
+  {show('basics') && (
+  <Fragment>
+  <div class="grid gap-4 sm:grid-cols-2">
+    <SlabField label={m.editor_name()} name="name" value={p.name} required />
+    <SlabField
+      label={m.editor_birthdate()}
+      name="birthDate"
+      type="date"
+      value={p.birthDate}
+      max={max18}
+      required
+    />
+    <label class="block space-y-1.5">
+      <span class="text-sm font-medium">{m.filter_gender()}</span>
+      <Select name="gender">
+        {GENDERS.map((g) => <option value={g} selected={p.gender === g}>{genderLabel(g)}</option>)}
+      </Select>
+    </label>
+    <label class="block space-y-1.5">
+      <span class="text-sm font-medium">{m.filter_city()}</span>
+      <Select name="city">
+        {CITIES.map((c) => <option value={c.slug} selected={p.city === c.slug}>{c.name}</option>)}
+      </Select>
+    </label>
+  </div>
+
+  <div class="space-y-2">
+    <h3 class={heading}>{m.filter_visit()}</h3>
+    <p class="text-xs text-muted-foreground">{m.editor_visit_hint()}</p>
+    <div class="flex flex-wrap gap-3">
+      {
+        MEETING_TYPES.map((t) => (
+          <label class="flex cursor-pointer select-none items-center gap-2.5 border border-foreground/25 px-4 py-2.5 text-sm font-medium transition-colors has-[:checked]:border-foreground has-[:checked]:bg-foreground has-[:checked]:text-background">
+            <input
+              type="checkbox"
+              name="meetingTypes"
+              value={t}
+              checked={(p.meetingTypes as readonly string[]).includes(t)}
+              class="sr-only"
+            />
+            {t === 'incall' ? m.cat_private() : m.cat_escort()}
+          </label>
+        ))
+      }
+    </div>
+  </div>
+
+  <!-- Rates table (UX-PLAN 2.1): the source of truth for priceFrom. Tick a
+       duration, fill an incall and/or outcall price. Empty rows are dropped. -->
+  </Fragment>
+  )}
+
+  {show('rates') && (
+  <div class="space-y-2">
+    <h3 class={heading}>{m.editor_rates()}</h3>
+    <p class="text-xs text-muted-foreground">{m.editor_rates_hint()}</p>
+    <!-- One shared grid for header + every row — never wraps, always aligned,
+         fits a 390px screen (flexible duration column + two 5rem price cells). -->
+    <div data-rates>
+      <div class="grid grid-cols-[1fr_5rem_5rem] items-center gap-2 border-b border-border pb-1.5 text-2xs uppercase tracking-wide text-muted-foreground">
+        <span>{m.editor_rates_duration()}</span>
+        <span class="text-right">{m.rates_incall()}</span>
+        <span class="text-right">{m.rates_outcall()}</span>
+      </div>
+      {
+        RATE_DURATIONS.map((dur) => {
+          const r = rateByDuration.get(dur);
+          return (
+            <label class="grid grid-cols-[1fr_5rem_5rem] items-center gap-2 border-b border-border py-2" data-rate-row data-duration={dur}>
+              <span class="flex min-w-0 cursor-pointer items-center gap-2.5 text-sm">
+                <input type="checkbox" class="cbx-box" data-rate-on checked={r !== undefined} />
+                <span class="truncate">{rateDurationLabel(dur)}</span>
+              </span>
+              <input
+                type="number"
+                inputmode="numeric"
+                min="0"
+                step="5"
+                placeholder="€"
+                data-rate-incall
+                value={r?.incall ?? ''}
+                class="w-full border border-foreground/20 bg-transparent px-2 py-1 text-right text-sm outline-none transition-colors focus:border-foreground"
+              />
+              <input
+                type="number"
+                inputmode="numeric"
+                min="0"
+                step="5"
+                placeholder="€"
+                data-rate-outcall
+                value={r?.outcall ?? ''}
+                class="w-full border border-foreground/20 bg-transparent px-2 py-1 text-right text-sm outline-none transition-colors focus:border-foreground"
+              />
+            </label>
+          );
+        })
+      }
+    </div>
+
+    <!-- Custom line items: her own free-text rows ("15 minutes phone call"),
+         each with prices, removable and sortable (↑/↓ — array order is the
+         display order on the public rates table). -->
+    <div class="pt-4" data-custom-rates>
+      <p class="eyebrow text-2xs text-muted-foreground">{m.editor_custom_items()}</p>
+      <div class="mt-2 space-y-2" data-custom-list>
+        {
+          customRows.map((r) => (
+            <div class="grid grid-cols-[1fr_5rem_5rem] items-center gap-2" data-custom-row>
+              <div class="flex min-w-0 items-center gap-1.5">
+                <input
+                  type="text"
+                  maxlength="60"
+                  placeholder={m.editor_custom_ph()}
+                  data-custom-label
+                  value={r.label}
+                  class="w-full min-w-0 border border-foreground/20 bg-transparent px-2 py-1 text-sm outline-none transition-colors focus:border-foreground"
+                />
+                <button type="button" data-act="up" aria-label={m.editor_move_up()} class="grid size-7 flex-none cursor-pointer place-items-center border border-foreground/20 text-muted-foreground transition-colors hover:border-foreground/60 hover:text-foreground">
+                  <Icon name="chevron-up" class="text-xs" />
+                </button>
+                <button type="button" data-act="down" aria-label={m.editor_move_down()} class="grid size-7 flex-none cursor-pointer place-items-center border border-foreground/20 text-muted-foreground transition-colors hover:border-foreground/60 hover:text-foreground">
+                  <Icon name="chevron-down" class="text-xs" />
+                </button>
+                <button type="button" data-act="remove" aria-label={m.editor_remove_item()} class="grid size-7 flex-none cursor-pointer place-items-center border border-foreground/20 text-muted-foreground transition-colors hover:border-brand hover:text-brand">
+                  <Icon name="xmark" class="text-xs" />
+                </button>
+              </div>
+              <input type="number" inputmode="numeric" min="0" step="5" placeholder="€" data-custom-incall value={r.incall ?? ''} class="w-full border border-foreground/20 bg-transparent px-2 py-1 text-right text-sm outline-none transition-colors focus:border-foreground" />
+              <input type="number" inputmode="numeric" min="0" step="5" placeholder="€" data-custom-outcall value={r.outcall ?? ''} class="w-full border border-foreground/20 bg-transparent px-2 py-1 text-right text-sm outline-none transition-colors focus:border-foreground" />
+            </div>
+          ))
+        }
+      </div>
+      <template data-custom-template>
+        <div class="grid grid-cols-[1fr_5rem_5rem] items-center gap-2" data-custom-row>
+          <div class="flex min-w-0 items-center gap-1.5">
+            <input
+              type="text"
+              maxlength="60"
+              placeholder={m.editor_custom_ph()}
+              data-custom-label
+              class="w-full min-w-0 border border-foreground/20 bg-transparent px-2 py-1 text-sm outline-none transition-colors focus:border-foreground"
+            />
+            <button type="button" data-act="up" aria-label={m.editor_move_up()} class="grid size-7 flex-none cursor-pointer place-items-center border border-foreground/20 text-muted-foreground transition-colors hover:border-foreground/60 hover:text-foreground">
+              <Icon name="chevron-up" class="text-xs" />
+            </button>
+            <button type="button" data-act="down" aria-label={m.editor_move_down()} class="grid size-7 flex-none cursor-pointer place-items-center border border-foreground/20 text-muted-foreground transition-colors hover:border-foreground/60 hover:text-foreground">
+              <Icon name="chevron-down" class="text-xs" />
+            </button>
+            <button type="button" data-act="remove" aria-label={m.editor_remove_item()} class="grid size-7 flex-none cursor-pointer place-items-center border border-foreground/20 text-muted-foreground transition-colors hover:border-brand hover:text-brand">
+              <Icon name="xmark" class="text-xs" />
+            </button>
+          </div>
+          <input type="number" inputmode="numeric" min="0" step="5" placeholder="€" data-custom-incall class="w-full border border-foreground/20 bg-transparent px-2 py-1 text-right text-sm outline-none transition-colors focus:border-foreground" />
+          <input type="number" inputmode="numeric" min="0" step="5" placeholder="€" data-custom-outcall class="w-full border border-foreground/20 bg-transparent px-2 py-1 text-right text-sm outline-none transition-colors focus:border-foreground" />
+        </div>
+      </template>
+      <button
+        type="button"
+        data-add-custom
+        class="mt-2 flex cursor-pointer items-center gap-1.5 border border-foreground/20 px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:border-foreground/60 hover:text-foreground"
+      >
+        <Icon name="plus" class="text-xs" />
+        {m.editor_add_item()}
+      </button>
+    </div>
+
+    <div class="grid gap-4 pt-2 sm:grid-cols-2">
+      <div>
+        <SlabField label={m.gtk_deposit()} name="depositPolicy" value={p.depositPolicy ?? ''} maxlength="200" />
+        <!-- You take payments yourself — an optional deposit rule you set here
+             is shown (labelled as yours) on your rates card. -->
+        <p class="mt-1.5 text-xs text-muted-foreground">{m.deposit_hint()}</p>
+      </div>
+      <SlabField label={m.editor_extras()} name="extrasNote" value={p.extrasNote ?? ''} maxlength="200" />
+    </div>
+  </div>
+
+  <!-- Good-to-know (UX-PLAN 2.5): taxonomy-keyed facts filled once. Every
+       checkbox group is an aligned 2-column grid; languages show the top 6
+       with the long tail behind a native Show-more. -->
+  )}
+
+  {show('gtk') && (
+  <div class="space-y-8">
+    <div class="space-y-1.5">
+      <h3 class={heading}>{m.gtk_title()}</h3>
+      <p class={sectionSub}>{m.editor_gtk_hint()}</p>
+    </div>
+    <div class="space-y-2.5">
+      <div>
+        <span class={subhead}>{m.gtk_languages()}</span>
+        <p class="mt-0.5 text-xs text-muted-foreground">{m.editor_languages_hint()}</p>
+      </div>
+      <div class="grid grid-cols-2 gap-x-4 gap-y-2">
+        {LANGUAGES.slice(0, 6).map((l) => (
+          <label class={row}>
+            <input type="checkbox" name="languages" value={l} checked={selLanguages.has(l)} class="cbx-box" />
+            {languageLabel(l)}
+          </label>
+        ))}
+      </div>
+      <details
+        class="group/langs"
+        open={LANGUAGES.slice(6).some((l) => selLanguages.has(l)) || undefined}
+      >
+        <summary class="flex cursor-pointer list-none items-center gap-1.5 py-1 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground [&::-webkit-details-marker]:hidden">
+          <span class="group-open/langs:hidden">{m.filter_show_more()}</span>
+          <span class="hidden group-open/langs:inline">{m.filter_show_less()}</span>
+          <Icon name="chevron-down" class="text-xs transition-transform group-open/langs:rotate-180" />
+        </summary>
+        <div class="grid grid-cols-2 gap-x-4 gap-y-2 pt-1.5">
+          {LANGUAGES.slice(6).map((l) => (
+            <label class={row}>
+              <input type="checkbox" name="languages" value={l} checked={selLanguages.has(l)} class="cbx-box" />
+              {languageLabel(l)}
+            </label>
+          ))}
+        </div>
+      </details>
+    </div>
+    <div class="space-y-2.5">
+      <div>
+        <span class={subhead}>{m.gtk_place()}</span>
+        <p class="mt-0.5 text-xs text-muted-foreground">{m.editor_place_hint()}</p>
+      </div>
+      <div class="grid grid-cols-2 gap-x-4 gap-y-2">
+        {INCALL_LOCATIONS.map((l) => (
+          <label class={row}>
+            <input type="checkbox" name="incallLocations" value={l} checked={selIncall.has(l)} class="cbx-box" />
+            {incallLocationLabel(l)}
+          </label>
+        ))}
+      </div>
+    </div>
+    <div class="space-y-2.5">
+      <div>
+        <span class={subhead}>{m.editor_amenities()}</span>
+        <p class="mt-0.5 text-xs text-muted-foreground">{m.editor_amenities_hint()}</p>
+      </div>
+      <div class="grid grid-cols-2 gap-x-4 gap-y-2">
+        {AMENITIES.map((a) => (
+          <label class={row}>
+            <input type="checkbox" name="amenities" value={a} checked={selAmenities.has(a)} class="cbx-box" />
+            {amenityLabel(a)}
+          </label>
+        ))}
+      </div>
+    </div>
+    <div class="space-y-2.5">
+      <div>
+        <span class={subhead}>{m.gtk_payment()}</span>
+        <p class="mt-0.5 text-xs text-muted-foreground">{m.editor_payment_hint()}</p>
+      </div>
+      <div class="grid grid-cols-2 gap-x-4 gap-y-2">
+        {PAYMENT_METHODS.map((pm) => (
+          <label class={row}>
+            <input type="checkbox" name="paymentMethods" value={pm} checked={selPayments.has(pm)} class="cbx-box" />
+            {paymentMethodLabel(pm)}
+          </label>
+        ))}
+      </div>
+    </div>
+  </div>
+
+  )}
+
+  {show('services') && (
+  <div class="space-y-2">
+    <div class="space-y-1.5">
+      <h3 class={heading}>{m.filter_services()}</h3>
+      <p class={sectionSub}>{m.editor_services_hint()}</p>
+    </div>
+    <div>
+      {
+        SERVICE_CATEGORIES.map((cat) => {
+          const services = SERVICES[cat];
+          const count = services.filter((s) => selectedServices.has(s)).length;
+          return (
+            <details class="group/cat" open={count > 0 || undefined}>
+              <summary class="flex cursor-pointer list-none items-center justify-between gap-2 py-2 text-sm font-medium transition-colors hover:text-foreground/70 [&::-webkit-details-marker]:hidden">
+                <span class="flex items-center gap-2">
+                  {serviceCategoryLabel(cat)}
+                  {count > 0 && (
+                    <span class="grid size-5 place-items-center bg-foreground text-2xs font-semibold text-background">
+                      {count}
+                    </span>
+                  )}
+                </span>
+                <Icon name="chevron-down" class="text-xs text-muted-foreground transition-transform group-open/cat:rotate-180" />
+              </summary>
+              <div class="space-y-2 pb-3 pt-1">
+                {services.map((s) => (
+                  <label class={row}>
+                    <input
+                      type="checkbox"
+                      name="services"
+                      value={s}
+                      checked={selectedServices.has(s)}
+                      class="cbx-box"
+                    />
+                    {serviceLabel(s)}
+                  </label>
+                ))}
+              </div>
+            </details>
+          );
+        })
+      }
+    </div>
+  </div>
+
+  )}
+
+  {show('hours') && (
+  <div class="space-y-2">
+    <div class="space-y-1.5">
+      <h3 class={heading}>{m.editor_hours()}</h3>
+      <p class={sectionSub}>{m.editor_hours_hint()}</p>
+    </div>
+    <div>
+      {
+        DAYS.map((day) => {
+          const h = p.openingHours?.[day] ?? { closed: false, allDay: false, from: '10:00', to: '22:00' };
+          return (
+            <div class="border-b border-border py-2.5" data-hours-row data-day={day}>
+              <div class="flex items-center gap-3">
+                <span class="flex-1 text-sm font-medium">{dayLabel(day)}</span>
+                <label class="flex w-24 flex-none cursor-pointer select-none items-center gap-2 text-sm">
+                  <input type="checkbox" checked={h.closed} class="cbx-box" data-hours-closed />
+                  {m.hours_closed()}
+                </label>
+                <label class="flex w-28 flex-none cursor-pointer select-none items-center gap-2 text-sm" data-hours-openonly>
+                  <input type="checkbox" checked={h.allDay} class="cbx-box" data-hours-allday />
+                  {m.hours_allday()}
+                </label>
+              </div>
+              <div class="mt-2 flex items-center gap-2" data-hours-times>
+                <input
+                  type="time"
+                  data-hours-from
+                  value={h.from || '10:00'}
+                  class="border border-foreground/20 bg-transparent px-2 py-1 text-sm outline-none transition-colors focus:border-foreground"
+                />
+                <span class="text-muted-foreground" aria-hidden="true">–</span>
+                <input
+                  type="time"
+                  data-hours-to
+                  value={h.to || '22:00'}
+                  class="border border-foreground/20 bg-transparent px-2 py-1 text-sm outline-none transition-colors focus:border-foreground"
+                />
+              </div>
+            </div>
+          );
+        })
+      }
+    </div>
+  </div>
+
+  )}
+
+  {show('description') && (
+  <label class="block space-y-1.5">
+    <span class="text-sm font-medium">{m.editor_description()}</span>
+    <textarea
+      name="description"
+      rows="5"
+      maxlength="1000"
+      class="w-full border border-foreground/20 bg-transparent p-3 text-base caret-brand outline-none transition-colors focus:border-foreground md:text-sm"
+    >{p.description}</textarea>
+  </label>
+  )}
+
+  {!wizard && (
+  <div class="flex items-center gap-4">
+    <Button type="submit">{m.editor_save()}</Button>
+    <p data-editor-saved class="hidden text-sm font-medium text-online">{m.editor_saved()} ✓</p>
+    <p data-editor-error class="hidden text-sm font-medium text-brand">{m.auth_error()}</p>
+  </div>
+  )}
+</form>
+
+<script>
+  import { actions } from 'astro:actions';
+  import { readProfilePatch, initEditorInteractions } from '@/lib/editor-form';
+
+  function initEditor() {
+    document.querySelectorAll<HTMLFormElement>('[data-profile-editor]').forEach((form) => {
+      if (form.dataset.init) return;
+      form.dataset.init = '1';
+      initEditorInteractions(form); // opening-hours disclosure + custom rate rows
+
+      // Wizard mode: the setup flow owns the per-step save — don't bind the
+      // editor's own submit (there's no save button in that mode either).
+      if (form.dataset.wizard !== undefined) return;
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const patch = readProfilePatch(form);
+        const saved = form.querySelector<HTMLElement>('[data-editor-saved]')!;
+        const error = form.querySelector<HTMLElement>('[data-editor-error]')!;
+        saved.classList.add('hidden');
+        error.classList.add('hidden');
+        const { error: err } = await actions.account.saveProfile({ patch });
+        // Surface the specific reason (which field) instead of a mute generic fail.
+        if (err?.message) error.textContent = err.message;
+        (err ? error : saved).classList.remove('hidden');
+      });
+    });
+  }
+  initEditor();
+  document.addEventListener('astro:page-load', initEditor);
+</script>

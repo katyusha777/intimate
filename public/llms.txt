@@ -1,0 +1,22 @@
+# Intimate
+
+> Verified directory for legal adult services in the Netherlands. Every profile
+> is identity-verified before going live. Available in Dutch, English and German.
+
+Intimate lists independent professionals and agencies across Dutch cities.
+Categories: private visit (incall), escort (outcall), erotic massage, virtual
+sex, BDSM. Profiles show verified status, services, rates and live online
+presence.
+
+## Browse
+
+- Dutch: https://intimate.nl/nl/ — categories: /nl/prive-ontvangst/, /nl/escort/, /nl/erotische-massage/, /nl/virtuele-seks/, /nl/bdsm/
+- English: https://intimate.nl/en/ — categories: /en/private-visit/, /en/escort/, /en/erotic-massage/, /en/virtual-sex/, /en/bdsm/
+- German: https://intimate.nl/de/ — categories: /de/privatempfang/, /de/escort/, /de/erotische-massage/, /de/virtueller-sex/, /de/bdsm/
+- City hubs: /{locale}/{city}/ for Amsterdam, Rotterdam, Den Haag, Utrecht and 25+ more.
+- Live market statistics (counts, rates, online now, per city): /en/stats/
+
+## Notes
+
+- All facts (rates, counts, verification status) are server-rendered HTML.
+- Adults only (18+). Legal, regulated services in the Netherlands.

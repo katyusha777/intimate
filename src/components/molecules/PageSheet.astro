@@ -1,0 +1,183 @@
+---
+/**
+ * Mobile tab sheets: on phones, links marked `data-page-sheet` (the Favorites /
+ * Messages / Contacts tabs) open their PAGE inside this ActionSheet instead of
+ * navigating — the shelf behind never moves, so Safari's chrome never churns.
+ * Same contract as ProfileSheet: URL updated via pushState (shareable, back
+ * closes), desktop and no-JS fall through to real navigation, direct loads
+ * render the full page.
+ *
+ * The landmine this solves that ProfileSheet never had to: those pages carry
+ * their own component scripts (inbox timestamps, contact CRM). Injected HTML
+ * doesn't execute scripts, so the fetched page's module scripts are adopted
+ * into the host document once (deduped by src — Astro hoists component
+ * scripts as module src entries). Newly loaded modules self-init on
+ * execution; already-loaded ones re-init via the astro:page-load dispatch.
+ * Tapping the SAME tab again closes the sheet (native convention). A real
+ * navigation from inside (e.g. inbox → thread) closes it and proceeds.
+ */
+import ActionSheet from '@/components/molecules/ActionSheet.astro';
+---
+
+<ActionSheet id="page-sheet" label="Section">
+  <div data-page-sheet-slot></div>
+</ActionSheet>
+
+<script>
+  function initPageSheet() {
+    if ((window as any).__pageSheet) return;
+    (window as any).__pageSheet = true;
+
+    const mobile = matchMedia('(max-width: 767px)');
+    const sheet = () => document.getElementById('page-sheet') as any;
+    const body = () => sheet()?.querySelector('[data-page-sheet-slot]') as HTMLElement | null;
+
+    let open = false;
+    let suppressPop = false;
+    let savedState: unknown = null;
+    let savedUrl = '';
+    let currentUrl = '';
+
+    // Skeleton shaped like the list pages this sheet hosts (inbox/contacts/
+    // favorites rows) — the .skeleton token, visible on both themes.
+    const ROW = `
+      <div class="flex items-center gap-3">
+        <div class="skeleton size-12 flex-none rounded-full"></div>
+        <div class="flex-1 space-y-2">
+          <div class="skeleton h-4 w-1/2"></div>
+          <div class="skeleton h-3 w-3/4"></div>
+        </div>
+      </div>`;
+    const SKELETON = `
+      <div class="space-y-5 p-5">
+        <div class="skeleton h-7 w-36"></div>
+        ${ROW.repeat(5)}
+      </div>`;
+
+    // Adopt the fetched page's external scripts (module src — Astro hoists
+    // component <script>s this way). Dedupe by src: a module URL only ever
+    // executes once, and its astro:page-load listener handles re-runs.
+    function adoptScripts(doc: Document) {
+      const have = new Set(
+        [...document.querySelectorAll<HTMLScriptElement>('script[src]')].map((s) => s.src),
+      );
+      doc.querySelectorAll<HTMLScriptElement>('script[src]').forEach((s) => {
+        if (have.has(s.src)) return;
+        have.add(s.src);
+        const n = document.createElement('script');
+        if (s.type) n.type = s.type;
+        n.src = s.src;
+        document.head.appendChild(n);
+      });
+    }
+
+    async function load(url: string): Promise<boolean> {
+      const b = body();
+      if (!b) return false;
+      b.innerHTML = SKELETON;
+      b.scrollTop = 0;
+      try {
+        const res = await fetch(url, { headers: { 'X-Sheet': '1' } });
+        if (!res.ok) throw new Error();
+        const doc = new DOMParser().parseFromString(await res.text(), 'text/html');
+        const main = doc.querySelector('main');
+        if (!main) throw new Error();
+        adoptScripts(doc);
+        b.innerHTML = '';
+        while (main.firstChild) b.appendChild(main.firstChild);
+        // Re-run idempotent initializers on the injected content.
+        document.dispatchEvent(new Event('astro:page-load'));
+        const sb = sheet()?.querySelector('[data-sheet-body]');
+        if (sb) sb.scrollTop = 0;
+        return true;
+      } catch {
+        location.href = url; // graceful fallback: real navigation
+        return false;
+      }
+    }
+
+    async function openPage(url: string) {
+      const s = sheet();
+      if (!s) {
+        location.href = url;
+        return;
+      }
+      if (open) {
+        // Switching tabs while open: swap content in place, replace the entry.
+        currentUrl = url;
+        history.replaceState(null, '', url);
+        await load(url);
+        return;
+      }
+      savedState = history.state;
+      savedUrl = location.href;
+      // Null-state dance (see ProfileSheet): the dismiss-back must be a no-op
+      // for Astro's router, so the listing behind never re-renders.
+      history.replaceState(null, '', savedUrl);
+      history.pushState(null, '', url);
+      open = true;
+      currentUrl = url;
+      s.openSheet();
+      await load(url);
+    }
+
+    const restoreHistory = () => {
+      if (savedUrl) history.replaceState(savedState, '', savedUrl);
+      savedUrl = '';
+    };
+
+    document.addEventListener('sheet:closed', (e) => {
+      if ((e.target as HTMLElement)?.id !== 'page-sheet' || !open) return;
+      open = false;
+      suppressPop = true;
+      history.back();
+    });
+
+    window.addEventListener('popstate', () => {
+      if (suppressPop) {
+        suppressPop = false;
+        restoreHistory();
+        return;
+      }
+      // A ProfileSheet may be STACKED on top (favorites → profile): that pop
+      // is the profile's — it closes itself; this sheet stays put beneath.
+      if ((document.getElementById('profile-sheet') as any)?.open) return;
+      if (open) {
+        open = false;
+        sheet()?.closeSheet?.();
+        restoreHistory();
+      }
+    });
+
+    // A REAL navigation from inside the sheet (inbox → thread): close and let
+    // the router take it — the chat is a deliberate full-screen context switch.
+    document.addEventListener('astro:before-preparation', () => {
+      if (!open) return;
+      open = false;
+      sheet()?.closeSheet?.();
+    });
+
+    // Intercept marked links on phones; capture beats ClientRouter. The tab
+    // bar's touchend fallback fires a synthetic click, which lands here too.
+    document.addEventListener(
+      'click',
+      (e) => {
+        if (!mobile.matches) return;
+        const me = e as MouseEvent;
+        if (me.button !== 0 || me.metaKey || me.ctrlKey || me.shiftKey || me.altKey) return;
+        const a = (e.target as HTMLElement).closest?.('a[data-page-sheet]') as HTMLAnchorElement | null;
+        if (!a) return;
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        if (open && currentUrl === a.href) {
+          sheet()?.closeSheet?.(); // native convention: same tab again = close
+          return;
+        }
+        openPage(a.href);
+      },
+      { capture: true },
+    );
+  }
+  initPageSheet();
+  document.addEventListener('astro:page-load', initPageSheet);
+</script>

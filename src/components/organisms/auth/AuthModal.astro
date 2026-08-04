@@ -1,0 +1,214 @@
+---
+/**
+ * Register / Login modal. Misprint: underline tabs (the category-tab
+ * language), sharp slab role tiles with prefillable demo identities, slab
+ * fields, anaglyph CTA. Submits via the auth.* actions (mock backend behind
+ * the seam) and hard-navigates so the role-aware chrome re-renders.
+ * Open with data-modal-open="auth" (+ optional data-auth-tab="login|register").
+ */
+import * as m from '@/paraglide/messages';
+import { localizePath } from '@/lib/i18n';
+import Button from '@/components/atoms/Button.astro';
+import Modal from '@/components/molecules/Modal.astro';
+import SlabField from '@/components/molecules/SlabField.astro';
+
+/* Segmented control: wide, button-like, unmistakable active state (ink flip). */
+const tabBtn =
+  'cursor-pointer py-2.5 font-condensed text-sm font-bold uppercase tracking-wide transition-colors data-[active=true]:bg-foreground data-[active=true]:text-background data-[active=false]:text-muted-foreground data-[active=false]:hover:text-foreground';
+---
+
+<Modal id="auth" class="max-w-md">
+  <div class="relative p-6 md:p-8">
+    <button
+      type="button"
+      data-modal-close
+      aria-label="Close"
+      class="absolute right-4 top-4 grid size-9 cursor-pointer place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+    >
+      <i class="fa-thin fa-xmark text-lg" aria-hidden="true"></i>
+    </button>
+
+    <p class="font-condensed text-xl font-semibold tracking-tight">{m.auth_welcome()}</p>
+
+    <!-- Tabs: segmented control (button-like, clear active state) -->
+    <div class="mt-5 grid grid-cols-2 gap-1.5 border border-foreground/15 p-1.5" role="tablist">
+      <button type="button" role="tab" data-tab-btn="register" data-active="true" class={tabBtn}>
+        {m.nav_register()}
+      </button>
+      <button type="button" role="tab" data-tab-btn="login" data-active="false" class={tabBtn}>
+        {m.nav_login()}
+      </button>
+    </div>
+
+    <!-- Register -->
+    <form data-tab-panel="register" data-auth-form="register" class="mt-6 space-y-4">
+      <div class="grid grid-cols-2 gap-3">
+        <button
+          type="button"
+          data-role-btn="advertiser"
+          data-active="true"
+          class="group flex cursor-pointer flex-col items-center gap-1.5 border border-foreground/20 px-3 py-4 transition-colors data-[active=true]:border-foreground data-[active=true]:bg-foreground data-[active=true]:text-background"
+        >
+          <svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-2h6l2 2h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>
+          <span class="font-condensed text-sm font-bold uppercase tracking-wide">{m.role_advertiser()}</span>
+          <span class="text-2xs text-muted-foreground group-data-[active=true]:text-background/70">{m.role_advertiser_desc()}</span>
+        </button>
+        <button
+          type="button"
+          data-role-btn="client"
+          data-active="false"
+          class="group flex cursor-pointer flex-col items-center gap-1.5 border border-foreground/20 px-3 py-4 transition-colors data-[active=true]:border-foreground data-[active=true]:bg-foreground data-[active=true]:text-background"
+        >
+          <svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/></svg>
+          <span class="font-condensed text-sm font-bold uppercase tracking-wide">{m.role_client()}</span>
+          <span class="text-2xs text-muted-foreground group-data-[active=true]:text-background/70">{m.role_client_desc()}</span>
+        </button>
+      </div>
+
+      <SlabField label={m.auth_email()} name="email" type="email" autocomplete="email" required />
+      <SlabField label={m.auth_password()} name="password" type="password" autocomplete="new-password" required />
+
+      <p data-auth-error class="hidden text-sm font-medium text-brand">{m.auth_error()}</p>
+      <p data-auth-confirm class="hidden border border-foreground/20 bg-muted p-3 text-sm leading-relaxed">
+        {m.auth_confirm_sent()}
+      </p>
+      <Button type="submit" size="lg" class="w-full">{m.auth_create_account()}</Button>
+      <p class="text-center text-xs leading-relaxed text-muted-foreground">
+        {m.auth_terms()}
+        <br />
+        <a href={localizePath('/terms/')} class="underline underline-offset-2 hover:text-foreground">{m.legal_terms()}</a>
+        <span aria-hidden="true"> · </span>
+        <a href={localizePath('/privacy/')} class="underline underline-offset-2 hover:text-foreground">{m.legal_privacy()}</a>
+      </p>
+    </form>
+
+    <!-- Login -->
+    <form data-tab-panel="login" data-auth-form="login" class="mt-6 hidden space-y-4">
+      <SlabField label={m.auth_email()} name="email" type="email" autocomplete="email" required />
+      <SlabField label={m.auth_password()} name="password" type="password" autocomplete="current-password" required />
+
+      <p data-auth-error class="hidden text-sm font-medium text-brand">{m.auth_error()}</p>
+      <p data-forgot-sent class="hidden border border-foreground/20 bg-muted p-3 text-sm leading-relaxed">
+        {m.auth_reset_sent()}
+      </p>
+      <Button type="submit" size="lg" class="w-full">{m.nav_login()}</Button>
+      <p class="text-center text-xs">
+        <button type="button" data-forgot class="cursor-pointer text-muted-foreground underline-offset-2 hover:underline">
+          {m.auth_forgot()}
+        </button>
+      </p>
+    </form>
+  </div>
+</Modal>
+
+<script>
+  import { actions } from 'astro:actions';
+
+  function selectTab(scope: HTMLElement, name: string) {
+    scope.querySelectorAll<HTMLElement>('[data-tab-btn]').forEach((b) => {
+      b.dataset.active = String(b.dataset.tabBtn === name);
+    });
+    scope.querySelectorAll<HTMLElement>('[data-tab-panel]').forEach((p) => {
+      p.classList.toggle('hidden', p.dataset.tabPanel !== name);
+    });
+  }
+
+  function initAuthModal() {
+    const modal = document.querySelector<HTMLElement>('dialog#auth');
+    if (!modal || modal.dataset.authInit) return;
+    modal.dataset.authInit = '1';
+
+    modal.querySelectorAll<HTMLElement>('[data-tab-btn]').forEach((btn) => {
+      btn.addEventListener('click', () => selectTab(modal, btn.dataset.tabBtn!));
+    });
+
+    // Openers may request a specific tab. One delegated listener for the whole
+    // session — resolves the CURRENT dialog at click time (pages swap the DOM).
+    if (!(window as any).__authTabDelegation) {
+      (window as any).__authTabDelegation = true;
+      document.addEventListener('click', (e) => {
+        const opener = (e.target as HTMLElement).closest?.('[data-modal-open="auth"]');
+        const current = document.querySelector<HTMLElement>('dialog#auth');
+        if (opener instanceof HTMLElement && opener.dataset.authTab && current)
+          selectTab(current, opener.dataset.authTab);
+      });
+    }
+
+    // Role tiles: pure selection (advertiser default).
+    modal.querySelectorAll<HTMLElement>('[data-role-btn]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        modal.querySelectorAll<HTMLElement>('[data-role-btn]').forEach((b) => {
+          b.dataset.active = String(b === btn);
+        });
+      });
+    });
+
+    // Forgot password: email the reset link to whatever's in the login field.
+    modal.querySelector<HTMLElement>('[data-forgot]')?.addEventListener('click', async () => {
+      const loginForm = modal.querySelector<HTMLFormElement>('[data-auth-form="login"]')!;
+      const email = String(new FormData(loginForm).get('email') ?? '').trim();
+      const err = loginForm.querySelector<HTMLElement>('[data-auth-error]')!;
+      const sent = loginForm.querySelector<HTMLElement>('[data-forgot-sent]')!;
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+        err.classList.remove('hidden');
+        loginForm.querySelector<HTMLInputElement>('input[name="email"]')?.focus();
+        return;
+      }
+      err.classList.add('hidden');
+      // Always shows "sent" (the action never reveals whether the email exists).
+      await actions.auth.requestReset({ email });
+      sent.classList.remove('hidden');
+    });
+
+    // Submit via actions; hard navigation so role-aware chrome re-renders.
+    modal.querySelectorAll<HTMLFormElement>('[data-auth-form]').forEach((form) => {
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (form.dataset.loading) return;
+        form.dataset.loading = '1';
+        const err = form.querySelector<HTMLElement>('[data-auth-error]')!;
+        err.classList.add('hidden');
+        const fd = new FormData(form);
+        const locale = (document.documentElement.lang || 'en') as 'nl' | 'en' | 'de';
+        const email = String(fd.get('email') ?? '');
+        const password = String(fd.get('password') ?? '');
+        const role = (modal.querySelector<HTMLElement>('[data-role-btn][data-active="true"]')
+          ?.dataset.roleBtn ?? 'client') as 'advertiser' | 'client';
+        const call = () =>
+          form.dataset.authForm === 'register'
+            ? actions.auth.register({ email, password, role, locale })
+            : actions.auth.login({ email, password, locale });
+        try {
+          const result = await call();
+          if (result.error) throw result.error;
+          // Email confirmation pending: no session yet — tell them to check mail.
+          if (!result.data?.href) {
+            const note = form.querySelector<HTMLElement>('[data-auth-confirm]');
+            note?.classList.remove('hidden');
+            delete form.dataset.loading;
+            return;
+          }
+          // Sync device-local favorites into the new account, then adopt the
+          // merged set back (favorites from another device come along).
+          try {
+            const favApi = (window as any).__favs;
+            if (favApi) {
+              const local = [...favApi.read()];
+              const synced = await actions.account.syncFavorites({ favorites: local });
+              if (synced.data?.favorites) favApi.write(new Set(synced.data.favorites));
+            }
+          } catch {
+            /* non-fatal — favorites stay local */
+          }
+          location.href = result.data.href;
+        } catch (e) {
+          console.error('[auth] failed', e);
+          err.classList.remove('hidden');
+          delete form.dataset.loading;
+        }
+      });
+    });
+  }
+  initAuthModal();
+  document.addEventListener('astro:page-load', initAuthModal);
+</script>

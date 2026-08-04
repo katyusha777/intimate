@@ -1,0 +1,230 @@
+---
+import * as m from '@/paraglide/messages';
+import type { Session } from '@/app/models/session';
+import { localizePath } from '@/lib/i18n';
+
+interface Props {
+  session?: Session | null;
+  /** Advertiser ID verification approved → Verify tab loses its crimson dot. */
+  idVerified?: boolean;
+  /** Unread messages across all threads → Messages tab dot. */
+  unread?: number;
+}
+const { session = null, idVerified = true, unread = 0 } = Astro.props;
+
+const path = Astro.url.pathname;
+const tab = (href: string, label: string, icon: string, exact = false, sheet = false) => ({
+  href: localizePath(href),
+  label,
+  active: exact ? path === localizePath(href) : path.startsWith(localizePath(href.replace(/\/$/, ''))),
+  icon,
+  dot: false,
+  exact,
+  /** Opens as a PageSheet on phones (list-shaped sections) instead of navigating. */
+  sheet,
+});
+
+/* Role tab matrix (MESSAGING.md §10). The bar only swaps at login/logout, never
+   mid-browse, so nobody sees it transform. Max 4 tabs (MOBILE.md §2).
+   - Professional: Messages · Contacts · Support · Account (Dashboard folded
+     into Account — they were the same destination; verify dot rides Account)
+   - Client (logged in): Search · Favorites · Messages · Account
+   - Visitor: Search · Favorites · Support · Account */
+const search = tab('/search/', m.nav_search(), '<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>');
+const favorites = tab('/favorites/', m.nav_favorites(), '<path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7Z"/>', false, true);
+const account = tab('/account/', m.nav_account(), '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/>');
+const messages = {
+  ...tab('/messages/', m.msg_title(), '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/>', false, true),
+  dot: unread > 0,
+};
+const contacts = tab('/contacts/', m.contacts_title(), '<circle cx="9" cy="8" r="3.2"/><path d="M3.5 20c0-3.3 2.5-5.4 5.5-5.4s5.5 2.1 5.5 5.4"/><path d="M16 5.2a3 3 0 0 1 0 5.6"/><path d="M18.5 20c0-2.6-1-4.4-2.6-5.2"/>', false, true);
+/* “?” in a circle — support, rightmost for everyone with a free slot. */
+const support = tab('/support/', m.nav_support(), '<circle cx="12" cy="12" r="9"/><path d="M9.3 9a2.7 2.7 0 0 1 5.4.3c0 1.8-2.7 2.2-2.7 3.7"/><path d="M12 17h.01"/>', false, true);
+
+const tabs =
+  session?.role === 'advertiser'
+    ? [messages, contacts, { ...account, dot: !idVerified }, support]
+    : session
+      ? [search, favorites, messages, account]
+      : [search, favorites, account, support];
+---
+
+<!-- Floating liquid-glass pill dock — compact, so it never blankets the
+     content edge-to-edge. Safari defenses stay: the MEASURED
+     toolbar-collapsed class (script) lifts it above the collapsed pill's tap
+     zone, and touchend navigation rescues any tap Safari's click-eating band
+     still swallows. -->
+<nav
+  transition:persist="tabbar"
+  class="tab-pos pointer-events-none fixed inset-x-0 z-40 flex select-none justify-center md:hidden"
+  aria-label={m.nav_search()}
+>
+  <div class="tab-dock pointer-events-auto relative flex items-center gap-1 rounded-full p-1.5">
+    <!-- The glass highlight SLIDES between tabs (left/width animate) instead
+         of each tab painting its own static pill. -->
+    <span
+      data-tab-highlight
+      class="pointer-events-none absolute rounded-full bg-foreground/10 opacity-0 transition-[left,width,opacity] duration-300 ease-out"
+      aria-hidden="true"></span>
+    {
+      tabs.map((t) => (
+        <a
+          href={t.href}
+          data-tab
+          data-tab-exact={t.exact ? '' : undefined}
+          data-page-sheet={t.sheet ? '' : undefined}
+          aria-label={t.label}
+          class:list={[
+            'relative grid size-11 flex-none place-items-center rounded-full transition-[color,transform] active:scale-[0.92]',
+            t.active ? 'text-foreground' : 'text-muted-foreground',
+          ]}
+          aria-current={t.active ? 'page' : undefined}
+        >
+          {t.dot && <span class="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-brand" />}
+          <!-- Icons only — the label lives in aria-label (a11y). -->
+          <svg
+            class="size-6"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+            set:html={t.icon}
+          />
+        </a>
+      ))
+    }
+  </div>
+</nav>
+
+<script>
+  // The dock is transition:persist, so its server-rendered active state goes
+  // stale on client-side navigation. Re-sync from the URL on every page load,
+  // and glide the shared highlight pill under the active tab.
+  function syncTabs() {
+    const path = location.pathname;
+    let activeTab: HTMLAnchorElement | null = null;
+    document.querySelectorAll<HTMLAnchorElement>('[data-tab]').forEach((a) => {
+      const href = new URL(a.href).pathname;
+      const active = a.hasAttribute('data-tab-exact')
+        ? path === href
+        : path.startsWith(href.replace(/\/$/, ''));
+      a.classList.toggle('text-foreground', active);
+      a.classList.toggle('text-muted-foreground', !active);
+      if (active) {
+        a.setAttribute('aria-current', 'page');
+        activeTab = a;
+      } else a.removeAttribute('aria-current');
+    });
+    const hl = document.querySelector<HTMLElement>('[data-tab-highlight]');
+    if (!hl) return;
+    if (!activeTab) {
+      hl.style.opacity = '0';
+      return;
+    }
+    const el = activeTab as HTMLElement;
+    hl.style.left = `${el.offsetLeft}px`;
+    hl.style.top = `${el.offsetTop}px`;
+    hl.style.width = `${el.offsetWidth}px`;
+    hl.style.height = `${el.offsetHeight}px`;
+    hl.style.opacity = '1';
+  }
+  syncTabs();
+  document.addEventListener('astro:page-load', syncTabs);
+
+  // ── Safari collapsed-toolbar defense, twice over ─────────────────────────
+  // Apple exposes NO metric for the collapsed pill's tap region (safe-area
+  // only covers the home indicator), so:
+  // 1) DETECT the state instead: the layout viewport GROWS when the toolbar
+  //    hides (window.innerHeight rises above its per-orientation minimum) →
+  //    toggle a class that lifts the icons far above the pill; compact bar
+  //    while the toolbar is visible.
+  // 2) Don't trust `click` at all: Safari eats the synthesized click in that
+  //    band but raw touchend still fires — navigate from touchend ourselves
+  //    (tap-vs-scroll guarded), so the tap navigates even if Safari also
+  //    expands its toolbar.
+  if (!(window as any).__tabbarSafari) {
+    (window as any).__tabbarSafari = true;
+    const bar = () => document.querySelector<HTMLElement>('nav.tab-pos');
+
+    let minH = Infinity;
+    const measure = () => {
+      const h = window.innerHeight;
+      if (h < minH) minH = h;
+      bar()?.classList.toggle('toolbar-collapsed', h > minH + 30);
+      syncTabs(); // bar height changed → re-seat the highlight
+    };
+    window.addEventListener('resize', measure);
+    window.visualViewport?.addEventListener('resize', measure);
+    window.addEventListener('orientationchange', () => {
+      minH = Infinity; // heights differ per orientation — re-learn
+      setTimeout(measure, 300);
+    });
+    measure();
+
+    let tx = 0;
+    let ty = 0;
+    document.addEventListener(
+      'touchstart',
+      (e) => {
+        if (!(e.target as HTMLElement).closest?.('nav.tab-dock')) return;
+        tx = e.touches[0]!.clientX;
+        ty = e.touches[0]!.clientY;
+      },
+      { passive: true },
+    );
+    document.addEventListener(
+      'touchend',
+      (e) => {
+        const a = (e.target as HTMLElement).closest?.('a[data-tab]') as HTMLAnchorElement | null;
+        if (!a) return;
+        const t = e.changedTouches[0]!;
+        if (Math.abs(t.clientX - tx) > 12 || Math.abs(t.clientY - ty) > 12) return; // a scroll, not a tap
+        e.preventDefault(); // suppress the (possibly-eaten) synthesized click
+        a.click(); // programmatic click — Safari can't swallow it; ClientRouter handles it
+      },
+      { passive: false },
+    );
+  }
+</script>
+
+<style>
+  /* Position: near the edge while Safari's toolbar is visible; the MEASURED
+     collapsed state (script) lifts the pill above the collapsed toolbar's
+     tap zone. Standalone PWA just hugs the home indicator. */
+  .tab-pos {
+    bottom: calc(var(--sab) + 0.875rem);
+    transition: bottom 0.25s ease;
+  }
+  .tab-pos.toolbar-collapsed {
+    bottom: calc(var(--sab) + 3.25rem);
+  }
+  @media (display-mode: standalone) {
+    .tab-pos,
+    .tab-pos.toolbar-collapsed {
+      bottom: calc(var(--sab) + 0.875rem);
+    }
+  }
+
+  /* Liquid glass pill: heavy blur + saturation boost, translucent canvas, a
+     specular top edge and a soft drop — reads as a floating lens. */
+  .tab-dock {
+    background: color-mix(in oklch, var(--background) 42%, transparent);
+    -webkit-backdrop-filter: blur(22px) saturate(1.7);
+    backdrop-filter: blur(22px) saturate(1.7);
+    border: 1px solid color-mix(in oklch, var(--foreground) 12%, transparent);
+    box-shadow:
+      inset 0 1px 0 0 color-mix(in oklch, white 30%, transparent),
+      inset 0 -1px 0 0 rgb(0 0 0 / 0.06),
+      0 10px 30px rgb(0 0 0 / 0.28);
+  }
+  @media (prefers-reduced-transparency: reduce) {
+    .tab-dock {
+      background: var(--background);
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+    }
+  }
+</style>
