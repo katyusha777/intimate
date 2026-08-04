@@ -19,11 +19,39 @@ import RequestSheet from '@/components/organisms/profile/RequestSheet.astro';
 import RequestCard from '@/components/organisms/messaging/RequestCard.astro';
 import ReceiptSheet from '@/components/organisms/profile/ReceiptSheet.astro';
 import SimilarProfiles from '@/components/organisms/profile/SimilarProfiles.astro';
+import OnboardingChecklist from '@/components/organisms/dashboard/OnboardingChecklist.astro';
+import StatusBanner from '@/components/organisms/dashboard/StatusBanner.astro';
+import type { OnboardingProgress } from '@/lib/onboarding';
 import { CITIES } from '@/lib/taxonomy';
 import { neutralImageFor, safeImageFor, nsfwImageFor } from '@/lib/safe-images';
 import { profileAge } from '@/app/models/profile';
 import SafeModeToggle from '@/components/molecules/SafeModeToggle.astro';
 import Section from '@/components/molecules/Section.astro';
+// Onboarding demo states (ONBOARDING.md) — display-only mock progress objects.
+const onbSteps = (done: Set<string>) =>
+  (['basics', 'rates', 'services', 'photos', 'hours', 'phone', 'id'] as const).map((key) => ({
+    key,
+    done: done.has(key),
+    optional: key === 'hours',
+  }));
+const onbPartial: OnboardingProgress = {
+  steps: onbSteps(new Set(['basics', 'rates'])),
+  requiredTotal: 6,
+  requiredDone: 2,
+  firstIncomplete: 'services',
+  readyToSubmit: false,
+  submitted: false,
+  state: 'draft',
+};
+const onbReady: OnboardingProgress = {
+  steps: onbSteps(new Set(['basics', 'rates', 'services', 'photos', 'phone', 'id'])),
+  requiredTotal: 6,
+  requiredDone: 6,
+  firstIncomplete: null,
+  readyToSubmit: true,
+  submitted: false,
+  state: 'draft',
+};
 import Select from '@/components/atoms/Select.astro';
 import Input from '@/components/atoms/Input.astro';
 import SlabField from '@/components/molecules/SlabField.astro';
@@ -559,6 +587,23 @@ const swatches = [
             </div>
           ))}
         </div>
+      </div>
+    </section>
+
+    <section class="space-y-4">
+      <h2 class="text-xl font-semibold">Onboarding (professional)</h2>
+      <p class="text-sm text-muted-foreground">
+        The dashboard "get your profile live" checklist card (ONBOARDING.md §3) in two states —
+        partway, and ready-to-submit (whole card becomes the submit button) — plus the
+        after-submit status banners. Dark card on purpose (dashboard chrome).
+      </p>
+      <div class="grid gap-5 md:grid-cols-2">
+        <OnboardingChecklist progress={onbPartial} />
+        <OnboardingChecklist progress={onbReady} />
+      </div>
+      <div class="space-y-3">
+        <StatusBanner state="pending_review" />
+        <StatusBanner state="live" />
       </div>
     </section>
   </div>

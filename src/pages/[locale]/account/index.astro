@@ -4,8 +4,11 @@ import * as m from '@/paraglide/messages';
 import { accountApi } from '@/app/api/account';
 import { profileAge } from '@/app/models/profile';
 import { sessionApi } from '@/app/api/session';
+import { onboardingProgress } from '@/lib/onboarding';
+import type { ProfileState } from '@/lib/taxonomy';
 import { isLocale, localizePath } from '@/lib/i18n';
 import AccountShell from '@/components/organisms/dashboard/AccountShell.astro';
+import OnboardingChecklist from '@/components/organisms/dashboard/OnboardingChecklist.astro';
 import SignInPrompt from '@/components/organisms/dashboard/SignInPrompt.astro';
 import Layout from '@/layouts/Layout.astro';
 
@@ -16,9 +19,15 @@ const session = await sessionApi.current(Astro);
 const account = session ? await accountApi.get(session) : null;
 const profile = session ? await accountApi.myProfile(session) : null;
 
+// Advertiser + not-yet-submitted → the onboarding checklist IS the dashboard.
+const progress =
+  session?.role === 'advertiser' && profile && account ? onboardingProgress(profile, account) : null;
+const onboarding = progress != null && !progress.submitted;
+
 const card = 'facts-card dark bg-neutral-950 p-6 text-white';
-const stateChip =
-  'rounded inline-block border border-white/30 px-2.5 py-1 font-condensed text-xs font-bold uppercase tracking-wide';
+// Human words, never "pending_review" (ONBOARDING.md law 5).
+const stateLabel = (s: ProfileState) =>
+  s === 'live' ? m.state_live() : s === 'pending_review' ? m.state_pending() : s === 'paused' ? m.state_paused() : m.state_draft();
 // Analytics (profile views/contacts) land with the events table — until then the
 // dashboard shows only real state (no invented numbers). See docs/ANALYTICS.md.
 ---
@@ -27,14 +36,31 @@ const stateChip =
   {!session && <SignInPrompt />}
   {
     session && account && (
-      <AccountShell {session} title={m.nav_dashboard()} path={localizePath('/account/')}>
+      <AccountShell
+        {session}
+        title={m.nav_dashboard()}
+        path={localizePath('/account/')}
+        bannerState={session.role === 'advertiser' ? profile?.state : undefined}
+      >
+        {onboarding && progress ? (
+          <div class="max-w-xl">
+            <OnboardingChecklist {progress} />
+          </div>
+        ) : (
         <div class="grid items-start gap-5 md:grid-cols-2">
-          {profile && (
+          {profile && session.role === 'advertiser' && (
             <div class={card}>
               <p class="eyebrow text-2xs text-white/50">{m.account_state()}</p>
               <p class="mt-2.5 flex items-center gap-3 font-condensed text-2xl font-bold">
                 {profile.name}, {profileAge(profile.birthDate)}
-                <span class={stateChip}>{profile.state}</span>
+                <span
+                  class:list={[
+                    'rounded inline-block border px-2.5 py-1 font-condensed text-xs font-bold uppercase tracking-wide',
+                    profile.state === 'live' ? 'border-online/50 text-online' : 'border-white/30',
+                  ]}
+                >
+                  {stateLabel(profile.state)}
+                </span>
               </p>
               <p class="mt-1.5 text-sm text-white/60">
                 €{profile.priceFrom} · {profile.services.length} {m.account_services_count()} ·{' '}
@@ -118,6 +144,7 @@ const stateChip =
             </div>
           )}
         </div>
+        )}
       </AccountShell>
     )
   }

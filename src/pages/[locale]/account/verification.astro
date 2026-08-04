@@ -15,13 +15,14 @@ if (!isLocale(locale)) return new Response(null, { status: 404 });
 const session = await sessionApi.current(Astro);
 if (session && session.role !== 'advertiser') return Astro.redirect(localizePath('/account/'));
 const account = session ? await accountApi.get(session) : null;
+const profile = session ? await accountApi.myProfile(session) : null;
 ---
 
 <Layout noindex title={`${m.verify_title()} | Intimate`}>
   {!session && <SignInPrompt />}
   {
     session && account && (
-      <AccountShell {session} title={m.verify_title()} path={localizePath('/account/verification/')}>
+      <AccountShell {session} title={m.verify_title()} path={localizePath('/account/verification/')} bannerState={profile?.state}>
         <VerificationFlow {session} {account} />
       </AccountShell>
     )

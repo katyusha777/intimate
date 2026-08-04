@@ -54,21 +54,26 @@ Register (role tile PROFESSIONAL) → confirm email → she lands **in the flow*
 - Button: **Save & continue** → ✓.
 
 ### Step 4 · Photos
-- Why-line: "Profiles with photos get nearly all the clicks. One is enough to start — three is better."
+- Why-line: "Profiles with photos get nearly all the clicks. One is enough to start — three or more is better."
 - Big tap-target add tile (the existing MediaManager). After the first upload: "Nice. Add more, or continue."
+- Two plain rules by the tile: **"Your first photo is what everyone sees first — no nudity on it."** · **"Use your sharpest photos."**
 - Tiny reassurance under the tile: "Location data is removed from your photos automatically." (The EXIF rule, in human words.)
 - Button: **Continue** (enabled at ≥1 photo).
 
-### Step 5 · Your phone number
+### Step 5 · When are you available? *(optional — one tap to skip)*
+- Why-line: "Set your hours and clients see when you're around — 'back tomorrow at 14:00'. You can skip this and add it later."
+- The opening-hours rows (reused editor section). Prominent **Skip for now** alongside **Save & continue**. Never blocks submitting.
+
+### Step 6 · Your phone number
 - Why-line: "We send you one code. This proves your number is really yours — clients trust verified profiles."
 - Phone field (placeholder "06 12345678", NL default, other countries fine) → **Send code** → the code field slides in, numeric keyboard, auto-submit at 6 digits. Resend link appears after 30s ("Nothing arrived? Send again").
 - ✓ moment: "Your number is verified."
 
-### Step 6 · Prove it's you — then the big moment
+### Step 7 · Prove it's you — then the big moment
 - Why-line: "Last step. We check every profile by hand — that's why clients trust this site."
-- The two uploads (ID photo · selfie with code) as two big tiles that tick as they're filled. Safety line in human words: "Only our team sees these. They're never shown on your profile, and they're deleted on schedule."
+- The two uploads (ID photo · selfie with code) as two big tiles that tick as they're filled. Safety line in human words: "Only our team sees these. They're never shown on your profile, and they're deleted on schedule." (Uploads go into the private, EXIF-stripped, audit-logged verification store — decision 3.)
 - When both tiles are ticked, the one big button appears: **Submit my profile** ✨
-- **The finish screen** — the emotional payoff, full screen: big ✓, **"Done! We're checking your profile."** · "This usually takes [X hours]. You'll get an email the moment you're live." · One button: "See my profile" (preview of what clients will see). The progress bar is full.
+- **The finish screen** — the emotional payoff, full screen: big ✓, **"Done! We're checking your profile."** · "This usually takes **up to 24 hours**. You'll get an email the moment you're live." · One button: "See my profile" (preview of what clients will see). The progress bar is full.
 
 ### After: while she waits, and when she's live
 - Every account page shows a calm thin banner: **⏳ "We're checking your profile — you'll get an email when it's live."** No countdown anxiety, no jargon.
@@ -117,10 +122,10 @@ Until she's live, the dashboard's first card is the journey as six rows (✓/○
 3.3 Post-approval nudges for the skipped extras ("profiles with opening hours get evening clients").
 3.4 Funnel analytics per step (typed wrapper only; no session replay, ever) — find where they drop, fix that step.
 
-## Open questions (decide before Phase 2)
+## Decisions (settled)
 
-1. **Photo minimum** — 1 to submit (plan) with a "3 is better" nudge, or hard-require 3? Recommend 1: the review queue catches empty-feeling profiles anyway.
-2. **Hours** — keep out of the flow (post-approval nudge only) or a light optional step? Recommend out: six steps is the ceiling.
-3. **ID storage** — step 6 rides the current mock until the real private-R2 doc flow (hard rule 3) lands as its own sensitive PR; the flow ships against whichever exists.
-4. **Review-time honesty** — "usually takes [X hours]": what number do we commit to? Needs a real moderation-SLA decision; until then say "usually the same day".
-5. **Agencies** — out of scope; the flow gates on solo advertiser and must simply not appear for them.
+1. **Photos** — **1 to submit**, nudge "3+ for more visibility". Rules shown at the step (and enforced by moderation): **no nudity on the first photo** (it's the public thumbnail), **highest quality possible**.
+2. **Hours** — a **light optional step** she can skip in one tap (feeds the availability "back at" derivation, UX-PLAN 1.3).
+3. **ID storage** — **build the real private-R2 doc flow now** (hard rule 3: EU private bucket, EXIF-stripped, admin-only signed URLs, every read audit-logged, retention then auto-purge) — not the mock. This is a sensitive PR of its own inside Phase 2; step 6 uploads into it.
+4. **Review time** — commit to **"usually within 24 hours"** in the finish + banner copy.
+5. **Segment by user type** — the flow is **solo professional only** (`role === 'advertiser'`). It must never appear for agencies (they get their own flow later) or clients. Gate the redirect, the checklist card, and the banner on role.

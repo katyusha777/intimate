@@ -83,7 +83,7 @@ Folders appear when their first organism lands:
 | `profile/` | ✓ ProfileCard, ProfileDetail, ProfileHero, ProfileGallery, ProfilePhotoMosaic, ProfileSheet, ProfileFacts (the deal card), RatesTable, GoodToKnow, SimilarProfiles, ReceiptSheet (the trust receipt of dated verification facts opened by any verified mark), RequestSheet (the flagship three-tap pre-qualified request opened by the deal card's SEND MESSAGE), ReportControl — anticipated: ContactCard |
 | `search/` | ✓ SearchListing, FilterSidebar |
 | `auth/` | ✓ AuthModal — anticipated: PasswordReset, OtpForm |
-| `dashboard/` | ✓ AccountShell, SignInPrompt, ProfileEditorForm, MediaManager, VerificationFlow — anticipated: ImportWizard steps, StatsTiles |
+| `dashboard/` | ✓ AccountShell, SignInPrompt, ProfileEditorForm, MediaManager, VerificationFlow, OnboardingChecklist (the get-your-profile-live journey card per ONBOARDING.md §3), StatusBanner (the in-review and you're-live states) — anticipated: ImportWizard steps, StatsTiles |
 | `messaging/` | ✓ Inbox, Thread, RequestCard (the request card + Accept/Decline in the thread), ContactList (MESSAGING.md §2 for the rest) |
 | `layout/` | ✓ Header, Footer, BottomTabBar |
 | `content/` | ✓ ContentPage — renders the migrated static editorial/legal pages (about, safety, profile-rules, verification, terms, privacy, app) from `lib/site-pages.ts` |

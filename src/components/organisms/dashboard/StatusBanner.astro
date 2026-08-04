@@ -1,0 +1,61 @@
+---
+/**
+ * The waiting/arrival banner (docs/ONBOARDING.md §"After"). Calm "we're checking
+ * it" while pending; a one-time "you're live" celebration after approval. Thin,
+ * on every account page (AccountShell renders it), never on public pages. Human
+ * words only — no "pending_review", no jargon.
+ */
+import * as m from '@/paraglide/messages';
+import type { ProfileState } from '@/lib/taxonomy';
+
+interface Props {
+  state: ProfileState;
+}
+const { state } = Astro.props;
+const show = state === 'pending_review' || state === 'live';
+---
+
+{
+  show && (
+    <div
+      data-status-banner
+      data-live={state === 'live' ? '1' : undefined}
+      class:list={[
+        'mb-5 flex items-start gap-3 border-l-2 p-4',
+        state === 'live' ? 'border-online bg-online/10' : 'border-amber-400/60 bg-amber-400/5',
+      ]}
+    >
+      <span aria-hidden="true" class="text-lg leading-none">{state === 'live' ? '🎉' : '⏳'}</span>
+      <div class="min-w-0 flex-1">
+        <p class="text-sm font-semibold">{state === 'live' ? m.onb_live_title() : m.onb_review_title()}</p>
+        <p class="mt-0.5 text-sm text-muted-foreground">
+          {state === 'live' ? m.onb_live_note() : m.onb_review_note()}
+        </p>
+      </div>
+      {state === 'live' && (
+        <button type="button" data-status-dismiss aria-label="Dismiss" class="flex-none text-muted-foreground hover:text-foreground">
+          <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+        </button>
+      )}
+    </div>
+  )
+}
+
+<script>
+  // "You're live" is a one-time celebration — remember the dismissal so it
+  // doesn't nag on every visit. The pending banner has no dismiss (it's status).
+  function initStatusBanner() {
+    const banner = document.querySelector<HTMLElement>('[data-status-banner][data-live]');
+    if (!banner) return;
+    if (localStorage.getItem('onb_live_seen')) {
+      banner.remove();
+      return;
+    }
+    banner.querySelector('[data-status-dismiss]')?.addEventListener('click', () => {
+      localStorage.setItem('onb_live_seen', '1');
+      banner.remove();
+    });
+  }
+  initStatusBanner();
+  document.addEventListener('astro:page-load', initStatusBanner);
+</script>

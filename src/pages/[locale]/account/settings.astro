@@ -38,7 +38,7 @@ const heading = 'font-condensed text-sm font-bold uppercase tracking-wide text-m
   {!session && <SignInPrompt />}
   {
     session && (
-      <AccountShell {session} title={m.settings_title()} path={localizePath('/account/settings/')}>
+      <AccountShell {session} title={m.settings_title()} path={localizePath('/account/settings/')} bannerState={profile?.state}>
         <div class="max-w-xl divide-y divide-border">
           <section class="flex items-center justify-between gap-4 py-5 first:pt-0">
             <h2 class={heading}>{m.settings_appearance()}</h2>

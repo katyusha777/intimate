@@ -21,7 +21,7 @@ const profile = session ? await accountApi.myProfile(session) : null;
   {!session && <SignInPrompt />}
   {
     session && profile && (
-      <AccountShell {session} title={m.editor_title()} path={localizePath('/account/profile/')}>
+      <AccountShell {session} title={m.editor_title()} path={localizePath('/account/profile/')} bannerState={profile.state}>
         <ProfileEditorForm {profile} />
       </AccountShell>
     )

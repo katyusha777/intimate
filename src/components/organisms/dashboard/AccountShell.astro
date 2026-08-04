@@ -6,15 +6,21 @@
  */
 import * as m from '@/paraglide/messages';
 import type { Session } from '@/app/models/session';
+import type { ProfileState } from '@/lib/taxonomy';
 import { localizePath } from '@/lib/i18n';
+import StatusBanner from '@/components/organisms/dashboard/StatusBanner.astro';
 
 interface Props {
   session: Session;
   title: string;
   /** Current path for side-nav active state. */
   path: string;
+  /** Her profile lifecycle state — drives the "in review / you're live" banner
+   *  (advertiser only). Pages pass what they already fetched; the banner shows
+   *  itself only for pending_review / live. */
+  bannerState?: ProfileState;
 }
-const { session, title, path } = Astro.props;
+const { session, title, path, bannerState } = Astro.props;
 
 const nav =
   session.role === 'advertiser'
@@ -76,7 +82,10 @@ const nav =
     }
   </nav>
 
-  <div class="mt-8 min-w-0"><slot /></div>
+  <div class="mt-8 min-w-0">
+    {session.role === 'advertiser' && bannerState && <StatusBanner state={bannerState} />}
+    <slot />
+  </div>
 
   <p class="mt-10 text-xs text-muted-foreground">{m.account_demo_note()}</p>
 </div>
