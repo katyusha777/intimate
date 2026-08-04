@@ -58,6 +58,33 @@ export function itemListJsonLd(profiles: Profile[], origin: string, locale: stri
   };
 }
 
+/** BlogPosting for an editorial article (SEO.md §4). `image`/`url` absolute. */
+export function articleJsonLd(a: {
+  url: string;
+  title: string;
+  description: string;
+  image: string;
+  publishedAt: Date;
+  locale: string;
+}) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BlogPosting',
+    headline: a.title,
+    description: a.description,
+    image: a.image,
+    inLanguage: a.locale,
+    datePublished: a.publishedAt.toISOString(),
+    mainEntityOfPage: a.url,
+    author: { '@type': 'Organization', name: BRAND },
+    publisher: {
+      '@type': 'Organization',
+      name: BRAND,
+      logo: { '@type': 'ImageObject', url: `${new URL(a.url).origin}/img/logo-dark.svg` },
+    },
+  };
+}
+
 /** Data for the answer-first intro blocks (SEO.md §3). */
 export function listingStats(profiles: Profile[]) {
   return {

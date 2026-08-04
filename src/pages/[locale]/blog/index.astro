@@ -1,0 +1,88 @@
+---
+/**
+ * Blog index — the full editorial list for a locale. Featured piece leads,
+ * the rest follow newest-first. Heroes render directly (brand-safe).
+ */
+import Layout from '@/layouts/Layout.astro';
+import Section from '@/components/molecules/Section.astro';
+import * as m from '@/paraglide/messages';
+import { isLocale, localizePath, samePathAlternates } from '@/lib/i18n';
+import { articlesForLocale } from '@/lib/articles';
+
+const locale = Astro.params.locale;
+if (!isLocale(locale)) return new Response(null, { status: 404 });
+
+const articles = await articlesForLocale(locale);
+const [lead, ...rest] = articles;
+
+const title = `${m.section_articles()} | Intimate`;
+---
+
+<Layout
+  {title}
+  description={m.articles_by()}
+  canonical={new URL(`/${locale}/blog/`, Astro.url.origin).href}
+  alternates={samePathAlternates(Astro.url.origin, '/blog/')}
+>
+  <div class="mx-auto max-w-5xl px-4 md:px-6">
+    <Section title={m.section_articles()}>
+      <p slot="meta" class="hidden text-sm text-muted-foreground sm:block">{m.articles_by()}</p>
+
+      {
+        lead && (
+          <a
+            href={localizePath(`/blog/${lead.data.slug}/`)}
+            class="group mb-6 block overflow-hidden rounded-lg shadow-soft transition-shadow hover:shadow-soft-lg"
+          >
+            <img
+              src={lead.data.hero.src}
+              width={lead.data.hero.width}
+              height={lead.data.hero.height}
+              alt={lead.data.heroAlt}
+              class="aspect-[16/9] w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+              loading="eager"
+              decoding="async"
+            />
+            <div class="p-5">
+              <p class="eyebrow text-2xs font-mono font-semibold text-brand">
+                {lead.data.minutes} {m.min_read()}
+              </p>
+              <h2 class="mt-1.5 font-condensed text-2xl font-semibold leading-snug group-hover:text-brand">
+                {lead.data.title}
+              </h2>
+              <p class="mt-2 text-muted-foreground">{lead.data.excerpt}</p>
+            </div>
+          </a>
+        )
+      }
+
+      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {
+          rest.map((a) => (
+            <a
+              href={localizePath(`/blog/${a.data.slug}/`)}
+              class="group flex flex-col overflow-hidden rounded-lg border border-foreground/15 transition-colors hover:border-foreground/50"
+            >
+              <img
+                src={a.data.hero.src}
+                width={a.data.hero.width}
+                height={a.data.hero.height}
+                alt={a.data.heroAlt}
+                class="aspect-[16/10] w-full object-cover"
+                loading="lazy"
+                decoding="async"
+              />
+              <div class="flex-1 p-4">
+                <p class="eyebrow text-2xs font-mono font-semibold text-brand">
+                  {a.data.minutes} {m.min_read()}
+                </p>
+                <h3 class="mt-1 font-semibold leading-snug group-hover:text-brand">{a.data.title}</h3>
+                <p class="mt-1.5 line-clamp-2 text-sm text-muted-foreground">{a.data.excerpt}</p>
+              </div>
+            </a>
+          ))
+        }
+      </div>
+    </Section>
+  </div>
+</Layout>

@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import { profilesApi } from '@/app/api/profiles';
+import { articlesForLocale } from '@/lib/articles';
 import { isLocale } from '@/lib/i18n';
 import { CITIES, LISTING_CATEGORIES, SERVICES } from '@/lib/taxonomy';
 
@@ -27,7 +28,16 @@ export const GET: APIRoute = async ({ params, url }) => {
     { path: `/${locale}/`, lastmod: globalLastmod },
     { path: `/${locale}/search/`, lastmod: globalLastmod },
     { path: `/${locale}/stats/`, lastmod: globalLastmod },
+    { path: `/${locale}/blog/`, lastmod: globalLastmod },
   ];
+
+  // Editorial articles (hard rule 8: every public page type in the sitemap).
+  for (const a of await articlesForLocale(locale)) {
+    entries.push({
+      path: `/${locale}/blog/${a.data.slug}/`,
+      lastmod: a.data.publishedAt.toISOString().slice(0, 10),
+    });
+  }
 
   // Profile pages (hard rule 8: every public page type is in the sitemap).
   for (const p of profiles) {

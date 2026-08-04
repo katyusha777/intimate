@@ -8,7 +8,7 @@ import Section from '@/components/molecules/Section.astro';
 import SafeImage from '@/components/atoms/SafeImage.astro';
 import CitySheet from '@/components/molecules/CitySheet.astro';
 import Button from '@/components/atoms/Button.astro';
-import { articlesApi } from '@/app/api/articles';
+import { articlesForLocale } from '@/lib/articles';
 import { profilesApi } from '@/app/api/profiles';
 import { sessionApi } from '@/app/api/session';
 
@@ -26,7 +26,7 @@ const jsonLd = [websiteJsonLd(Astro.url.origin, locale), organizationJsonLd(Astr
  * own canonical URL (/{locale}/{city}/); the saved preference surfaces only as
  * the labelled "back to your city" chip below, so coming Home always feels
  * like leaving the city. */
-const [{ items: online, total: onlineCount }, { items: fresh }, { items: featured }, { items: articles }] =
+const [{ items: online, total: onlineCount }, { items: fresh }, { items: featured }, articles] =
   await Promise.all([
     // Default shelf (1.4): ONLINE NOW — online-first, the every-visit question.
     profilesApi.list({ onlineOnly: true, sort: 'recently_online', limit: 18 }),
@@ -34,12 +34,12 @@ const [{ items: online, total: onlineCount }, { items: fresh }, { items: feature
     // arrivals (the real backend windows to a true 7 days).
     profilesApi.list({ sort: 'newest', limit: 12 }),
     profilesApi.list({ featuredOnly: true, limit: 8 }),
-    articlesApi.list(),
+    articlesForLocale(locale),
   ]);
 
 const rail = featured.slice(0, 8);
-const featuredArticle = articles.find((a) => a.featured)!;
-const moreArticles = articles.filter((a) => !a.featured);
+const featuredArticle = articles.find((a) => a.data.featured) ?? articles[0];
+const moreArticles = articles.filter((a) => a !== featuredArticle).slice(0, 3);
 
 ---
 
@@ -148,12 +148,19 @@ const moreArticles = articles.filter((a) => !a.featured);
       </div>
     </Section>
 
-    <!-- ONLINE NOW — the default shelf (1.4). One claim it can prove. -->
-    <Section title={m.section_online()}>
-      <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-        {online.map((p, i) => <ProfileCard profile={p} loading={i < 4 ? 'eager' : 'lazy'} />)}
-      </div>
-    </Section>
+    <!-- ONLINE NOW — the default shelf (1.4). One claim it can prove; when
+         nobody's online the claim is empty, so drop the whole shelf. -->
+    {
+      online.length > 0 && (
+        <Section title={m.section_online()}>
+          <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+            {online.map((p, i) => (
+              <ProfileCard profile={p} loading={i < 4 ? 'eager' : 'lazy'} />
+            ))}
+          </div>
+        </Section>
+      )
+    }
 
     <!-- NEW THIS WEEK — its own shelf (1.4), the cold-start boost. -->
     <Section title={m.section_new_week()}>
@@ -171,23 +178,27 @@ const moreArticles = articles.filter((a) => !a.featured);
 
       <div class="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
         <a
-          href={localizePath(`/blog/${featuredArticle.slug}/`)}
+          href={localizePath(`/blog/${featuredArticle.data.slug}/`)}
           class="group relative block overflow-hidden rounded-lg shadow-soft transition-shadow hover:shadow-soft-lg"
         >
-          <SafeImage
-            imageKey={featuredArticle.id}
-            alt={featuredArticle.title}
-            class="aspect-[16/10] h-full w-full transition-transform duration-300 group-hover:scale-[1.02] lg:aspect-auto lg:absolute lg:inset-0"
+          <img
+            src={featuredArticle.data.hero.src}
+            width={featuredArticle.data.hero.width}
+            height={featuredArticle.data.hero.height}
+            alt={featuredArticle.data.heroAlt}
+            class="aspect-[16/10] h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02] lg:aspect-auto lg:absolute lg:inset-0"
+            loading="lazy"
+            decoding="async"
           />
           <span class="article-slab absolute left-2 top-2 bg-neutral-950 px-3 py-1.5 eyebrow text-2xs font-semibold text-white">
             {m.section_featured()}
           </span>
           <div class="article-slab bottom-2 left-2 right-2 bg-neutral-950 p-5 text-white lg:absolute">
             <p class="eyebrow text-2xs font-mono font-semibold text-brand">
-              {featuredArticle.minutes} {m.min_read()}
+              {featuredArticle.data.minutes} {m.min_read()}
             </p>
-            <h3 class="mt-1.5 font-condensed text-xl font-semibold leading-snug">{featuredArticle.title}</h3>
-            <p class="mt-1.5 line-clamp-2 text-sm text-white/70">{featuredArticle.excerpt}</p>
+            <h3 class="mt-1.5 font-condensed text-xl font-semibold leading-snug">{featuredArticle.data.title}</h3>
+            <p class="mt-1.5 line-clamp-2 text-sm text-white/70">{featuredArticle.data.excerpt}</p>
             <p class="eyebrow mt-3 font-semibold text-white">
               {m.read_article()} →
             </p>
@@ -200,20 +211,24 @@ const moreArticles = articles.filter((a) => !a.featured);
           {
             moreArticles.map((a) => (
               <a
-                href={localizePath(`/blog/${a.slug}/`)}
+                href={localizePath(`/blog/${a.data.slug}/`)}
                 class="group flex items-center gap-4 border border-foreground/15 p-3 transition-colors hover:border-foreground/50"
               >
-                <SafeImage
-                  imageKey={a.id}
-                  alt={a.title}
-                  class="aspect-[4/3] w-28 flex-none"
+                <img
+                  src={a.data.hero.src}
+                  width={a.data.hero.width}
+                  height={a.data.hero.height}
+                  alt={a.data.heroAlt}
+                  class="aspect-[4/3] w-28 flex-none object-cover"
+                  loading="lazy"
+                  decoding="async"
                 />
                 <div class="min-w-0">
                   <p class="eyebrow text-2xs font-mono font-semibold text-brand">
-                    {a.minutes} {m.min_read()}
+                    {a.data.minutes} {m.min_read()}
                   </p>
                   <h3 class="mt-1 line-clamp-2 font-semibold leading-snug group-hover:text-brand">
-                    {a.title}
+                    {a.data.title}
                   </h3>
                 </div>
               </a>

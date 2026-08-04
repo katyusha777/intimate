@@ -497,24 +497,6 @@ export const importJobs = pgTable(
 );
 
 // ---------------------------------------------------------------------------
-// Articles — editorial listing stubs (no auth, public read).
-// ---------------------------------------------------------------------------
-
-export const articles = pgTable(
-  'articles',
-  {
-    id: uuid('id').primaryKey().defaultRandom(),
-    slug: text('slug').notNull(),
-    title: text('title').notNull(),
-    excerpt: text('excerpt').notNull(),
-    minutes: integer('minutes').notNull(),
-    featured: boolean('featured').notNull().default(false),
-    publishedAt: timestamp('published_at', { withTimezone: true }).notNull(),
-  },
-  (t) => [uniqueIndex('articles_slug_idx').on(t.slug)],
-);
-
-// ---------------------------------------------------------------------------
 // Call sessions (ADMIN.md §11, ARCHITECTURE §10) — metadata ONLY; calls are
 // peer-to-peer and never recorded. `initiated_by = professional` is a CHECK
 // (SECURITY.md §3: clients can never initiate). client_account_id is null for

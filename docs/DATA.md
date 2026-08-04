@@ -46,9 +46,10 @@ anonymous pages (RLS `state='live'` only for profiles/media).
 | `reports` | reporter | admin | user-filed, admin-triaged |
 | `audit_log` | — | admin | append-only admin action + sensitive-read trail |
 | `import_jobs` | — | admin | self-service scrape→extract→review pipeline |
-| `articles` | — | public | editorial listing stubs |
 
-**Deliberately absent:** no `reviews`/`ratings` table — the trust signal is
+**Deliberately absent:** no `articles` table — editorial articles are
+markdown-in-git (Astro content collection, `src/content/articles/`), not the DB.
+No `reviews`/`ratings` table either — the trust signal is
 measured reply speed (MESSAGING.md, UX-PLAN 3.2), a SQL view over `messages`,
 not user-authored reviews. Don't add one without a product decision.
 
@@ -197,7 +198,7 @@ Posture per table, each with its deny test:
   message INSERT stays server-side (actions validate; no browser grant).
 - **Own-row**: `favorites` (select/insert/delete), `accounts` (select).
 - **Zero browser access** (`orgs`, `conversation_settings`, `contacts`,
-  `reports`, `audit_log`, `verification_docs`, `import_jobs`, `articles`): no
+  `reports`, `audit_log`, `verification_docs`, `import_jobs`): no
   grants at all — PostgREST can't reach them; `app_server` + admin actions can.
 - **NO `auth.users` FK on `accounts.id`** (decided 2026-08-03): GDPR erasure
   deletes the auth user while the scrubbed accounts row must survive for audit
