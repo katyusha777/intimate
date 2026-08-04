@@ -37,8 +37,17 @@ import SlabField from '@/components/molecules/SlabField.astro';
 
 interface Props {
   profile: Profile;
+  /**
+   * Render only these sections (the setup wizard shows one at a time):
+   * 'basics' | 'rates' | 'services' | 'gtk' | 'hours' | 'description'. Omit for
+   * the full editor. (Reuse-is-law: the wizard shares these exact sections.)
+   */
+  only?: string[];
+  /** Wizard drives its own per-step save — hide the editor's save button + skip its submit binding. */
+  wizard?: boolean;
 }
-const { profile: p } = Astro.props;
+const { profile: p, only, wizard = false } = Astro.props;
+const show = (k: string) => !only || only.includes(k);
 
 const selectedServices = new Set(p.services as readonly string[]);
 // Latest DOB an 18-year-old could have (for the date input's max).
@@ -63,7 +72,9 @@ const selAmenities = setOf(p.amenities ?? []);
 const selPayments = setOf(p.paymentMethods ?? []);
 ---
 
-<form data-profile-editor class="max-w-2xl space-y-12">
+<form data-profile-editor data-wizard={wizard ? '' : undefined} class="max-w-2xl space-y-12">
+  {show('basics') && (
+  <Fragment>
   <div class="grid gap-4 sm:grid-cols-2">
     <SlabField label={m.editor_name()} name="name" value={p.name} required />
     <SlabField
@@ -111,6 +122,10 @@ const selPayments = setOf(p.paymentMethods ?? []);
 
   <!-- Rates table (UX-PLAN 2.1): the source of truth for priceFrom. Tick a
        duration, fill an incall and/or outcall price. Empty rows are dropped. -->
+  </Fragment>
+  )}
+
+  {show('rates') && (
   <div class="space-y-2">
     <h3 class={heading}>{m.editor_rates()}</h3>
     <p class="text-xs text-muted-foreground">{m.editor_rates_hint()}</p>
@@ -239,6 +254,9 @@ const selPayments = setOf(p.paymentMethods ?? []);
   <!-- Good-to-know (UX-PLAN 2.5): taxonomy-keyed facts filled once. Every
        checkbox group is an aligned 2-column grid; languages show the top 6
        with the long tail behind a native Show-more. -->
+  )}
+
+  {show('gtk') && (
   <div class="space-y-8">
     <div class="space-y-1.5">
       <h3 class={heading}>{m.gtk_title()}</h3>
@@ -320,6 +338,9 @@ const selPayments = setOf(p.paymentMethods ?? []);
     </div>
   </div>
 
+  )}
+
+  {show('services') && (
   <div class="space-y-2">
     <div class="space-y-1.5">
       <h3 class={heading}>{m.filter_services()}</h3>
@@ -364,8 +385,9 @@ const selPayments = setOf(p.paymentMethods ?? []);
     </div>
   </div>
 
-  <!-- Working hours — last, per the editor layout. Fixed-width toggle columns so
-       Closed / 24 hours line up down every row. -->
+  )}
+
+  {show('hours') && (
   <div class="space-y-2">
     <div class="space-y-1.5">
       <h3 class={heading}>{m.editor_hours()}</h3>
@@ -410,6 +432,9 @@ const selPayments = setOf(p.paymentMethods ?? []);
     </div>
   </div>
 
+  )}
+
+  {show('description') && (
   <label class="block space-y-1.5">
     <span class="text-sm font-medium">{m.editor_description()}</span>
     <textarea
@@ -419,129 +444,34 @@ const selPayments = setOf(p.paymentMethods ?? []);
       class="w-full border border-foreground/20 bg-transparent p-3 text-base caret-brand outline-none transition-colors focus:border-foreground md:text-sm"
     >{p.description}</textarea>
   </label>
+  )}
 
+  {!wizard && (
   <div class="flex items-center gap-4">
     <Button type="submit">{m.editor_save()}</Button>
     <p data-editor-saved class="hidden text-sm font-medium text-online">{m.editor_saved()} ✓</p>
     <p data-editor-error class="hidden text-sm font-medium text-brand">{m.auth_error()}</p>
   </div>
+  )}
 </form>
 
 <script>
   import { actions } from 'astro:actions';
-
-  /** Show/hide a day's controls: closed hides everything, 24h hides the times. */
-  function syncHoursRow(row: HTMLElement) {
-    const closed = row.querySelector<HTMLInputElement>('[data-hours-closed]')!.checked;
-    const allDay = row.querySelector<HTMLInputElement>('[data-hours-allday]')!.checked;
-    row.querySelector<HTMLElement>('[data-hours-openonly]')!.style.display = closed ? 'none' : '';
-    row.querySelector<HTMLElement>('[data-hours-times]')!.style.display =
-      closed || allDay ? 'none' : '';
-  }
+  import { readProfilePatch, initEditorInteractions } from '@/lib/editor-form';
 
   function initEditor() {
     document.querySelectorAll<HTMLFormElement>('[data-profile-editor]').forEach((form) => {
       if (form.dataset.init) return;
       form.dataset.init = '1';
+      initEditorInteractions(form); // opening-hours disclosure + custom rate rows
 
-      // Opening-hours progressive disclosure.
-      form.querySelectorAll<HTMLElement>('[data-hours-row]').forEach((r) => {
-        syncHoursRow(r);
-        r.querySelectorAll('[data-hours-closed],[data-hours-allday]').forEach((c) =>
-          c.addEventListener('change', () => syncHoursRow(r)),
-        );
-      });
-
-      // Custom line items: add / remove / reorder (DOM order = saved order).
-      const customList = form.querySelector<HTMLElement>('[data-custom-list]');
-      const customTpl = form.querySelector<HTMLTemplateElement>('[data-custom-template]');
-      form.querySelector('[data-add-custom]')?.addEventListener('click', () => {
-        if (!customList || !customTpl) return;
-        customList.appendChild(customTpl.content.cloneNode(true));
-        customList.querySelector<HTMLInputElement>('[data-custom-row]:last-child [data-custom-label]')?.focus();
-      });
-      customList?.addEventListener('click', (e) => {
-        const btn = (e.target as HTMLElement).closest<HTMLElement>('button[data-act]');
-        if (!btn) return;
-        const row = btn.closest('[data-custom-row]')!;
-        if (btn.dataset.act === 'remove') row.remove();
-        else if (btn.dataset.act === 'up' && row.previousElementSibling)
-          customList.insertBefore(row, row.previousElementSibling);
-        else if (btn.dataset.act === 'down' && row.nextElementSibling)
-          customList.insertBefore(row.nextElementSibling, row);
-      });
+      // Wizard mode: the setup flow owns the per-step save — don't bind the
+      // editor's own submit (there's no save button in that mode either).
+      if (form.dataset.wizard !== undefined) return;
 
       form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const fd = new FormData(form);
-        const openingHours: Record<string, unknown> = {};
-        form.querySelectorAll<HTMLElement>('[data-hours-row]').forEach((r) => {
-          openingHours[r.dataset.day!] = {
-            closed: r.querySelector<HTMLInputElement>('[data-hours-closed]')!.checked,
-            allDay: r.querySelector<HTMLInputElement>('[data-hours-allday]')!.checked,
-            from: r.querySelector<HTMLInputElement>('[data-hours-from]')!.value,
-            to: r.querySelector<HTMLInputElement>('[data-hours-to]')!.value,
-          };
-        });
-        // Rates: one row per ticked duration with at least one price. The
-        // derived priceFrom (min of the table) is computed server-side.
-        const rates: Array<Record<string, unknown>> = [];
-        form.querySelectorAll<HTMLElement>('[data-rate-row]').forEach((r) => {
-          if (!r.querySelector<HTMLInputElement>('[data-rate-on]')!.checked) return;
-          const num = (sel: string) => {
-            const v = r.querySelector<HTMLInputElement>(sel)!.value.trim();
-            return v === '' ? undefined : Number(v);
-          };
-          const incall = num('[data-rate-incall]');
-          const outcall = num('[data-rate-outcall]');
-          if (incall === undefined && outcall === undefined) return;
-          const row: Record<string, unknown> = { duration: r.dataset.duration };
-          if (incall !== undefined) row.incall = incall;
-          if (outcall !== undefined) row.outcall = outcall;
-          rates.push(row);
-        });
-        // Her custom line items, in DOM order (= her chosen order). A row
-        // needs a label AND at least one price; the rest is skipped quietly.
-        form.querySelectorAll<HTMLElement>('[data-custom-row]').forEach((r) => {
-          const label = r.querySelector<HTMLInputElement>('[data-custom-label]')!.value.trim();
-          if (!label) return;
-          const num = (sel: string) => {
-            const v = r.querySelector<HTMLInputElement>(sel)!.value.trim();
-            return v === '' ? undefined : Number(v);
-          };
-          const incall = num('[data-custom-incall]');
-          const outcall = num('[data-custom-outcall]');
-          if (incall === undefined && outcall === undefined) return;
-          const row: Record<string, unknown> = { label };
-          if (incall !== undefined) row.incall = incall;
-          if (outcall !== undefined) row.outcall = outcall;
-          rates.push(row);
-        });
-        const optStr = (k: string) => {
-          const v = String(fd.get(k) ?? '').trim();
-          return v === '' ? undefined : v;
-        };
-        // meetingTypes has a min(1) rule — sending [] would reject the whole
-        // (partial) save. Omit it when empty so a draft still saves; a visit
-        // type is only required to go live.
-        const meetingTypes = fd.getAll('meetingTypes').map(String);
-        const patch = {
-          name: String(fd.get('name') ?? ''),
-          birthDate: String(fd.get('birthDate') ?? ''),
-          gender: String(fd.get('gender')),
-          city: String(fd.get('city')),
-          rates,
-          depositPolicy: optStr('depositPolicy'),
-          extrasNote: optStr('extrasNote'),
-          ...(meetingTypes.length ? { meetingTypes } : {}),
-          services: fd.getAll('services').map(String),
-          languages: fd.getAll('languages').map(String),
-          incallLocations: fd.getAll('incallLocations').map(String),
-          amenities: fd.getAll('amenities').map(String),
-          paymentMethods: fd.getAll('paymentMethods').map(String),
-          openingHours,
-          description: String(fd.get('description') ?? ''),
-        };
+        const patch = readProfilePatch(form);
         const saved = form.querySelector<HTMLElement>('[data-editor-saved]')!;
         const error = form.querySelector<HTMLElement>('[data-editor-error]')!;
         saved.classList.add('hidden');
