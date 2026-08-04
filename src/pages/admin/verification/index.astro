@@ -4,7 +4,8 @@
  * claim → review (doc viewer w/ audit-on-read, profile-vs-doc, SMS gate) →
  * approve / reject-with-reason / escalate. Keyboard a/r/e.
  */
-import { getAdmin } from '@/actions/admin/lib';
+import { getAdmin, verificationDocIdsFor } from '@/actions/admin/lib';
+import { signVdocUrl } from '@/lib/vdoc-sign';
 import { verificationQueue } from '@/actions/admin/queues';
 import { accountApi } from '@/app/api/account';
 import { profilesApi } from '@/app/api/profiles';
@@ -23,6 +24,11 @@ const selected = items.find((i) => i.email === selectedEmail) ?? null;
 const acct = selected ? await accountApi.byEmail(selected.email) : null;
 const profile = selected?.profileSlug ? await profilesApi.bySlug(selected.profileSlug) : null;
 const birthDate = profile?.birthDate ?? null;
+// Short-TTL signed URLs for this account's submitted docs (each read is audited
+// at the serve route, hard rule 3).
+const docSrcs = selected
+  ? await Promise.all((await verificationDocIdsFor(selected.email)).map(signVdocUrl))
+  : [];
 
 function ago(iso: string): string {
   const mins = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
@@ -64,7 +70,7 @@ const rows = items.map((i) => ({
                 <div>
                   <h2 class="font-condensed text-sm font-bold uppercase tracking-wide text-muted-foreground">Submitted document</h2>
                   <div class="mt-2">
-                    <DocViewer email={selected.email} admin={session.email} label="ID document + selfie" />
+                    <DocViewer srcs={docSrcs} admin={session.email} />
                   </div>
                   <p class="mt-2 text-2xs text-muted-foreground">
                     Presigned ≤5min in prod (private R2). Every reveal is audit-logged.

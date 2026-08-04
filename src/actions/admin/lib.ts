@@ -8,7 +8,7 @@ import { env } from 'cloudflare:workers';
 import { ActionError } from 'astro:actions';
 import { and, desc, eq } from 'drizzle-orm';
 import { createDb } from '@/db/client';
-import { auditLog } from '@/db/schema';
+import { accounts, auditLog, verificationDocs } from '@/db/schema';
 import { sessionApi } from '@/app/api/session';
 import type { Session } from '@/app/models/session';
 import type { AdminAction, AdminRole } from '@/lib/taxonomy';
@@ -67,6 +67,31 @@ export async function record(
     reason: entry.reason,
     meta: entry.meta,
   });
+}
+
+// --- Verification docs (hard rule 3): toxic-waste reads --------------------
+// The signed-URL half (signVdocUrl / verifyVdoc) lives in lib/vdoc-sign.ts so it
+// stays unit-testable; the DB half stays here (needs the admin db). Every read is
+// audit-logged at the serve route (src/pages/admin/vdoc/[id].ts).
+
+/** The R2 key + owning account for a doc id (serve route). */
+export async function readVdoc(id: string): Promise<{ r2Key: string; accountId: string } | null> {
+  const rows = await adb()
+    .select({ r2Key: verificationDocs.r2Key, accountId: verificationDocs.accountId })
+    .from(verificationDocs)
+    .where(eq(verificationDocs.id, id))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+/** Doc ids submitted by an account (by email) — the review panel signs each. */
+export async function verificationDocIdsFor(email: string): Promise<string[]> {
+  const rows = await adb()
+    .select({ id: verificationDocs.id })
+    .from(verificationDocs)
+    .innerJoin(accounts, eq(accounts.id, verificationDocs.accountId))
+    .where(eq(accounts.email, email));
+  return rows.map((r) => r.id);
 }
 
 export interface AuditFilter {

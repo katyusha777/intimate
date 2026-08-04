@@ -146,15 +146,20 @@ const genderTabs = (Object.keys(GENDER_FILTERS) as GenderFilter[]).map((g) => ({
 
     <!-- gap-2 tracks the left CITY·EN pair so both flanks share one rhythm. -->
     <div class="ml-auto flex flex-none items-center gap-2 md:ml-0 md:gap-4">
-      {/* Sun/moon theme switch — always here, so it sits to the LEFT of the
-         avatar when logged in and left of login/register when logged out
-         (light + dark are both first-class; footer no longer carries it). */}
-      <ThemeToggle />
+      {/* Sun/moon theme switch (footer no longer carries it). Logged in: always,
+         to the LEFT of the avatar. Logged out: desktop only — the mobile header
+         (city·EN + centred logo + login/register) has no room for it. */}
       {
         session ? (
-          <UserMenu {session} />
+          <>
+            <ThemeToggle />
+            <UserMenu {session} />
+          </>
         ) : (
           <>
+            <span class="hidden items-center md:flex">
+              <ThemeToggle />
+            </span>
             <button
               type="button"
               data-modal-open="auth"
