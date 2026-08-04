@@ -459,5 +459,12 @@
   "editor_move_down": "Move down",
   "editor_remove_item": "Remove item",
   "legal_terms": "Terms",
-  "legal_privacy": "Privacy"
+  "legal_privacy": "Privacy",
+  "editor_gtk_hint": "Fill this in once — it powers the “Good to know” facts on your profile.",
+  "editor_services_hint": "Tick everything you offer. Clients filter by these.",
+  "editor_hours_hint": "When can clients reach you? Leave a day closed if you don’t work it.",
+  "editor_languages_hint": "Languages you speak.",
+  "editor_place_hint": "Where you receive clients.",
+  "editor_amenities_hint": "What’s available at your place.",
+  "editor_payment_hint": "How clients can pay you."
 }

@@ -459,5 +459,12 @@
   "editor_move_down": "Nach unten",
   "editor_remove_item": "Position entfernen",
   "legal_terms": "AGB",
-  "legal_privacy": "Datenschutz"
+  "legal_privacy": "Datenschutz",
+  "editor_gtk_hint": "Einmal ausfüllen — es speist die „Gut zu wissen“-Angaben auf deinem Profil.",
+  "editor_services_hint": "Hake alles an, was du anbietest. Kunden filtern danach.",
+  "editor_hours_hint": "Wann bist du für Kunden erreichbar? Lass einen Tag geschlossen, wenn du nicht arbeitest.",
+  "editor_languages_hint": "Sprachen, die du sprichst.",
+  "editor_place_hint": "Wo du Kunden empfängst.",
+  "editor_amenities_hint": "Was bei dir verfügbar ist.",
+  "editor_payment_hint": "Wie Kunden bezahlen können."
 }

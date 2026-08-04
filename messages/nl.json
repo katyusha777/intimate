@@ -459,5 +459,12 @@
   "editor_move_down": "Omlaag",
   "editor_remove_item": "Item verwijderen",
   "legal_terms": "Voorwaarden",
-  "legal_privacy": "Privacy"
+  "legal_privacy": "Privacy",
+  "editor_gtk_hint": "Vul dit één keer in — het voedt de “Goed om te weten”-feiten op je profiel.",
+  "editor_services_hint": "Vink alles aan wat je aanbiedt. Klanten filteren hierop.",
+  "editor_hours_hint": "Wanneer kunnen klanten je bereiken? Laat een dag gesloten als je niet werkt.",
+  "editor_languages_hint": "Talen die je spreekt.",
+  "editor_place_hint": "Waar je klanten ontvangt.",
+  "editor_amenities_hint": "Wat er beschikbaar is op jouw locatie.",
+  "editor_payment_hint": "Hoe klanten kunnen betalen."
 }

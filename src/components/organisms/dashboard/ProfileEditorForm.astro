@@ -43,7 +43,11 @@ const { profile: p } = Astro.props;
 const selectedServices = new Set(p.services as readonly string[]);
 // Latest DOB an 18-year-old could have (for the date input's max).
 const max18 = birthDateForAge(18);
-const heading = 'font-condensed text-sm font-bold uppercase tracking-wide';
+// Bigger, unmistakable section headers with a keyline; a muted one-liner under
+// each explains the section in plain words. Sub-groups get a smaller bold label.
+const heading = 'font-condensed text-xl font-bold uppercase tracking-wide';
+const sectionSub = 'text-sm leading-relaxed text-muted-foreground';
+const subhead = 'font-condensed text-sm font-bold uppercase tracking-wide text-foreground';
 const row = 'flex cursor-pointer select-none items-center gap-2.5 text-sm hover:text-foreground/70';
 
 // Existing rate rows keyed by duration for quick prefill of the table editor.
@@ -59,7 +63,7 @@ const selAmenities = setOf(p.amenities ?? []);
 const selPayments = setOf(p.paymentMethods ?? []);
 ---
 
-<form data-profile-editor class="max-w-2xl space-y-8">
+<form data-profile-editor class="max-w-2xl space-y-12">
   <div class="grid gap-4 sm:grid-cols-2">
     <SlabField label={m.editor_name()} name="name" value={p.name} required />
     <SlabField
@@ -235,10 +239,16 @@ const selPayments = setOf(p.paymentMethods ?? []);
   <!-- Good-to-know (UX-PLAN 2.5): taxonomy-keyed facts filled once. Every
        checkbox group is an aligned 2-column grid; languages show the top 6
        with the long tail behind a native Show-more. -->
-  <div class="space-y-4">
-    <h3 class={heading}>{m.gtk_title()}</h3>
+  <div class="space-y-8">
     <div class="space-y-1.5">
-      <span class="eyebrow text-2xs text-muted-foreground">{m.gtk_languages()}</span>
+      <h3 class={heading}>{m.gtk_title()}</h3>
+      <p class={sectionSub}>{m.editor_gtk_hint()}</p>
+    </div>
+    <div class="space-y-2.5">
+      <div>
+        <span class={subhead}>{m.gtk_languages()}</span>
+        <p class="mt-0.5 text-xs text-muted-foreground">{m.editor_languages_hint()}</p>
+      </div>
       <div class="grid grid-cols-2 gap-x-4 gap-y-2">
         {LANGUAGES.slice(0, 6).map((l) => (
           <label class={row}>
@@ -266,8 +276,11 @@ const selPayments = setOf(p.paymentMethods ?? []);
         </div>
       </details>
     </div>
-    <div class="space-y-1.5">
-      <span class="eyebrow text-2xs text-muted-foreground">{m.gtk_place()}</span>
+    <div class="space-y-2.5">
+      <div>
+        <span class={subhead}>{m.gtk_place()}</span>
+        <p class="mt-0.5 text-xs text-muted-foreground">{m.editor_place_hint()}</p>
+      </div>
       <div class="grid grid-cols-2 gap-x-4 gap-y-2">
         {INCALL_LOCATIONS.map((l) => (
           <label class={row}>
@@ -277,8 +290,11 @@ const selPayments = setOf(p.paymentMethods ?? []);
         ))}
       </div>
     </div>
-    <div class="space-y-1.5">
-      <span class="eyebrow text-2xs text-muted-foreground">{m.editor_amenities()}</span>
+    <div class="space-y-2.5">
+      <div>
+        <span class={subhead}>{m.editor_amenities()}</span>
+        <p class="mt-0.5 text-xs text-muted-foreground">{m.editor_amenities_hint()}</p>
+      </div>
       <div class="grid grid-cols-2 gap-x-4 gap-y-2">
         {AMENITIES.map((a) => (
           <label class={row}>
@@ -288,8 +304,11 @@ const selPayments = setOf(p.paymentMethods ?? []);
         ))}
       </div>
     </div>
-    <div class="space-y-1.5">
-      <span class="eyebrow text-2xs text-muted-foreground">{m.gtk_payment()}</span>
+    <div class="space-y-2.5">
+      <div>
+        <span class={subhead}>{m.gtk_payment()}</span>
+        <p class="mt-0.5 text-xs text-muted-foreground">{m.editor_payment_hint()}</p>
+      </div>
       <div class="grid grid-cols-2 gap-x-4 gap-y-2">
         {PAYMENT_METHODS.map((pm) => (
           <label class={row}>
@@ -302,52 +321,10 @@ const selPayments = setOf(p.paymentMethods ?? []);
   </div>
 
   <div class="space-y-2">
-    <h3 class={heading}>{m.editor_hours()}</h3>
-    <div>
-      {
-        DAYS.map((day) => {
-          const h = p.openingHours?.[day] ?? { closed: false, allDay: false, from: '10:00', to: '22:00' };
-          return (
-            <div class="border-b border-border py-2.5" data-hours-row data-day={day}>
-              <!-- Line 1: day left, the two toggles right-aligned — every row's
-                   checkboxes line up. Line 2: the time range (when applicable). -->
-              <div class="flex items-center justify-between gap-3">
-                <span class="text-sm font-medium">{dayLabel(day)}</span>
-                <div class="flex flex-none items-center gap-4">
-                  <label class="flex cursor-pointer select-none items-center gap-2 text-sm">
-                    <input type="checkbox" checked={h.closed} class="cbx-box" data-hours-closed />
-                    {m.hours_closed()}
-                  </label>
-                  <label class="flex cursor-pointer select-none items-center gap-2 text-sm" data-hours-openonly>
-                    <input type="checkbox" checked={h.allDay} class="cbx-box" data-hours-allday />
-                    {m.hours_allday()}
-                  </label>
-                </div>
-              </div>
-              <div class="mt-2 flex items-center gap-2" data-hours-times>
-                <input
-                  type="time"
-                  data-hours-from
-                  value={h.from || '10:00'}
-                  class="border border-foreground/20 bg-transparent px-2 py-1 text-sm outline-none transition-colors focus:border-foreground"
-                />
-                <span class="text-muted-foreground" aria-hidden="true">–</span>
-                <input
-                  type="time"
-                  data-hours-to
-                  value={h.to || '22:00'}
-                  class="border border-foreground/20 bg-transparent px-2 py-1 text-sm outline-none transition-colors focus:border-foreground"
-                />
-              </div>
-            </div>
-          );
-        })
-      }
+    <div class="space-y-1.5">
+      <h3 class={heading}>{m.filter_services()}</h3>
+      <p class={sectionSub}>{m.editor_services_hint()}</p>
     </div>
-  </div>
-
-  <div class="space-y-2">
-    <h3 class={heading}>{m.filter_services()}</h3>
     <div>
       {
         SERVICE_CATEGORIES.map((cat) => {
@@ -381,6 +358,52 @@ const selPayments = setOf(p.paymentMethods ?? []);
                 ))}
               </div>
             </details>
+          );
+        })
+      }
+    </div>
+  </div>
+
+  <!-- Working hours — last, per the editor layout. Fixed-width toggle columns so
+       Closed / 24 hours line up down every row. -->
+  <div class="space-y-2">
+    <div class="space-y-1.5">
+      <h3 class={heading}>{m.editor_hours()}</h3>
+      <p class={sectionSub}>{m.editor_hours_hint()}</p>
+    </div>
+    <div>
+      {
+        DAYS.map((day) => {
+          const h = p.openingHours?.[day] ?? { closed: false, allDay: false, from: '10:00', to: '22:00' };
+          return (
+            <div class="border-b border-border py-2.5" data-hours-row data-day={day}>
+              <div class="flex items-center gap-3">
+                <span class="flex-1 text-sm font-medium">{dayLabel(day)}</span>
+                <label class="flex w-24 flex-none cursor-pointer select-none items-center gap-2 text-sm">
+                  <input type="checkbox" checked={h.closed} class="cbx-box" data-hours-closed />
+                  {m.hours_closed()}
+                </label>
+                <label class="flex w-28 flex-none cursor-pointer select-none items-center gap-2 text-sm" data-hours-openonly>
+                  <input type="checkbox" checked={h.allDay} class="cbx-box" data-hours-allday />
+                  {m.hours_allday()}
+                </label>
+              </div>
+              <div class="mt-2 flex items-center gap-2" data-hours-times>
+                <input
+                  type="time"
+                  data-hours-from
+                  value={h.from || '10:00'}
+                  class="border border-foreground/20 bg-transparent px-2 py-1 text-sm outline-none transition-colors focus:border-foreground"
+                />
+                <span class="text-muted-foreground" aria-hidden="true">–</span>
+                <input
+                  type="time"
+                  data-hours-to
+                  value={h.to || '22:00'}
+                  class="border border-foreground/20 bg-transparent px-2 py-1 text-sm outline-none transition-colors focus:border-foreground"
+                />
+              </div>
+            </div>
           );
         })
       }
