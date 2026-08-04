@@ -237,6 +237,42 @@ const unread =
         apply();
       })();
 
+      // Live availability badge (page-cache.ts): the profile page HTML is edge
+      // -cached 24h, so its "online" dot is a snapshot. On any profile view
+      // (full page or lifted into the sheet) re-fetch the fresh state once and
+      // patch the [data-avail] badges — the cached shell is never stale-online.
+      (function () {
+        const markMarkup = (online, glyph, muted) =>
+          online
+            ? '<span class="size-1.5 flex-none rounded-full bg-online" aria-hidden="true"></span>'
+            : '<span class="flex-none leading-none ' + muted + '" aria-hidden="true">' + glyph + '</span>';
+        async function refreshAvail() {
+          if (!document.querySelector('[data-avail-refresh]')) return;
+          try {
+            const base = location.pathname.replace(/\/+$/, '');
+            const res = await fetch(base + '/avail.json', { headers: { 'X-Sheet': '1' } });
+            if (!res.ok) return;
+            const a = await res.json(); // { online, glyph, label, sub }
+            document.querySelectorAll('[data-avail]').forEach((el) => {
+              const muted = el.getAttribute('data-avail-variant') === 'card' ? 'text-white/50' : 'text-muted-foreground';
+              const mark = el.querySelector('[data-avail-mark]');
+              if (mark) mark.innerHTML = markMarkup(a.online, a.glyph, muted);
+              const label = el.querySelector('[data-avail-label]');
+              if (label) label.textContent = a.label;
+              const sub = el.querySelector('[data-avail-sub]');
+              if (sub) {
+                const t = a.sub ? '· ' + a.sub : '';
+                sub.textContent = t;
+                sub.classList.toggle('hidden', !t);
+              }
+            });
+          } catch (_) {
+            /* cached snapshot stands */
+          }
+        }
+        document.addEventListener('astro:page-load', refreshAvail);
+      })();
+
       if ('serviceWorker' in navigator) {
         addEventListener('load', () => navigator.serviceWorker.register('/sw.js'));
       }

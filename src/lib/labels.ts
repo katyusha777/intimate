@@ -1,4 +1,5 @@
 import * as m from '@/paraglide/messages';
+import type { Availability } from '@/app/models/profile';
 import type {
   Amenity,
   Day,
@@ -23,6 +24,30 @@ function taxonomyLabel(key: string, fallback: string): string {
 export function dayLabel(d: Day, short = false): string {
   const fn = (m as Record<string, unknown>)[`${short ? 'day_short' : 'day'}_${d}`];
   return typeof fn === 'function' ? (fn as () => string)() : d;
+}
+
+/**
+ * Availability → the display bits (label / glyph / sub / online), one place so
+ * AvailabilityLine (SSR) and the /avail.json refresh (client) never drift.
+ * `glyph: 'dot'` = the live green circle; otherwise it's an ink glyph.
+ */
+export function availabilityView(a: Availability): {
+  online: boolean;
+  glyph: string;
+  label: string;
+  sub: string | null;
+} {
+  const label =
+    a.kind === 'online'
+      ? m.online_now()
+      : a.kind === 'today_until'
+        ? m.avail_today_until({ time: a.until ?? '' })
+        : a.nextDay
+          ? m.avail_back({ day: dayLabel(a.nextDay, true) })
+          : m.avail_back_soon();
+  const glyph = a.kind === 'online' ? 'dot' : a.kind === 'today_until' ? '◐' : '○';
+  const sub = a.kind !== 'online' && a.lastActiveToday ? m.avail_active_today({ time: a.lastActiveToday }) : null;
+  return { online: a.kind === 'online', glyph, label, sub };
 }
 
 /** Taxonomy value → localized label (taxonomy = law: labels only via i18n). */

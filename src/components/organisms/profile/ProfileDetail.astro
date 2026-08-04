@@ -51,6 +51,10 @@ function hoursLabel(h: (typeof hours)[keyof typeof hours]): string {
 ---
 
 <div data-profile-root data-lightbox-group data-profile-slug={p.slug}>
+  <!-- Marks a profile view (full page or lifted into the sheet) so Layout's
+       post-paint refresh knows to re-fetch the live availability badge — the
+       one bit the 24h page cache leaves out. -->
+  <span data-avail-refresh hidden></span>
   <!-- Mobile: immersive full-viewport hero (tap → lightbox), the photo grid
        directly beneath it — gallery first, facts after. (The grid is ALSO the
        canonical lightbox photo source, hidden-but-present on desktop.) -->

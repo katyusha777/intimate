@@ -12,9 +12,8 @@
  *  - `card`   — compact, white-on-ink (rides inside the card's ink slab).
  *  - `line`   — inline foreground text (profile / sticky card).
  */
-import * as m from '@/paraglide/messages';
 import { availabilityState, type Profile } from '@/app/models/profile';
-import { dayLabel } from '@/lib/labels';
+import { availabilityView } from '@/lib/labels';
 
 interface Props {
   profile: Profile;
@@ -25,46 +24,38 @@ interface Props {
 }
 
 const { profile, variant = 'card', now, class: className } = Astro.props;
-const a = availabilityState(profile, now);
-
-const label =
-  a.kind === 'online'
-    ? m.online_now()
-    : a.kind === 'today_until'
-      ? m.avail_today_until({ time: a.until ?? '' })
-      : a.nextDay
-        ? m.avail_back({ day: dayLabel(a.nextDay, true) })
-        : m.avail_back_soon();
-
-/* Glyph: filled green die-cut for online; ink half-moon / hollow for the rest.
-   Kept as text glyphs so it stays flat print, no extra markup. */
-const glyph = a.kind === 'online' ? 'dot' : a.kind === 'today_until' ? '◐' : '○';
+/* Label/glyph/sub via the shared helper — the /avail.json refresh (Layout)
+   rebuilds these same bits client-side to keep a cached page honest, targeting
+   the [data-avail-*] hooks below. */
+const v = availabilityView(availabilityState(profile, now));
 
 const muted = variant === 'card' ? 'text-white/50' : 'text-muted-foreground';
 ---
 
 <span
+  data-avail
+  data-avail-variant={variant}
   class:list={[
     'flex items-center gap-1.5',
     variant === 'card' ? 'text-xs font-medium' : 'text-sm',
     className,
   ]}
 >
-  {
-    glyph === 'dot' ? (
-      <span class="size-1.5 flex-none rounded-full bg-online" aria-hidden="true" />
-    ) : (
-      <span class:list={['flex-none leading-none', muted]} aria-hidden="true">
-        {glyph}
-      </span>
-    )
-  }
-  <span class="truncate">{label}</span>
-  {
-    a.kind !== 'online' && a.lastActiveToday && (
-      <span class:list={['truncate', muted]}>
-        · {m.avail_active_today({ time: a.lastActiveToday })}
-      </span>
-    )
-  }
+  <!-- `contents` wrapper: a stable refresh target that generates no box, so the
+       dot/glyph aligns exactly as an unwrapped child would. -->
+  <span data-avail-mark class="contents">
+    {
+      v.glyph === 'dot' ? (
+        <span class="size-1.5 flex-none rounded-full bg-online" aria-hidden="true" />
+      ) : (
+        <span class:list={['flex-none leading-none', muted]} aria-hidden="true">
+          {v.glyph}
+        </span>
+      )
+    }
+  </span>
+  <span data-avail-label class="truncate">{v.label}</span>
+  <span data-avail-sub class:list={['truncate', muted, !v.sub && 'hidden']}>
+    {v.sub ? `· ${v.sub}` : ''}
+  </span>
 </span>

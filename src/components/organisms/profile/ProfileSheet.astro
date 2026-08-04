@@ -79,30 +79,69 @@ import SideDrawer from '@/components/molecules/SideDrawer.astro';
     let savedUrl = '';
 
     // The tapped card's photo is ALREADY decoded in memory — seed the sheet
-    // with it so the hero paints on the very first frame (no black/gray flash
-    // while the page fetches); the real hero then swaps in over the same
-    // pixels. Below it, a skeleton SHAPED like the profile (deal card, then
-    // about lines) via the .skeleton token — not three faint bars in the dark.
-    const skeleton = (photo?: string) => `
+    // with it so the first frame paints the photo (no black/gray flash while
+    // the page fetches); the real content then swaps in over the same pixels.
+    // The skeleton is SHAPED like the real ProfileDetail so the swap doesn't
+    // reshuffle the layout — and the two presentations differ, so it branches:
+    //  · mobile ActionSheet: hero → full-bleed square grid → dark facts slab
+    //  · desktop SideDrawer: title → 3:4 photo strip → 2-col content + facts
+    const factsSkeleton = `
+      <div class="facts-slab dark space-y-4 bg-neutral-950 p-6">
+        <div class="skeleton h-9 w-2/5"></div>
+        <div class="skeleton h-11 w-full"></div>
+        <div class="skeleton h-4 w-1/2"></div>
+        <div class="space-y-2.5 pt-3">
+          <div class="skeleton h-4 w-full"></div>
+          <div class="skeleton h-4 w-full"></div>
+          <div class="skeleton h-4 w-full"></div>
+        </div>
+      </div>`;
+    const seedImg = (photo?: string) =>
+      photo ? `<img src="${photo.replace(/"/g, '&quot;')}" alt="" class="h-full w-full object-cover" />` : '';
+
+    const skeleton = (photo?: string, mobile = true) =>
+      mobile
+        ? `
       <div>
-        <div class="${photo ? 'h-[72dvh]' : 'skeleton h-[72dvh]'}">${
-          photo
-            ? `<img src="${photo.replace(/"/g, '&quot;')}" alt="" class="h-full w-full object-cover" />`
-            : ''
-        }</div>
-        <div class="space-y-8 p-6">
-          <div class="space-y-3 rounded-2xl bg-card p-5 shadow-soft dark:ring-1 dark:ring-border">
-            <div class="skeleton h-7 w-2/5"></div>
-            <div class="skeleton h-4 w-full"></div>
-            <div class="skeleton h-4 w-full"></div>
-            <div class="skeleton h-4 w-3/4"></div>
-            <div class="skeleton h-12 w-full"></div>
-          </div>
+        <div class="${photo ? 'h-[72dvh]' : 'skeleton h-[72dvh]'}">${seedImg(photo)}</div>
+        <div class="mt-0.5 grid grid-cols-3 gap-0.5">
+          <div class="skeleton aspect-square"></div>
+          <div class="skeleton aspect-square"></div>
+          <div class="skeleton aspect-square"></div>
+        </div>
+        <div class="space-y-10 px-4 py-8">
+          ${factsSkeleton}
           <div class="space-y-3">
-            <div class="skeleton h-6 w-32"></div>
+            <div class="skeleton h-7 w-32"></div>
             <div class="skeleton h-4 w-full"></div>
             <div class="skeleton h-4 w-5/6"></div>
           </div>
+        </div>
+      </div>`
+        : `
+      <div class="mx-auto max-w-7xl px-6 pt-8">
+        <div class="mb-4 flex items-end justify-between gap-4">
+          <div class="space-y-2.5">
+            <div class="skeleton h-9 w-52"></div>
+            <div class="skeleton h-4 w-72"></div>
+          </div>
+          <div class="skeleton h-5 w-24"></div>
+        </div>
+        <div class="grid h-[26rem] grid-cols-3 gap-2 lg:h-[30rem]">
+          <div class="${photo ? '' : 'skeleton'} overflow-hidden rounded-xl">${seedImg(photo)}</div>
+          <div class="skeleton rounded-xl"></div>
+          <div class="skeleton rounded-xl"></div>
+        </div>
+        <div class="mt-12 grid gap-12 lg:grid-cols-[1fr_22rem]">
+          <div class="space-y-5">
+            <div class="skeleton h-8 w-28"></div>
+            <div class="skeleton h-4 w-full"></div>
+            <div class="skeleton h-4 w-5/6"></div>
+            <div class="skeleton mt-4 h-8 w-40"></div>
+            <div class="skeleton h-4 w-full"></div>
+            <div class="skeleton h-4 w-2/3"></div>
+          </div>
+          ${factsSkeleton}
         </div>
       </div>`;
 
@@ -120,7 +159,7 @@ import SideDrawer from '@/components/molecules/SideDrawer.astro';
       history.replaceState(null, '', savedUrl);
       history.pushState(null, '', url);
       open = true;
-      b.innerHTML = skeleton(seedPhoto);
+      b.innerHTML = skeleton(seedPhoto, mobile.matches);
       b.scrollTop = 0;
       s.openSheet();
       try {

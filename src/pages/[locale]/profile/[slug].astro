@@ -18,22 +18,29 @@ if (!isLocale(locale) || !slug) return new Response(null, { status: 404 });
 const p = await profilesApi.bySlug(slug);
 if (!p) return new Response(null, { status: 404 });
 
-// Offline fallback (2.6): only fetch candidates when she's away — online,
-// same-city, service-overlapping profiles. The seam lives here (app/api rule).
-let similar: typeof p[] = [];
-if (availabilityState(p).kind !== 'online') {
+// Everything below depends only on `p`, so fetch it in ONE parallel wave rather
+// than four sequential edge→Frankfurt round-trips (the cold-load cost). The
+// offline-fallback candidates (2.6) are only fetched when she's away.
+const offline = availabilityState(p).kind !== 'online';
+const [replySpeed, convo, candidates] = await Promise.all([
+  // Measured reply speed (3.2): null below the honest sample threshold → hidden.
+  messagingApi.replySpeedFor(p.id),
+  // Request sheet (UX-PLAN 4.x): her screening question rides in the request
+  // when set. Public projection only — the mode never leaks (the sheet just
+  // won't submit if her inbox is off, enforced in the action).
+  messagingApi.settings(p.id),
+  offline
+    ? profilesApi.list({ city: p.city, onlineOnly: true, limit: 12 })
+    : Promise.resolve({ items: [] as (typeof p)[] }),
+]);
+
+let similar: (typeof p)[] = [];
+if (offline) {
   const services = new Set(p.services as readonly string[]);
-  const { items } = await profilesApi.list({ city: p.city, onlineOnly: true, limit: 12 });
-  similar = items.filter((c) => c.id !== p.id && c.services.some((s) => services.has(s))).slice(0, 3);
+  similar = candidates.items
+    .filter((c) => c.id !== p.id && c.services.some((s) => services.has(s)))
+    .slice(0, 3);
 }
-
-// Measured reply speed (3.2): null below the honest sample threshold → hidden.
-const replySpeed = await messagingApi.replySpeedFor(p.id);
-
-// Request sheet (UX-PLAN 4.x): her screening question rides in the request when
-// set. Public projection only — the mode itself never leaks (the sheet just
-// won't submit if her inbox is off, enforced in the action).
-const convo = await messagingApi.settings(p.id);
 const screeningQuestion = convo.screeningQuestion || undefined;
 
 const description = localizedDescription(p);

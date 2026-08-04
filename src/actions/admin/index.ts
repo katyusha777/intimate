@@ -8,8 +8,13 @@ import { ActionError, defineAction } from 'astro:actions';
 import { z } from 'astro:schema';
 import { accountApi } from '@/app/api/account';
 import { reportsApi } from '@/app/api/reports';
+import { env } from 'cloudflare:workers';
 import { REJECTION_REASONS, REPORT_RESOLUTIONS } from '@/lib/taxonomy';
+import { bustProfiles, type CacheKv } from '@/lib/page-cache';
+import { listWarmUrls } from '@/lib/warm';
 import { claimItem, record, releaseItem, requireAdmin } from './lib';
+
+const sessionKv = () => (env as unknown as Record<string, unknown>).SESSION as CacheKv | undefined;
 import { decideModeration } from './queues';
 import { setProfileState } from './entities';
 import { retryImport } from './imports';
@@ -136,8 +141,37 @@ export const admin = {
       };
       const m = map[action]!;
       await setProfileState(id, m.state, session.email, reason);
+      await bustProfiles(sessionKv()); // lifecycle change → drop the edge cache
       await record(session, { action: m.audit, entityType: 'profile', entityId: id, reason });
       return { ok: true };
+    },
+  }),
+
+  // --- edge cache control (docs/ARCHITECTURE §4): super-only ---
+  cachePurge: defineAction({
+    input: z.object({}),
+    handler: async (_input, context) => {
+      const session = await requireAdmin(context, []); // [] → super-only
+      await bustProfiles(sessionKv());
+      await record(session, {
+        action: 'add_note',
+        entityType: 'cache',
+        entityId: 'profiles',
+        meta: { note: 'purge edge cache' },
+      });
+      return { ok: true };
+    },
+  }),
+
+  // Returns the live-profile URLs; the admin's BROWSER fetches them to warm the
+  // cache (the worker can't self-fetch — Cloudflare loops it back to 522).
+  cacheWarmUrls: defineAction({
+    input: z.object({}),
+    handler: async (_input, context) => {
+      await requireAdmin(context, []); // [] → super-only
+      const origin = new URL(context.request.url).origin;
+      const hyperdrive = (env as unknown as { HYPERDRIVE: Hyperdrive }).HYPERDRIVE;
+      return { urls: await listWarmUrls({ origin, hyperdrive }) };
     },
   }),
 

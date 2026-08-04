@@ -9,7 +9,9 @@ import { accountApi } from "@/app/api/account";
 import { messagingApi } from "@/app/api/messaging";
 import { reportsApi } from "@/app/api/reports";
 import { sessionApi } from "@/app/api/session";
+import { env } from "cloudflare:workers";
 import { startPhoneVerify, checkPhoneVerify } from "@/lib/twilio";
+import { bustProfiles, type CacheKv } from "@/lib/page-cache";
 import { CONVERSATION_MODES, REPORT_REASONS, REPORT_TARGETS } from "@/lib/taxonomy";
 // The one sanctioned cross-fence import: the action registry wires in admin.
 import { admin } from "@/actions/admin";
@@ -19,6 +21,9 @@ import {
   RATE_DURATIONS,
   REQUEST_WHEN,
 } from "@/lib/taxonomy";
+
+const cacheKv = (): CacheKv | undefined =>
+  (env as unknown as Record<string, unknown>).SESSION as CacheKv | undefined;
 
 /** Actions run with the request context — sessions verified per request. */
 async function requireSession(context: Parameters<typeof sessionApi.current>[0]) {
@@ -85,6 +90,7 @@ export const server = {
           // Missing identity fields on a first save (name/birthDate/gender/city).
           throw new ActionError({ code: "BAD_REQUEST" });
         }
+        await bustProfiles(cacheKv()); // her public page changed → drop the edge cache
         return { ok: true };
       },
     }),
@@ -130,6 +136,7 @@ export const server = {
         const bytes = new Uint8Array(bin.length);
         for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
         await accountApi.addPhoto(session, { bytes: bytes.buffer, contentType: "image/jpeg", isPrivate });
+        await bustProfiles(cacheKv());
         return { ok: true };
       },
     }),
@@ -139,6 +146,7 @@ export const server = {
       handler: async ({ id }, context) => {
         const session = await requireSession(context);
         await accountApi.removePhoto(session, { id });
+        await bustProfiles(cacheKv());
         return { ok: true };
       },
     }),
