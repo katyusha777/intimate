@@ -260,11 +260,18 @@ export const accountApi: AccountApi = {
       await b.put(r2Key, doc.bytes, { httpMetadata: { contentType: 'image/jpeg' } });
       rows.push({ accountId: session.accountId, r2Key, docHash: await sha256Hex(doc.bytes) });
     }
-    if (rows.length) await d.insert(verificationDocs).values(rows);
-    await d
-      .update(accounts)
-      .set({ idVerification: 'pending', verificationSubmittedAt: new Date() })
-      .where(eq(accounts.id, session.accountId));
+    try {
+      if (rows.length) await d.insert(verificationDocs).values(rows);
+      await d
+        .update(accounts)
+        .set({ idVerification: 'pending', verificationSubmittedAt: new Date() })
+        .where(eq(accounts.id, session.accountId));
+    } catch (e) {
+      // Never leave orphaned toxic-waste objects if the DB write fails — they'd
+      // escape the retention/purge accounting (hard rule 3).
+      await Promise.allSettled(rows.map((r) => b.delete(r.r2Key)));
+      throw e;
+    }
   },
 
   async photos(session) {

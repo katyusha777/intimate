@@ -41,15 +41,8 @@ export const admin = {
   }),
 
   // --- verification (§5): moderator/super ---
-  verificationDocViewed: defineAction({
-    // The sensitive read itself is logged (doc reveal → audit, §5).
-    input: z.object({ email: z.string().email() }),
-    handler: async ({ email }, context) => {
-      const session = await requireAdmin(context, ['moderator']);
-      await record(session, { action: 'verification_doc_viewed', entityType: 'account', entityId: email });
-      return { ok: true };
-    },
-  }),
+  // NB: the doc READ itself is audited at the serve route (src/pages/admin/vdoc/[id].ts),
+  // not via a client action — so there's no verificationDocViewed action here.
   verificationDecision: defineAction({
     input: z.object({
       email: z.string().email(),

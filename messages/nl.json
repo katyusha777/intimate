@@ -514,5 +514,7 @@
   "onb_verify_submit_hint": "Beide checks klaar — stuur je profiel naar ons om te controleren.",
   "onb_done_title": "Klaar! We controleren je profiel.",
   "onb_done_note": "Dit duurt meestal maximaal 24 uur. Je krijgt een e-mail zodra je live bent.",
-  "onb_done_cta": "Bekijk mijn profiel"
+  "onb_done_cta": "Bekijk mijn profiel",
+  "onb_need_rate": "Voeg minstens één prijs toe om door te gaan.",
+  "onb_need_service": "Vink minstens één dienst aan om door te gaan."
 }

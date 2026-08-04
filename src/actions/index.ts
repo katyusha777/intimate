@@ -25,6 +25,14 @@ import {
 const cacheKv = (): CacheKv | undefined =>
   (env as unknown as Record<string, unknown>).SESSION as CacheKv | undefined;
 
+/** Decode a `data:...;base64,` URL to bytes (photos + verification docs). */
+function dataUrlToBytes(dataUrl: string): ArrayBuffer {
+  const bin = atob(dataUrl.slice(dataUrl.indexOf(",") + 1));
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes.buffer;
+}
+
 /** Actions run with the request context — sessions verified per request. */
 async function requireSession(context: Parameters<typeof sessionApi.current>[0]) {
   const session = await sessionApi.current(context);
@@ -163,12 +171,8 @@ export const server = {
       handler: async ({ dataUrl, isPrivate }, context) => {
         const session = await requireSession(context);
         // Decode the client's EXIF-stripped JPEG data-URL → bytes → R2 (the
-        // data layer owns the upload). base64 → ArrayBuffer.
-        const base64 = dataUrl.slice(dataUrl.indexOf(",") + 1);
-        const bin = atob(base64);
-        const bytes = new Uint8Array(bin.length);
-        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-        await accountApi.addPhoto(session, { bytes: bytes.buffer, contentType: "image/jpeg", isPrivate });
+        // data layer owns the upload).
+        await accountApi.addPhoto(session, { bytes: dataUrlToBytes(dataUrl), contentType: "image/jpeg", isPrivate });
         await bustProfiles(cacheKv());
         return { ok: true };
       },
@@ -229,18 +233,11 @@ export const server = {
       }),
       handler: async ({ doc, selfie }, context) => {
         const session = await requireSession(context);
-        // base64 data URL → bytes (same decode as addPhoto).
-        const toBytes = (dataUrl: string): ArrayBuffer => {
-          const bin = atob(dataUrl.slice(dataUrl.indexOf(",") + 1));
-          const bytes = new Uint8Array(bin.length);
-          for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-          return bytes.buffer;
-        };
         try {
           // Streams to the private EU bucket + records hashes + flags pending
           // (hard rule 3). NEVER log the contents — only a generic failure.
           await accountApi.submitVerification(session, {
-            docs: [{ bytes: toBytes(doc) }, { bytes: toBytes(selfie) }],
+            docs: [{ bytes: dataUrlToBytes(doc) }, { bytes: dataUrlToBytes(selfie) }],
           });
         } catch (e) {
           console.error("[verify] submit failed:", (e as Error).message);

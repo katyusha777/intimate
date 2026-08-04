@@ -514,5 +514,7 @@
   "onb_verify_submit_hint": "Both checks done — send your profile to us to review.",
   "onb_done_title": "Done! We're checking your profile.",
   "onb_done_note": "This usually takes up to 24 hours. You'll get an email the moment you're live.",
-  "onb_done_cta": "See my profile"
+  "onb_done_cta": "See my profile",
+  "onb_need_rate": "Add at least one price to continue.",
+  "onb_need_service": "Tick at least one service to continue."
 }
