@@ -13,6 +13,9 @@
   },
   "placement": { "mode": "smart" },
   "observability": { "enabled": true },
+  // Deploy id → folded into the page-cache key so every deploy auto-invalidates
+  // cached profile HTML (no manual purge, no stale-after-redeploy window).
+  "version_metadata": { "binding": "CF_VERSION" },
   // ponytail: single-tier — one hosted Supabase project is THE database until
   // the project proves itself (INFRASTRUCTURE §1); split tiers/ids then.
   // In `bun run dev` the binding connects via the
@@ -45,6 +48,7 @@
       ],
       "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "intimate-media" }],
       "images": { "binding": "IMAGES" },
+      "version_metadata": { "binding": "CF_VERSION" },
       "vars": {
         "PUBLIC_SUPABASE_URL": "https://jqrfzqbuvekhcptqcpda.supabase.co",
         "PUBLIC_SUPABASE_KEY": "sb_publishable_jzpgxggUIg8-uodVAaT1SA_KZxO34fe"

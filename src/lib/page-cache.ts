@@ -10,8 +10,12 @@
  * The KV binding is passed in (callers hold `env` from cloudflare:workers) so
  * this module stays import-clean and unit-testable, like the data-layer models.
  *
- * Bust: a single generation counter bumped on ANY profile mutation. Old entries
- * fall out of the key space and expire by TTL.
+ * Bust: two dimensions in the key — the DEPLOY id and a generation counter.
+ * - deployId (Cloudflare version_metadata) changes every deploy, so a code/
+ *   template change auto-invalidates every cached page (no manual purge, no 24h
+ *   stale window — the class of bug where a redeploy kept serving old HTML).
+ * - gen is bumped on ANY profile DATA mutation, invalidating within a deploy.
+ * Old entries fall out of the key space and expire by TTL.
  * ponytail: global generation bust — coarse on purpose (low edit rate). Go
  * per-slug (store slug→gen) if edit volume makes the whole shelf go cold.
  */
@@ -41,27 +45,46 @@ export function isAnonymousRequest(cookieHeader: string | null): boolean {
   return !/(?:^|;\s*)sb-[\w-]*-auth-token/.test(cookieHeader ?? '');
 }
 
-export async function servedFromCache(kv: CacheKv | undefined, url: URL): Promise<Response | null> {
+// Browsers revalidate rather than heuristically holding the HTML — so a deploy's
+// fresh render reaches them on the next navigation, not whenever the heuristic
+// TTL happens to lapse. Cheap: a 304 when nothing changed.
+const REVALIDATE = 'no-cache';
+
+const cacheKey = (deployId: string, gen: string, pathname: string) => `pc:${deployId}:${gen}:${pathname}`;
+
+export async function servedFromCache(
+  kv: CacheKv | undefined,
+  deployId: string,
+  url: URL,
+): Promise<Response | null> {
   if (!kv) return null;
   const gen = (await kv.get(GEN_KEY)) ?? '0';
-  const html = await kv.get(`pc:${gen}:${url.pathname}`);
+  const html = await kv.get(cacheKey(deployId, gen, url.pathname));
   if (html == null) return null;
   return new Response(html, {
     status: 200,
-    headers: { 'content-type': 'text/html; charset=utf-8', 'x-cache': 'HIT' },
+    headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': REVALIDATE, 'x-cache': 'HIT' },
   });
 }
 
 /** Cache a clean public 200 HTML response, then return an equivalent Response. */
-export async function storeInCache(kv: CacheKv | undefined, url: URL, res: Response): Promise<Response> {
+export async function storeInCache(
+  kv: CacheKv | undefined,
+  deployId: string,
+  url: URL,
+  res: Response,
+): Promise<Response> {
   const ct = res.headers.get('content-type') ?? '';
   if (!kv || res.status !== 200 || !ct.includes('text/html') || res.headers.has('set-cookie')) {
     return res;
   }
   const html = await res.text();
   const gen = (await kv.get(GEN_KEY)) ?? '0';
-  await kv.put(`pc:${gen}:${url.pathname}`, html, { expirationTtl: TTL_S });
-  return new Response(html, { status: 200, headers: { 'content-type': ct, 'x-cache': 'MISS' } });
+  await kv.put(cacheKey(deployId, gen, url.pathname), html, { expirationTtl: TTL_S });
+  return new Response(html, {
+    status: 200,
+    headers: { 'content-type': ct, 'cache-control': REVALIDATE, 'x-cache': 'MISS' },
+  });
 }
 
 /** Bump the generation so every cached profile page misses on its next hit. */

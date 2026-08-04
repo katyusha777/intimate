@@ -7,6 +7,11 @@ import { isAnonymousRequest, isCacheableProfile, servedFromCache, storeInCache, 
 const cacheKv = (): CacheKv | undefined =>
   (env as unknown as Record<string, unknown>).SESSION as CacheKv | undefined;
 
+// The deployment id (Cloudflare version_metadata) — part of the cache key so a
+// new deploy invalidates every cached page automatically. Absent in local dev.
+const deployId = (): string =>
+  ((env as unknown as { CF_VERSION?: { id?: string } }).CF_VERSION?.id) ?? 'dev';
+
 /**
  * Locale architecture (SEO.md §2): no locale-less URLs. `/` 302-redirects by
  * Accept-Language; every page renders inside paraglideMiddleware so
@@ -59,10 +64,11 @@ export const onRequest = defineMiddleware(async (context, next) => {
     isAnonymousRequest(context.request.headers.get('cookie'))
   ) {
     const kv = cacheKv();
-    const hit = await servedFromCache(kv, context.url);
+    const dep = deployId();
+    const hit = await servedFromCache(kv, dep, context.url);
     if (hit) return hit;
     const res = await paraglideMiddleware(context.request, () => next());
-    return storeInCache(kv, context.url, res);
+    return storeInCache(kv, dep, context.url, res);
   }
 
   return paraglideMiddleware(context.request, () => next());
