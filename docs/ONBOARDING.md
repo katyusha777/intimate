@@ -1,131 +1,126 @@
-# ONBOARDING.md — Professional (advertiser) onboarding plan
+# ONBOARDING.md — The professional's first hour, step by step
 
-**Temporary execution tracker — not a living spec. Delete when the phases land** (UX-PLAN precedent). Durable rules it produces move into DESIGN.md / COMPONENTS.md / this repo's copy in the building PRs. One GitHub Issue per numbered item; sessions stay scoped to one item.
+**Temporary execution tracker — delete when the phases land** (UX-PLAN precedent). One GitHub Issue per numbered item.
 
-**The one sentence this whole flow exists to teach:**
-
-> **Your profile IS your ad.** There is no separate "post an ad" step — filling in your profile *is* creating your ad, and when it's approved, it's live.
-
-Competitor sites split "account" from "ad", so professionals arrive expecting to hunt for a "place ad" button. We kill that confusion by never using the word "ad" as a *thing to create*, and by walking her from first login to submitted-for-review in one guided path.
-
-**Audience law (write ALL copy to this):** plain words, short sentences, one idea per screen, B1 language level, always say *why* ("Clients filter by price — profiles without rates don't appear in price searches"). Never assume she knows web jargon. nl/en/de from day one; mobile 390px first.
+**What this is:** the guided path that takes a professional from "just confirmed my email" to "my profile is submitted" — built for someone who is **not technical, possibly not a strong reader, on a phone, maybe nervous**. She should never wonder what to do next, never lose work, never hit a wall, and feel a little win at every step.
 
 ---
 
-## 0. Current state (what the flow builds on — all live today)
+## 1. The design laws (every screen obeys all of them)
 
-- Register (role tile → email + password) → confirmation email → `/auth/confirm` → lands on `/{locale}/account/` — a bare dashboard with a DRAFT chip and five tabs. **No guidance. This is the gap.**
-- `ProfileEditorForm` — one long form: basics (name/DOB/gender/city) · visit type · rates table · good-to-know (languages/place/amenities/payment) · services (categorised) · hours · description. First save creates the `draft` row (name/DOB/gender/city mandatory then).
-- `/account/photos` — gated on the profile row existing (shows "create your profile first" otherwise). Photos are `pending_review` individually.
-- `VerificationFlow` — step 1 phone (Twilio Verify, live) + step 2 ID upload (mock pending real R2 doc flow).
-- `account.submitProfile` — draft/paused → `pending_review` (never auto-publish, hard rule 5). Nothing currently *prompts* her to call it.
-- Realtime broadcast infra exists (approval-moment toasts are a wired-ready hook).
-
-## 1. The flow (target experience)
-
-```
-Register → confirm email → land in SETUP (not the bare dashboard)
-┌─────────────────────────────────────────────────────────────┐
-│ 0 WELCOME   "Your profile is your ad." What happens next    │
-│             (fill in → photos → verify → we review → live). │
-│             One button: Start.  Escape hatch: Later →       │
-│             dashboard with the checklist card.              │
-│ 1 BASICS    Name shown to clients · birth date · gender ·   │
-│             city · visit type. Save = the draft exists.     │
-│ 2 RATES     The rates table (min 1 row). "Your price in     │
-│             search is the lowest row."                      │
-│ 3 SERVICES  Tick what you offer (min 1). "Clients filter    │
-│             by these — and requests quote them."            │
-│             Good-to-know shown below, clearly optional.     │
-│ 4 PHOTOS    Add photos (min 1 to submit). EXIF note.        │
-│ 5 PHONE     SMS code (already built — VerificationFlow §1). │
-│ 6 ID        Upload ID + selfie (VerificationFlow §2), then  │
-│             ONE button: "Submit my profile for review" —    │
-│             calls submitProfile. → pending banner.          │
-└─────────────────────────────────────────────────────────────┘
-After submit: persistent "In review" banner on account pages.
-On approval: banner flips to "You're live" (realtime later, reload now).
-```
-
-Rules of the wizard:
-- **One step, one job, one primary button.** Progress header "Step 2 of 6" + step names. Back always works. Every step saves on advance (the same partial `saveProfile` — abandoning mid-way loses nothing).
-- **Resume is derived, never stored.** No onboarding table/column: the current step is computed from data (§3). Close the tab, come back, land on the first incomplete step.
-- **Escape hatch on every step** ("I'll finish later") → dashboard, where the checklist card (§2) carries the same completion state. The wizard is a view over the checklist, not a separate system.
-- **Requirements to submit** (= the checklist): basics saved · ≥1 rate row · ≥1 service · ≥1 photo · phone verified · ID submitted. Good-to-know, hours, description stay optional (nudged post-approval, §Phase 3).
-  - Why services/rates are required: the flagship request sheet (UX-PLAN 4.2) quotes *her* service + rate — a live profile without them breaks the product's core loop.
-
-## 2. Dashboard checklist card (the fallback + the memory)
-
-Until the profile is `live`, the dashboard's first card is **"Get your profile live"** — a 6-row checklist mirroring the wizard steps, each row: ✓/○ + label + deep link into the wizard at that step. Under it, the one-sentence frame ("Your profile is your ad — complete it and submit it for review"). When all rows are ✓ but not yet submitted, the card is one big **Submit for review** button. Replaces today's unexplained DRAFT chip as the primary object on the dashboard.
-
-## 3. Derived progress (no new storage — ponytail)
-
-One helper, `onboardingProgress(profile, account)` in `src/lib/onboarding.ts` (pure; unit-tested):
-
-```
-hasBasics   = !!profile.id            (row exists ⇒ the 4 identity fields were saved)
-hasRates    = rates.some(r => duration && (incall||outcall))
-hasServices = services.length >= 1
-hasPhotos   = photos.length >= 1      (any state — pending counts; review handles quality)
-phoneOk     = !!account.phoneVerifiedAt
-idOk        = idVerification in ('pending','approved')
-submitted   = profile.state !== 'draft'
-→ steps array + firstIncomplete + complete (all six true)
-```
-
-Used by: the wizard (resume + gating "Submit"), the dashboard checklist, the pending banner, and the `/account/` redirect decision.
-
-## 4. Reuse map (reuse is law — nothing forked)
-
-| Wizard step | Reuses | Change needed |
-|---|---|---|
-| 1 Basics | `ProfileEditorForm` basics + visit-type chips | **Extract editor sections into per-section components** (`dashboard/editor/Basics.astro`, `Rates.astro`, `Services.astro`, `GoodToKnow.astro`, `Hours.astro`) — the full editor becomes a composition of them; the wizard renders one per step. Submit logic stays one shared script (partial patch already supported by the action). |
-| 2 Rates | editor `Rates` section | same extraction |
-| 3 Services (+optional GTK) | editor `Services` + `GoodToKnow` | same extraction |
-| 4 Photos | `MediaManager` | none (already gated on the row; step 1 created it) |
-| 5 Phone | `VerificationFlow` step 1 | split its two steps into separately renderable pieces |
-| 6 ID + submit | `VerificationFlow` step 2 + `account.submitProfile` | add the submit CTA + success state |
-| Shell | `AccountShell`? **No** — the wizard hides the 5-tab chrome (tabs = escape routes = drop-off). Minimal header: logo, "Step n of 6", Later link. | new thin `onboarding/SetupShell.astro` |
-
-New route: `/{locale}/account/setup/` (one page, step from `?step=` or derived; server-rendered per step, zero-JS except the reused islands).
-Redirect: `/account/` + advertiser + `!complete && state==='draft'` + not explicitly skipped this session → `/account/setup/`. "Later" sets a session cookie (`setup_later=1`) so the escape is respected until next login.
-
-## 5. The pending banner (after submit)
-
-`state === 'pending_review'` → thin banner on every **account** page (not public pages): "⏳ Your profile is in review. We check every profile by hand — you'll get an email when it's live." On `live` (first visit after approval): one-time "🎉 You're live" banner (dismiss stored client-side). Component: `dashboard/StatusBanner.astro`, rendered by `AccountShell` (so it's on all 5 tabs automatically). Realtime approval-moment toast is a Phase-3 hook (broadcast infra exists); reload-based is fine to ship.
-
-## 6. Copy audit (kill the "post an ad" model)
-
-Sweep all three locales for anything implying a separate ad object; the words are **profile / your profile / live**. START ADVERTISING CTA keeps its name (it's the acquisition hook) but its landing = this flow. Welcome step explicitly says: "On other sites you place an ad. Here, your profile is the ad — one thing to fill in, one place to update."
+1. **One question per screen.** Never two jobs on one step. If a screen needs scrolling to find the button, it's too full.
+2. **She always knows where she is.** A progress bar that visibly fills + "Step 2 of 6" + the step's name in her language. The bar filling IS the reward.
+3. **Big, obvious, single button.** One primary action per screen, thumb-height, bottom of the viewport. Back is always there, small, top-left. Nothing else competes.
+4. **Show, don't explain.** Prefer pictures/examples over paragraphs: the rates step shows a tiny example table already filled in ghost-style; the photo step shows a good photo vs a bad one; placeholders carry examples ("Bella", "06 12345678").
+5. **Talk like a friend, not a form.** Second person, short sentences, B1 words, one *why* per step ("Clients search by price — this is how they find you"). No jargon, ever: not "taxonomy", not "verification pending", not "draft". Say "we're checking it" and "not visible yet".
+6. **Every tap is saved instantly.** Close the app mid-way, come back tomorrow — she lands exactly where she left off, with everything kept. Say it once on the welcome screen: "Everything saves by itself. You can stop and come back whenever."
+7. **A checkmark moment per step.** Completing a step gives a brief, visible ✓ (the step's row ticks, the bar fills) before the next step slides in. Small dopamine, six times.
+8. **No dead ends, no blame.** Errors say what to do, not what she did wrong ("That code didn't match — try typing it again" beats "Invalid code"). A skippable step always has a visible "later" that costs nothing.
+9. **Phone-first literally.** Specced at 390×844. Numeric keyboards for numbers, `tel` for phone, date picker for birth date. No hover-anything.
+10. **nl/en/de from day one** — but written in Dutch *first* (the primary audience), then translated, so the tone is native, not translated-English.
 
 ---
 
-## Phases (ship order)
+## 2. The journey, screen by screen
 
-**Phase 1 — Clarity without new UI** *(small, ships first)*
-1.1 `lib/onboarding.ts` derived-progress helper + unit test.
-1.2 Dashboard checklist card (§2) with deep links to the existing tabs (wizard doesn't exist yet — links go to `/account/profile/`, `/account/photos/`, `/account/verification/`).
-1.3 `StatusBanner` (§5): pending + you're-live states via `AccountShell`.
-1.4 Submit CTA: when the checklist completes, the card becomes "Submit for review" → `submitProfile`.
-1.5 Copy audit (§6), 3 locales.
-*DoD: a fresh advertiser can see exactly what's missing and get to `pending_review` without guessing; kitchen-sink entries for the card + banner (both themes + safe mode); tests green.*
+### Entry
+Register (role tile PROFESSIONAL) → confirm email → she lands **in the flow** (`/account/setup/`), never on the bare dashboard. If she ever navigates away, the dashboard's first card is the same journey as a checklist (§3) — the flow and the checklist are one system, two views.
 
-**Phase 2 — The guided wizard**
-2.1 Extract editor sections (§4) — pure refactor, editor pixel-identical after (architecture tests + kitchen-sink diff).
-2.2 `SetupShell` + `/account/setup/` rendering steps 0–6 from the section components; save-on-advance; resume from derived progress.
-2.3 Redirect logic + "Later" cookie.
-2.4 Split `VerificationFlow` steps for reuse in 5/6; step 6 carries the submit moment.
-*DoD: register→submitted possible entirely inside the wizard on a 390px phone; abandoning at any step loses nothing; Lighthouse budget holds (wizard pages are account-side, but keep islands minimal).*
+---
 
-**Phase 3 — The polish loop** *(after real users touch it)*
-3.1 Approval moment: realtime broadcast → banner flips/toast without reload; approval + rejection emails (needs the SMTP already configured).
-3.2 Post-approval nudges: "profiles with hours get evening clients" — prompts for the optional sections she skipped.
-3.3 Funnel analytics: typed-wrapper events per step (started/completed/abandoned) — where do they drop? (ANALYTICS.md contract; no session replay, ever.)
-3.4 Rejection loop: rejected ID / rejected photos → checklist row turns red with the admin's taxonomy reason + "fix and resubmit" deep link.
+### Step 0 · Welcome — 10 seconds, sets the whole tone
+- Her (chosen) name if we have it, warm headline: **"Let's get you online."**
+- Three lines, icons, no paragraph:
+  - 📝 Fill in your profile — *your profile is your ad here, there's nothing else to place*
+  - 📷 Add photos
+  - ✅ Verify — then we check everything and you go live
+- Reassurance line (small): "Takes about 10 minutes. Everything saves by itself — stop and come back whenever."
+- Button: **Start**. Tiny link under it: "I'll look around first" → dashboard (checklist card waits there).
 
-## Open questions (decide before Phase 2 build)
+### Step 1 · Who are you? — the profile begins to exist
+- Fields, in this order, one column: **Name clients will see** (placeholder "Bella" + line: "not your real name — your work name") · **Birth date** (date picker; if under 21: friendly stop — "You need to be 21 to advertise here" — not a red error) · **Gender** · **City** ("Where do you work? Clients search by city").
+- **Visit type** as two big tappable cards (not tiny checkboxes): 🏠 "Clients come to me" / 🚗 "I visit clients" — tap one or both, they visibly fill.
+- Button: **Save & continue** → ✓ moment. (This save creates her profile behind the scenes; she never sees the word "draft".)
 
-1. **Photos minimum** — 1 to submit (current plan) or 3 (kinky.nl-grade listings look empty with 1)? Recommend: 1 to submit, nudge "profiles with 3+ photos get more clicks" in the step.
-2. **Hours in the wizard?** Currently optional/skipped. The availability system (UX-PLAN 1.3) derives "back at" from hours — worth a light-touch optional step 3½, or keep post-approval nudge only?
-3. **ID doc real storage** — step 6 currently rides the mock (discards files). The real R2 private-bucket flow (hard rule 3) is its own sensitive PR; wizard ships against whichever exists when it lands.
-4. **Agency accounts** — this plan is solo-professional. Agencies (multi-profile) get their own flow later; the wizard must simply not explode for them (gate on `role === 'advertiser'`).
+### Step 2 · Your prices
+- One line of why: "Clients search by price. Your lowest price is what they see first."
+- The rates table, but opened gently: the common rows (30 min / 1 hour) shown first with ghost example prices ("e.g. €150"); "more durations" folds out the rest. She needs **just one price** to continue — the button enables the moment one row is real.
+- Button: **Save & continue** → ✓.
+
+### Step 3 · What do you offer?
+- Why-line: "Tick what you offer. Clients filter by this — and requests always name a service, so you're never asked for something you didn't tick."
+- The service categories as the existing fold-out groups; ticked count badges. **One tick minimum** to continue.
+- Below, visually quieter: "Extra details (languages, payment, your place) — you can also do this later." Collapsed by default. Skipping costs nothing.
+- Button: **Save & continue** → ✓.
+
+### Step 4 · Photos
+- Why-line: "Profiles with photos get nearly all the clicks. One is enough to start — three is better."
+- Big tap-target add tile (the existing MediaManager). After the first upload: "Nice. Add more, or continue."
+- Tiny reassurance under the tile: "Location data is removed from your photos automatically." (The EXIF rule, in human words.)
+- Button: **Continue** (enabled at ≥1 photo).
+
+### Step 5 · Your phone number
+- Why-line: "We send you one code. This proves your number is really yours — clients trust verified profiles."
+- Phone field (placeholder "06 12345678", NL default, other countries fine) → **Send code** → the code field slides in, numeric keyboard, auto-submit at 6 digits. Resend link appears after 30s ("Nothing arrived? Send again").
+- ✓ moment: "Your number is verified."
+
+### Step 6 · Prove it's you — then the big moment
+- Why-line: "Last step. We check every profile by hand — that's why clients trust this site."
+- The two uploads (ID photo · selfie with code) as two big tiles that tick as they're filled. Safety line in human words: "Only our team sees these. They're never shown on your profile, and they're deleted on schedule."
+- When both tiles are ticked, the one big button appears: **Submit my profile** ✨
+- **The finish screen** — the emotional payoff, full screen: big ✓, **"Done! We're checking your profile."** · "This usually takes [X hours]. You'll get an email the moment you're live." · One button: "See my profile" (preview of what clients will see). The progress bar is full.
+
+### After: while she waits, and when she's live
+- Every account page shows a calm thin banner: **⏳ "We're checking your profile — you'll get an email when it's live."** No countdown anxiety, no jargon.
+- First visit after approval: **🎉 "You're live!"** banner (one-time) + the dashboard flips to its normal live state.
+- If something is rejected (photo, ID): the checklist row turns amber with the reason *in plain words* + one button "Fix it" that deep-links straight to the fix. Never a dead red wall.
+
+---
+
+## 3. The checklist card — same journey, dashboard view
+
+Until she's live, the dashboard's first card is the journey as six rows (✓/○ + name + tap = jump into that step of the flow). It exists so that leaving the flow never loses the thread — the card *is* the flow, resumed. When all six are ✓ and not yet submitted, the whole card becomes the **Submit my profile** button. This card replaces today's unexplained DRAFT chip.
+
+---
+
+## 4. How it's built (the short version — reuse is law)
+
+- **Progress is derived, never stored.** One pure helper `onboardingProgress(profile, account)` (`src/lib/onboarding.ts`, unit-tested): basics = row exists · rates ≥1 real row · services ≥1 · photos ≥1 · phone = `phoneVerifiedAt` · ID = submitted/approved · submitted = state ≠ draft. Drives the flow's resume point, the checklist, the banner, and the `/account/` redirect. No new tables.
+- **Steps reuse the editor, not fork it.** `ProfileEditorForm` is split into per-section components (`dashboard/editor/{Basics,Rates,Services,GoodToKnow,Hours}.astro`); the full editor composes all of them (pixel-identical), the flow renders one per step. Photos = `MediaManager` as-is. Steps 5–6 = `VerificationFlow` split into its two halves. Submit = existing `account.submitProfile` (never auto-publish — hard rule 5 untouched).
+- **Shell:** the flow hides the 5-tab account chrome (tabs are escape routes = drop-off) — thin `onboarding/SetupShell.astro`: logo · progress bar · "later" link. Route `/{locale}/account/setup/`, server-rendered per step, islands only where the reused pieces already have them.
+- **Redirect:** advertiser + not complete + state draft + hasn't tapped "later" this session (`setup_later` session cookie) → `/account/` sends her to the flow.
+- **Banner:** `dashboard/StatusBanner.astro` rendered by `AccountShell` (all tabs get it for free). Approval flip is reload-based first; the realtime broadcast hook upgrades it later.
+
+---
+
+## Phases
+
+**Phase 1 — She can't get lost anymore** *(small, ships first)*
+1.1 `lib/onboarding.ts` + tests.
+1.2 Dashboard checklist card (rows deep-link to the existing tabs until the flow exists).
+1.3 `StatusBanner` (checking / you're-live).
+1.4 Submit CTA on checklist completion.
+1.5 Copy sweep, 3 locales: kill jargon on every advertiser surface (draft/pending/verification-speak → the human words of §2); the "profile is your ad" line lands in the welcome/checklist copy.
+*DoD: a fresh professional sees exactly what's left and reaches "we're checking" without help; kitchen-sink for card + banner (both themes + safe mode); tests green.*
+
+**Phase 2 — The guided flow itself**
+2.1 Editor section extraction (pure refactor, editor pixel-identical, architecture tests prove no fork).
+2.2 `SetupShell` + `/account/setup/` steps 0–6: progress bar, ✓ moments, save-on-advance, derived resume.
+2.3 Redirect + "later" cookie.
+2.4 `VerificationFlow` split; step 6 finish screen.
+2.5 Mobile pass at 390×844 with design-align (measured, not eyeballed).
+*DoD: register→submitted entirely in the flow on a phone, one thumb; abandoning at any step loses nothing; Lighthouse budget holds.*
+
+**Phase 3 — The feeling of being looked after** *(after real users)*
+3.1 Approval realtime: banner flips/toast without reload; approval + rejection emails (SMTP is configured).
+3.2 Rejection loop: amber row + plain-words reason + "Fix it" deep link.
+3.3 Post-approval nudges for the skipped extras ("profiles with opening hours get evening clients").
+3.4 Funnel analytics per step (typed wrapper only; no session replay, ever) — find where they drop, fix that step.
+
+## Open questions (decide before Phase 2)
+
+1. **Photo minimum** — 1 to submit (plan) with a "3 is better" nudge, or hard-require 3? Recommend 1: the review queue catches empty-feeling profiles anyway.
+2. **Hours** — keep out of the flow (post-approval nudge only) or a light optional step? Recommend out: six steps is the ceiling.
+3. **ID storage** — step 6 rides the current mock until the real private-R2 doc flow (hard rule 3) lands as its own sensitive PR; the flow ships against whichever exists.
+4. **Review-time honesty** — "usually takes [X hours]": what number do we commit to? Needs a real moderation-SLA decision; until then say "usually the same day".
+5. **Agencies** — out of scope; the flow gates on solo advertiser and must simply not appear for them.
