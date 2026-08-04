@@ -20,6 +20,7 @@ Verified marketplace/directory for legal adult services (independent sex workers
 | `docs/INFRASTRUCTURE.md` | environments, deploy, CI, services, assets, gotchas | deploy/config work |
 | `docs/SEO.md` + `docs/SEO-BUILD.md` | AI-search/SEO spec + its **temporary** build tracker (delete when phases land) | any page/URL/meta work |
 | `docs/UX-PLAN.md` | **temporary** execution tracker from the design review (fold, cards, rates, request sheet, discretion kit) — delete when its phases land | home/listing/profile/messaging UX work, while it exists |
+| `docs/ONBOARDING.md` | **temporary** execution tracker: professional onboarding (setup wizard, checklist card, pending banner, "profile IS the ad" copy law) — delete when its phases land | any advertiser-onboarding/dashboard-first-run work, while it exists |
 | `docs/ANALYTICS.md` | PostHog: consent model, event contract, wrapper law, flags | any tracking/flag work |
 | `docs/ADMIN.md` | admin system: roles, queues, governance, isolation | any /admin work |
 | `docs/SECURITY.md` | threat model, data safety, secrets, review discipline for sensitive diffs | auth/RLS/storage/actions/deploy work |
