@@ -30,6 +30,17 @@ export function isCacheableProfile(url: URL): boolean {
   return url.search === '' && PROFILE_RE.test(url.pathname);
 }
 
+/**
+ * ONLY anonymous requests may use the cache. A logged-in page SSRs the user's
+ * own header (name/avatar/unread count via Layout → UserMenu), so caching an
+ * authenticated response would serve one user's identity to everyone. Supabase
+ * (@supabase/ssr) stores the session in an `sb-<ref>-auth-token` cookie (may be
+ * chunked with a .0/.1 suffix — the name prefix still matches).
+ */
+export function isAnonymousRequest(cookieHeader: string | null): boolean {
+  return !/(?:^|;\s*)sb-[\w-]*-auth-token/.test(cookieHeader ?? '');
+}
+
 export async function servedFromCache(kv: CacheKv | undefined, url: URL): Promise<Response | null> {
   if (!kv) return null;
   const gen = (await kv.get(GEN_KEY)) ?? '0';

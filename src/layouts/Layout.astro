@@ -242,6 +242,8 @@ const unread =
       // (full page or lifted into the sheet) re-fetch the fresh state once and
       // patch the [data-avail] badges — the cached shell is never stale-online.
       (function () {
+        // Mirrors AvailabilityLine.astro's dot/glyph markup — keep the two in
+        // sync if that component's mark styling changes.
         const markMarkup = (online, glyph, muted) =>
           online
             ? '<span class="size-1.5 flex-none rounded-full bg-online" aria-hidden="true"></span>'

@@ -2,7 +2,7 @@ import { defineMiddleware } from 'astro:middleware';
 import { env } from 'cloudflare:workers';
 import { paraglideMiddleware } from '@/paraglide/server';
 import { negotiateLocale } from '@/lib/i18n';
-import { isCacheableProfile, servedFromCache, storeInCache, type CacheKv } from '@/lib/page-cache';
+import { isAnonymousRequest, isCacheableProfile, servedFromCache, storeInCache, type CacheKv } from '@/lib/page-cache';
 
 const cacheKv = (): CacheKv | undefined =>
   (env as unknown as Record<string, unknown>).SESSION as CacheKv | undefined;
@@ -51,7 +51,13 @@ export const onRequest = defineMiddleware(async (context, next) => {
   // Public profile pages: serve the rendered HTML from the edge cache (24h),
   // busted on any profile edit. The live "online" badge is refreshed after
   // paint (Layout → /avail.json), so the cached shell is never stale-online.
-  if (context.request.method === 'GET' && isCacheableProfile(context.url)) {
+  // ANON ONLY: a logged-in page SSRs the user's own header (name/avatar), so
+  // caching it would leak one user's identity to everyone (isAnonymousRequest).
+  if (
+    context.request.method === 'GET' &&
+    isCacheableProfile(context.url) &&
+    isAnonymousRequest(context.request.headers.get('cookie'))
+  ) {
     const kv = cacheKv();
     const hit = await servedFromCache(kv, context.url);
     if (hit) return hit;
