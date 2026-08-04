@@ -100,7 +100,7 @@ Until she's live, the dashboard's first card is the journey as six rows (✓/○
 
 ## Phases
 
-**Phase 1 — She can't get lost anymore** *(small, ships first)*
+**Phase 1 — She can't get lost anymore** ✓ LANDED (checklist card + status banner + derived progress + human-words copy + submit CTA)
 1.1 `lib/onboarding.ts` + tests.
 1.2 Dashboard checklist card (rows deep-link to the existing tabs until the flow exists).
 1.3 `StatusBanner` (checking / you're-live).
@@ -108,7 +108,7 @@ Until she's live, the dashboard's first card is the journey as six rows (✓/○
 1.5 Copy sweep, 3 locales: kill jargon on every advertiser surface (draft/pending/verification-speak → the human words of §2); the "profile is your ad" line lands in the welcome/checklist copy.
 *DoD: a fresh professional sees exactly what's left and reaches "we're checking" without help; kitchen-sink for card + banner (both themes + safe mode); tests green.*
 
-**Phase 2 — The guided flow itself**
+**Phase 2 — The guided flow itself** ✓ LANDED (SetupShell + /account/setup/ 7 steps reusing editor sections via `only`/`wizard` variant props + MediaManager + VerificationFlow; derived resume; redirect + "later" cookie; **real private-R2 ID storage** wired). Remaining before real reviews happen: the admin-side **signed-URL read + audit log** for verification docs (admins can't yet view uploads).
 2.1 Editor section extraction (pure refactor, editor pixel-identical, architecture tests prove no fork).
 2.2 `SetupShell` + `/account/setup/` steps 0–6: progress bar, ✓ moments, save-on-advance, derived resume.
 2.3 Redirect + "later" cookie.
