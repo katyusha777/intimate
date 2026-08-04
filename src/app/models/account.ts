@@ -110,6 +110,12 @@ export interface AccountApi {
   submitProfile(session: Session): Promise<void>;
   /** Owner pause/unpause: hides a live profile (`paused`) and brings it back (`live`). */
   setPaused(session: Session, paused: boolean): Promise<void>;
+  /**
+   * Store EXIF-stripped ID documents in the private EU bucket + record a hash per
+   * doc, then flag the account `pending` review (hard rule 3). Contents never
+   * logged; reads are admin-only + audit-logged (separate surface).
+   */
+  submitVerification(session: Session, input: { docs: { bytes: ArrayBuffer }[] }): Promise<void>;
 
   // --- media (her gallery) — bytes go to R2, the row records the key ---
   photos(session: Session): Promise<MediaItem[]>;

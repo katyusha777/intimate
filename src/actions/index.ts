@@ -221,17 +221,31 @@ export const server = {
     }),
 
     submitId: defineAction({
-      input: z.object({}),
-      handler: async (_input, context) => {
+      // Client re-encodes both to JPEG via canvas (EXIF/GPS stripped, hard rule 2)
+      // before they ever leave the device; same shape + cap as account.addPhoto.
+      input: z.object({
+        doc: z.string().regex(/^data:image\/jpeg;base64,/).max(2_000_000),
+        selfie: z.string().regex(/^data:image\/jpeg;base64,/).max(2_000_000),
+      }),
+      handler: async ({ doc, selfie }, context) => {
         const session = await requireSession(context);
-        // Documents are NEVER stored here (hard rule 3: toxic waste). The real
-        // impl streams EXIF-stripped files to the private R2 bucket; the mock
-        // discards them client-side and only records the state transition.
-        await accountApi.save(session, {
-          idVerification: "pending",
-          verificationSubmittedAt: new Date().toISOString(),
-          verificationReason: undefined,
-        });
+        // base64 data URL → bytes (same decode as addPhoto).
+        const toBytes = (dataUrl: string): ArrayBuffer => {
+          const bin = atob(dataUrl.slice(dataUrl.indexOf(",") + 1));
+          const bytes = new Uint8Array(bin.length);
+          for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+          return bytes.buffer;
+        };
+        try {
+          // Streams to the private EU bucket + records hashes + flags pending
+          // (hard rule 3). NEVER log the contents — only a generic failure.
+          await accountApi.submitVerification(session, {
+            docs: [{ bytes: toBytes(doc) }, { bytes: toBytes(selfie) }],
+          });
+        } catch (e) {
+          console.error("[verify] submit failed:", (e as Error).message);
+          throw new ActionError({ code: "BAD_REQUEST" });
+        }
         return { ok: true };
       },
     }),

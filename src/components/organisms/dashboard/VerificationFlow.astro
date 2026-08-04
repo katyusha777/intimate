@@ -105,6 +105,7 @@ const stepDone = 'grid size-8 flex-none place-items-center bg-online font-conden
           </div>
           <p class="text-xs leading-relaxed text-muted-foreground">{m.verify_privacy()}</p>
           <Button type="button" data-id-submit disabled>{m.verify_submit()}</Button>
+          <p data-id-error class="hidden text-sm font-medium text-brand">{m.auth_error()}</p>
         </div>
       )
     }
@@ -127,6 +128,7 @@ const stepDone = 'grid size-8 flex-none place-items-center bg-online font-conden
 
 <script>
   import { actions } from 'astro:actions';
+  import { reencode } from '@/lib/reencode';
 
   // Default to the Netherlands: bare/national numbers (06…, 612…) become +31;
   // an explicit + or 00 country code is respected. Server re-validates E.164.
@@ -179,9 +181,29 @@ const stepDone = 'grid size-8 flex-none place-items-center bg-online font-conden
       };
       doc?.addEventListener('change', sync);
       selfie?.addEventListener('change', sync);
+      const idErr = root.querySelector<HTMLElement>('[data-id-error]');
       submit?.addEventListener('click', async () => {
-        await actions.account.submitId({});
-        location.reload();
+        const docFile = doc?.files?.[0];
+        const selfieFile = selfie?.files?.[0];
+        if (!docFile || !selfieFile || submit.dataset.loading) return;
+        submit.dataset.loading = '1';
+        submit.disabled = true;
+        idErr?.classList.add('hidden');
+        try {
+          // EXIF-stripped on-device (hard rule 2); larger cap than photos so the
+          // reviewer can actually read the ID. Then it's private + audit-logged.
+          const [docUrl, selfieUrl] = await Promise.all([
+            reencode(docFile, 2000, 0.85),
+            reencode(selfieFile, 2000, 0.85),
+          ]);
+          const { error } = await actions.account.submitId({ doc: docUrl, selfie: selfieUrl });
+          if (error) throw error;
+          location.reload();
+        } catch {
+          submit.disabled = false;
+          delete submit.dataset.loading;
+          idErr?.classList.remove('hidden');
+        }
       });
 
       root.querySelector<HTMLElement>('[data-id-approve]')?.addEventListener('click', async () => {

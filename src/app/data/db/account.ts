@@ -9,7 +9,7 @@
 import { env } from 'cloudflare:workers';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { createDb, type Db } from '@/db/client';
-import { accounts, favorites, media, profiles } from '@/db/schema';
+import { accounts, favorites, media, profiles, verificationDocs } from '@/db/schema';
 import {
   AccountSchema,
   ProfileEditSchema,
@@ -26,6 +26,14 @@ import type { Session } from '@/app/models/session';
 
 const db = (): Db => createDb((env as unknown as { HYPERDRIVE: Hyperdrive }).HYPERDRIVE);
 const bucket = (): R2Bucket => (env as unknown as { MEDIA: R2Bucket }).MEDIA;
+// Toxic-waste ID docs (hard rule 3): a SEPARATE private EU bucket — never the
+// public MEDIA one, never public-served, never logged.
+const verificationBucket = (): R2Bucket => (env as unknown as { VERIFICATION: R2Bucket }).VERIFICATION;
+
+const sha256Hex = async (bytes: ArrayBuffer): Promise<string> =>
+  [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))]
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
 
 /** A stored key we manage in R2 (vs a seed/static path that passes through). */
 const isR2Key = (key: string) => !key.startsWith('/') && !key.startsWith('http');
@@ -237,6 +245,26 @@ export const accountApi: AccountApi = {
       .update(profiles)
       .set({ state: paused ? 'paused' : 'live' })
       .where(and(eq(profiles.accountId, session.accountId), eq(profiles.state, paused ? 'live' : 'paused')));
+  },
+
+  async submitVerification(session, { docs }) {
+    const d = db();
+    const b = verificationBucket();
+    // Each EXIF-stripped doc → the private EU bucket + a verification_docs row
+    // (r2Key + content hash). Keys are namespaced by account; contents are never
+    // logged (hard rule 3). purge_after is set later, on deactivation (the
+    // 48-month clock starts then), not at submission.
+    const rows: { accountId: string; r2Key: string; docHash: string }[] = [];
+    for (const doc of docs) {
+      const r2Key = `${session.accountId}/${crypto.randomUUID()}.jpg`;
+      await b.put(r2Key, doc.bytes, { httpMetadata: { contentType: 'image/jpeg' } });
+      rows.push({ accountId: session.accountId, r2Key, docHash: await sha256Hex(doc.bytes) });
+    }
+    if (rows.length) await d.insert(verificationDocs).values(rows);
+    await d
+      .update(accounts)
+      .set({ idVerification: 'pending', verificationSubmittedAt: new Date() })
+      .where(eq(accounts.id, session.accountId));
   },
 
   async photos(session) {
