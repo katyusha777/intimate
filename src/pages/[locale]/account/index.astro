@@ -19,22 +19,8 @@ const profile = session ? await accountApi.myProfile(session) : null;
 const card = 'facts-card dark bg-neutral-950 p-6 text-white';
 const stateChip =
   'rounded inline-block border border-white/30 px-2.5 py-1 font-condensed text-xs font-bold uppercase tracking-wide';
-
-/* Deterministic mock analytics (per profile) — replaced by real event counts
-   when the events table lands. Stable across reloads. */
-function seeded(seed: string, mod: number, min: number): number {
-  let x = 0;
-  for (const c of seed) x = (x * 31 + c.charCodeAt(0)) >>> 0;
-  return min + (x % mod);
-}
-const stats =
-  profile && account
-    ? [
-        { label: m.stat_views(), value: seeded(profile.id + 'v', 1200, 220), delta: seeded(profile.id + 'vd', 34, 6) },
-        { label: m.stat_contacts(), value: seeded(profile.id + 'c', 55, 9), delta: seeded(profile.id + 'cd', 28, 4) },
-        { label: m.stat_favorites(), value: account.favorites.length + seeded(profile.id + 'f', 48, 6), delta: seeded(profile.id + 'fd', 22, 3) },
-      ]
-    : [];
+// Analytics (profile views/contacts) land with the events table — until then the
+// dashboard shows only real state (no invented numbers). See docs/ANALYTICS.md.
 ---
 
 <Layout noindex title={`${m.nav_account()} | Intimate`}>
@@ -42,20 +28,6 @@ const stats =
   {
     session && account && (
       <AccountShell {session} title={m.nav_dashboard()} path={localizePath('/account/')}>
-        {stats.length > 0 && (
-          <div class="mb-5 grid grid-cols-3 gap-3 md:gap-5">
-            {stats.map((s) => (
-              <div class="facts-card dark bg-neutral-950 p-4 text-white md:p-5">
-                <p class="eyebrow text-2xs text-white/50">{s.label}</p>
-                <p class="mt-2 font-condensed text-3xl font-bold leading-none md:text-4xl">{s.value}</p>
-                <p class="mt-1.5 flex items-center gap-1 text-xs font-medium text-online">
-                  <svg class="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg>
-                  {s.delta}% <span class="text-white/40">{m.stat_last7()}</span>
-                </p>
-              </div>
-            ))}
-          </div>
-        )}
         <div class="grid items-start gap-5 md:grid-cols-2">
           {profile && (
             <div class={card}>

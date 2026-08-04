@@ -127,6 +127,19 @@ const { id, class: className, label, flush } = Astro.props;
       const body = dialog.querySelector<HTMLElement>('[data-sheet-body]')!;
 
       const open = () => {
+        // Re-opening mid-close (a new sheet requested during the ~0.3s slide-
+        // down): cancel the pending native close() and glide back up. Without
+        // this, dialog.open is still true so showModal() below no-ops and the
+        // new content never appears — "tap a card right after closing does
+        // nothing".
+        if (dialog.dataset.closing) {
+          delete dialog.dataset.closing;
+          panel.style.transitionDuration = '';
+          backdrop.style.transitionDuration = '';
+          dialog.setAttribute('data-open', '');
+          dialog.dispatchEvent(new CustomEvent('sheet:opened', { bubbles: true }));
+          return;
+        }
         if (dialog.open) return;
         dialog.showModal();
         // showModal auto-focuses the first button, painting a focus ring on a
@@ -142,6 +155,7 @@ const { id, class: className, label, flush } = Astro.props;
       };
       const close = () => {
         if (!dialog.open) return;
+        dialog.dataset.closing = '1'; // open() clears this to interrupt a close
         // Exits are FAST (iOS convention: sheets close quicker than they
         // open) — and the page is scroll-locked until the slide ends, so
         // every ms here is dead input time. Flick paths set their own
@@ -158,7 +172,12 @@ const { id, class: className, label, flush } = Astro.props;
         // panel has fully left the screen (the dialog 'close' handler unlocks).
         const done = () => {
           panel.removeEventListener('transitionend', done);
-          dialog.close();
+          // open() may have cancelled this close mid-slide — only finish if
+          // we're still closing.
+          if (dialog.dataset.closing) {
+            delete dialog.dataset.closing;
+            dialog.close();
+          }
         };
         panel.addEventListener('transitionend', done);
         // fallback if transitionend doesn't fire (reduced motion / hidden)
@@ -168,6 +187,7 @@ const { id, class: className, label, flush } = Astro.props;
       (dialog as any).openSheet = open;
       (dialog as any).closeSheet = close;
       dialog.addEventListener('close', () => {
+        delete dialog.dataset.closing;
         dialog.removeAttribute('data-open');
         panel.style.transitionDuration = '';
         backdrop.style.transitionDuration = '';

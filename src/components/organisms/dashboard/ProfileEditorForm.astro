@@ -86,16 +86,17 @@ const selPayments = setOf(p.paymentMethods ?? []);
 
   <div class="space-y-2">
     <h3 class={heading}>{m.filter_visit()}</h3>
-    <div class="flex gap-6">
+    <p class="text-xs text-muted-foreground">{m.editor_visit_hint()}</p>
+    <div class="flex flex-wrap gap-3">
       {
         MEETING_TYPES.map((t) => (
-          <label class={row}>
+          <label class="flex cursor-pointer select-none items-center gap-2.5 border border-foreground/25 px-4 py-2.5 text-sm font-medium transition-colors has-[:checked]:border-foreground has-[:checked]:bg-foreground has-[:checked]:text-background">
             <input
               type="checkbox"
               name="meetingTypes"
               value={t}
               checked={(p.meetingTypes as readonly string[]).includes(t)}
-              class="cbx-box"
+              class="sr-only"
             />
             {t === 'incall' ? m.cat_private() : m.cat_escort()}
           </label>
@@ -497,6 +498,10 @@ const selPayments = setOf(p.paymentMethods ?? []);
           const v = String(fd.get(k) ?? '').trim();
           return v === '' ? undefined : v;
         };
+        // meetingTypes has a min(1) rule — sending [] would reject the whole
+        // (partial) save. Omit it when empty so a draft still saves; a visit
+        // type is only required to go live.
+        const meetingTypes = fd.getAll('meetingTypes').map(String);
         const patch = {
           name: String(fd.get('name') ?? ''),
           birthDate: String(fd.get('birthDate') ?? ''),
@@ -505,7 +510,7 @@ const selPayments = setOf(p.paymentMethods ?? []);
           rates,
           depositPolicy: optStr('depositPolicy'),
           extrasNote: optStr('extrasNote'),
-          meetingTypes: fd.getAll('meetingTypes').map(String),
+          ...(meetingTypes.length ? { meetingTypes } : {}),
           services: fd.getAll('services').map(String),
           languages: fd.getAll('languages').map(String),
           incallLocations: fd.getAll('incallLocations').map(String),
@@ -519,6 +524,8 @@ const selPayments = setOf(p.paymentMethods ?? []);
         saved.classList.add('hidden');
         error.classList.add('hidden');
         const { error: err } = await actions.account.saveProfile({ patch });
+        // Surface the specific reason (which field) instead of a mute generic fail.
+        if (err?.message) error.textContent = err.message;
         (err ? error : saved).classList.remove('hidden');
       });
     });

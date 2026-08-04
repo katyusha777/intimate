@@ -14,8 +14,12 @@ if (!isLocale(locale)) return new Response(null, { status: 404 });
 
 const session = await sessionApi.current(Astro);
 if (session && session.role !== 'advertiser') return Astro.redirect(localizePath('/account/'));
+// Photos hang off the profile row — no saved profile yet ⇒ uploads have nowhere
+// to go (they'd silently no-op). Gate on it and point her at the editor first.
+const profile = session ? await accountApi.myProfile(session) : null;
+const hasProfile = Boolean(profile?.id);
 // Her media rows (any state — pending uploads are hers to see).
-const photos = session ? await accountApi.photos(session) : [];
+const photos = session && hasProfile ? await accountApi.photos(session) : [];
 ---
 
 <Layout noindex title={`${m.photos_title()} | Intimate`}>
@@ -23,7 +27,20 @@ const photos = session ? await accountApi.photos(session) : [];
   {
     session && (
       <AccountShell {session} title={m.photos_title()} path={localizePath('/account/photos/')}>
-        <MediaManager {photos} />
+        {hasProfile ? (
+          <MediaManager {photos} />
+        ) : (
+          <div class="max-w-lg border border-foreground/20 p-6">
+            <p class="font-condensed text-lg font-bold">{m.photos_need_profile_title()}</p>
+            <p class="mt-2 text-sm text-muted-foreground">{m.photos_need_profile_body()}</p>
+            <a
+              href={localizePath('/account/profile/')}
+              class="mt-4 inline-block font-semibold underline-offset-4 hover:underline"
+            >
+              {m.nav_profile()} →
+            </a>
+          </div>
+        )}
       </AccountShell>
     )
   }

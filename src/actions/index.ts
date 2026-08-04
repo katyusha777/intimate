@@ -81,14 +81,17 @@ export const server = {
         const session = await requireSession(context);
         // AI-adjacent rule applies to users too: input is data — strict parse.
         const parsed = ProfileEditSchema.partial().safeParse(patch);
-        if (!parsed.success) throw new ActionError({ code: "BAD_REQUEST" });
+        if (!parsed.success) {
+          const i = parsed.error.issues[0];
+          throw new ActionError({ code: "BAD_REQUEST", message: `${i.path.join(".") || "field"}: ${i.message}` });
+        }
         // Writes her profiles row directly — edits publish immediately; the
         // first save creates the draft (ADMIN.md §6, DATA.md).
         try {
           await accountApi.saveProfile(session, parsed.data);
         } catch {
           // Missing identity fields on a first save (name/birthDate/gender/city).
-          throw new ActionError({ code: "BAD_REQUEST" });
+          throw new ActionError({ code: "BAD_REQUEST", message: "Fill in name, date of birth, gender and city first." });
         }
         await bustProfiles(cacheKv()); // her public page changed → drop the edge cache
         return { ok: true };

@@ -50,7 +50,7 @@ import ThemeToggle from '@/components/molecules/ThemeToggle.astro';
               ['Profile rules', '/profile-rules/'],
               ['Safety & awareness', '/safety/'],
               ['Support', '/support/'],
-              ['Contact', '/contact/'],
+              ['Contact', '/support/'],
             ],
           },
           {
@@ -84,7 +84,11 @@ import ThemeToggle from '@/components/molecules/ThemeToggle.astro';
           <span class="h-px w-5 bg-white/30" aria-hidden="true"></span>
           Questions?
         </p>
-        <a href={SUPPORT_CONTACT.whatsapp.href} target="_blank" rel="noopener" class="mt-3 flex items-center gap-2.5">
+        <a href={SUPPORT_CONTACT.phone.href} class="mt-3 flex items-center gap-2.5">
+          <Icon name="phone" family="solid" class="text-xl text-white/80" />
+          <span class="font-semibold">{SUPPORT_CONTACT.phone.display}</span>
+        </a>
+        <a href={SUPPORT_CONTACT.whatsapp.href} target="_blank" rel="noopener" class="mt-2 flex items-center gap-2.5">
           <Icon name="whatsapp" family="brands" class="text-xl text-online" />
           <span class="font-semibold">{SUPPORT_CONTACT.whatsapp.display}</span>
         </a>

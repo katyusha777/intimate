@@ -3,6 +3,10 @@
  * `display` is what humans read; `href` is what taps open.
  */
 export const SUPPORT_CONTACT = {
+  phone: {
+    display: '085 333 2377',
+    href: 'tel:+31853332377',
+  },
   whatsapp: {
     display: '085 333 2377',
     href: 'https://wa.me/31853332377',

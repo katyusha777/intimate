@@ -152,12 +152,19 @@ import SideDrawer from '@/components/molecules/SideDrawer.astro';
         location.href = url;
         return;
       }
-      savedState = history.state;
-      savedUrl = location.href;
-      // Strip the listing entry's ClientRouter state so the dismiss-back is a
-      // no-op for the router, then push the profile URL (also null-state).
-      history.replaceState(null, '', savedUrl);
-      history.pushState(null, '', url);
+      if (open) {
+        // Already in a sheet session (or one still mid-close): swap the profile
+        // in place and KEEP the original return target, so dismissing still
+        // lands on the listing rather than the just-closed profile's URL.
+        history.replaceState(null, '', url);
+      } else {
+        savedState = history.state;
+        savedUrl = location.href;
+        // Strip the listing entry's ClientRouter state so the dismiss-back is a
+        // no-op for the router, then push the profile URL (also null-state).
+        history.replaceState(null, '', savedUrl);
+        history.pushState(null, '', url);
+      }
       open = true;
       b.innerHTML = skeleton(seedPhoto, mobile.matches);
       b.scrollTop = 0;

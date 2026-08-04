@@ -91,6 +91,17 @@ const { id, label, class: className } = Astro.props;
       const backdrop = dialog.querySelector<HTMLElement>('[data-drawer-backdrop]')!;
 
       const open = () => {
+        // Interrupt an in-progress close (re-open during the slide-out) — else
+        // dialog.open is still true and showModal() no-ops: "click a card right
+        // after closing does nothing". Mirrors ActionSheet.
+        if (dialog.dataset.closing) {
+          delete dialog.dataset.closing;
+          panel.style.transitionDuration = '';
+          backdrop.style.transitionDuration = '';
+          dialog.setAttribute('data-open', '');
+          dialog.dispatchEvent(new CustomEvent('sheet:opened', { bubbles: true }));
+          return;
+        }
         if (dialog.open) return;
         dialog.showModal();
         panel.focus({ preventScroll: true }); // no stray focus ring
@@ -100,6 +111,7 @@ const { id, label, class: className } = Astro.props;
       };
       const close = () => {
         if (!dialog.open) return;
+        dialog.dataset.closing = '1';
         // Fast exit + freeze-until-slide-ends (see ActionSheet): the page
         // stays locked until the panel has fully left the screen.
         panel.style.transitionDuration = '0.3s';
@@ -107,7 +119,10 @@ const { id, label, class: className } = Astro.props;
         dialog.removeAttribute('data-open');
         const done = () => {
           panel.removeEventListener('transitionend', done);
-          dialog.close();
+          if (dialog.dataset.closing) {
+            delete dialog.dataset.closing;
+            dialog.close();
+          }
         };
         panel.addEventListener('transitionend', done);
         setTimeout(() => dialog.open && done(), 600);
@@ -116,6 +131,7 @@ const { id, label, class: className } = Astro.props;
       (dialog as any).openSheet = open;
       (dialog as any).closeSheet = close;
       dialog.addEventListener('close', () => {
+        delete dialog.dataset.closing;
         dialog.removeAttribute('data-open');
         panel.style.transitionDuration = '';
         backdrop.style.transitionDuration = '';

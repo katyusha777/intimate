@@ -246,7 +246,9 @@ export const accountApi: AccountApi = {
   async addPhoto(session, { bytes, contentType, isPrivate = false }) {
     const d = db();
     const row = await myProfileRow(d, session.accountId);
-    if (!row) return;
+    // No profile row → fail loudly (the UI gates on this, but never silently
+    // swallow an upload as if it worked).
+    if (!row) throw new Error('no profile — save your profile before adding photos');
     const [agg] = await d
       .select({ n: sql<number>`count(*)::int`, next: sql<number>`coalesce(max(${media.position}), -1) + 1` })
       .from(media)
