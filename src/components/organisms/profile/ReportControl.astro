@@ -54,11 +54,17 @@ const humanize = (s: string) => s.replace(/_/g, ' ').replace(/^./, (c) => c.toUp
         </span>
       </span>
     </label>
-    <div class="flex items-center gap-4">
-      <Button type="submit">Submit report</Button>
-      <p data-report-done hidden class="text-sm font-medium text-online">Thanks — we'll review it.</p>
-    </div>
+    <Button type="submit">Submit report</Button>
   </form>
+
+  <!-- Success state: replaces the form so it's unmistakable the report landed. -->
+  <div data-report-success hidden class="flex flex-col items-center gap-3 px-5 pb-10 pt-6 text-center">
+    <span class="grid size-12 place-items-center rounded-full bg-online/15 text-online">
+      <svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
+    </span>
+    <p class="font-condensed text-lg font-bold">Report received</p>
+    <p class="max-w-xs text-sm text-muted-foreground">Thanks — our moderation team will review it. You don’t need to do anything else.</p>
+  </div>
 </ActionSheet>
 
 <script>
@@ -84,8 +90,11 @@ const humanize = (s: string) => s.replace(/_/g, ' ').replace(/^./, (c) => c.toUp
         alert('Please sign in to report.');
         return;
       }
-      form.querySelector<HTMLElement>('[data-report-done]')!.hidden = false;
-      setTimeout(() => (document.getElementById('report-sheet') as any)?.closeSheet?.(), 1200);
+      // Swap the form for a clear confirmation, then close after it's been read.
+      form.hidden = true;
+      const done = document.querySelector<HTMLElement>('[data-report-success]');
+      if (done) done.hidden = false;
+      setTimeout(() => (document.getElementById('report-sheet') as any)?.closeSheet?.(), 2600);
     });
   }
   initReport();

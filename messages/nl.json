@@ -466,5 +466,8 @@
   "editor_languages_hint": "Talen die je spreekt.",
   "editor_place_hint": "Waar je klanten ontvangt.",
   "editor_amenities_hint": "Wat er beschikbaar is op jouw locatie.",
-  "editor_payment_hint": "Hoe klanten kunnen betalen."
+  "editor_payment_hint": "Hoe klanten kunnen betalen.",
+  "settings_pause_live": "Je profiel is live en zichtbaar in de zoekresultaten.",
+  "settings_pause_paused": "Je profiel is gepauzeerd — verborgen in zoekresultaten en voor nieuwe berichten.",
+  "settings_pause_locked": "Je kunt je profiel pauzeren zodra het live is."
 }

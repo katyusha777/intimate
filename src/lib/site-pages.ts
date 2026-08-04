@@ -1,8 +1,8 @@
 /**
  * Static editorial/legal pages migrated from the legacy intimate.nl site.
  * Content lives here (not Paraglide — that's for short UI strings); pages render
- * it through ContentPage.astro. EN + NL are authored; a missing locale (de) falls
- * back to EN so a German visitor gets real content, never a blank page.
+ * it through ContentPage.astro. EN, NL and DE are authored; any unknown locale
+ * falls back to EN via sitePage() so a page is never blank.
  *
  * Stack-specific copy (analytics, verification-doc handling) is written against
  * THIS app's architecture (PostHog, EU R2, auto-purge) — not the legacy tools.
@@ -315,7 +315,149 @@ const nl: Record<PageSlug, PageContent> = {
   },
 };
 
-const BY_LOCALE: Record<Locale, Record<PageSlug, PageContent>> = { en, nl, de: en };
+const de: Record<PageSlug, PageContent> = {
+  about: {
+    title: 'Über Intimate',
+    description: 'Eine Plattform nur mit verifizierten Profilen für sichere, schnelle und echte Kontakte in den Niederlanden.',
+    body: [
+      { p: 'Intimate ist eine Plattform für sichere, dynamische Online-Kontakte — moderne Technologie, Geschwindigkeit und Gemeinschaft an einem Ort.' },
+      { h: 'Unsere Mission' },
+      { p: 'Wir stellen Sicherheit, Geschwindigkeit und echte menschliche Interaktion voran: Authentizität und Privatsphäre in einer echten Gemeinschaft, keine anonyme Masse.' },
+      { h: 'Sicherheit zuerst' },
+      { list: [
+        'Nur verifiziert — jede*r Inserent*in durchläuft eine gründliche Verifizierung, bevor das Profil live geht.',
+        'Aktive Moderation — unser Team beobachtet die Gemeinschaft und reagiert schnell auf Meldungen.',
+      ] },
+      { h: 'Geschwindigkeit und Technologie' },
+      { p: 'Die Plattform fühlt sich direkt an — Profil verwalten, Anzeigen durchsuchen und Updates posten lässt dich nie warten.' },
+      { h: 'Inklusiv als Standard' },
+      { p: 'Intimate ist für alle da. Professionals, die LGBTQ+-Gemeinschaft und alle anderen sind ausdrücklich willkommen, ohne Urteil über die gesuchten Kontakte.' },
+    ],
+  },
+  safety: {
+    title: 'Sicherheit & Bewusstsein',
+    description: 'Worauf du achten solltest, wann du gehen solltest und wie du Missbrauch meldest. Deine Sicherheit steht an erster Stelle.',
+    body: [
+      { p: 'Deine Sicherheit steht an erster Stelle, und deine Aufmerksamkeit macht wirklich einen Unterschied. Hier liest du, worauf du achten solltest, wann du gehen solltest und wie du Missbrauch meldest.' },
+      { h: 'Vor deinem Termin' },
+      { p: 'Unsicher über das Alter einer Person? Verlange einen Ausweis. Bekommst du keine Klarheit oder bleibt der Zweifel, dann geh — du schuldest niemandem eine Erklärung.' },
+      { p: 'Vertraue deinem Gefühl. Wenn sich etwas falsch anfühlt, ist es das meistens. Klingt etwas zu schön, um wahr zu sein, ist es das meistens auch.' },
+      { h: 'Wann du sofort gehen solltest' },
+      { list: [
+        'Der Ort ist unhygienisch oder unsicher (ein Keller, ein Schuppen).',
+        'Minderjährige sind anwesend.',
+        'Du fühlst dich aus irgendeinem Grund unsicher.',
+      ] },
+      { p: 'Du brauchst keinen Beweis und keinen guten Grund. Ein ungutes Gefühl genügt.' },
+      { h: 'Missbrauch melden' },
+      { p: 'Melde Missbrauch bei der Polizei, bei Meld Misdaad Anoniem (anonyme Kriminalitätsmeldung) und bei uns — nutze die Melden-Schaltfläche im Profil oder schreibe an report@intimate.nl mit möglichst vielen Details, auch dem Ort.' },
+      { note: 'Kontakt mit einer minderjährigen Person oder mit jemandem, der unter Zwang oder Bedrohung arbeitet: sofort abbrechen, den Support kontaktieren und die Nachricht an report@intimate.nl weiterleiten. Bei nachgewiesenen Straftaten geben wir Daten an die Behörden weiter.' },
+      { h: 'Für Sexarbeiter*innen' },
+      { p: 'Als Sexarbeiter*in kannst du dich beim GGD kostenlos gegen Hepatitis B impfen lassen. Kombiniere die Impfung mit Kondomen — diese Basis funktioniert.' },
+    ],
+  },
+  'profile-rules': {
+    title: 'Profilregeln',
+    description: 'Respekt, Ehrlichkeit und Altersvorgaben — die Regeln, denen jedes Profil auf Intimate folgt.',
+    body: [
+      { h: 'Respektiert einander' },
+      { p: 'Die Basis von Intimate ist gegenseitiger Respekt. Diskriminierung, Hassrede, Einschüchterung und Unhöflichkeit werden nicht geduldet — keine Warnungen, keine Grauzone.' },
+      { h: 'Sei du selbst' },
+      { p: 'Präsentiere dich ehrlich. Teile nur deine eigenen Fotos und Videos, niemals andere ohne deren Zustimmung im Bild, und nichts, das Urheberrechte verletzt.' },
+      { h: 'Alter' },
+      { list: [
+        'Mindestens 18 Jahre, um die Plattform zu nutzen.',
+        'Mindestens 21 Jahre, um zu inserieren.',
+        'Profile, die Minderjährigkeit nahelegen, können eine Verifizierung erfordern.',
+      ] },
+      { h: 'Fotos' },
+      { p: 'Erotische Fotos sind erlaubt; vollständige Nacktheit nicht — Genitalien und Brustwarzen bleiben bedeckt. Nur du selbst im Bild, keine unautorisierten Marken oder Logos, kein Text oder Kontaktdaten.' },
+      { p: 'Nicht erlaubt: Gewalt verherrlichende Bilder, explizite sexuelle Handlungen oder schockierendes Material.' },
+      { h: 'Durchsetzung' },
+      { p: 'Wir verfolgen eine Null-Toleranz-Politik gegen illegales Verhalten: Warnungen, Kontosperren, Profilentfernung oder Meldung an die Behörden.' },
+    ],
+  },
+  verification: {
+    title: 'Verifizierungsverfahren',
+    description: 'Wie die Verifizierung von Inserent*innen funktioniert, was einzureichen ist und wie wir deine Dokumente schützen.',
+    body: [
+      { h: 'Warum wir verifizieren' },
+      { p: 'Wir prüfen, dass Inserent*innen echt sind, mindestens 21 Jahre alt sind und die Richtlinien erfüllen — eine sichere, vertrauenswürdige Umgebung für alle. Was du einreichst, bleibt vertraulich und erscheint nie in deiner Anzeige.' },
+      { h: 'Bevor du beginnst: mach eine sichere Kopie' },
+      { p: 'Mache sensible Daten auf deinem Ausweis unkenntlich. Wir empfehlen das KopieID-Tool der niederländischen Regierung, um etwa deine Bürgerservicenummer (BSN) zu schwärzen.' },
+      { h: 'Was du einreichst' },
+      { list: [
+        'Ausweisdokument — Foto, Geburtsdatum, Gültigkeit und Dokumentnummer sichtbar.',
+        'Selfie mit Ausweis — dein Gesicht und das Foto auf dem Dokument klar sichtbar.',
+        'Anwesenheitsnachweis — ein Foto mit einer niederländischen/belgischen Zeitung oder einem Kassenbon, nicht älter als eine Woche.',
+        'Ganzkörperfoto — ein klares, unbearbeitetes Bild, das dich mindestens bis zur Taille zeigt.',
+      ] },
+      { h: 'Was danach passiert' },
+      { p: 'Unser Moderationsteam prüft Einsendungen so schnell wie möglich. Nach der Freigabe erhältst du ein Verifizierungshäkchen, das Vertrauen schafft und deine Sichtbarkeit erhöht.' },
+      { h: 'Privatsphäre und Sicherheit' },
+      { note: 'Verifizierungsdokumente sind verschlüsselt, werden in der EU gespeichert, sind nur für Prüfende zugänglich, jeder Zugriff wird protokolliert, und die Originale werden nach der Aufbewahrungsfrist automatisch gelöscht. Sie werden ausschließlich zur Verifizierung verwendet — nie in deinem Profil gezeigt.' },
+    ],
+  },
+  terms: {
+    title: 'Allgemeine Geschäftsbedingungen',
+    description: 'Die Bedingungen für die Nutzung von Intimate. Maßgeblich ist die niederländische Fassung.',
+    body: [
+      { note: 'Dies ist eine Zusammenfassung in einfacher Sprache. Maßgeblich ist die niederländische Fassung.' },
+      { h: 'Einleitung' },
+      { p: 'Diese Bedingungen gelten für alle Besucher*innen und Nutzer*innen von Intimate. Durch die Nutzung der Plattform akzeptierst du sie.' },
+      { h: 'Der Dienst' },
+      { p: 'Intimate verbindet Nutzer*innen über Profile mit Inhalten für Erwachsene. Wir sind eine Anzeigenplattform — wir vermitteln keine Treffen und geben keine Garantien über das Verhalten von Nutzer*innen.' },
+      { h: 'Altersanforderungen' },
+      { list: ['Mindestalter zur Nutzung der Plattform: 18 Jahre.', 'Mindestalter zum Inserieren: 21 Jahre.'] },
+      { h: 'Verhalten' },
+      { p: 'Verboten: Bedrohung von Nutzer*innen, rechtswidrige Inhalte, Verletzung geistigen Eigentums, vollständig nacktes Bildmaterial, das Teilen persönlicher Daten anderer und der Missbrauch von Kontodaten.' },
+      { h: 'Null Toleranz' },
+      { p: 'Wir gehen entschieden gegen illegale Prostitution, Zwang, Erpressung und jede Beteiligung Minderjähriger vor. Melde verdächtige Aktivitäten sofort uns oder den Behörden.' },
+      { h: 'Haftung' },
+      { p: 'Die Nutzung der Plattform erfolgt auf eigenes Risiko. Intimate übernimmt keine Haftung für das Verhalten von Nutzer*innen, Kontakte zwischen Mitgliedern oder technische Störungen.' },
+      { h: 'Anwendbares Recht' },
+      { p: 'Es gilt niederländisches Recht; Streitigkeiten unterliegen dem zuständigen niederländischen Gericht.' },
+    ],
+  },
+  privacy: {
+    title: 'Datenschutz & Cookies',
+    description: 'Wie Intimate mit deinen Daten umgeht, deine DSGVO-Rechte und unsere cookiefreie Analyse.',
+    body: [
+      { h: 'Grundprinzipien' },
+      { p: 'Wir sind DSGVO-minimal: Wir erheben nur, was eine Funktion braucht, und behalten es nur so lange wie nötig. Wir verkaufen deine Daten nicht und teilen sie nicht mit Werbetreibenden.' },
+      { h: 'Verarbeitete Daten' },
+      { list: [
+        'Bei der Registrierung: E-Mail (oder Telefon) und IP, um dein Konto zu erstellen und zu sichern.',
+        'Bei der Profilverwaltung: was du selbst angibst. Profilinhalte sind für andere Nutzer*innen sichtbar.',
+        'Bei der Verifizierung (Inserent*innen): Ausweisdokumente, behandelt wie unten beschrieben.',
+      ] },
+      { h: 'Verifizierungsdokumente' },
+      { p: 'Verschlüsselt, in der EU gespeichert, nur für Prüfende zugänglich mit Protokollierung jedes Zugriffs, und nach der Aufbewahrungsfrist automatisch gelöscht. Sie erscheinen nie in deinem Profil.' },
+      { h: 'Cookies & Analyse' },
+      { p: 'Keine Werbe- oder Cross-Site-Tracking-Cookies. Wir nutzen datenschutzfreundliche Produktanalyse, um die aggregierte Nutzung zu verstehen; Session Replay ist auf Besucher- und Kundenoberflächen dauerhaft aus. Nur funktionale Daten (Login, Sprache, Alterscheck, Sicherheit) werden ohne Einwilligung gespeichert, wie es das Gesetz erlaubt.' },
+      { h: 'Deine Rechte (DSGVO)' },
+      { p: 'Auskunft, Berichtigung, Löschung, Einschränkung, Widerspruch, Übertragbarkeit und Widerruf der Einwilligung. Schreibe an privacy@intimate.nl; wir antworten innerhalb eines Monats. Du kannst dich auch bei der Autoriteit Persoonsgegevens beschweren.' },
+    ],
+  },
+  app: {
+    title: 'Hol dir die Intimate-App',
+    description: 'Die volle Intimate-Erfahrung auf deinem Handy — schneller, mit Benachrichtigungen, in Sekunden installiert.',
+    body: [
+      { h: 'Alles, was du kennst, jetzt in deiner Tasche' },
+      { p: 'Website oder App, du bekommst dieselbe vollständige Intimate-Erfahrung: sofortiger Chat, Video- und Audioanrufe, Anzeigen zum Posten und Durchsuchen und deine Timeline mit Updates.' },
+      { h: 'Warum installieren?' },
+      { list: [
+        'Überall Zugriff — für Mobilgeräte optimiert, sodass alles schneller öffnet und natürlicher wirkt als ein Browser-Tab.',
+        'Verpasse nichts — erhalte eine Benachrichtigung, sobald eine neue Nachricht, Antwort oder ein Match ankommt.',
+        'Privatsphäre eingebaut — moderne Sicherheit schützt deine persönlichen Daten.',
+      ] },
+      { h: 'In Sekunden installieren' },
+      { p: 'Öffne Intimate im Browser deines Handys und nutze „Zum Startbildschirm hinzufügen“ im Teilen-Menü. Intimate liegt dann als App auf deinem Gerät, bereit zur Nutzung — kein App-Store nötig.' },
+    ],
+  },
+};
+
+const BY_LOCALE: Record<Locale, Record<PageSlug, PageContent>> = { en, nl, de };
 
 export const PAGE_SLUGS = Object.keys(en) as PageSlug[];
 

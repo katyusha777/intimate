@@ -128,6 +128,16 @@ export const server = {
       },
     }),
 
+    // Owner pause/unpause of a live profile (settings toggle).
+    setPaused: defineAction({
+      input: z.object({ paused: z.boolean() }),
+      handler: async ({ paused }, context) => {
+        const session = await requireSession(context);
+        await accountApi.setPaused(session, paused);
+        return { ok: true };
+      },
+    }),
+
     // Merge device-local favorites into the account (called on login/register);
     // returns the merged set so the device can adopt anything synced elsewhere.
     syncFavorites: defineAction({

@@ -108,6 +108,8 @@ export interface AccountApi {
   saveProfile(session: Session, patch: Partial<ProfileEdit>): Promise<void>;
   /** Submit a draft/paused profile for review → `pending_review`. */
   submitProfile(session: Session): Promise<void>;
+  /** Owner pause/unpause: hides a live profile (`paused`) and brings it back (`live`). */
+  setPaused(session: Session, paused: boolean): Promise<void>;
 
   // --- media (her gallery) — bytes go to R2, the row records the key ---
   photos(session: Session): Promise<MediaItem[]>;

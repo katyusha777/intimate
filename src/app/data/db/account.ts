@@ -229,6 +229,16 @@ export const accountApi: AccountApi = {
       .where(and(eq(profiles.accountId, session.accountId), inArray(profiles.state, ['draft', 'paused'])));
   },
 
+  async setPaused(session, paused) {
+    const d = db();
+    // Owner-initiated only, and only between live and paused — a draft/pending
+    // profile isn't "paused", and this never publishes an unreviewed profile.
+    await d
+      .update(profiles)
+      .set({ state: paused ? 'paused' : 'live' })
+      .where(and(eq(profiles.accountId, session.accountId), eq(profiles.state, paused ? 'live' : 'paused')));
+  },
+
   async photos(session) {
     const d = db();
     const row = await myProfileRow(d, session.accountId);

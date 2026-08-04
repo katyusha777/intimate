@@ -1,6 +1,7 @@
 ---
 /** Account settings — the "Account" tab. Appearance, language, pause, sign out. */
 import * as m from '@/paraglide/messages';
+import { accountApi } from '@/app/api/account';
 import { messagingApi } from '@/app/api/messaging';
 import { sessionApi } from '@/app/api/session';
 import { isLocale, localizePath } from '@/lib/i18n';
@@ -18,6 +19,10 @@ if (!isLocale(locale)) return new Response(null, { status: 404 });
 const session = await sessionApi.current(Astro);
 const isAdvertiser = session?.role === 'advertiser';
 const convo = session && isAdvertiser && session.profileId ? await messagingApi.settings(session.profileId) : null;
+const profile = session && isAdvertiser ? await accountApi.myProfile(session) : null;
+// The pause toggle only makes sense for a profile that's actually live or paused.
+const canPause = profile?.state === 'live' || profile?.state === 'paused';
+const isPaused = profile?.state === 'paused';
 const blocked = session ? await messagingApi.listBlocked(session) : [];
 const modeLabel = (mode: (typeof CONVERSATION_MODES)[number]) =>
   mode === 'off' ? m.msg_mode_off() : mode === 'everyone' ? m.msg_mode_everyone() : m.msg_mode_verified();
@@ -100,12 +105,26 @@ const heading = 'font-condensed text-sm font-bold uppercase tracking-wide text-m
             <section class="py-5">
               <div class="flex items-center justify-between gap-4">
                 <h2 class={heading}>{m.settings_pause()}</h2>
-                <label class="flex cursor-pointer items-center">
-                  <input type="checkbox" class="sr-only" />
-                  <span class="switch-track" aria-hidden="true" />
-                </label>
+                {canPause && (
+                  <label class="flex cursor-pointer items-center">
+                    <input type="checkbox" data-pause checked={isPaused} class="sr-only" />
+                    <span class="switch-track" aria-hidden="true" />
+                  </label>
+                )}
               </div>
               <p class="mt-2 text-xs text-muted-foreground">{m.settings_pause_note()}</p>
+              {canPause ? (
+                <p
+                  data-pause-status
+                  data-live={m.settings_pause_live()}
+                  data-paused={m.settings_pause_paused()}
+                  class:list={['mt-2 text-sm font-medium', isPaused ? 'text-brand' : 'text-online']}
+                >
+                  {isPaused ? m.settings_pause_paused() : m.settings_pause_live()}
+                </p>
+              ) : (
+                <p class="mt-2 text-sm text-muted-foreground">{m.settings_pause_locked()}</p>
+              )}
             </section>
           )}
 
@@ -163,6 +182,28 @@ const heading = 'font-condensed text-sm font-bold uppercase tracking-wide text-m
         btn.closest('li')?.remove();
       });
     });
+
+    // Pause / resume the live profile, with immediate status feedback.
+    const pause = document.querySelector('[data-pause]') as HTMLInputElement | null;
+    const status = document.querySelector('[data-pause-status]') as HTMLElement | null;
+    if (pause && !pause.dataset.init) {
+      pause.dataset.init = '1';
+      pause.addEventListener('change', async () => {
+        const paused = pause.checked;
+        pause.disabled = true;
+        const { error } = await actions.account.setPaused({ paused });
+        pause.disabled = false;
+        if (error) {
+          pause.checked = !paused; // revert on failure
+          return;
+        }
+        if (status) {
+          status.textContent = paused ? status.dataset.paused! : status.dataset.live!;
+          status.classList.toggle('text-brand', paused);
+          status.classList.toggle('text-online', !paused);
+        }
+      });
+    }
   }
   initMsgSettings();
   document.addEventListener('astro:page-load', initMsgSettings);

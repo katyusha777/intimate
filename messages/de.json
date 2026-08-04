@@ -466,5 +466,8 @@
   "editor_languages_hint": "Sprachen, die du sprichst.",
   "editor_place_hint": "Wo du Kunden empfängst.",
   "editor_amenities_hint": "Was bei dir verfügbar ist.",
-  "editor_payment_hint": "Wie Kunden bezahlen können."
+  "editor_payment_hint": "Wie Kunden bezahlen können.",
+  "settings_pause_live": "Dein Profil ist live und in der Suche sichtbar.",
+  "settings_pause_paused": "Dein Profil ist pausiert — in der Suche und für neue Nachrichten ausgeblendet.",
+  "settings_pause_locked": "Du kannst dein Profil pausieren, sobald es live ist."
 }

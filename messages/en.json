@@ -466,5 +466,8 @@
   "editor_languages_hint": "Languages you speak.",
   "editor_place_hint": "Where you receive clients.",
   "editor_amenities_hint": "What’s available at your place.",
-  "editor_payment_hint": "How clients can pay you."
+  "editor_payment_hint": "How clients can pay you.",
+  "settings_pause_live": "Your profile is live and visible in search.",
+  "settings_pause_paused": "Your profile is paused — hidden from search and new messages.",
+  "settings_pause_locked": "You can pause your profile once it’s live."
 }
