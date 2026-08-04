@@ -359,7 +359,7 @@ if (params.onlineOnly)
         // navigates immediately even from the sheet.
         if (t.closest('[data-filters-mobile]') && !t.closest('[data-visit-nav]')) return;
 
-        sessionStorage.setItem('listing-scroll', String(currentScrollY()));
+        sessionStorage.setItem('listing-scroll', String(window.scrollY));
         const citySeg = () => (form.dataset.city ? `${form.dataset.city}/` : '');
 
         const cityNav = t.closest('[data-city-nav]') as HTMLSelectElement | null;
@@ -387,7 +387,7 @@ if (params.onlineOnly)
         .querySelector('[data-filters-mobile]')
         ?.closest('form')
         ?.addEventListener('submit', () => {
-          sessionStorage.setItem('listing-scroll', String(currentScrollY()));
+          sessionStorage.setItem('listing-scroll', String(window.scrollY));
         });
     });
   }

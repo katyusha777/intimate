@@ -177,6 +177,27 @@ import SideDrawer from '@/components/molecules/SideDrawer.astro';
         if (!root) throw new Error();
         b.innerHTML = '';
         b.appendChild(root);
+        // The injected profile carries its own component <script> tags, but
+        // DOM-inserted scripts never execute — so a listing page's request sheet /
+        // report control stay dead. Re-create the ones this page isn't already
+        // running so they self-init against the injected DOM. "Already running" =
+        // present in <head> (real executing scripts); the injected copies sit in
+        // the sheet BODY and must not count. Key by component (strip the hash) so
+        // a post-deploy hash skew doesn't re-run an already-live module. A unique
+        // query forces execution (a module runs once per URL per document).
+        const key = (u: string) => u.split('?')[0].replace(/\.[\w-]+\.js$/, '');
+        const running = new Set(
+          [...document.head.querySelectorAll('script[src]')].map((s) => key(s.getAttribute('src') || '')),
+        );
+        root.querySelectorAll('script[type="module"][src]').forEach((s) => {
+          const src = s.getAttribute('src');
+          if (!src || running.has(key(src))) return;
+          running.add(key(src));
+          const el = document.createElement('script');
+          el.type = 'module';
+          el.src = `${src}${src.includes('?') ? '&' : '?'}sheet=${key(src).split('/').pop()}`;
+          document.head.appendChild(el);
+        });
         // Re-run component initializers (carousel, safe-mode image swap, hero
         // back button, gallery) on the injected content — all idempotent.
         document.dispatchEvent(new Event('astro:page-load'));
