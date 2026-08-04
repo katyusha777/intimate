@@ -65,6 +65,26 @@ export const server = {
       },
     }),
 
+    // Send a password-reset email. Always returns ok (never reveal if the
+    // address exists) — the honest "if that email exists, we sent a link" copy.
+    requestReset: defineAction({
+      input: z.object({ email: z.string().email() }),
+      handler: async ({ email }, context) => {
+        await sessionApi.requestPasswordReset(context, { email });
+        return { ok: true };
+      },
+    }),
+
+    // Set a new password for the recovery session (from the emailed link).
+    setPassword: defineAction({
+      input: z.object({ password: z.string().min(8), locale: z.enum(LOCALES) }),
+      handler: async ({ password, locale }, context) => {
+        const ok = await sessionApi.setPassword(context, { password });
+        if (!ok) throw new ActionError({ code: "UNAUTHORIZED" });
+        return { href: `/${locale}/account/` };
+      },
+    }),
+
     logout: defineAction({
       input: z.object({ locale: z.enum(LOCALES) }),
       handler: async ({ locale }, context) => {

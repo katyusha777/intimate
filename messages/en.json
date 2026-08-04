@@ -70,6 +70,12 @@
   "auth_password": "Password",
   "auth_create_account": "Create account",
   "auth_forgot": "Forgot password?",
+  "auth_reset_sent": "If that email is registered, we just sent a reset link. Check your inbox.",
+  "reset_title": "Set a new password",
+  "reset_sub": "Choose a new password for your account.",
+  "reset_new_password": "New password",
+  "reset_submit": "Save password",
+  "reset_expired": "This reset link is invalid or has expired. Request a new one from the login screen.",
   "auth_terms": "By continuing you agree to the terms & conditions and privacy policy.",
   "auth_welcome": "Welcome to Intimate",
   "taxonomy_services_girlfriend_experience": "GFE",
@@ -451,5 +457,7 @@
   "editor_custom_ph": "e.g. 15 minutes phone call",
   "editor_move_up": "Move up",
   "editor_move_down": "Move down",
-  "editor_remove_item": "Remove item"
+  "editor_remove_item": "Remove item",
+  "legal_terms": "Terms",
+  "legal_privacy": "Privacy"
 }

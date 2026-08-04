@@ -91,6 +91,28 @@ export const sessionApi: SessionApi = {
     return identity(data.user.id, data.user.email);
   },
 
+  async requestPasswordReset(ctx, { email }) {
+    const supabase = supabaseServer(ctx);
+    const origin = new URL(ctx.request.url).origin;
+    // Recovery mail → /auth/confirm (verifyOtp type=recovery) → /auth/reset.
+    // Errors are swallowed on purpose: never reveal whether the email exists.
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${origin}/auth/confirm?next=/auth/reset`,
+    });
+    if (error) console.error('[session] requestPasswordReset:', error.code, error.message);
+  },
+
+  async setPassword(ctx, { password }) {
+    const supabase = supabaseServer(ctx);
+    // Only works when the recovery session (set by /auth/confirm) is present.
+    const { data, error } = await supabase.auth.updateUser({ password });
+    if (error || !data.user) {
+      if (error) console.error('[session] setPassword:', error.code, error.message);
+      return false;
+    }
+    return true;
+  },
+
   async signOut(ctx) {
     await supabaseServer(ctx).auth.signOut({ scope: 'local' });
   },

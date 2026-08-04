@@ -73,7 +73,13 @@ const tabBtn =
         {m.auth_confirm_sent()}
       </p>
       <Button type="submit" size="lg" class="w-full">{m.auth_create_account()}</Button>
-      <p class="text-center text-xs leading-relaxed text-muted-foreground">{m.auth_terms()}</p>
+      <p class="text-center text-xs leading-relaxed text-muted-foreground">
+        {m.auth_terms()}
+        <br />
+        <a href={localizePath('/terms/')} class="underline underline-offset-2 hover:text-foreground">{m.legal_terms()}</a>
+        <span aria-hidden="true"> · </span>
+        <a href={localizePath('/privacy/')} class="underline underline-offset-2 hover:text-foreground">{m.legal_privacy()}</a>
+      </p>
     </form>
 
     <!-- Login -->
@@ -82,11 +88,14 @@ const tabBtn =
       <SlabField label={m.auth_password()} name="password" type="password" autocomplete="current-password" required />
 
       <p data-auth-error class="hidden text-sm font-medium text-brand">{m.auth_error()}</p>
+      <p data-forgot-sent class="hidden border border-foreground/20 bg-muted p-3 text-sm leading-relaxed">
+        {m.auth_reset_sent()}
+      </p>
       <Button type="submit" size="lg" class="w-full">{m.nav_login()}</Button>
       <p class="text-center text-xs">
-        <a href={localizePath('/account/')} class="text-muted-foreground underline-offset-2 hover:underline">
+        <button type="button" data-forgot class="cursor-pointer text-muted-foreground underline-offset-2 hover:underline">
           {m.auth_forgot()}
-        </a>
+        </button>
       </p>
     </form>
   </div>
@@ -132,6 +141,23 @@ const tabBtn =
           b.dataset.active = String(b === btn);
         });
       });
+    });
+
+    // Forgot password: email the reset link to whatever's in the login field.
+    modal.querySelector<HTMLElement>('[data-forgot]')?.addEventListener('click', async () => {
+      const loginForm = modal.querySelector<HTMLFormElement>('[data-auth-form="login"]')!;
+      const email = String(new FormData(loginForm).get('email') ?? '').trim();
+      const err = loginForm.querySelector<HTMLElement>('[data-auth-error]')!;
+      const sent = loginForm.querySelector<HTMLElement>('[data-forgot-sent]')!;
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+        err.classList.remove('hidden');
+        loginForm.querySelector<HTMLInputElement>('input[name="email"]')?.focus();
+        return;
+      }
+      err.classList.add('hidden');
+      // Always shows "sent" (the action never reveals whether the email exists).
+      await actions.auth.requestReset({ email });
+      sent.classList.remove('hidden');
     });
 
     // Submit via actions; hard navigation so role-aware chrome re-renders.

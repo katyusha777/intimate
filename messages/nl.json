@@ -70,6 +70,12 @@
   "auth_password": "Wachtwoord",
   "auth_create_account": "Account aanmaken",
   "auth_forgot": "Wachtwoord vergeten?",
+  "auth_reset_sent": "Als dit e-mailadres bekend is, hebben we een herstellink gestuurd. Controleer je inbox.",
+  "reset_title": "Nieuw wachtwoord instellen",
+  "reset_sub": "Kies een nieuw wachtwoord voor je account.",
+  "reset_new_password": "Nieuw wachtwoord",
+  "reset_submit": "Wachtwoord opslaan",
+  "reset_expired": "Deze herstellink is ongeldig of verlopen. Vraag een nieuwe aan via het inlogscherm.",
   "auth_terms": "Door verder te gaan accepteer je de voorwaarden en het privacybeleid.",
   "auth_welcome": "Welkom bij Intimate",
   "filter_title": "Filters",
@@ -323,7 +329,7 @@
   "gtk_no": "Nee",
   "similar_online_now": "{count} vergelijkbare profielen nu online in {city}",
   "editor_rates": "Tarieven",
-  "editor_visit_hint": "Waar je klanten ontvangt of bezoekt â kies er minstens Ã©Ã©n om live te gaan.",
+  "editor_visit_hint": "Waar je klanten ontvangt of bezoekt — kies er minstens één om live te gaan.",
   "editor_rates_hint": "Je prijs is het laagste bedrag in deze tabel.",
   "editor_rates_duration": "Duur",
   "editor_extras": "Notitie extra's",
@@ -451,5 +457,7 @@
   "editor_custom_ph": "bijv. 15 minuten bellen",
   "editor_move_up": "Omhoog",
   "editor_move_down": "Omlaag",
-  "editor_remove_item": "Item verwijderen"
+  "editor_remove_item": "Item verwijderen",
+  "legal_terms": "Voorwaarden",
+  "legal_privacy": "Privacy"
 }

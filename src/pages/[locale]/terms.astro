@@ -1,0 +1,7 @@
+---
+import ContentPage from '@/components/organisms/content/ContentPage.astro';
+import { isLocale } from '@/lib/i18n';
+if (!isLocale(Astro.params.locale)) return new Response(null, { status: 404 });
+---
+
+<ContentPage slug="terms" path="/terms/" />

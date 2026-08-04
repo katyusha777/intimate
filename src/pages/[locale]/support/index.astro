@@ -16,10 +16,11 @@ if (!isLocale(locale)) return new Response(null, { status: 404 });
 const alternates = samePathAlternates(Astro.url.origin, '/support/');
 
 const channels = [
-  { icon: 'phone', family: 'solid', label: 'Call us', color: 'text-foreground', ...SUPPORT_CONTACT.phone },
+  { icon: 'phone', family: 'thin', label: 'Call us', color: 'text-foreground', ...SUPPORT_CONTACT.phone },
   { icon: 'whatsapp', family: 'brands', label: 'WhatsApp', color: 'text-online', ...SUPPORT_CONTACT.whatsapp },
   { icon: 'telegram', family: 'brands', label: 'Telegram', color: 'text-telegram', ...SUPPORT_CONTACT.telegram },
-];
+  { icon: 'envelope', family: 'thin', label: 'Email', color: 'text-foreground', ...SUPPORT_CONTACT.email },
+] as const;
 const topics = [
   m.support_topic_1(),
   m.support_topic_2(),
@@ -78,5 +79,6 @@ const topics = [
     <p class="mt-10 border-l-2 border-amber-400/60 pl-3 text-sm text-muted-foreground">
       {m.support_note()}
     </p>
+    <p class="mt-6 text-xs text-muted-foreground">{SUPPORT_CONTACT.company}</p>
   </div>
 </Layout>

@@ -60,5 +60,13 @@ export interface SessionApi {
   ): Promise<{ session: Session | null; needsConfirmation: boolean }>;
   /** Password sign-in; null = bad credentials (or unconfirmed email). */
   signIn(ctx: AuthCtx, input: { email: string; password: string }): Promise<Session | null>;
+  /**
+   * Email a password-reset link (recovery). Always resolves without revealing
+   * whether the address exists (anti-enumeration). The link lands on
+   * /auth/confirm?type=recovery&next=/auth/reset → a recovery session → /auth/reset.
+   */
+  requestPasswordReset(ctx: AuthCtx, input: { email: string }): Promise<void>;
+  /** Set a new password for the current (recovery) session. false = no/expired session. */
+  setPassword(ctx: AuthCtx, input: { password: string }): Promise<boolean>;
   signOut(ctx: AuthCtx): Promise<void>;
 }

@@ -70,6 +70,12 @@
   "auth_password": "Passwort",
   "auth_create_account": "Konto erstellen",
   "auth_forgot": "Passwort vergessen?",
+  "auth_reset_sent": "Falls diese E-Mail registriert ist, haben wir einen Link zum Zurücksetzen gesendet. Prüfe dein Postfach.",
+  "reset_title": "Neues Passwort festlegen",
+  "reset_sub": "Wähle ein neues Passwort für dein Konto.",
+  "reset_new_password": "Neues Passwort",
+  "reset_submit": "Passwort speichern",
+  "reset_expired": "Dieser Link ist ungültig oder abgelaufen. Fordere über die Anmeldung einen neuen an.",
   "auth_terms": "Mit dem Fortfahren akzeptierst du die AGB und die DatenschutzerklÃ¤rung.",
   "auth_welcome": "Willkommen bei Intimate",
   "filter_title": "Filter",
@@ -451,5 +457,7 @@
   "editor_custom_ph": "z. B. 15 Minuten Telefonat",
   "editor_move_up": "Nach oben",
   "editor_move_down": "Nach unten",
-  "editor_remove_item": "Position entfernen"
+  "editor_remove_item": "Position entfernen",
+  "legal_terms": "AGB",
+  "legal_privacy": "Datenschutz"
 }
