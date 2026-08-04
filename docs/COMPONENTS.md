@@ -87,6 +87,7 @@ Folders appear when their first organism lands:
 | `messaging/` | ✓ Inbox, Thread, RequestCard (the request card + Accept/Decline in the thread), ContactList (MESSAGING.md §2 for the rest) |
 | `layout/` | ✓ Header, Footer, BottomTabBar |
 | `content/` | ✓ ContentPage — renders the migrated static editorial/legal pages (about, safety, profile-rules, verification, terms, privacy, app) from `lib/site-pages.ts` |
+| `onboarding/` | ✓ SetupShell (the guided setup-flow chrome per ONBOARDING.md; progress bar + later escape. Steps reuse the editor sections and MediaManager) |
 | `admin/` | ✓ AdminShell, QueueList, DocViewer — ModerationQueue, ReportQueue, AuditLogTable (ADMIN.md §2) |
 | `contacts/` | — ContactDetail (MESSAGING.md) |
 | `call/` | — CallWindow (React island), IncomingCallToast, CallControls |

@@ -16,12 +16,32 @@ import * as m from '@/paraglide/messages';
 interface Props {
   /** Icon-only round button for the top header (next to ThemeToggle). */
   compact?: boolean;
+  /** Full-width labelled row (title + description + switch right) for the footer. */
+  detailed?: boolean;
 }
-const { compact = false } = Astro.props;
+const { compact = false, detailed = false } = Astro.props;
 ---
 
 {
-  compact ? (
+  detailed ? (
+    <button
+      type="button"
+      role="switch"
+      aria-checked="true"
+      aria-label={m.safe_mode_cycle()}
+      data-safe-toggle
+      data-safe-state="neutral"
+      class="safe-toggle group flex w-full items-center justify-between gap-4 py-1 text-left"
+    >
+      <span class="flex flex-col">
+        <span class="text-sm font-medium text-foreground">{m.safe_mode()}</span>
+        <span class="text-xs text-muted-foreground">{m.safe_mode_desc()}</span>
+      </span>
+      <span class="relative h-6 w-10 flex-none rounded-full bg-input transition-colors duration-200 group-aria-checked:bg-primary">
+        <span class="absolute left-0.5 top-0.5 size-5 rounded-full bg-white shadow-sm transition-transform duration-200 ease-[cubic-bezier(0.2,0.8,0.2,1)] group-aria-checked:translate-x-4" />
+      </span>
+    </button>
+  ) : compact ? (
     <button
       type="button"
       role="switch"

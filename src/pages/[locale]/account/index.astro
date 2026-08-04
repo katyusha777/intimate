@@ -24,6 +24,14 @@ const progress =
   session?.role === 'advertiser' && profile && account ? onboardingProgress(profile, account) : null;
 const onboarding = progress != null && !progress.submitted;
 
+// First-run guidance: send an unfinished advertiser into the setup flow, unless
+// she's explicitly tapped "later" (a session cookie remembers that choice).
+const later = Astro.url.searchParams.get('later');
+if (later) Astro.cookies.set('setup_later', '1', { path: '/', httpOnly: true, sameSite: 'lax' });
+if (onboarding && !later && !Astro.cookies.get('setup_later')) {
+  return Astro.redirect(localizePath('/account/setup/'));
+}
+
 const card = 'facts-card dark bg-neutral-950 p-6 text-white';
 // Human words, never "pending_review" (ONBOARDING.md law 5).
 const stateLabel = (s: ProfileState) =>

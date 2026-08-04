@@ -1,0 +1,255 @@
+---
+/**
+ * The professional's guided setup flow (docs/ONBOARDING.md) — one job per screen,
+ * reusing the editor sections (ProfileEditorForm variant props), MediaManager and
+ * VerificationFlow. Progress + resume are DERIVED (lib/onboarding.ts) — no stored
+ * step. Server-rendered per `?step`; the reused islands (photo upload, SMS/ID)
+ * reload in place, which preserves ?step. Advertiser only.
+ */
+import * as m from '@/paraglide/messages';
+import { accountApi } from '@/app/api/account';
+import { sessionApi } from '@/app/api/session';
+import { onboardingProgress } from '@/lib/onboarding';
+import { isLocale, localizePath } from '@/lib/i18n';
+import SetupShell from '@/components/organisms/onboarding/SetupShell.astro';
+import ProfileEditorForm from '@/components/organisms/dashboard/ProfileEditorForm.astro';
+import MediaManager from '@/components/organisms/dashboard/MediaManager.astro';
+import VerificationFlow from '@/components/organisms/dashboard/VerificationFlow.astro';
+import Button from '@/components/atoms/Button.astro';
+import Layout from '@/layouts/Layout.astro';
+
+const locale = Astro.params.locale;
+if (!isLocale(locale)) return new Response(null, { status: 404 });
+
+const session = await sessionApi.current(Astro);
+// Solo professional only — clients/agencies never enter the flow.
+if (!session) return Astro.redirect(localizePath('/account/'));
+if (session.role !== 'advertiser') return Astro.redirect(localizePath('/account/'));
+
+const account = await accountApi.get(session);
+const profile = await accountApi.myProfile(session);
+const progress = onboardingProgress(profile!, account);
+const photos = progress.steps.find((s) => s.key === 'basics')?.done ? await accountApi.photos(session) : [];
+
+// Flow order; NUMBERED drives the progress bar (welcome + done sit outside it).
+const NUMBERED = ['basics', 'rates', 'services', 'photos', 'hours', 'verify'] as const;
+const ALL = ['welcome', ...NUMBERED, 'done'] as const;
+type Step = (typeof ALL)[number];
+const NEXT: Record<string, Step> = {
+  welcome: 'basics', basics: 'rates', rates: 'services', services: 'photos',
+  photos: 'hours', hours: 'verify',
+};
+
+// Where a returning visitor resumes: the first incomplete REQUIRED step (phone/id
+// collapse into 'verify'); once all required are done, straight to 'verify' to submit.
+const resume = (): Step => {
+  const fi = progress.firstIncomplete;
+  if (fi === null) return 'verify';
+  if (fi === 'phone' || fi === 'id') return 'verify';
+  return fi as Step;
+};
+const basicsDone = progress.steps.find((s) => s.key === 'basics')!.done;
+let step = (Astro.url.searchParams.get('step') ?? '') as Step;
+if (!ALL.includes(step)) step = progress.submitted ? 'done' : basicsDone ? resume() : 'welcome';
+// Once submitted, the flow is over — only the 'done' celebration is reachable.
+if (progress.submitted && step !== 'done') return Astro.redirect(localizePath('/account/'));
+
+const idx = (NUMBERED as readonly string[]).indexOf(step) + 1; // 0 for welcome/done
+const cont = 'w-full';
+const title = 'display text-2xl md:text-3xl';
+const why = 'mt-2 leading-relaxed text-muted-foreground';
+---
+
+<Layout noindex title={`${m.onb_title()} | Intimate`}>
+  <SetupShell index={idx > 0 ? idx : undefined} total={NUMBERED.length}>
+    {
+      step === 'welcome' && (
+        <div>
+          <h1 class={title}>{m.onb_welcome_title()}</h1>
+          <ul class="mt-6 space-y-4">
+            <li class="flex gap-3">
+              <span aria-hidden="true" class="text-xl">📝</span>
+              <span>
+                {m.onb_welcome_p1()} — <em class="not-italic text-muted-foreground">{m.onb_welcome_p1_note()}</em>
+              </span>
+            </li>
+            <li class="flex gap-3"><span aria-hidden="true" class="text-xl">📷</span><span>{m.onb_welcome_p2()}</span></li>
+            <li class="flex gap-3"><span aria-hidden="true" class="text-xl">✅</span><span>{m.onb_welcome_p3()}</span></li>
+          </ul>
+          <p class="mt-6 text-sm text-muted-foreground">{m.onb_welcome_reassure()}</p>
+          <a href={`?step=basics`} class="mt-8 block">
+            <Button size="lg" class={cont}>{m.onb_start()}</Button>
+          </a>
+          <a href={`${localizePath('/account/')}?later=1`} class="mt-3 block text-center text-sm text-muted-foreground underline-offset-2 hover:underline">
+            {m.onb_look_around()}
+          </a>
+        </div>
+      )
+    }
+
+    {
+      step === 'basics' && (
+        <div>
+          <h1 class={title}>{m.onb_step_basics()}</h1>
+          <p class={why}>{m.onb_why_basics()}</p>
+          <div class="mt-6"><ProfileEditorForm profile={profile!} only={['basics']} wizard /></div>
+          <button type="button" data-wizard-continue data-save data-next="rates" class="mt-8 w-full">
+            <Button size="lg" class={cont}>{m.onb_continue()}</Button>
+          </button>
+          <p data-wizard-error class="mt-2 hidden text-sm font-medium text-brand"></p>
+        </div>
+      )
+    }
+
+    {
+      step === 'rates' && (
+        <div>
+          <h1 class={title}>{m.onb_step_rates()}</h1>
+          <p class={why}>{m.onb_why_rates()}</p>
+          <div class="mt-6"><ProfileEditorForm profile={profile!} only={['rates']} wizard /></div>
+          <button type="button" data-wizard-continue data-save data-next="services" class="mt-8 w-full">
+            <Button size="lg" class={cont}>{m.onb_continue()}</Button>
+          </button>
+          <p data-wizard-error class="mt-2 hidden text-sm font-medium text-brand"></p>
+        </div>
+      )
+    }
+
+    {
+      step === 'services' && (
+        <div>
+          <h1 class={title}>{m.onb_step_services()}</h1>
+          <p class={why}>{m.onb_why_services()}</p>
+          <p class="mt-2 text-sm text-muted-foreground">{m.onb_extras()}</p>
+          <div class="mt-6"><ProfileEditorForm profile={profile!} only={['services', 'gtk', 'description']} wizard /></div>
+          <button type="button" data-wizard-continue data-save data-next="photos" class="mt-8 w-full">
+            <Button size="lg" class={cont}>{m.onb_continue()}</Button>
+          </button>
+          <p data-wizard-error class="mt-2 hidden text-sm font-medium text-brand"></p>
+        </div>
+      )
+    }
+
+    {
+      step === 'photos' && (
+        <div>
+          <h1 class={title}>{m.onb_step_photos()}</h1>
+          <p class={why}>{m.onb_why_photos()}</p>
+          <ul class="mt-3 space-y-1.5 text-sm text-muted-foreground">
+            <li class="flex gap-2"><span aria-hidden="true">•</span>{m.onb_photo_rule1()}</li>
+            <li class="flex gap-2"><span aria-hidden="true">•</span>{m.onb_photo_rule2()}</li>
+          </ul>
+          <div class="mt-6"><MediaManager {photos} /></div>
+          {photos.length > 0 ? (
+            <a href={`?step=hours`} class="mt-8 block"><Button size="lg" class={cont}>{m.onb_continue_photos()}</Button></a>
+          ) : (
+            <Button size="lg" class={`${cont} mt-8`} disabled>{m.onb_continue_photos()}</Button>
+          )}
+        </div>
+      )
+    }
+
+    {
+      step === 'hours' && (
+        <div>
+          <h1 class={title}>{m.editor_hours()}</h1>
+          <p class={why}>{m.onb_why_hours()}</p>
+          <div class="mt-6"><ProfileEditorForm profile={profile!} only={['hours']} wizard /></div>
+          <button type="button" data-wizard-continue data-save data-next="verify" class="mt-8 w-full">
+            <Button size="lg" class={cont}>{m.onb_continue()}</Button>
+          </button>
+          <a href={`?step=verify`} class="mt-3 block text-center text-sm text-muted-foreground underline-offset-2 hover:underline">
+            {m.onb_skip()}
+          </a>
+          <p data-wizard-error class="mt-2 hidden text-sm font-medium text-brand"></p>
+        </div>
+      )
+    }
+
+    {
+      step === 'verify' && (
+        <div>
+          <h1 class={title}>{m.verify_title()}</h1>
+          <p class={why}>{m.onb_why_verify()}</p>
+          <div class="mt-6"><VerificationFlow {session} {account} /></div>
+          {progress.readyToSubmit && (
+            <div class="mt-8 border-t border-border pt-6">
+              <p class="mb-3 text-sm text-muted-foreground">{m.onb_verify_submit_hint()}</p>
+              <Button size="lg" class={cont} data-wizard-submit>{m.onb_submit()}</Button>
+              <p data-wizard-error class="mt-2 hidden text-sm font-medium text-brand"></p>
+            </div>
+          )}
+        </div>
+      )
+    }
+
+    {
+      step === 'done' && (
+        <div class="py-10 text-center">
+          <span class="mx-auto grid size-16 place-items-center rounded-full bg-online/15 text-online">
+            <svg class="size-9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
+          </span>
+          <h1 class="display mt-5 text-2xl md:text-3xl">{m.onb_done_title()}</h1>
+          <p class="mx-auto mt-2 max-w-sm leading-relaxed text-muted-foreground">{m.onb_done_note()}</p>
+          <a href={profile?.slug ? localizePath(`/profile/${profile.slug}/`) : localizePath('/account/')} class="mt-8 block">
+            <Button size="lg" class={cont}>{m.onb_done_cta()}</Button>
+          </a>
+        </div>
+      )
+    }
+  </SetupShell>
+</Layout>
+
+<script>
+  import { actions } from 'astro:actions';
+  import { readProfilePatch } from '@/lib/editor-form';
+
+  function initWizard() {
+    // Save-and-advance: read the step's editor form → partial save → next step.
+    document.querySelectorAll<HTMLElement>('[data-wizard-continue]').forEach((btn) => {
+      if (btn.dataset.init) return;
+      btn.dataset.init = '1';
+      btn.addEventListener('click', async () => {
+        if (btn.dataset.loading) return;
+        btn.dataset.loading = '1';
+        const err = document.querySelector<HTMLElement>('[data-wizard-error]');
+        err?.classList.add('hidden');
+        try {
+          if (btn.dataset.save !== undefined) {
+            const form = document.querySelector<HTMLFormElement>('[data-profile-editor]');
+            if (form) {
+              const { error } = await actions.account.saveProfile({ patch: readProfilePatch(form) });
+              if (error) throw error;
+            }
+          }
+          location.href = `?step=${btn.dataset.next}`;
+        } catch (e) {
+          if (err) {
+            err.textContent = (e as { message?: string })?.message || 'Try again';
+            err.classList.remove('hidden');
+          }
+          delete btn.dataset.loading;
+        }
+      });
+    });
+
+    // The big moment: submit for review → the finish screen.
+    const submit = document.querySelector<HTMLButtonElement>('[data-wizard-submit]');
+    if (submit && !submit.dataset.init) {
+      submit.dataset.init = '1';
+      submit.addEventListener('click', async () => {
+        if (submit.dataset.loading) return;
+        submit.dataset.loading = '1';
+        const { error } = await actions.account.submitProfile({});
+        if (error) {
+          document.querySelector('[data-wizard-error]')?.classList.remove('hidden');
+          delete submit.dataset.loading;
+          return;
+        }
+        location.href = '?step=done';
+      });
+    }
+  }
+  initWizard();
+  document.addEventListener('astro:page-load', initWizard);
+</script>
