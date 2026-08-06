@@ -66,6 +66,15 @@ const unread =
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
+    <!-- Pin the cascade-layer order BEFORE any stylesheet: layer precedence is
+         first-occurrence, and the bundler's chunk order can put a vendor
+         @layer components block ahead of Tailwind's preamble — which silently
+         inverts components < base and strips every component-layer override
+         (the vanished slab-field frames). This statement makes chunk order
+         irrelevant. -->
+    <style is:inline>
+      @layer properties, theme, base, components, utilities;
+    </style>
     <title>{title}</title>
     <!-- Real title kept out of <title> so the safe-mode script can restore it
          after neutralizing the tab, and stays fresh across view transitions. -->
