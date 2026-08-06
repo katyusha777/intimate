@@ -131,9 +131,11 @@ RLS (SECURITY.md review ritual applies — this is a sensitive diff):
 - `contact_invites`: professional owner full CRUD; claim runs in a server
   action (service-role-free: the action validates token + expiry + unclaimed,
   then inserts thread/contact as the claiming user under their own RLS).
-- Trigger: `call_sessions` INSERT/UPDATE → `realtime.broadcast_changes()` on
-  topics `account:{client_account_id}` and `thread:{thread_id}` (payload = ids
-  + state, per the payload law).
+- Trigger: `call_sessions` INSERT/UPDATE → broadcast on topics
+  `account:{client_account_id}`, `thread:{thread_id}` **and `call:{id}`**
+  (0013 — the signaling channel both parties already hold; how the ringing
+  caller learns of a decline and how live UIs learn of a server-side sweep).
+  Payload = ids + state, per the payload law.
 - Ring timeout is **server-owned**: a `ringing` row older than 30s counts as
   `missed` (transition function enforces; the caller's client also fires the
   transition so the card is immediate).
@@ -196,21 +198,33 @@ data, never instructions):
 
 | event | payload | sender |
 |---|---|---|
-| `accept` / `decline` | `{}` | callee |
-| `offer` / `answer` | `{ sdp }` | caller / callee |
-| `ice` | `{ candidate }` | both, trickle |
+| `accept` | `{}` | callee |
+| `offer` / `answer` | `{ sdp }` | caller / callee (offer repeats on ICE restart) |
+| `ice` | `{ candidates: [...] }` | both, trickled in ~150ms batches |
+| `restart` | `{}` | callee asks the caller to ICE-restart (only the caller ever offers) |
 | `end` | `{ reason }` | both |
+| `call` | `{ id, state }` | DB trigger 0013 — decline/sweep/terminal truth |
 
-Flow: her tap → `call.start` action (validates professional-owns-profile,
-thread `open`, pair unblocked, mode ≠ off; **rejects if she already has an
-active session — busy is server truth**) inserts `ringing` → trigger rings his
-`account:{id}` → global overlay → Accept → `getUserMedia` (the tap is the iOS
-user gesture) → `accept` broadcast → caller builds `RTCPeerConnection`,
-offer/answer, trickle ICE → connected → `call.transition(active)` → hangup
-either side → `call.transition(ended, reason)` → `kind='call'` card posted.
-Decline → card her side ("not now" tone, no penalty copy). 30s no-answer →
-`missed` + card. 30s heartbeat updates `last_beat_at` while active (liveness
-now, billing later). Reconnect within the call = ICE restart, not a new session.
+Flow: her tap → **`getUserMedia` starts synchronously in the tap** (gesture
+law: WebKit auto-denies unprivileged prompts after a past denial, Brave's
+autoplay-block clears activation — media and remote-playback priming must
+anchor to the tap, never after an await) and `call.start` runs in parallel
+(validates professional-owns-profile, thread `open`, pair unblocked, mode ≠
+off; **rejects if she already has an active session — busy is server truth**)
+→ inserts `ringing` → trigger rings his `account:{id}` → global overlay →
+meanwhile her side pre-builds the `RTCPeerConnection` and gathers ICE during
+the ring → his Accept tap starts *his* `getUserMedia` (same gesture law) in
+parallel with `call.accept` → his `accept` broadcast (queued until his channel
+joins, so the offer can never outrun his handlers) → her pre-gathered offer
+goes out instantly → answer, residual trickle ICE → connected → hangup either
+side → `call.end(reason)` → `kind='call'` card posted. Decline → card her side
+("not now" tone, no penalty copy) — reaches her ringing UI via the trigger's
+`call` event. 30s no-answer → `missed` + card; 25s accept-to-connect budget →
+honest failure toast. 30s heartbeat updates `last_beat_at` while active
+(liveness now, billing later). Mid-call drops: `disconnected` >6s or `failed`
+→ ICE restart (caller re-offers; callee requests via `restart`), two attempts,
+then honest teardown. Every state edge logs `[call]` to the console
+(content-free — never SDP).
 
 UI (reuse law; register everything in COMPONENTS.md + `/kitchen-sink` same
 change):
@@ -248,11 +262,16 @@ no ring, no signaling (RLS test).
 Camera capture with `facingMode: 'user'` default; remote full-bleed
 (`object-cover`, safe-area aware), draggable PiP self-view, controls row adds
 camera-toggle + flip; mid-call voice→video upgrade OUT (v1 keeps the mode
-fixed — she chose it when she tapped). Autoplay policy: remote `<video>` is
-`autoplay playsinline` and starts on the accept gesture, muted-then-unmute
-fallback if Safari balks. Backgrounding pauses video honestly ("camera off"
-chip), audio continues; phone-call interruption pauses gracefully (MOBILE.md
-device pass covers it).
+fixed — she chose it when she tapped). Autoplay policy (researched + locked
+2026-08-07): remote media is SPLIT — a dedicated `<audio>` element carries
+remote sound (iOS won't reliably play audio through a hidden `<video>`; one
+audio-bearing video element max on iOS) and the remote `<video>` stays
+**muted forever** (muted playback is never policy-blocked, so video always
+renders). Both are primed with `play()` inside the accept/call tap; if a
+browser still refuses audio (Brave autoplay-block), a "tap for sound" pill
+recovers with a fresh gesture. Backgrounding pauses video honestly ("camera
+off" chip), audio continues; phone-call interruption pauses gracefully
+(MOBILE.md device pass covers it).
 
 **DoD V3:** □ video call connects on the same device matrix · □ PiP drag +
 flip + camera-toggle work both platforms · □ voice mode provably never

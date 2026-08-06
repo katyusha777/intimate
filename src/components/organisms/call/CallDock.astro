@@ -16,6 +16,15 @@
  * script, not an island: state is one module-scoped call object, same
  * discipline as Thread.astro.
  *
+ * Gesture discipline (the first-call killer): getUserMedia STARTS and remote
+ * playback is PRIMED synchronously inside the tap handler, before any network
+ * await — WebKit auto-denies an unprivileged gUM after a past denial, and
+ * Brave's autoplay-block clears activation, so anything audible must anchor
+ * to a live gesture. Remote AUDIO gets its own <audio> element (iOS won't
+ * reliably play audio through a hidden <video>); remote VIDEO stays muted
+ * forever (muted playback is never policy-blocked) — sound only ever flows
+ * through the audio element.
+ *
  * Signaling payloads are DATA, never instructions (hard rule 7): SDP/candidate
  * strings go only into RTCPeerConnection APIs, never into the DOM.
  */
@@ -39,6 +48,7 @@ const { session } = Astro.props;
   data-i18n-reconnecting={m.call_reconnecting()}
   data-i18n-busy={m.call_busy()}
   data-i18n-call-failed={m.call_failed_toast()}
+  data-i18n-media-blocked={m.call_media_blocked()}
   data-i18n-declined={m.call_declined_toast()}
   data-i18n-incoming-video={m.call_incoming_video()}
   data-i18n-incoming-voice={m.call_incoming_voice()}
@@ -78,8 +88,11 @@ const { session } = Astro.props;
     role="dialog"
     aria-label={m.call_title()}
   >
-    <!-- video mode: remote full-bleed + local PiP -->
-    <video data-remote autoplay playsinline class="hidden h-full w-full object-cover"></video>
+    <!-- Remote media split: video stays muted forever (muted playback is never
+         autoplay-blocked), sound flows only through the audio element (primed
+         at the tap gesture; iOS can't do audio via hidden <video>). -->
+    <video data-remote autoplay playsinline muted class="hidden h-full w-full object-cover"></video>
+    <audio data-remote-audio class="hidden"></audio>
     <video
       data-local
       autoplay
@@ -87,6 +100,18 @@ const { session } = Astro.props;
       muted
       class="absolute right-4 z-10 hidden w-28 rounded-xl border border-white/20 object-cover shadow-soft-lg"
       style="top: calc(env(safe-area-inset-top) + 1rem)"></video>
+
+    <!-- Autoplay recovery: shown only when the browser refused un-gestured
+         audio (e.g. Brave with autoplay blocked) — one tap re-plays unmuted. -->
+    <button
+      type="button"
+      data-sound-pill
+      hidden
+      class="absolute left-1/2 z-20 -translate-x-1/2 cursor-pointer rounded-full bg-white/15 px-4 py-2 text-sm font-medium backdrop-blur transition-transform active:scale-95"
+      style="top: calc(env(safe-area-inset-top) + 1rem)"
+    >
+      {m.call_tap_sound()}
+    </button>
 
     <!-- voice mode / pre-connect: identity panel -->
     <div data-call-idpanel class="absolute inset-0 flex flex-col items-center justify-center gap-4 px-6 text-center">
@@ -149,6 +174,14 @@ const { session } = Astro.props;
 
   const RING_MS = 30_000;
   const BEAT_MS = 30_000;
+  const CONNECT_MS = 25_000; // accept → connected budget before honest failure
+  const ICE_BATCH_MS = 150; // trickle coalescing (fewer broadcasts, same speed)
+  const MAX_RESTARTS = 2;
+
+  // Content-free diagnostics (hard rule 7: never SDP/candidate bodies) — the
+  // "call died with nothing on the console" era ends here.
+  const dbg = (...a: unknown[]) => console.debug('[call]', ...a);
+  const warn = (...a: unknown[]) => console.warn('[call]', ...a);
 
   function initCallDock() {
     const found = document.querySelector<HTMLElement>('[data-call-dock]');
@@ -162,7 +195,9 @@ const { session } = Astro.props;
     const incoming = $('[data-incoming]');
     const screen = $('[data-call-screen]');
     const remoteEl = $<HTMLVideoElement>('[data-remote]');
+    const audioEl = $<HTMLAudioElement>('[data-remote-audio]');
     const localEl = $<HTMLVideoElement>('[data-local]');
+    const soundPill = $('[data-sound-pill]');
 
     // ── live unread dots (V0 DoD: badge moves without navigation) ─────────
     const showDots = () => {
@@ -172,38 +207,64 @@ const { session } = Astro.props;
     // ── the one current call ──────────────────────────────────────────────
     let call: {
       view: CallView;
+      ice: Ice;
       channel: ReturnType<typeof openChannel> | null;
       pc: RTCPeerConnection | null;
       local: MediaStream | null;
+      remoteAudio: MediaStream;
+      remoteVideo: MediaStream;
+      /** Caller only: media + pc + local offer, resolved during the ring. */
+      prep: Promise<void> | null;
+      accepted: boolean;
+      trickle: boolean;
+      outIce: RTCIceCandidateInit[];
       pendingIce: RTCIceCandidateInit[];
+      restarts: number;
       timers: number[];
+      iceTimer: number | null;
+      ringTimer: number | null;
+      connectTimer: number | null;
+      discTimer: number | null;
       wake: { release(): Promise<void> } | null;
       done: boolean;
     } | null = null;
 
+    const clearT = (id: number | null) => {
+      if (id != null) clearTimeout(id);
+    };
     const clearTimers = () => {
-      call?.timers.forEach((t) => clearInterval(t));
-      if (call) call.timers = [];
+      if (!call) return;
+      call.timers.forEach((t) => clearInterval(t));
+      call.timers = [];
+      clearT(call.iceTimer);
+      clearT(call.ringTimer);
+      clearT(call.connectTimer);
+      clearT(call.discTimer);
+      call.iceTimer = call.ringTimer = call.connectTimer = call.discTimer = null;
     };
 
     async function teardown(alreadyEnded = false, reason: 'hangup' | 'timeout' | 'failed' = 'hangup') {
       if (!call || call.done) return;
-      call.done = true;
+      const me = call;
+      me.done = true;
+      dbg('teardown:', reason, alreadyEnded ? '(remote/server)' : '(local)');
       clearTimers();
-      call.channel?.send('end', { reason });
-      call.channel?.close();
-      call.pc?.close();
-      call.local?.getTracks().forEach((t) => t.stop());
-      void call.wake?.release().catch(() => {});
+      me.channel?.send('end', { reason });
+      me.channel?.close(); // grace-delayed removal inside — the 'end' flushes
+      me.pc?.close();
+      me.local?.getTracks().forEach((t) => t.stop());
+      void me.wake?.release().catch(() => {});
       if (!alreadyEnded) {
         try {
-          await actions.call.end({ callId: call.view.id, reason });
+          await actions.call.end({ callId: me.view.id, reason });
         } catch {
           /* already terminal server-side */
         }
       }
       remoteEl.srcObject = null;
+      audioEl.srcObject = null;
       localEl.srcObject = null;
+      soundPill.hidden = true;
       screen.hidden = true;
       incoming.hidden = true;
       call = null;
@@ -268,6 +329,65 @@ const { session } = Astro.props;
       );
     }
 
+    /**
+     * Runs INSIDE the tap gesture, before any await: playback intent lands
+     * while activation is live, so remote tracks later flow into elements
+     * that are already playing — autoplay policy is never re-consulted.
+     */
+    function primeRemoteMedia() {
+      const audio = new MediaStream();
+      const video = new MediaStream();
+      audioEl.srcObject = audio;
+      audioEl.muted = false;
+      audioEl
+        .play()
+        .then(() => {
+          soundPill.hidden = true;
+        })
+        .catch((e) => dbg('audio prime:', (e as Error)?.name));
+      remoteEl.srcObject = video;
+      void remoteEl.play().catch(() => {}); // muted video — never policy-blocked
+      return { audio, video };
+    }
+
+    /** Kick paused remote elements; on refusal show the tap-for-sound pill. */
+    function ensureRemotePlayback() {
+      if (!call) return;
+      if (audioEl.paused && call.remoteAudio.getTracks().length) {
+        audioEl.muted = false;
+        audioEl
+          .play()
+          .then(() => {
+            soundPill.hidden = true;
+          })
+          .catch((e) => {
+            warn('remote audio blocked:', (e as Error)?.name);
+            soundPill.hidden = false;
+          });
+      }
+      if (call.view.mode === 'video' && remoteEl.paused && call.remoteVideo.getTracks().length) {
+        void remoteEl.play().catch((e) => warn('remote video blocked:', (e as Error)?.name));
+      }
+    }
+    soundPill.addEventListener('click', (e) => {
+      e.stopPropagation();
+      soundPill.hidden = true;
+      ensureRemotePlayback(); // this tap IS the gesture the policy wanted
+    });
+    // Any tap on the call screen doubles as the recovery gesture.
+    screen.addEventListener('pointerdown', () => {
+      if (!soundPill.hidden) {
+        soundPill.hidden = true;
+        ensureRemotePlayback();
+      }
+    });
+
+    function abortStart(mediaP: Promise<MediaStream>) {
+      mediaP.then((s) => s.getTracks().forEach((t) => t.stop())).catch(() => {});
+      audioEl.srcObject = null;
+      remoteEl.srcObject = null;
+    }
+
     /** Build the RTCPeerConnection + shared handlers (both parties). */
     function buildPc(ice: Ice, forceRelay: boolean) {
       const pc = new RTCPeerConnection({
@@ -277,44 +397,154 @@ const { session } = Astro.props;
         iceTransportPolicy: forceRelay ? 'relay' : 'all',
       });
       pc.ontrack = (e) => {
-        if (call?.view.mode === 'video') remoteEl.srcObject = e.streams[0]!;
-        else {
-          // voice: play remote audio through the (hidden) video element.
-          remoteEl.classList.add('hidden');
-          remoteEl.srcObject = e.streams[0]!;
-        }
-        void remoteEl.play().catch(() => {});
+        if (!call) return;
+        dbg('track:', e.track.kind);
+        (e.track.kind === 'audio' ? call.remoteAudio : call.remoteVideo).addTrack(e.track);
+        e.track.onunmute = () => ensureRemotePlayback();
+        ensureRemotePlayback();
       };
       pc.onicecandidate = (e) => {
-        if (e.candidate) call?.channel?.send('ice', { candidate: e.candidate.toJSON() });
-      };
-      pc.onconnectionstatechange = () => {
         if (!call) return;
+        if (e.candidate) {
+          call.outIce.push(e.candidate.toJSON());
+          if (call.trickle && call.iceTimer == null) {
+            call.iceTimer = window.setTimeout(flushOutIce, ICE_BATCH_MS);
+          }
+        } else {
+          dbg('gathering complete');
+          flushOutIce();
+        }
+      };
+      pc.oniceconnectionstatechange = () => dbg('ice:', pc.iceConnectionState);
+      pc.onconnectionstatechange = () => {
+        if (!call || call.pc !== pc) return;
         const s = pc.connectionState;
+        dbg('pc:', s);
         if (s === 'connected') {
+          call.restarts = 0;
+          clearT(call.connectTimer);
+          clearT(call.discTimer);
+          call.connectTimer = call.discTimer = null;
           setChip('connected');
         } else if (s === 'disconnected') {
+          // Often self-heals in seconds — only escalate if it lingers.
           setChip('reconnecting');
+          call.discTimer ??= window.setTimeout(() => tryRestart('disconnected'), 6000);
         } else if (s === 'failed') {
-          void teardown(false, 'failed');
+          tryRestart('failed');
         }
       };
       return pc;
     }
 
-    async function addIce(candidate: RTCIceCandidateInit) {
-      if (!call?.pc) return;
-      if (!call.pc.remoteDescription) call.pendingIce.push(candidate);
-      else await call.pc.addIceCandidate(candidate).catch(() => {});
-    }
-    async function flushIce() {
-      if (!call?.pc) return;
-      for (const c of call.pendingIce.splice(0)) await call.pc.addIceCandidate(c).catch(() => {});
+    /** Trickle out the queued candidates as ONE broadcast (batching). */
+    function flushOutIce() {
+      if (!call) return;
+      clearT(call.iceTimer);
+      call.iceTimer = null;
+      if (!call.trickle || !call.channel) return; // pre-offer candidates ride inside the SDP
+      const batch = call.outIce.splice(0);
+      if (batch.length) {
+        dbg('ice out ×' + batch.length);
+        call.channel.send('ice', { candidates: batch });
+      }
     }
 
-    async function beginBeat() {
+    async function addIce(c: RTCIceCandidateInit) {
+      if (!call?.pc) return;
+      if (!call.pc.remoteDescription) call.pendingIce.push(c);
+      else await call.pc.addIceCandidate(c).catch((e) => dbg('addIce:', (e as Error)?.name));
+    }
+    async function flushPendingIce() {
+      if (!call?.pc) return;
+      for (const c of call.pendingIce.splice(0)) {
+        await call.pc.addIceCandidate(c).catch((e) => dbg('addIce:', (e as Error)?.name));
+      }
+    }
+    /** Inbound ice event — batched `{candidates: []}` (legacy single tolerated). */
+    function onIceEvent(p: unknown) {
+      const q = p as { candidates?: RTCIceCandidateInit[]; candidate?: RTCIceCandidateInit };
+      const list = q.candidates ?? (q.candidate ? [q.candidate] : []);
+      dbg('ice in ×' + list.length);
+      for (const c of list) void addIce(c);
+    }
+
+    /**
+     * Server-truth state changes (DB trigger 0013 on the call topic): how the
+     * ringing caller learns of a decline, and how either side learns the
+     * session was swept/terminated elsewhere. Never carries SDP.
+     */
+    function onCallStateEvent(p: unknown) {
+      const { id, state } = p as { id: string; state: string };
+      if (!call || call.view.id !== id || call.done) return;
+      if (state === 'ringing' || state === 'active') return;
+      dbg('server state:', state);
+      if (state === 'declined') alertToast(root.dataset.i18nDeclined);
+      void teardown(true);
+    }
+
+    /** Signaling channel died: fatal before media connects, shrug after. */
+    function onChannelStatus(s: 'ready' | 'down') {
+      dbg('channel:', s);
+      if (s !== 'down' || !call || call.done) return;
+      if (call.pc?.connectionState === 'connected') {
+        warn('signaling down mid-call — media is P2P and unaffected');
+        return;
+      }
+      warn('signaling channel dead before connect');
+      alertToast(root.dataset.i18nCallFailed);
+      void teardown(false, 'failed');
+    }
+
+    /** ICE restart, count-bounded; only the caller re-offers (no glare ever). */
+    function tryRestart(why: string) {
+      if (!call || call.done || !call.pc) return;
+      clearT(call.discTimer);
+      call.discTimer = null;
+      if (++call.restarts > MAX_RESTARTS) {
+        warn('restarts exhausted (' + why + ')');
+        void teardown(false, 'failed');
+        return;
+      }
+      warn('ice restart', call.restarts + '/' + MAX_RESTARTS, '—', why);
+      setChip('reconnecting');
+      if (call.view.party === 'professional') void reoffer(true);
+      else call.channel?.send('restart', {});
+      const me = call;
+      const t = window.setTimeout(() => {
+        if (call === me && !me.done && me.pc?.connectionState !== 'connected') tryRestart('stalled');
+      }, 8000);
+      me.timers.push(t);
+    }
+
+    async function reoffer(restart: boolean) {
+      if (!call?.pc || !call.channel) return;
+      try {
+        if (restart) call.pc.restartIce();
+        const offer = await call.pc.createOffer();
+        await call.pc.setLocalDescription(offer);
+        call.channel.send('offer', { sdp: call.pc.localDescription });
+        dbg('offer sent' + (restart ? ' (restart)' : ''));
+      } catch (e) {
+        warn('reoffer:', e);
+      }
+    }
+
+    function armConnectTimeout() {
+      if (!call) return;
+      const me = call;
+      me.connectTimer = window.setTimeout(() => {
+        if (call === me && !me.done && me.pc?.connectionState !== 'connected') {
+          warn('connect timeout');
+          alertToast(root.dataset.i18nCallFailed);
+          void teardown(false, 'failed');
+        }
+      }, CONNECT_MS);
+    }
+
+    function beginBeat() {
       const id = window.setInterval(() => {
-        if (call) void actions.call.beat({ callId: call.view.id });
+        if (call) void actions.call.beat({ callId: call.view.id }).catch(() => {});
       }, BEAT_MS);
       call?.timers.push(id);
     }
@@ -327,69 +557,148 @@ const { session } = Astro.props;
       }
     }
 
+    function mediaFailToast(e: unknown) {
+      const name = (e as Error)?.name;
+      warn('getUserMedia failed:', name ?? e);
+      alertToast(
+        name === 'NotAllowedError' || name === 'NotFoundError'
+          ? root.dataset.i18nMediaBlocked
+          : root.dataset.i18nCallFailed,
+      );
+    }
+
     // ── caller flow (professional) ────────────────────────────────────────
     async function startCall(threadId: string, mode: 'voice' | 'video') {
       if (call) return;
+      dbg('start:', mode);
+      // Synchronously inside the tap: the permission prompt opens privileged
+      // (WebKit re-prompts after past denials only then) and remote playback
+      // is primed. Media + ICE warm up DURING the ring — on accept the offer
+      // leaves instantly, no permission prompt in the critical path.
+      const mediaP = getMedia(mode);
+      mediaP.catch(() => {}); // handled via prep below
+      const remote = primeRemoteMedia();
       let res;
       try {
         res = await actions.call.start({ threadId, mode });
-      } catch (e) {
-        // Network/transport failure (the action itself returns errors as res.error).
+      } catch {
+        abortStart(mediaP);
         alertToast(root.dataset.i18nCallFailed);
         return;
       }
       // Astro actions surface handler errors on res.error (no throw) — check it
       // before touching res.data, or a 500/busy would crash the dock here.
       if (res.error || !res.data) {
+        abortStart(mediaP);
         alertToast(res.error?.code === 'CONFLICT' ? root.dataset.i18nBusy : root.dataset.i18nCallFailed);
         return;
       }
       const { call: view, iceServers, relayOnly } = res.data as { call: CallView; iceServers: RTCIceServer[]; relayOnly: boolean };
-      call = { view, channel: null, pc: null, local: null, pendingIce: [], timers: [], wake: null, done: false };
+      call = {
+        view,
+        ice: { iceServers, relayOnly },
+        channel: null,
+        pc: null,
+        local: null,
+        remoteAudio: remote.audio,
+        remoteVideo: remote.video,
+        prep: null,
+        accepted: false,
+        trickle: false,
+        outIce: [],
+        pendingIce: [],
+        restarts: 0,
+        timers: [],
+        iceTimer: null,
+        ringTimer: null,
+        connectTimer: null,
+        discTimer: null,
+        wake: null,
+        done: false,
+      };
+      const me = call;
       showScreen(view);
       setChip('ringing');
       void grabWakeLock();
 
-      call.channel = openChannel(`call:${view.id}`, {
-        accept: async () => {
-          if (!call || call.pc) return;
-          clearTimers();
-          setChip('connecting');
-          try {
-            call.local = await getMedia(view.mode);
-          } catch {
-            return teardown(false, 'failed');
-          }
-          if (view.mode === 'video') {
-            localEl.srcObject = call.local;
-          }
-          const pc = buildPc({ iceServers, relayOnly }, relayOnly);
-          call.pc = pc;
-          call.local.getTracks().forEach((t) => pc.addTrack(t, call!.local!));
-          const offer = await pc.createOffer();
-          await pc.setLocalDescription(offer);
-          call.channel!.send('offer', { sdp: pc.localDescription });
-          startTimer();
-          void beginBeat();
+      me.channel = openChannel(
+        `call:${view.id}`,
+        {
+          accept: async () => {
+            if (!call || call !== me || me.accepted || me.done) return;
+            me.accepted = true;
+            dbg('accept received');
+            clearT(me.ringTimer);
+            me.ringTimer = null;
+            setChip('connecting');
+            armConnectTimeout();
+            try {
+              await me.prep;
+            } catch {
+              return; // prep's catch already tore down
+            }
+            if (call !== me || me.done || !me.pc) return;
+            // The offer carries every candidate gathered during the ring;
+            // trickle takes over for stragglers only.
+            me.outIce = [];
+            me.trickle = true;
+            me.channel!.send('offer', { sdp: me.pc.localDescription });
+            dbg('offer sent (pre-gathered)');
+            startTimer();
+            beginBeat();
+          },
+          answer: async (p) => {
+            const { sdp } = p as { sdp: RTCSessionDescriptionInit };
+            if (call !== me || !me.pc) return;
+            if (me.pc.signalingState !== 'have-local-offer') {
+              dbg('answer ignored in', me.pc.signalingState);
+              return;
+            }
+            await me.pc.setRemoteDescription(sdp).catch((e) => warn('setRemote(answer):', e));
+            dbg('answer applied');
+            await flushPendingIce();
+          },
+          restart: () => {
+            if (call === me && me.accepted && !me.done) void reoffer(true);
+          },
+          ice: onIceEvent,
+          end: () => {
+            dbg('peer end');
+            void teardown(true);
+          },
+          call: onCallStateEvent,
         },
-        answer: async (p) => {
-          const { sdp } = p as { sdp: RTCSessionDescriptionInit };
-          await call?.pc?.setRemoteDescription(sdp);
-          await flushIce();
-        },
-        decline: () => {
-          alertToast(root.dataset.i18nDeclined);
-          void teardown(true);
-        },
-        ice: (p) => void addIce((p as { candidate: RTCIceCandidateInit }).candidate),
-        end: () => void teardown(true),
+        onChannelStatus,
+      );
+
+      me.prep = (async () => {
+        const local = await mediaP; // may sit on the permission prompt — ring continues
+        if (call !== me || me.done) {
+          local.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        me.local = local;
+        if (view.mode === 'video') localEl.srcObject = local;
+        const pc = buildPc(me.ice, relayOnly);
+        me.pc = pc;
+        local.getTracks().forEach((t) => pc.addTrack(t, local));
+        await pc.setLocalDescription(await pc.createOffer()); // gathering runs during the ring
+        dbg('local offer ready');
+      })();
+      me.prep.catch((e) => {
+        if (call === me && !me.done) {
+          mediaFailToast(e);
+          void teardown(false, 'failed');
+        }
       });
 
       // 30s unanswered → timeout ("missed" card) — never fake a longer ring.
-      const ringTimer = window.setTimeout(() => {
-        if (call && !call.pc) void teardown(false, 'timeout');
+      me.ringTimer = window.setTimeout(() => {
+        if (call === me && !me.accepted && !me.done) {
+          dbg('ring timeout');
+          void teardown(false, 'timeout');
+        }
       }, RING_MS);
-      call.timers.push(ringTimer as unknown as number);
     }
 
     // ── callee flow (client) ──────────────────────────────────────────────
@@ -397,12 +706,14 @@ const { session } = Astro.props;
 
     async function showRing(callId: string) {
       if (call || ringingId) return;
-      let view: CallView;
+      let res;
       try {
-        view = ((await actions.call.get({ callId })).data as { call: CallView }).call;
+        res = await actions.call.get({ callId });
       } catch {
         return;
       }
+      if (res.error || !res.data) return;
+      const view = (res.data as { call: CallView }).call;
       if (view.state !== 'ringing') return;
       ringingId = callId;
       $<HTMLImageElement>('[data-incoming-avatar]').src = view.avatarUrl ?? '';
@@ -420,43 +731,106 @@ const { session } = Astro.props;
       }, RING_MS + 5000);
 
       $('[data-incoming-accept]').onclick = async () => {
+        if (call) return;
         incoming.hidden = true;
         ringingId = null;
-        let ice: Ice;
+        dbg('accept tapped:', view.mode);
+        // Synchronously inside the tap (same law as startCall): the prompt is
+        // privileged and playback primed BEFORE the accept round-trip.
+        const mediaP = getMedia(view.mode);
+        mediaP.catch(() => {}); // awaited below
+        const remote = primeRemoteMedia();
+        let res;
         try {
-          const res = await actions.call.accept({ callId });
-          ice = res.data as Ice;
+          res = await actions.call.accept({ callId });
         } catch {
+          res = null;
+        }
+        if (!res || res.error || !res.data) {
+          warn('accept action failed:', res?.error?.code);
+          abortStart(mediaP);
+          alertToast(root.dataset.i18nCallFailed);
           return;
         }
-        call = { view: { ...view, state: 'active' }, channel: null, pc: null, local: null, pendingIce: [], timers: [], wake: null, done: false };
-        showScreen(call.view);
+        const ice = res.data as Ice;
+        call = {
+          view: { ...view, state: 'active' },
+          ice,
+          channel: null,
+          pc: null,
+          local: null,
+          remoteAudio: remote.audio,
+          remoteVideo: remote.video,
+          prep: null,
+          accepted: true,
+          trickle: false,
+          outIce: [],
+          pendingIce: [],
+          restarts: 0,
+          timers: [],
+          iceTimer: null,
+          ringTimer: null,
+          connectTimer: null,
+          discTimer: null,
+          wake: null,
+          done: false,
+        };
+        const me = call;
+        showScreen(me.view);
         setChip('connecting');
         void grabWakeLock();
-        try {
-          call.local = await getMedia(view.mode);
-        } catch {
-          return teardown(false, 'failed');
-        }
-        if (view.mode === 'video') localEl.srcObject = call.local;
-        const pc = buildPc(ice, false);
-        call.pc = pc;
-        call.local.getTracks().forEach((t) => pc.addTrack(t, call!.local!));
-        call.channel = openChannel(`call:${callId}`, {
-          offer: async (p) => {
-            const { sdp } = p as { sdp: RTCSessionDescriptionInit };
-            await pc.setRemoteDescription(sdp);
-            await flushIce();
-            const answer = await pc.createAnswer();
-            await pc.setLocalDescription(answer);
-            call?.channel?.send('answer', { sdp: pc.localDescription });
+        // Channel opens (and joins) while the media prompt may still be up.
+        me.channel = openChannel(
+          `call:${callId}`,
+          {
+            offer: async (p) => {
+              // Initial offer AND ICE-restart re-offers land here.
+              const { sdp } = p as { sdp: RTCSessionDescriptionInit };
+              if (call !== me || !me.pc) return;
+              try {
+                await me.pc.setRemoteDescription(sdp);
+                await flushPendingIce();
+                const answer = await me.pc.createAnswer();
+                await me.pc.setLocalDescription(answer);
+                me.channel?.send('answer', { sdp: me.pc.localDescription });
+                dbg('answer sent');
+              } catch (e) {
+                warn('offer handling:', e);
+              }
+            },
+            ice: onIceEvent,
+            end: () => {
+              dbg('peer end');
+              void teardown(true);
+            },
+            call: onCallStateEvent,
           },
-          ice: (p) => void addIce((p as { candidate: RTCIceCandidateInit }).candidate),
-          end: () => void teardown(true),
-        });
-        call.channel.send('accept', {});
+          onChannelStatus,
+        );
+        let local: MediaStream;
+        try {
+          local = await mediaP;
+        } catch (e) {
+          mediaFailToast(e);
+          void teardown(false, 'failed');
+          return;
+        }
+        if (call !== me || me.done) {
+          local.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        me.local = local;
+        if (view.mode === 'video') localEl.srcObject = local;
+        const pc = buildPc(ice, false);
+        me.pc = pc;
+        local.getTracks().forEach((t) => pc.addTrack(t, local));
+        me.trickle = true;
+        // Queued until OUR join completes — the caller's offer can therefore
+        // never be broadcast before our handlers are live.
+        me.channel.send('accept', {});
+        armConnectTimeout();
         startTimer();
-        void beginBeat();
+        beginBeat();
       };
       $('[data-incoming-decline]').onclick = () => {
         incoming.hidden = true;
@@ -495,16 +869,20 @@ const { session } = Astro.props;
       if (!call?.pc || !call.local) return;
       facing = facing === 'user' ? 'environment' : 'user';
       try {
-        const fresh = await getMedia('video', facing);
+        // Video only — re-capturing audio here would briefly double the mic.
+        const fresh = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: facing, width: { ideal: 1280 }, height: { ideal: 720 } },
+        });
         const newTrack = fresh.getVideoTracks()[0]!;
         const sender = call.pc.getSenders().find((s) => s.track?.kind === 'video');
         await sender?.replaceTrack(newTrack);
-        call.local.getVideoTracks().forEach((t) => t.stop());
-        call.local.removeTrack(call.local.getVideoTracks()[0] ?? newTrack);
+        const old = call.local.getVideoTracks()[0];
+        if (old) {
+          old.stop();
+          call.local.removeTrack(old);
+        }
         call.local.addTrack(newTrack);
         localEl.srcObject = fresh;
-        // keep audio from the original stream alive — only video was replaced
-        fresh.getAudioTracks().forEach((t) => t.stop());
       } catch {
         /* flip unavailable — stay on current camera */
       }
@@ -535,10 +913,21 @@ const { session } = Astro.props;
       },
     });
 
-    // Thread header / contact rows ask the dock to place a call.
+    // Thread header / contact rows ask the dock to place a call. The custom
+    // event dispatch is synchronous, so startCall still runs inside the tap
+    // gesture (getUserMedia + playback priming depend on it).
     document.addEventListener('intimate:call', (e) => {
       const { threadId, mode } = (e as CustomEvent<{ threadId: string; mode: 'voice' | 'video' }>).detail;
       void startCall(threadId, mode);
+    });
+
+    // Backgrounded → returned: the OS may have released the wake lock and
+    // paused playback; both are cheap to re-assert.
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && call && !call.done) {
+        void grabWakeLock();
+        ensureRemotePlayback();
+      }
     });
 
     // Leaving the page mid-call = hangup (P2P can't outlive the page).

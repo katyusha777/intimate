@@ -2,7 +2,13 @@
  * Drizzle calls backend (docs/VIDEO-CALLING.md §3/§6). call_sessions has NO
  * browser path (no grants, no policies beyond app_server) — every write comes
  * through here, so this file IS the state machine wall (models/call.ts LEGAL).
- * Ring + state broadcasts are DB triggers (0010); inserts/updates just write.
+ * Ring + state broadcasts are DB triggers (0010/0013); writes just write.
+ *
+ * Every transition is ONE guarded UPDATE (state + participant checks in the
+ * WHERE, outcome from RETURNING) — never a read-then-decide pair: Hyperdrive's
+ * read cache can serve a minutes-stale row, and a decision made on a stale
+ * state mislabels calls (a 20s call "missed", a decline overwritten by the
+ * caller's ring timeout). The DB row is the only referee.
  */
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import type { Db } from '@/db/client';
@@ -12,7 +18,6 @@ import {
   CALL_CARD_BODY,
   CallViewSchema,
   RING_TIMEOUT_MS,
-  canTransition,
   type CallView,
   type CallsApi,
 } from '@/app/models/call';
@@ -90,26 +95,59 @@ function toView(c: SessionRow, party: 'professional' | 'client'): CallView {
   });
 }
 
-/** Terminal transition + its thread card, in one place. */
-async function finish(d: Db, c: SessionRow, to: CallState, reason: string): Promise<void> {
-  const now = new Date();
-  const seconds = c.answeredAt
-    ? Math.max(0, Math.round((now.getTime() - new Date(c.answeredAt).getTime()) / 1000))
-    : 0;
-  await d
+/** WHERE fragment: the session row belongs to this account (either side). */
+const participantSql = (accountId: string) =>
+  sql`(${callSessions.clientAccountId} = ${accountId}
+    or ${callSessions.profileId} in (select p.id from profiles p where p.account_id = ${accountId}))`;
+
+/**
+ * The one terminal writer: guarded UPDATE from the legal source states
+ * (models/call.ts LEGAL mirrored in SQL), duration + card computed from the
+ * row the UPDATE itself returns. Lost the race (already terminal, not a
+ * participant)? Zero rows — no card, null. Without an explicit `to`, reason
+ * 'failed' lands in state 'failed' (honest "couldn't connect" card, never a
+ * fake "call ended"); otherwise ringing→timeout ("missed"), active→ended.
+ */
+async function terminate(
+  d: Db,
+  callId: string,
+  reason: string,
+  opts: { by?: string; clientOnly?: boolean; froms?: CallState[]; to?: CallState } = {},
+): Promise<CallState | null> {
+  const froms = opts.froms ?? ['ringing', 'active'];
+  const toSql = opts.to
+    ? sql`${opts.to}::call_state`
+    : sql`(case when ${reason} = 'failed' then 'failed'
+                when ${callSessions.state} = 'ringing' then 'timeout'
+                else 'ended' end)::call_state`;
+  const guards = [
+    eq(callSessions.id, callId),
+    inArray(callSessions.state, froms),
+    ...(opts.by ? [opts.clientOnly ? eq(callSessions.clientAccountId, opts.by) : participantSql(opts.by)] : []),
+  ];
+  const [row] = await d
     .update(callSessions)
-    .set({ state: to, endedAt: now, endReason: reason, durationS: seconds })
-    .where(eq(callSessions.id, c.id));
-  const body = CALL_CARD_BODY[to];
-  if (body && c.threadId) {
+    .set({
+      state: toSql as unknown as CallState,
+      endedAt: sql`now()`,
+      endReason: reason,
+      durationS: sql`case when ${callSessions.answeredAt} is null then 0
+        else greatest(0, round(extract(epoch from (now() - ${callSessions.answeredAt}))))::int end`,
+    })
+    .where(and(...guards))
+    .returning({ id: callSessions.id, state: callSessions.state, threadId: callSessions.threadId });
+  if (!row) return null;
+  const body = CALL_CARD_BODY[row.state];
+  if (body && row.threadId) {
     await d.insert(messages).values({
-      threadId: c.threadId,
+      threadId: row.threadId,
       sender: 'system',
       kind: 'call',
       body,
-      callId: c.id,
+      callId: row.id,
     });
   }
+  return row.state;
 }
 
 /**
@@ -125,7 +163,7 @@ async function sweepStale(d: Db, profileId: string): Promise<void> {
   const staleRing = new Date(Date.now() - RING_TIMEOUT_MS * 2).toISOString();
   const staleBeat = new Date(Date.now() - 2 * 60_000).toISOString();
   const zombies = await d
-    .select({ id: callSessions.id })
+    .select({ id: callSessions.id, state: callSessions.state })
     .from(callSessions)
     .where(
       and(
@@ -137,8 +175,10 @@ async function sweepStale(d: Db, profileId: string): Promise<void> {
       ),
     );
   for (const z of zombies) {
-    const c = await loadCall(d, z.id);
-    if (c) await finish(d, c, c.state === 'ringing' ? 'timeout' : 'failed', 'stale');
+    await terminate(d, z.id, 'stale', {
+      froms: [z.state],
+      to: z.state === 'ringing' ? 'timeout' : 'failed',
+    });
   }
 }
 
@@ -204,43 +244,47 @@ export function makeCallsApi(db: () => Db): CallsApi {
     },
 
     async accept(session, callId) {
-      const d = db();
-      const c = await loadCall(d, callId);
-      if (!c || partyOf(session, c) !== 'client') return false;
-      if (!canTransition(c.state, 'active')) return false;
-      await d
+      // Latency-critical (tap → media → signaling waits on this): one CAS
+      // round-trip, client-party + ringing checks in the WHERE.
+      const rows = await db()
         .update(callSessions)
-        .set({ state: 'active', answeredAt: new Date(), lastBeatAt: new Date() })
-        .where(and(eq(callSessions.id, callId), eq(callSessions.state, 'ringing')));
-      return true;
+        .set({ state: 'active', answeredAt: sql`now()`, lastBeatAt: sql`now()` })
+        .where(
+          and(
+            eq(callSessions.id, callId),
+            eq(callSessions.state, 'ringing'),
+            eq(callSessions.clientAccountId, session.accountId),
+          ),
+        )
+        .returning({ id: callSessions.id });
+      return rows.length > 0;
     },
 
     async decline(session, callId) {
-      const d = db();
-      const c = await loadCall(d, callId);
-      if (!c || partyOf(session, c) !== 'client') return false;
-      if (!canTransition(c.state, 'declined')) return false;
-      await finish(d, c, 'declined', 'declined');
-      return true;
+      const state = await terminate(db(), callId, 'declined', {
+        by: session.accountId,
+        clientOnly: true,
+        froms: ['ringing'],
+        to: 'declined',
+      });
+      return state === 'declined';
     },
 
     async end(session, { callId, reason }) {
-      const d = db();
-      const c = await loadCall(d, callId);
-      if (!c || !partyOf(session, c)) return false;
-      const to: CallState = c.state === 'ringing' ? (reason === 'failed' ? 'failed' : 'timeout') : 'ended';
-      // A hangup DURING ring by the caller counts as her giving up → timeout
-      // ("missed" card) — the client shouldn't see "declined" he never sent.
-      if (!canTransition(c.state, to)) return false;
-      await finish(d, c, to, reason);
-      return true;
+      return (await terminate(db(), callId, reason, { by: session.accountId })) !== null;
     },
 
     async beat(session, callId) {
-      const d = db();
-      const c = await loadCall(d, callId);
-      if (!c || !partyOf(session, c) || c.state !== 'active') return;
-      await d.update(callSessions).set({ lastBeatAt: new Date() }).where(eq(callSessions.id, callId));
+      await db()
+        .update(callSessions)
+        .set({ lastBeatAt: sql`now()` })
+        .where(
+          and(
+            eq(callSessions.id, callId),
+            eq(callSessions.state, 'active'),
+            participantSql(session.accountId),
+          ),
+        );
     },
   };
 }
