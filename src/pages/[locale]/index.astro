@@ -185,14 +185,11 @@ const moreArticles = articles.filter((a) => a !== featuredArticle).slice(0, 3);
           href={localizePath(`/blog/${featuredArticle.data.slug}/`)}
           class="group relative block overflow-hidden rounded-lg shadow-soft transition-shadow hover:shadow-soft-lg"
         >
-          <img
+          <SafeImage
+            imageKey={featuredArticle.data.slug}
             src={featuredArticle.data.hero.src}
-            width={featuredArticle.data.hero.width}
-            height={featuredArticle.data.hero.height}
             alt={featuredArticle.data.heroAlt}
-            class="aspect-[16/10] h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02] lg:aspect-auto lg:absolute lg:inset-0"
-            loading="lazy"
-            decoding="async"
+            class="aspect-[16/10] h-full w-full transition-transform duration-300 group-hover:scale-[1.02] lg:aspect-auto lg:absolute lg:inset-0"
           />
           <span class="article-slab absolute left-2 top-2 bg-neutral-950 px-3 py-1.5 eyebrow text-2xs font-semibold text-white">
             {m.section_featured()}
@@ -218,14 +215,11 @@ const moreArticles = articles.filter((a) => a !== featuredArticle).slice(0, 3);
                 href={localizePath(`/blog/${a.data.slug}/`)}
                 class="group flex items-center gap-4 border border-foreground/15 p-3 transition-colors hover:border-foreground/50"
               >
-                <img
+                <SafeImage
+                  imageKey={a.data.slug}
                   src={a.data.hero.src}
-                  width={a.data.hero.width}
-                  height={a.data.hero.height}
                   alt={a.data.heroAlt}
-                  class="aspect-[4/3] w-28 flex-none object-cover"
-                  loading="lazy"
-                  decoding="async"
+                  class="aspect-[4/3] w-28 flex-none"
                 />
                 <div class="min-w-0">
                   <p class="eyebrow text-2xs font-mono font-semibold text-brand">

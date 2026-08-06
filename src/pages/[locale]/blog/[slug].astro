@@ -1,8 +1,8 @@
 ---
 /**
  * Article reader (full SEO treatment — hard rule 8). Content is markdown from
- * the `articles` collection; the hero renders directly (brand-safe editorial
- * image, not gated through SafeImage's NSFW toggle).
+ * the `articles` collection; the hero routes through SafeImage so safe mode
+ * covers article imagery too (the OG/meta image below stays the real one).
  */
 import { render } from 'astro:content';
 import Layout from '@/layouts/Layout.astro';
@@ -10,6 +10,7 @@ import * as m from '@/paraglide/messages';
 import { isLocale, localizePath, samePathAlternates } from '@/lib/i18n';
 import { articleBySlug } from '@/lib/articles';
 import { articleJsonLd, breadcrumbJsonLd } from '@/lib/seo';
+import SafeImage from '@/components/atoms/SafeImage.astro';
 
 const { locale, slug } = Astro.params;
 if (!isLocale(locale) || !slug) return new Response(null, { status: 404 });
@@ -68,14 +69,12 @@ const jsonLd = [
     <h1 class="display mt-2 text-3xl md:text-4xl">{data.title}</h1>
     <p class="mt-3 text-lg leading-relaxed text-muted-foreground">{data.excerpt}</p>
 
-    <img
+    <SafeImage
+      imageKey={data.slug}
       src={data.hero.src}
-      width={data.hero.width}
-      height={data.hero.height}
       alt={data.heroAlt}
-      class="mt-6 aspect-[16/10] w-full rounded-lg object-cover"
+      class="mt-6 aspect-[16/10] w-full rounded-lg"
       loading="eager"
-      decoding="async"
     />
 
     <div class="article-body mt-8">
