@@ -95,10 +95,12 @@ const home = localizePath('/');
     document.addEventListener('click', (e) => {
       if (!e.target.closest) return;
 
-      // Language: follow the page's own hreflang alternate.
+      // Language: follow the page's own hreflang alternate; cookie makes the
+      // pick stick for future `/` visits (items.md #5).
       const lang = e.target.closest('[data-region-lang]');
       if (lang) {
         const v = lang.dataset.regionLang;
+        document.cookie = `PARAGLIDE_LOCALE=${v}; path=/; max-age=31536000; samesite=lax`;
         const alt = document.querySelector(`link[rel="alternate"][hreflang="${v}"]`);
         location.href = (alt && alt.href) || `/${v}/`;
         return;

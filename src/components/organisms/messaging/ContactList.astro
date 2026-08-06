@@ -7,7 +7,7 @@
  * opens the edit sheet. The "+" adds a new one.
  */
 import * as m from '@/paraglide/messages';
-import type { ContactItem } from '@/app/models/messaging';
+import type { ContactInvite, ContactItem } from '@/app/models/messaging';
 import { localizePath } from '@/lib/i18n';
 import Button from '@/components/atoms/Button.astro';
 import SlabField from '@/components/molecules/SlabField.astro';
@@ -15,12 +15,37 @@ import ActionSheet from '@/components/molecules/ActionSheet.astro';
 
 interface Props {
   contacts: ContactItem[];
+  /** Her active invite links (VIDEO-CALLING.md §5); shown in the invite sheet. */
+  invites?: ContactInvite[];
+  locale?: string;
 }
-const { contacts } = Astro.props;
+const { contacts, invites = [], locale = 'en' } = Astro.props;
 
 const rowInner =
   'flex flex-1 items-center gap-3 py-3.5 text-left transition-colors hover:bg-muted/50';
+
+const callBtn =
+  'grid size-9 flex-none cursor-pointer place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground';
 ---
+
+<!-- The invite fast-path (VIDEO-CALLING.md §0): she shares a one-tap link with
+     a client she already knows — he lands in an open thread, callable. -->
+<button
+  type="button"
+  data-open-invites
+  class="mb-2 flex w-full cursor-pointer items-center gap-3 rounded-2xl border border-brand/40 bg-brand/5 px-4 py-3.5 text-left transition-colors hover:bg-brand/10"
+>
+  <span class="grid size-10 flex-none place-items-center rounded-full bg-brand text-white">
+    <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+  </span>
+  <span class="min-w-0 flex-1">
+    <span class="block font-condensed text-base font-bold">{m.invite_card_title()}</span>
+    <span class="mt-0.5 block truncate text-sm text-muted-foreground">{m.invite_card_sub()}</span>
+  </span>
+  {invites.length > 0 && (
+    <span class="flex-none rounded-full bg-brand px-2 py-0.5 text-2xs font-bold text-white">{invites.length}</span>
+  )}
+</button>
 
 {
   contacts.length === 0 ? (
@@ -44,6 +69,11 @@ const rowInner =
                 <svg class="size-3.5 flex-none text-brand" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7.4L12 17l-6.3 4.4L8 14 2 9.4h7.6z"/></svg>
               )}
               <span class="truncate font-condensed text-base font-bold">{c.name}</span>
+              {c.blocked && (
+                <span class="flex-none rounded-full bg-muted px-1.5 py-0.5 text-2xs font-bold uppercase tracking-wide text-muted-foreground">
+                  {m.msg_blocked_badge()}
+                </span>
+              )}
               {c.mediaAllowed && (
                 <svg class="size-3.5 flex-none text-online" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="1.6"/><path d="m21 17-5-5-9 7"/></svg>
               )}
@@ -56,11 +86,20 @@ const rowInner =
         return (
           <li class="flex items-center gap-1">
             {c.kind === 'thread' ? (
-              <a href={localizePath(`/messages/${c.threadId}/`)} class={rowInner}>
-                {avatar}
-                {body}
-                <svg class="size-4 flex-none text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/></svg>
-              </a>
+              <>
+                <a href={localizePath(`/messages/${c.threadId}/`)} class={rowInner}>
+                  {avatar}
+                  {body}
+                </a>
+                {/* Her speed-dial (VIDEO-CALLING.md §0): Contacts → row → call.
+                    Hidden on blocked contacts — no call paths (items.md #1). */}
+                <button type="button" class={callBtn} hidden={c.blocked} data-contact-call="voice" data-thread={c.threadId} aria-label={m.call_voice()}>
+                  <svg class="size-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                </button>
+                <button type="button" class={callBtn} hidden={c.blocked} data-contact-call="video" data-thread={c.threadId} aria-label={m.call_video()}>
+                  <svg class="size-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg>
+                </button>
+              </>
             ) : (
               <button
                 type="button"
@@ -115,6 +154,41 @@ const rowInner =
       </button>
     </div>
   </form>
+</ActionSheet>
+
+<ActionSheet id="invite-sheet" label={m.invite_card_title()}>
+  <div class="space-y-4 px-5 pb-8 pt-1" data-invite-root data-locale={locale} data-copied={m.invite_copied()}>
+    <h2 class="display text-2xl">{m.invite_card_title()}</h2>
+    <p class="text-sm text-muted-foreground">{m.invite_explain()}</p>
+    <form data-invite-form class="flex items-end gap-2">
+      <span class="min-w-0 flex-1">
+        <SlabField label={m.invite_label()} name="name" placeholder={m.invite_label_ph()} />
+      </span>
+      <Button type="submit">{m.invite_create()}</Button>
+    </form>
+    {
+      invites.length > 0 && (
+        <ul class="divide-y divide-border border-t border-border">
+          {invites.map((inv) => (
+            <li class="flex items-center gap-2 py-3" data-invite-row data-token={inv.token}>
+              <span class="min-w-0 flex-1">
+                <span class="block truncate text-sm font-medium">{inv.name || m.invite_unnamed()}</span>
+                <span class="block text-2xs text-muted-foreground">
+                  {m.invite_expires({ date: new Date(inv.expiresAt).toLocaleDateString('nl-NL') })}
+                </span>
+              </span>
+              <button type="button" data-invite-share class="cursor-pointer rounded-full bg-foreground px-3 py-1.5 text-2xs font-bold text-background transition-colors hover:bg-brand hover:text-white">
+                {m.invite_share()}
+              </button>
+              <button type="button" data-invite-revoke data-id={inv.id} aria-label={m.invite_revoke()} class="grid size-8 cursor-pointer place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-brand">
+                <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )
+    }
+  </div>
 </ActionSheet>
 
 <script>
@@ -174,6 +248,70 @@ const rowInner =
       await actions.messaging.removeContact({ id });
       location.reload();
     });
+
+    // ── invite links (VIDEO-CALLING.md §5) ────────────────────────────────
+    const inviteSheet = document.getElementById('invite-sheet') as (HTMLElement & { openSheet?: () => void }) | null;
+    const inviteRoot = document.querySelector<HTMLElement>('[data-invite-root]');
+    if (inviteRoot) {
+      const locale = inviteRoot.dataset.locale || 'en';
+      const urlFor = (token: string) => `${location.origin}/${locale}/c/${token}`;
+
+      const shareLink = async (url: string) => {
+        // Native share sheet where it exists (the WhatsApp moment); clipboard
+        // fallback with a small confirmation elsewhere.
+        try {
+          if (navigator.share) return await navigator.share({ url });
+          await navigator.clipboard.writeText(url);
+          const note = document.createElement('div');
+          note.className =
+            'fixed left-1/2 top-4 z-[80] -translate-x-1/2 rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background shadow-soft-lg';
+          note.textContent = inviteRoot.dataset.copied || 'Copied';
+          document.body.appendChild(note);
+          setTimeout(() => note.remove(), 2500);
+        } catch {
+          /* user dismissed the share sheet */
+        }
+      };
+
+      document.querySelectorAll('[data-open-invites]').forEach((b) =>
+        b.addEventListener('click', () => inviteSheet?.openSheet?.()),
+      );
+
+      inviteRoot.querySelector<HTMLFormElement>('[data-invite-form]')?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const nameEl = inviteRoot.querySelector<HTMLInputElement>('[data-invite-form] [name="name"]');
+        const { data } = await actions.messaging.mintInvite({
+          name: nameEl?.value.trim() || undefined,
+          locale: locale as 'nl' | 'en' | 'de',
+        });
+        if (data?.url) {
+          await shareLink(data.url);
+          location.reload(); // fresh list shows the new link
+        }
+      });
+
+      inviteRoot.querySelectorAll<HTMLElement>('[data-invite-row]').forEach((row) => {
+        row.querySelector('[data-invite-share]')?.addEventListener('click', () => {
+          void shareLink(urlFor(row.dataset.token!));
+        });
+        const revoke = row.querySelector<HTMLElement>('[data-invite-revoke]');
+        revoke?.addEventListener('click', async () => {
+          await actions.messaging.revokeInvite({ id: revoke.dataset.id! });
+          row.remove();
+        });
+      });
+    }
+
+    // Contact-row call buttons → the global CallDock.
+    document.querySelectorAll<HTMLElement>('[data-contact-call]').forEach((b) =>
+      b.addEventListener('click', () => {
+        document.dispatchEvent(
+          new CustomEvent('intimate:call', {
+            detail: { threadId: b.dataset.thread!, mode: b.dataset.contactCall as 'voice' | 'video' },
+          }),
+        );
+      }),
+    );
   }
   initContacts();
   document.addEventListener('astro:page-load', initContacts);

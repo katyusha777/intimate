@@ -28,9 +28,10 @@ const tab = (href: string, label: string, icon: string, exact = false, sheet = f
 /* Role tab matrix (MESSAGING.md §10). The bar only swaps at login/logout, never
    mid-browse, so nobody sees it transform. Max 4 tabs (MOBILE.md §2).
    - Professional: Messages · Contacts · Support · Account (Dashboard folded
-     into Account — they were the same destination; verify dot rides Account)
+     into Account — same destination; verify dot rides Account. Account/avatar
+     sits RIGHTMOST for every role — one stable thumb position.)
    - Client (logged in): Search · Favorites · Messages · Account
-   - Visitor: Search · Favorites · Support · Account */
+   - Visitor: Search · Favorites · Support · Account (login only swaps slot 3) */
 const search = tab('/search/', m.nav_search(), '<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>');
 const favorites = tab('/favorites/', m.nav_favorites(), '<path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7Z"/>', false, true);
 /* Logged in: her avatar replaces the generic person icon (placeholder icon
@@ -44,15 +45,15 @@ const messages = {
   dot: unread > 0,
 };
 const contacts = tab('/contacts/', m.contacts_title(), '<circle cx="9" cy="8" r="3.2"/><path d="M3.5 20c0-3.3 2.5-5.4 5.5-5.4s5.5 2.1 5.5 5.4"/><path d="M16 5.2a3 3 0 0 1 0 5.6"/><path d="M18.5 20c0-2.6-1-4.4-2.6-5.2"/>', false, true);
-/* “?” in a circle — support, rightmost for everyone with a free slot. */
+/* “?” in a circle — support. */
 const support = tab('/support/', m.nav_support(), '<circle cx="12" cy="12" r="9"/><path d="M9.3 9a2.7 2.7 0 0 1 5.4.3c0 1.8-2.7 2.2-2.7 3.7"/><path d="M12 17h.01"/>', false, true);
 
 const tabs =
   session?.role === 'advertiser'
-    ? [messages, contacts, { ...account, dot: !idVerified }, support]
+    ? [messages, contacts, support, { ...account, dot: !idVerified }]
     : session
       ? [search, favorites, messages, account]
-      : [search, favorites, account, support];
+      : [search, favorites, support, account];
 ---
 
 <!-- Floating liquid-glass pill dock — compact, so it never blankets the
@@ -81,13 +82,17 @@ const tabs =
           data-page-sheet={t.sheet ? '' : undefined}
           aria-label={t.label}
           class:list={[
-            'relative grid size-11 flex-none place-items-center rounded-full transition-[color,transform] active:scale-[0.92]',
+            'relative flex h-13 w-14 flex-none flex-col items-center justify-center gap-0.5 rounded-2xl transition-[color,transform] active:scale-[0.92]',
             t.active ? 'text-foreground' : 'text-muted-foreground',
           ]}
           aria-current={t.active ? 'page' : undefined}
         >
-          {t.dot && <span class="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-brand" />}
-          <!-- Icons only — the label lives in aria-label (a11y). -->
+          {/* Messages dot doubles as the LIVE unread hook (CallDock flips it). */}
+          {t === messages ? (
+            <span data-unread-dot class:list={['absolute right-1.5 top-1.5 size-1.5 rounded-full bg-brand', !t.dot && 'hidden']} />
+          ) : (
+            t.dot && <span class="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-brand" />
+          )}
           {
             'avatar' in t && t.avatar ? (
               <SafeImage
@@ -95,11 +100,11 @@ const tabs =
                 src={t.avatar}
                 alt=""
                 loading="eager"
-                class="size-7 rounded-full border border-foreground/20"
+                class="size-6 rounded-full border border-foreground/20"
               />
             ) : (
               <svg
-                class="size-6"
+                class="size-5"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -111,6 +116,8 @@ const tabs =
               />
             )
           }
+          <!-- Small label (items.md #13) — the icon alone made tabs guessable. -->
+          <span class="max-w-full truncate px-0.5 text-2xs font-medium leading-none">{t.label}</span>
         </a>
       ))
     }

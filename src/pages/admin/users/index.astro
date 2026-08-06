@@ -23,6 +23,8 @@ const [accounts, reports, { items: profiles }] = session
 
 const filtered = q ? accounts.filter((a) => a.email.includes(q)) : accounts;
 const selected = email ? (accounts.find((a) => a.email === email) ?? null) : null;
+/** Pending GDPR requests (items.md #6/#7) — surfaced before everything else. */
+const gdpr = accounts.filter((a) => a.deletionRequestedAt || a.dataRequestedAt);
 
 const localPart = (e: string) => (e.split('@')[0] ?? '').replace(/[^a-z0-9]/g, '');
 const profileFor = (e: string) => profiles.find((p) => p.slug.startsWith(localPart(e)));
@@ -37,6 +39,41 @@ const humanize = (s: string) => s.replace(/_/g, ' ').replace(/^./, (c) => c.toUp
     session && (
       <div>
         <h1 class="display text-3xl">{m.adm_users_title()}</h1>
+
+        {gdpr.length > 0 && (
+          <section class="mt-4 border border-brand/40 bg-brand/5 p-4">
+            <h2 class="font-condensed text-sm font-bold uppercase tracking-wide text-brand">
+              {m.adm_gdpr_title()} ({gdpr.length})
+            </h2>
+            <ul class="mt-2 divide-y divide-border">
+              {gdpr.map((a) => (
+                <li class="flex flex-wrap items-center justify-between gap-3 py-2.5">
+                  <span class="min-w-0">
+                    <span class="block truncate text-sm font-medium">{a.email}</span>
+                    <span class="block text-2xs text-muted-foreground">
+                      {a.deletionRequestedAt && `${m.adm_gdpr_deletion()} · ${new Date(a.deletionRequestedAt).toLocaleDateString('nl-NL')}`}
+                      {a.deletionRequestedAt && a.dataRequestedAt && ' · '}
+                      {a.dataRequestedAt && `${m.adm_gdpr_data()} · ${new Date(a.dataRequestedAt).toLocaleDateString('nl-NL')}`}
+                    </span>
+                  </span>
+                  <span class="flex flex-none gap-2">
+                    {a.dataRequestedAt && (
+                      <button type="button" data-gdpr-export={a.id} data-email={a.email} class="cursor-pointer border border-foreground/20 px-3 py-1.5 text-sm font-medium transition-colors hover:border-foreground/60">
+                        {m.adm_gdpr_export_btn()}
+                      </button>
+                    )}
+                    {a.deletionRequestedAt && (
+                      <button type="button" data-gdpr-delete={a.id} data-confirm={m.adm_gdpr_delete_confirm()} class="cursor-pointer border border-brand/40 px-3 py-1.5 text-sm font-medium text-brand transition-colors hover:border-brand">
+                        {m.adm_gdpr_delete_btn()}
+                      </button>
+                    )}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
         <form method="get" class="mt-3 flex max-w-md gap-2">
           <input
             type="search"
@@ -105,3 +142,49 @@ const humanize = (s: string) => s.replace(/_/g, ' ').replace(/^./, (c) => c.toUp
     )
   }
 </AdminShell>
+
+<script>
+  import { actions } from 'astro:actions';
+
+  // GDPR fulfilment buttons (items.md #6/#7).
+  // Server clears the flag, but the banner reads through Hyperdrive's query
+  // cache — a reload can still show the stale row for the cache window. So drop
+  // the button optimistically: remove its row once no pending action remains
+  // (an account that asked for BOTH data + deletion keeps the other button).
+  function settleGdpr(btn: HTMLElement) {
+    btn.remove();
+    const li = btn.closest('li');
+    if (li && !li.querySelector('[data-gdpr-export],[data-gdpr-delete]')) li.remove();
+    const section = document.querySelector('section:has([data-gdpr-export],[data-gdpr-delete])');
+    if (!document.querySelector('[data-gdpr-export],[data-gdpr-delete]')) section?.remove();
+  }
+  function initGdpr() {
+    document.querySelectorAll<HTMLElement>('[data-gdpr-export]').forEach((btn) => {
+      if (btn.dataset.init) return;
+      btn.dataset.init = '1';
+      btn.addEventListener('click', async () => {
+        const { data } = await actions.admin.gdprExport({ accountId: btn.dataset.gdprExport! });
+        if (!data) return;
+        // One JSON file, named for the account — the admin mails it by hand.
+        const blob = new Blob([JSON.stringify(data.data, null, 2)], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `intimate-data-${(btn.dataset.email || 'account').replace(/[^a-z0-9.@-]/gi, '_')}.json`;
+        a.click();
+        URL.revokeObjectURL(a.href);
+        settleGdpr(btn);
+      });
+    });
+    document.querySelectorAll<HTMLElement>('[data-gdpr-delete]').forEach((btn) => {
+      if (btn.dataset.init) return;
+      btn.dataset.init = '1';
+      btn.addEventListener('click', async () => {
+        if (!confirm(btn.dataset.confirm || 'Approve deletion?')) return;
+        const { data } = await actions.admin.gdprApproveDeletion({ accountId: btn.dataset.gdprDelete! });
+        if (data) settleGdpr(btn);
+      });
+    });
+  }
+  initGdpr();
+  document.addEventListener('astro:page-load', initGdpr);
+</script>

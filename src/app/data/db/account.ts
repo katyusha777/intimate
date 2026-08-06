@@ -7,7 +7,7 @@
  * Fresh Db per call — workerd forbids reusing I/O across requests.
  */
 import { env } from 'cloudflare:workers';
-import { and, eq, inArray, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNotNull, ne, sql } from 'drizzle-orm';
 import { requestDb, type Db } from '@/db/client';
 import { accounts, favorites, media, profiles, verificationDocs } from '@/db/schema';
 import {
@@ -51,6 +51,8 @@ function toAccount(row: AccountRow, favSlugs: string[]): Account {
     verificationSubmittedAt: iso(row.verificationSubmittedAt),
     verificationReason: row.verificationReason ?? undefined,
     favorites: favSlugs,
+    deletionRequestedAt: iso(row.deletionRequestedAt),
+    dataRequestedAt: iso(row.dataRequestedAt),
   });
 }
 
@@ -83,6 +85,7 @@ function blankProfile(session: Session): Profile {
 /** The admin-facing record: account + real identity (no email heuristics). */
 function record(row: AccountRow, favSlugList: string[], profileSlug?: string): AccountRecord {
   return {
+    id: row.id,
     email: row.email ?? row.id,
     accountType: row.accountType,
     adminRole: row.adminRole ?? undefined,
@@ -101,6 +104,9 @@ function accountUpdate(patch: Partial<Account>) {
   if (patch.verificationSubmittedAt !== undefined)
     u.verificationSubmittedAt = new Date(patch.verificationSubmittedAt);
   if (patch.verificationReason !== undefined) u.verificationReason = patch.verificationReason;
+  if (patch.deletionRequestedAt !== undefined)
+    u.deletionRequestedAt = new Date(patch.deletionRequestedAt);
+  if (patch.dataRequestedAt !== undefined) u.dataRequestedAt = new Date(patch.dataRequestedAt);
   return u;
 }
 
@@ -327,6 +333,16 @@ export const accountApi: AccountApi = {
       .where(and(eq(media.id, id), eq(media.profileId, row.id)))
       .returning({ key: media.imageKey });
     if (gone && isR2Key(gone.key)) await bucket().delete(gone.key);
+  },
+
+  async phoneInUse(phone, exceptAccountId) {
+    const d = db();
+    const rows = await d
+      .select({ id: accounts.id })
+      .from(accounts)
+      .where(and(eq(accounts.phone, phone), isNotNull(accounts.phoneVerifiedAt), ne(accounts.id, exceptAccountId)))
+      .limit(1);
+    return rows.length > 0;
   },
 
   async all() {

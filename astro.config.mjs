@@ -8,6 +8,9 @@ export default defineConfig({
   output: 'server',
   adapter: cloudflare(),
   devToolbar: { enabled: false },
+  // ~20 KB of CSS was two render-blocking requests (~730 ms on slow 4G);
+  // HTML is edge-cached, so inlining is cheaper than the round trips.
+  build: { inlineStylesheets: 'always' },
   prefetch: { prefetchAll: true },
   vite: {
     plugins: [

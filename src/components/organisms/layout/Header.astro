@@ -16,8 +16,10 @@ import { CITIES, LISTING_CATEGORIES, type Locale } from '@/lib/taxonomy';
 
 interface Props {
   session?: Session | null;
+  /** Unread messages → dot on the desktop messages icon (tabbar owns mobile). */
+  unread?: number;
 }
-const { session = null } = Astro.props;
+const { session = null, unread = 0 } = Astro.props;
 
 /** Site languages — native names, no flags. */
 const LANGUAGES = [
@@ -90,7 +92,9 @@ const genderTabs = (Object.keys(GENDER_FILTERS) as GenderFilter[]).map((g) => ({
       class="absolute left-1/2 flex -translate-x-1/2 items-center md:static md:left-auto md:flex-none md:translate-x-0"
     >
       <!-- naming follows the source files: LIGHT = light (white) lettering, DARK = dark lettering -->
-      <img src="/img/logo-dark.svg" alt={m.app_name()} width="1242" height="597" class="h-7 w-auto dark:hidden md:h-9" />
+      <!-- lazy: display:none while the (default) dark theme is on, so it never
+           intersects → never downloads unless the user switches to light. -->
+      <img src="/img/logo-dark.svg" alt={m.app_name()} width="1242" height="597" loading="lazy" class="h-7 w-auto dark:hidden md:h-9" />
       <img src="/img/logo-light.svg" alt={m.app_name()} width="1242" height="597" class="hidden h-7 w-auto dark:block md:h-9" />
     </a>
 
@@ -153,6 +157,18 @@ const genderTabs = (Object.keys(GENDER_FILTERS) as GenderFilter[]).map((g) => ({
         session ? (
           <>
             <ThemeToggle />
+            {/* Desktop messages shortcut beside the avatar — mobile has the
+                tabbar's messages tab, so md+ only. Dot mirrors the tabbar's. */}
+            <a
+              href={localizePath('/messages/')}
+              aria-label={m.msg_title()}
+              class="relative hidden size-9 place-items-center rounded-full text-muted-foreground transition-colors hover:text-foreground md:grid"
+            >
+              <span data-unread-dot class:list={['absolute right-1 top-1 size-1.5 rounded-full bg-brand', unread === 0 && 'hidden']} />
+              <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z" />
+              </svg>
+            </a>
             <UserMenu {session} />
           </>
         ) : (

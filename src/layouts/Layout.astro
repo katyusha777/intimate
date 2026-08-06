@@ -14,6 +14,7 @@ import PageSheet from '@/components/molecules/PageSheet.astro';
 import ProfileSheet from '@/components/organisms/profile/ProfileSheet.astro';
 import Lightbox from '@/components/molecules/Lightbox.astro';
 import FavoritesController from '@/components/molecules/FavoritesController.astro';
+import CallDock from '@/components/organisms/call/CallDock.astro';
 import '@fontsource/barlow/400.css';
 import '@fontsource/barlow/500.css';
 import '@fontsource/barlow/600.css';
@@ -98,14 +99,26 @@ const unread =
     <meta name="apple-mobile-web-app-title" content="Intimate" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon-180.png" />
     <ClientRouter />
+    <!-- Privacy-friendly analytics by Plausible (cookieless — the "anonymous
+         analytics" consent tier, no banner gate needed; tracks ClientRouter
+         navigations via its built-in pushState hook) -->
+    <script is:inline async src="https://plausible.io/js/pa-dVJlubTNYbSGy8qFF_GT-.js"></script>
     <script is:inline>
-      // No-flash theme: dark is the house default — even on light-preferring
-      // devices; only an explicit pick of light overrides it. On view
-      // transitions the class is stamped on the INCOMING document BEFORE the
-      // swap (after-swap re-adding it straddled a style recalc, so the theme
-      // switch thumb visibly slid on every navigation).
+      window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
+      plausible.init()
+    </script>
+    <script is:inline>
+      // No-flash theme (items.md #4): first visit follows the DEVICE
+      // (prefers-color-scheme); an explicit pick on the toggle persists and
+      // wins from then on. On view transitions the class is stamped on the
+      // INCOMING document BEFORE the swap (after-swap re-adding it straddled a
+      // style recalc, so the theme switch thumb visibly slid per navigation).
       (function () {
-        const dark = () => localStorage.theme !== 'light';
+        const dark = () => {
+          const t = localStorage.theme;
+          if (t === 'light' || t === 'dark') return t === 'dark';
+          return matchMedia('(prefers-color-scheme: dark)').matches;
+        };
         document.documentElement.classList.toggle('dark', dark());
         document.addEventListener('astro:before-swap', (e) => {
           e.newDocument.documentElement.classList.toggle('dark', dark());
@@ -114,10 +127,59 @@ const unread =
     </script>
   </head>
   <body class="min-h-dvh bg-background font-sans text-foreground antialiased">
+    <!-- 18+ gate (items.md #8): SSR'd on every page (edge-cached HTML can't
+         vary on the cookie), hidden pre-paint by the inline script right below
+         when already accepted. Content stays in the DOM — crawlers see it. -->
+    <div
+      data-age-gate
+      class="fixed inset-0 z-[90] flex items-center justify-center bg-background/60 p-5 backdrop-blur-2xl"
+      role="alertdialog"
+      aria-label={m.age_gate_title()}
+    >
+      <div class="w-full max-w-sm border border-foreground/20 bg-background p-6 text-center shadow-soft-lg">
+        <p class="display text-4xl">18<span class="text-brand">+</span></p>
+        <h2 class="mt-3 font-condensed text-xl font-bold">{m.age_gate_title()}</h2>
+        <p class="mt-2 text-sm text-muted-foreground">{m.age_gate_body()}</p>
+        <div class="mt-5 flex flex-col gap-2.5">
+          <button
+            type="button"
+            data-age-enter
+            class="slab-cut cursor-pointer bg-foreground px-4 py-3 text-sm font-bold uppercase tracking-wide text-background transition-colors hover:bg-brand hover:text-white"
+          >
+            {m.age_gate_enter()}
+          </button>
+          <a
+            href="https://www.google.com"
+            class="py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+          >
+            {m.age_gate_leave()}
+          </a>
+        </div>
+      </div>
+    </div>
+    <script is:inline data-astro-rerun>
+      // Runs during parse, directly after the gate element — no flash for
+      // returning visitors; the accept writes a 1-year cookie. data-astro-rerun:
+      // must re-run after every view-transition swap (fresh gate element).
+      (function () {
+        var gate = document.querySelector('[data-age-gate]');
+        if (!gate) return;
+        if (/(?:^|;\s*)age_ok=1/.test(document.cookie)) {
+          gate.remove();
+          return;
+        }
+        document.documentElement.style.overflow = 'hidden';
+        gate.querySelector('[data-age-enter]').addEventListener('click', function () {
+          document.cookie = 'age_ok=1; path=/; max-age=31536000; samesite=lax';
+          document.documentElement.style.overflow = '';
+          gate.remove();
+        });
+      })();
+    </script>
     <!-- .page-zoom = the iOS push-back target when a sheet opens; fixed
          chrome (dock, dialogs) lives outside it. -->
     <div class="page-zoom">
-      {!bare && <Header {session} />}
+      {!bare && <Header {session} {unread} />}
 
       <main>
         <slot />
@@ -131,6 +193,10 @@ const unread =
     <ProfileSheet />
     <Lightbox />
     <FavoritesController />
+    {/* Signed-in only: live badges + the incoming-call ring + call screen.
+        Mounted globally so a ring reaches the client on ANY page; anonymous
+        pages never ship its script (zero-JS budget untouched). */}
+    {session && <CallDock {session} />}
 
     <script is:inline data-neutral-title={m.safe_neutral_title()}>
       // Safe mode (DESIGN.md §6, Phase 5): THREE-valued.
@@ -177,6 +243,9 @@ const unread =
               ? el.dataset.real || el.dataset.safe
               : el.dataset[pick] || el.dataset.safe;
             if (el.getAttribute('src') !== want) el.setAttribute('src', want);
+            // Which set is showing — dark mode dims the placeholder sets
+            // (items.md #9: they glared against the dark canvas).
+            el.dataset.showing = off ? 'real' : pick;
           });
           root.querySelectorAll('[data-safe-video-wrap]').forEach((wrap) => {
             const video = wrap.querySelector('video');
@@ -184,8 +253,15 @@ const unread =
             if (!video) return;
             video.classList.toggle('hidden', !off);
             if (fallback) fallback.classList.toggle('hidden', off);
-            if (off) video.play().catch(() => {});
-            else video.pause();
+            // Only play (and thus download — preload="none") when actually
+            // rendered: the section is display:none on mobile, and 2.5 MB of
+            // invisible hero video was starving the LCP image on slow 4G. The
+            // poster rides data-poster for the same reason (57 KB, poster
+            // fetches eagerly even on display:none videos).
+            if (off && video.checkVisibility?.() !== false) {
+              if (!video.poster && video.dataset.poster) video.poster = video.dataset.poster;
+              video.play().catch(() => {});
+            } else video.pause();
           });
           // Toggle UI: aria-checked = "is safe mode active at all", data-safe-state
           // carries the exact value so the label/icon can reflect all three.

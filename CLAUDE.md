@@ -25,6 +25,7 @@ Verified marketplace/directory for legal adult services (independent sex workers
 | `docs/ADMIN.md` | admin system: roles, queues, governance, isolation | any /admin work |
 | `docs/SECURITY.md` | threat model, data safety, secrets, review discipline for sensitive diffs | auth/RLS/storage/actions/deploy work |
 | `docs/MESSAGING.md` | messaging/contacts/blocking/calls spec — UI+mock built; RLS/realtime guarantees pend the Supabase swap (Phase 0) | comms work only |
+| `docs/VIDEO-CALLING.md` | **temporary** execution tracker: voice/video calls (WebRTC P2P per ARCHITECTURE §10) + contact invite links + realtime seam — delete when its phases land | any calls/contacts/realtime work, while it exists |
 
 **Docs discipline** — enforced by `tests/docs.test.ts` (cross-refs resolve, banned stale strings, component-inventory truth): a session that changes behavior a doc describes updates that doc **in the same change** · when a DoD/checklist item lands, tick it in the owning doc in the same change · docs shrink as they grow — an edit that adds a section deletes what it obsoletes · temporary trackers die on completion.
 

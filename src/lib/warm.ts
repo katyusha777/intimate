@@ -22,6 +22,8 @@ export async function listWarmUrls(opts: {
   const locales = opts.locales ?? LOCALES;
   const db = requestDb(opts.hyperdrive);
   const rows = await db.select({ slug: profiles.slug }).from(profiles).where(eq(profiles.state, 'live'));
+  // Homepages first — short TTL (HOME_TTL_S), so they depend on the cron re-warm.
+  const homes = locales.map((l) => `${opts.origin}/${l}`);
   const urls = rows.flatMap((r) => locales.map((l) => `${opts.origin}/${l}/profile/${r.slug}/`));
-  return urls.slice(0, opts.cap ?? 600);
+  return [...homes, ...urls].slice(0, opts.cap ?? 600);
 }

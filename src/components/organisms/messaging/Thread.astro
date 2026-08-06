@@ -31,6 +31,18 @@ const { thread, viewer, paused, privatePhotos = [] } = Astro.props;
 const otherName = viewer === 'professional' ? thread.clientName : thread.profileName;
 const canPhoto = viewer === 'professional' || thread.clientMediaAllowed;
 const blocked = thread.state === 'blocked';
+/** Her call buttons (VIDEO-CALLING.md §6) — professional side, open thread only. */
+const canCall = viewer === 'professional' && thread.state === 'open' && !paused;
+
+/** Call outcome card copy: body key + mode + duration → one line. */
+const callCardText = (body: string, call?: { mode: string; seconds: number }): string => {
+  if (body === 'call_card_missed') return m.call_card_missed();
+  if (body === 'call_card_declined') return m.call_card_declined();
+  if (body === 'call_card_failed') return m.call_card_failed();
+  const label = call?.mode === 'video' ? m.call_card_video() : m.call_card_voice();
+  const s = call?.seconds ?? 0;
+  return `${label} · ${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+};
 // A pending thread (request awaiting accept) or a declined (frozen) one has no
 // live composer — she answers via the request card, and free-compose is gated
 // on the thread being open (data layer). The DoD throttle made visible.
@@ -58,6 +70,11 @@ const utcTime = (iso: string): string =>
   data-state={thread.state}
   data-sys-media-on={m.msg_system_media_on()}
   data-sys-request-accepted={m.msg_system_request_accepted()}
+  data-cc-missed={m.call_card_missed()}
+  data-cc-declined={m.call_card_declined()}
+  data-cc-failed={m.call_card_failed()}
+  data-cc-voice={m.call_card_voice()}
+  data-cc-video={m.call_card_video()}
 >
   <!-- Header -->
   <header class="flex flex-none items-center gap-2 border-b border-border px-3 py-2.5">
@@ -78,6 +95,31 @@ const utcTime = (iso: string): string =>
       )
     }
     <span class="min-w-0 flex-1 truncate font-condensed text-lg font-bold">{otherName}</span>
+
+    {
+      canCall && (
+        <>
+          {/* The two most important buttons on this surface (VIDEO-CALLING.md §0):
+              she calls the client who paid her — two taps, zero menus. */}
+          <button
+            type="button"
+            data-call-voice
+            aria-label={m.call_voice()}
+            class="grid size-9 flex-none cursor-pointer place-items-center rounded-full text-foreground transition-colors hover:bg-muted"
+          >
+            <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" /></svg>
+          </button>
+          <button
+            type="button"
+            data-call-video
+            aria-label={m.call_video()}
+            class="grid size-9 flex-none cursor-pointer place-items-center rounded-full text-foreground transition-colors hover:bg-muted"
+          >
+            <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5" /><rect x="2" y="6" width="14" height="12" rx="2" /></svg>
+          </button>
+        </>
+      )
+    }
 
     <div class="relative" data-thread-menu>
       <button
@@ -126,15 +168,33 @@ const utcTime = (iso: string): string =>
             </>
           )
         }
-        <button
-          type="button"
-          data-block
-          class="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm text-brand transition-colors hover:bg-muted"
-          role="menuitem"
-        >
-          <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m5.6 5.6 12.8 12.8"/></svg>
-          {blocked ? m.msg_unblock() : m.msg_block()}
-        </button>
+        {
+          blocked ? (
+            <>
+              <button type="button" data-block class="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm transition-colors hover:bg-muted" role="menuitem">
+                <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="m5.6 5.6 12.8 12.8" /></svg>
+                {m.msg_unblock()}
+              </button>
+              <button type="button" data-delete-chat class="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm text-brand transition-colors hover:bg-muted" role="menuitem">
+                <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
+                {m.msg_delete_chat()}
+              </button>
+            </>
+          ) : (
+            <>
+              {/* Block keeps the chat listed with a badge; block & delete
+                  removes it too — both undoable from Settings → Blocked. */}
+              <button type="button" data-block class="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm text-brand transition-colors hover:bg-muted" role="menuitem">
+                <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="m5.6 5.6 12.8 12.8" /></svg>
+                {m.msg_block()}
+              </button>
+              <button type="button" data-block-delete class="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm text-brand transition-colors hover:bg-muted" role="menuitem">
+                <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
+                {m.msg_block_delete()}
+              </button>
+            </>
+          )
+        }
       </div>
     </div>
   </header>
@@ -166,6 +226,13 @@ const utcTime = (iso: string): string =>
           <div class="flex justify-center py-1" data-msg-id={msg.id} data-created={msg.createdAt}>
             <span class="rounded-full bg-muted px-3 py-1 text-center text-2xs font-medium text-muted-foreground">
               {systemText(msg.body)}
+            </span>
+          </div>
+        ) : msg.kind === 'call' ? (
+          <div class="flex justify-center py-1" data-msg-id={msg.id} data-created={msg.createdAt}>
+            <span class="flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-center text-2xs font-medium text-muted-foreground">
+              <svg class="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" /></svg>
+              {callCardText(msg.body, msg.call)}
             </span>
           </div>
         ) : msg.kind === 'request' && msg.request ? (
@@ -272,9 +339,10 @@ const utcTime = (iso: string): string =>
   type Msg = {
     id: string;
     sender: 'professional' | 'client' | 'system';
-    kind: 'text' | 'photo' | 'system' | 'request';
+    kind: 'text' | 'photo' | 'system' | 'request' | 'call';
     body: string;
     photo?: string;
+    call?: { mode: 'voice' | 'video'; state: string; seconds: number };
     createdAt: string;
     readAt?: string;
   };
@@ -340,6 +408,28 @@ const utcTime = (iso: string): string =>
             : msg.body === 'msg_system_request_accepted'
               ? sysRequestAccepted
               : msg.body;
+        row.appendChild(chip);
+        return row;
+      }
+      // Call outcome card — same centered chip as the SSR markup.
+      if (msg.kind === 'call') {
+        const row = document.createElement('div');
+        row.className = 'flex justify-center py-1';
+        row.dataset.msgId = msg.id;
+        row.dataset.created = msg.createdAt;
+        const chip = document.createElement('span');
+        chip.className =
+          'flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-center text-2xs font-medium text-muted-foreground';
+        const s = msg.call?.seconds ?? 0;
+        const dur = `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+        chip.textContent =
+          msg.body === 'call_card_missed'
+            ? root!.dataset.ccMissed!
+            : msg.body === 'call_card_declined'
+              ? root!.dataset.ccDeclined!
+              : msg.body === 'call_card_failed'
+                ? root!.dataset.ccFailed!
+                : `${msg.call?.mode === 'video' ? root!.dataset.ccVideo : root!.dataset.ccVoice} · ${dur}`;
         row.appendChild(chip);
         return row;
       }
@@ -464,6 +554,18 @@ const utcTime = (iso: string): string =>
       if (img) (window as any).__openLightbox?.([{ src: img.src, alt: '' }], 0);
     });
 
+    // Call buttons (professional) → the global CallDock places the call.
+    for (const [sel, mode] of [
+      ['[data-call-voice]', 'voice'],
+      ['[data-call-video]', 'video'],
+    ] as const) {
+      root.querySelector(sel)?.addEventListener('click', () => {
+        document.dispatchEvent(
+          new CustomEvent('intimate:call', { detail: { threadId, mode } }),
+        );
+      });
+    }
+
     // Overflow menu + contact controls.
     const menu = root.querySelector<HTMLElement>('[data-thread-menu]');
     if (menu) {
@@ -484,9 +586,19 @@ const utcTime = (iso: string): string =>
       });
       const note = menu.querySelector<HTMLTextAreaElement>('[data-note]');
       note?.addEventListener('blur', () => actions.messaging.setNote({ threadId, note: note.value }));
+      const toInbox = () => (location.href = `/${document.documentElement.lang || 'en'}/messages/`);
+      const wasBlocked = root.dataset.state === 'blocked';
       menu.querySelector('[data-block]')?.addEventListener('click', async () => {
-        await actions.messaging.setBlocked({ threadId, blocked: true });
-        location.href = `/${document.documentElement.lang || 'en'}/messages/`;
+        await actions.messaging.setBlocked({ threadId, blocked: !wasBlocked });
+        wasBlocked ? location.reload() : toInbox();
+      });
+      menu.querySelector('[data-block-delete]')?.addEventListener('click', async () => {
+        await actions.messaging.setBlocked({ threadId, blocked: true, del: true });
+        toInbox();
+      });
+      menu.querySelector('[data-delete-chat]')?.addEventListener('click', async () => {
+        await actions.messaging.hideThread({ threadId });
+        toInbox();
       });
     }
 

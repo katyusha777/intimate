@@ -325,6 +325,10 @@ Blocking from any surface lands here.
 
 ## 9. Calls (Phase C — voice & video, 1:1, P2P)
 
+**Execution tracker: `VIDEO-CALLING.md` (while it exists)** — sequences this
+phase (realtime seam → contact fast-path → voice → video → TURN) and pins the
+open decisions (her-side relay-only, invite links, `kind='call'` cards).
+
 Architecture is locked in `ARCHITECTURE.md` §10 — restated: **WebRTC P2P**,
 DTLS-SRTP end-to-end. Signaling = the thread's Supabase Realtime channel (SDP/ICE
 as ephemeral broadcast, never persisted). STUN public; **TURN = self-hosted

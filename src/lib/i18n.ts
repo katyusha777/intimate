@@ -16,7 +16,10 @@ export function localizePath(path: string, locale: Locale = getLocale() as Local
 }
 
 /** Naive Accept-Language negotiation over our three locales; fallback en. */
-export function negotiateLocale(acceptLanguage: string | null): Locale {
+export function negotiateLocale(acceptLanguage: string | null, cookie?: string | null): Locale {
+  // A remembered pick (language switchers write PARAGLIDE_LOCALE) beats the
+  // browser's Accept-Language (items.md #5).
+  if (cookie && isLocale(cookie)) return cookie;
   for (const part of (acceptLanguage ?? '').toLowerCase().split(',')) {
     const tag = part.trim().slice(0, 2);
     if (isLocale(tag)) return tag;

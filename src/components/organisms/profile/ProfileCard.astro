@@ -140,7 +140,7 @@ const heartCut = `cut-${(hash + 1) % 4}`;
       href={href}
       class="group relative block aspect-square overflow-hidden rounded-lg bg-neutral-950 shadow-soft transition-transform duration-200 active:scale-[0.98]"
     >
-      <SafeImage imageKey={p.id} src={p.photos[0]} alt={p.name} class="h-full w-full" {loading} />
+      <SafeImage imageKey={p.id} src={p.photos[0]} alt={p.name} class="h-full w-full" {loading} variant="card" />
       <!-- the grid card's ink slab, shrunk -->
       <div
         class="absolute inset-x-1 bottom-1 bg-neutral-950 px-2.5 py-1.5 text-white"
@@ -170,7 +170,7 @@ const heartCut = `cut-${(hash + 1) % 4}`;
       href={href}
       class="group flex items-center gap-3 rounded-lg p-2 transition-colors hover:bg-muted"
     >
-      <SafeImage imageKey={p.id} src={p.photos[0]} alt={p.name} class="size-14 flex-none rounded-lg" {loading} />
+      <SafeImage imageKey={p.id} src={p.photos[0]} alt={p.name} class="size-14 flex-none rounded-lg" {loading} variant="thumb" />
       <div class="min-w-0 flex-1">
         <p class="flex items-center gap-1 truncate font-condensed text-base font-semibold">
           {p.name}, {profileAge(p.birthDate)}

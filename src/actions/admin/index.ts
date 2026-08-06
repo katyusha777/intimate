@@ -20,6 +20,7 @@ import { requestDb } from '@/db/client';
 import { media } from '@/db/schema';
 import { approveWholeSubmission, decideModeration } from './queues';
 import { setProfileState } from './entities';
+import { approveDeletion, clearDataRequest, exportAccountData } from './gdpr';
 import { retryImport } from './imports';
 import type { AdminAction, ProfileState } from '@/lib/taxonomy';
 
@@ -217,6 +218,34 @@ export const admin = {
       const session = await requireAdmin(context);
       await record(session, { action: 'escalate', entityType, entityId });
       return { ok: true };
+    },
+  }),
+
+  // --- GDPR fulfilment (items.md #6/#7): super only ---
+  gdprExport: defineAction({
+    input: z.object({ accountId: z.string().max(60) }),
+    handler: async ({ accountId }, context) => {
+      const session = await requireAdmin(context, ['super']);
+      const data = await exportAccountData(accountId);
+      await clearDataRequest(accountId); // fulfilment clears the flag (banner drops)
+      await record(session, { action: 'gdpr_export', entityType: 'account', entityId: accountId });
+      return { data };
+    },
+  }),
+
+  gdprApproveDeletion: defineAction({
+    input: z.object({ accountId: z.string().max(60) }),
+    handler: async ({ accountId }, context) => {
+      const session = await requireAdmin(context, ['super']);
+      const { authDeleted } = await approveDeletion(accountId);
+      await record(session, {
+        action: 'delete_account',
+        entityType: 'account',
+        entityId: accountId,
+        meta: { authDeleted: String(authDeleted) },
+      });
+      await bustProfiles(sessionKv()); // her cached public pages must go stale now
+      return { ok: true, authDeleted };
     },
   }),
 };

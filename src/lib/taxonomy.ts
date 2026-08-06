@@ -40,10 +40,19 @@ export const MEDIA_TYPES = ['photo'] as const; // 'video' post-MVP (requires Clo
 export const CONVERSATION_MODES = ['off', 'everyone', 'verified_only'] as const;
 /**
  * Message kinds. 'request' (UX-PLAN 4.1) = the pre-qualified contact card a
- * client sends instead of composing cold. 'video'/'call_request'/'call_event'
- * are post-MVP (Phase C).
+ * client sends instead of composing cold. 'call' (VIDEO-CALLING.md) = a call
+ * outcome card (missed/declined/duration) rendered from its call_sessions row.
  */
-export const MESSAGE_KINDS = ['text', 'photo', 'system', 'request'] as const;
+export const MESSAGE_KINDS = ['text', 'photo', 'system', 'request', 'call'] as const;
+
+// --- Calls (docs/VIDEO-CALLING.md) ----------------------------------------
+/** 1:1 WebRTC call modes — she picks when she taps; fixed for the call. */
+export const CALL_MODES = ['voice', 'video'] as const;
+/**
+ * Call lifecycle: ringing → active → ended; ringing → declined | timeout
+ * (30s no answer — renders as "missed") | failed (connection never made it).
+ */
+export const CALL_STATES = ['ringing', 'active', 'ended', 'declined', 'timeout', 'failed'] as const;
 /**
  * Thread lifecycle. pending (UX-PLAN 4.1) = a request awaiting the
  * professional's accept/decline; accept → open, decline → closed silently.
@@ -109,6 +118,8 @@ export const ADMIN_ACTIONS = [
   'verification_doc_viewed',
   'thread_viewed_by_admin',
   'send_platform_message',
+  // GDPR fulfilment (items.md #6/#7)
+  'gdpr_export',
 ] as const;
 
 export const IMPORT_JOB_STATES = [
@@ -506,6 +517,8 @@ export type MediaType = (typeof MEDIA_TYPES)[number];
 export type ConversationMode = (typeof CONVERSATION_MODES)[number];
 export type MessageKind = (typeof MESSAGE_KINDS)[number];
 export type ThreadState = (typeof THREAD_STATES)[number];
+export type CallMode = (typeof CALL_MODES)[number];
+export type CallState = (typeof CALL_STATES)[number];
 export type RequestWhen = (typeof REQUEST_WHEN)[number];
 export type MediaState = (typeof MEDIA_STATES)[number];
 export type RejectionReason = (typeof REJECTION_REASONS)[number];

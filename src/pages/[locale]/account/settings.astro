@@ -24,6 +24,7 @@ const profile = session && isAdvertiser ? await accountApi.myProfile(session) : 
 const canPause = profile?.state === 'live' || profile?.state === 'paused';
 const isPaused = profile?.state === 'paused';
 const blocked = session ? await messagingApi.listBlocked(session) : [];
+const account = session ? await accountApi.get(session) : null;
 const modeLabel = (mode: (typeof CONVERSATION_MODES)[number]) =>
   mode === 'off' ? m.msg_mode_off() : mode === 'everyone' ? m.msg_mode_everyone() : m.msg_mode_verified();
 const LANGS: Record<(typeof LOCALES)[number], string> = {
@@ -128,6 +129,34 @@ const heading = 'font-condensed text-sm font-bold uppercase tracking-wide text-m
             </section>
           )}
 
+          {/* GDPR self-service (items.md #6/#7) — both fulfilled by a human. */}
+          <section class="py-5">
+            <h2 class={heading}>{m.settings_privacy()}</h2>
+            <div class="mt-3 space-y-3">
+              <div class="flex flex-wrap items-center justify-between gap-3">
+                <p class="text-sm">{m.settings_data_request()}</p>
+                {account?.dataRequestedAt ? (
+                  <p class="text-sm font-medium text-online">{m.settings_gdpr_pending()}</p>
+                ) : (
+                  <button type="button" data-gdpr="data" class="cursor-pointer border border-foreground/20 px-3 py-1.5 text-sm font-medium transition-colors hover:border-foreground/60">
+                    {m.settings_data_request_btn()}
+                  </button>
+                )}
+              </div>
+              <div class="flex flex-wrap items-center justify-between gap-3">
+                <p class="text-sm">{m.settings_delete_request()}</p>
+                {account?.deletionRequestedAt ? (
+                  <p class="text-sm font-medium text-brand">{m.settings_gdpr_pending()}</p>
+                ) : (
+                  <button type="button" data-gdpr="deletion" data-confirm={m.settings_delete_confirm()} class="cursor-pointer border border-brand/40 px-3 py-1.5 text-sm font-medium text-brand transition-colors hover:border-brand">
+                    {m.settings_delete_request_btn()}
+                  </button>
+                )}
+              </div>
+              <p class="text-xs text-muted-foreground">{m.settings_gdpr_note()}</p>
+            </div>
+          </section>
+
           <section class="py-5">
             <h2 class={heading}>{m.settings_blocked()}</h2>
             {blocked.length === 0 ? (
@@ -180,6 +209,18 @@ const heading = 'font-condensed text-sm font-bold uppercase tracking-wide text-m
       btn.addEventListener('click', async () => {
         await actions.messaging.setBlocked({ threadId: btn.dataset.unblock!, blocked: false });
         btn.closest('li')?.remove();
+      });
+    });
+
+    // GDPR requests (items.md #6/#7): flag → reload shows the pending state.
+    document.querySelectorAll<HTMLElement>('[data-gdpr]').forEach((btn) => {
+      if (btn.dataset.init) return;
+      btn.dataset.init = '1';
+      btn.addEventListener('click', async () => {
+        const kind = btn.dataset.gdpr as 'deletion' | 'data';
+        if (kind === 'deletion' && !confirm(btn.dataset.confirm || 'Delete account?')) return;
+        await actions.account.requestGdpr({ kind });
+        location.reload();
       });
     });
 

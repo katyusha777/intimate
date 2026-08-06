@@ -76,6 +76,9 @@ export const AccountSchema = z.object({
   verificationReason: z.string().optional(),
   /** Favorited profile slugs (the `favorites` table, projected). */
   favorites: z.array(z.string()).default([]),
+  /** GDPR self-service flags (items.md #6/#7) — admin fulfils both. */
+  deletionRequestedAt: z.iso.datetime().optional(),
+  dataRequestedAt: z.iso.datetime().optional(),
 });
 export type Account = z.infer<typeof AccountSchema>;
 
@@ -84,6 +87,8 @@ export type Account = z.infer<typeof AccountSchema>;
  * is the REAL role column (the mock inferred it from the email local-part).
  */
 export interface AccountRecord extends Account {
+  /** accounts.id (= auth.users.id) — admin GDPR actions key on it. */
+  id: string;
   email: string;
   accountType: AccountType;
   /** Admin sub-role (present only for admin accounts). */
@@ -127,6 +132,9 @@ export interface AccountApi {
   photos(session: Session): Promise<MediaItem[]>;
   addPhoto(session: Session, input: { bytes: ArrayBuffer; contentType: string; isPrivate?: boolean }): Promise<void>;
   removePhoto(session: Session, input: { id: string }): Promise<void>;
+
+  /** Is this phone already VERIFIED on another account? (items.md #12) */
+  phoneInUse(phone: string, exceptAccountId: string): Promise<boolean>;
 
   // --- admin-capable access (ADMIN.md): by email, not session. ---
   all(): Promise<AccountRecord[]>;

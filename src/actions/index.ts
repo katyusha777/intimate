@@ -6,17 +6,21 @@ import { ActionError, defineAction } from "astro:actions";
 import { z } from "astro:schema";
 import { ProfileEditSchema } from "@/app/models/account";
 import { accountApi } from "@/app/api/account";
+import { callsApi } from "@/app/api/calls";
 import { messagingApi } from "@/app/api/messaging";
 import { reportsApi } from "@/app/api/reports";
 import { sessionApi } from "@/app/api/session";
 import { env } from "cloudflare:workers";
 import { startPhoneVerify, checkPhoneVerify } from "@/lib/twilio";
 import { bustProfiles, type CacheKv } from "@/lib/page-cache";
+import { rateLimit } from "@/lib/rate-limit";
+import { mintIceServers } from "@/lib/turn";
 import { CONVERSATION_MODES, REPORT_REASONS, REPORT_TARGETS } from "@/lib/taxonomy";
 // The one sanctioned cross-fence import: the action registry wires in admin.
 import { admin } from "@/actions/admin";
 import {
   ALL_SERVICES,
+  CALL_MODES,
   LOCALES,
   RATE_DURATIONS,
   REQUEST_WHEN,
@@ -24,6 +28,9 @@ import {
 
 const cacheKv = (): CacheKv | undefined =>
   (env as unknown as Record<string, unknown>).SESSION as CacheKv | undefined;
+
+const turnSecret = (): string | undefined =>
+  (env as unknown as Record<string, string | undefined>).TURN_SECRET;
 
 /** Decode a `data:...;base64,` URL to bytes (photos + verification docs). */
 function dataUrlToBytes(dataUrl: string): ArrayBuffer {
@@ -147,6 +154,21 @@ export const server = {
       },
     }),
 
+    // GDPR self-service (items.md #6/#7): flag the request; admins fulfil
+    // (deletion needs approval, export is sent by hand — stated in the UI).
+    requestGdpr: defineAction({
+      input: z.object({ kind: z.enum(['deletion', 'data']) }),
+      handler: async ({ kind }, context) => {
+        const session = await requireSession(context);
+        const now = new Date().toISOString();
+        await accountApi.save(
+          session,
+          kind === 'deletion' ? { deletionRequestedAt: now } : { dataRequestedAt: now },
+        );
+        return { ok: true };
+      },
+    }),
+
     // Merge device-local favorites into the account (called on login/register);
     // returns the merged set so the device can adopt anything synced elsewhere.
     syncFavorites: defineAction({
@@ -193,6 +215,19 @@ export const server = {
       input: z.object({ phone: z.string().regex(/^\+[1-9]\d{6,14}$/) }),
       handler: async ({ phone }, context) => {
         const session = await requireSession(context);
+        // Abuse walls (items.md #12) BEFORE any Twilio spend: a number verified
+        // on another account is dead here, and both the target number and the
+        // requesting account are rate-limited (each send costs real money).
+        if (await accountApi.phoneInUse(phone, session.accountId)) {
+          throw new ActionError({ code: 'CONFLICT', message: 'phone already in use' });
+        }
+        const kv = cacheKv();
+        if (
+          !(await rateLimit(kv, 'sms-num', phone, 3)) ||
+          !(await rateLimit(kv, 'sms-acct', session.accountId, 5))
+        ) {
+          throw new ActionError({ code: 'TOO_MANY_REQUESTS', message: 'try again later' });
+        }
         // Twilio Verify sends the code; we stash the (still-unverified) number so
         // checkSms knows which To to verify against. phoneVerifiedAt gates trust.
         try {
@@ -210,8 +245,17 @@ export const server = {
       input: z.object({ code: z.string().regex(/^\d{6}$/) }),
       handler: async ({ code }, context) => {
         const session = await requireSession(context);
+        // Brute-force wall on code guesses (items.md #12).
+        if (!(await rateLimit(cacheKv(), 'sms-check', session.accountId, 10))) {
+          throw new ActionError({ code: 'TOO_MANY_REQUESTS', message: 'try again later' });
+        }
         const { phone } = await accountApi.get(session);
         if (!phone) throw new ActionError({ code: 'BAD_REQUEST' });
+        // Re-check at the wall: the number may have been verified elsewhere
+        // between start and check.
+        if (await accountApi.phoneInUse(phone, session.accountId)) {
+          throw new ActionError({ code: 'CONFLICT', message: 'phone already in use' });
+        }
         let approved = false;
         try {
           approved = await checkPhoneVerify(phone, code);
@@ -401,10 +445,20 @@ export const server = {
     }),
 
     setBlocked: defineAction({
-      input: z.object({ threadId: z.string().max(200), blocked: z.boolean() }),
-      handler: async ({ threadId, blocked }, context) => {
+      input: z.object({ threadId: z.string().max(200), blocked: z.boolean(), del: z.boolean().optional() }),
+      handler: async ({ threadId, blocked, del }, context) => {
         const session = await requireSession(context);
-        await messagingApi.setBlocked(session, { threadId, blocked });
+        await messagingApi.setBlocked(session, { threadId, blocked, del });
+        return { ok: true };
+      },
+    }),
+
+    // Delete-later for an already-blocked thread (items.md #1).
+    hideThread: defineAction({
+      input: z.object({ threadId: z.string().max(200) }),
+      handler: async ({ threadId }, context) => {
+        const session = await requireSession(context);
+        await messagingApi.hideThread(session, { threadId });
         return { ok: true };
       },
     }),
@@ -442,6 +496,98 @@ export const server = {
       handler: async ({ id }, context) => {
         const session = await requireSession(context);
         await messagingApi.removeContact(session, { id });
+        return { ok: true };
+      },
+    }),
+
+    // Invite links (VIDEO-CALLING.md §5) — professional-only; the claim itself
+    // runs server-side in the /c/[token] route (page SSR, not an action).
+    mintInvite: defineAction({
+      input: z.object({ name: z.string().trim().max(60).optional(), locale: z.enum(LOCALES) }),
+      handler: async ({ name, locale }, context) => {
+        const session = await requireSession(context);
+        const invite = await messagingApi.mintInvite(session, { name });
+        if (!invite) throw new ActionError({ code: "BAD_REQUEST" });
+        return { invite, url: `${context.url.origin}/${locale}/c/${invite.token}` };
+      },
+    }),
+
+    revokeInvite: defineAction({
+      input: z.object({ id: z.string().max(60) }),
+      handler: async ({ id }, context) => {
+        const session = await requireSession(context);
+        await messagingApi.revokeInvite(session, { id });
+        return { ok: true };
+      },
+    }),
+  },
+
+  // Calls (docs/VIDEO-CALLING.md §6). Client initiation is impossible end to
+  // end: the data layer requires session.profileId, and call_sessions has no
+  // browser write path (0010) — the DB CHECK is the last wall.
+  call: {
+    start: defineAction({
+      input: z.object({ threadId: z.string().max(200), mode: z.enum(CALL_MODES) }),
+      handler: async ({ threadId, mode }, context) => {
+        const session = await requireSession(context);
+        const call = await callsApi.start(session, { threadId, mode });
+        if (call === 'busy') throw new ActionError({ code: "CONFLICT", message: "busy" });
+        if (!call) throw new ActionError({ code: "BAD_REQUEST" });
+        // Caller side forces relay when TURN is live: her candidates never
+        // contain her address — the client can only ever learn the relay's.
+        const ice = await mintIceServers(turnSecret(), call.id, new Date());
+        return { call, iceServers: ice.iceServers, relayOnly: ice.relayAvailable };
+      },
+    }),
+
+    get: defineAction({
+      input: z.object({ callId: z.string().max(60) }),
+      handler: async ({ callId }, context) => {
+        const session = await requireSession(context);
+        const call = await callsApi.get(session, callId);
+        if (!call) throw new ActionError({ code: "NOT_FOUND" });
+        return { call };
+      },
+    }),
+
+    accept: defineAction({
+      input: z.object({ callId: z.string().max(60) }),
+      handler: async ({ callId }, context) => {
+        const session = await requireSession(context);
+        const ok = await callsApi.accept(session, callId);
+        if (!ok) throw new ActionError({ code: "BAD_REQUEST" });
+        // Client side keeps policy 'all' — direct or relay, whichever wins.
+        const ice = await mintIceServers(turnSecret(), callId, new Date());
+        return { iceServers: ice.iceServers, relayOnly: false };
+      },
+    }),
+
+    decline: defineAction({
+      input: z.object({ callId: z.string().max(60) }),
+      handler: async ({ callId }, context) => {
+        const session = await requireSession(context);
+        await callsApi.decline(session, callId);
+        return { ok: true };
+      },
+    }),
+
+    end: defineAction({
+      input: z.object({
+        callId: z.string().max(60),
+        reason: z.enum(['hangup', 'timeout', 'failed']),
+      }),
+      handler: async ({ callId, reason }, context) => {
+        const session = await requireSession(context);
+        await callsApi.end(session, { callId, reason });
+        return { ok: true };
+      },
+    }),
+
+    beat: defineAction({
+      input: z.object({ callId: z.string().max(60) }),
+      handler: async ({ callId }, context) => {
+        const session = await requireSession(context);
+        await callsApi.beat(session, callId);
         return { ok: true };
       },
     }),

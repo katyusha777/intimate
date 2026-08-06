@@ -19,6 +19,7 @@ const session = await sessionApi.current(Astro);
 if (session && !session.profileId) return Astro.redirect(localizePath('/messages/'));
 
 const contacts = session ? await messagingApi.listContacts(session) : [];
+const invites = session ? await messagingApi.listInvites(session) : [];
 ---
 
 <Layout noindex title={`${m.contacts_title()} | Intimate`}>
@@ -38,7 +39,7 @@ const contacts = session ? await messagingApi.listContacts(session) : [];
           </button>
         </div>
         <div class="mt-4">
-          <ContactList {contacts} />
+          <ContactList {contacts} {invites} locale={locale} />
         </div>
       </div>
     )

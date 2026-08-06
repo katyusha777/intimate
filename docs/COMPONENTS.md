@@ -96,7 +96,7 @@ Folders appear when their first organism lands:
 | `onboarding/` | ✓ SetupShell (the guided setup-flow chrome per ONBOARDING.md; progress bar + later escape. Steps reuse the editor sections and MediaManager) |
 | `admin/` | ✓ AdminShell, QueueList, DocViewer — ModerationQueue, ReportQueue, AuditLogTable (ADMIN.md §2) |
 | `contacts/` | — ContactDetail (MESSAGING.md) |
-| `call/` | — CallWindow (React island), IncomingCallToast, CallControls |
+| `call/` | ✓ CallDock (the one global call surface mounted in Layout for signed-in users: account-channel subscription → live unread dots + the client's incoming-call ring + the full-screen call screen for both parties; vanilla script over WebRTC P2P per VIDEO-CALLING.md) |
 | `marketing/` | — Hero, CTABanner, CityTicker, ArticleRail |
 | realtime (molecules) | — OnlineBadge, LiveCounter, NewProfilesToast |
 | feedback (molecules) | — Toast, EmptyState, ConfirmDialog, Pagination |

@@ -11,6 +11,8 @@
 import { z } from 'zod';
 import {
   ALL_SERVICES,
+  CALL_MODES,
+  CALL_STATES,
   CONVERSATION_MODES,
   MESSAGE_KINDS,
   RATE_DURATIONS,
@@ -49,16 +51,34 @@ export const MessageSchema = z.object({
   id: z.string(),
   sender: z.enum(['professional', 'client', 'system']),
   kind: z.enum(MESSAGE_KINDS),
-  /** text body, or the i18n key for a system card. */
+  /** text body, or the i18n key for a system/call card. */
   body: z.string().default(''),
   /** photo kind: data-URL in the mock; signed Cloudflare Images ref in prod. */
   photo: z.string().optional(),
   /** request kind: the immutable pre-qualified contact card (UX-PLAN 4.1). */
   request: RequestPayloadSchema.optional(),
+  /** call kind: the outcome card, projected from its call_sessions row. */
+  call: z
+    .object({
+      mode: z.enum(CALL_MODES),
+      state: z.enum(CALL_STATES),
+      seconds: z.number().int().nonnegative().default(0),
+    })
+    .optional(),
   createdAt: z.iso.datetime(),
   readAt: z.iso.datetime().optional(),
 });
 export type Message = z.infer<typeof MessageSchema>;
+
+/** A live invite link she minted (VIDEO-CALLING.md §5) — single-use, 7 days. */
+export interface ContactInvite {
+  id: string;
+  token: string;
+  name: string;
+  createdAt: string;
+  expiresAt: string;
+  claimed: boolean;
+}
 
 export const ConversationSettingsSchema = z.object({
   mode: z.enum(CONVERSATION_MODES).default('off'),
@@ -81,6 +101,9 @@ export const ThreadSchema = z.object({
   state: z.enum(THREAD_STATES).default('open'),
   /** Set when state=blocked, so each side sees its own block list. */
   blockedBy: z.enum(['professional', 'client']).optional(),
+  /** "Block & delete" (items.md #1): who removed this blocked thread from
+   *  their lists; cleared on unblock. */
+  hiddenBy: z.enum(['professional', 'client']).optional(),
   createdAt: z.iso.datetime(),
   lastMessageAt: z.iso.datetime(),
   // --- contact fields (professional's CRM; prod = `contacts` row) ---
@@ -138,6 +161,8 @@ export interface ContactItem {
   kind: 'thread' | 'manual';
   threadId?: string;
   mediaAllowed?: boolean;
+  /** She blocked this thread — badge instead of call buttons (items.md #1). */
+  blocked?: boolean;
 }
 
 /**
@@ -258,8 +283,11 @@ export interface MessagingApi {
   /** Professional-only (UX-PLAN 4.3): set (or clear) her screening question. */
   setScreeningQuestion(session: Session, input: { question: string }): Promise<void>;
 
-  // blocking — either side, bidirectional effect
-  setBlocked(session: Session, input: { threadId: string; blocked: boolean }): Promise<void>;
+  // blocking — either side, bidirectional effect. `del` = block & delete
+  // (hide from the blocker's lists too); hideThread = delete-later on an
+  // already-blocked thread. Unblock restores everything (items.md #1).
+  setBlocked(session: Session, input: { threadId: string; blocked: boolean; del?: boolean }): Promise<void>;
+  hideThread(session: Session, input: { threadId: string }): Promise<void>;
   listBlocked(session: Session): Promise<ThreadSummary[]>;
 
   // contacts CRM — professional's address book (conversations + manual entries)
@@ -270,6 +298,18 @@ export interface MessagingApi {
     input: { id: string; name: string; handle?: string; note?: string },
   ): Promise<void>;
   removeContact(session: Session, input: { id: string }): Promise<void>;
+
+  // invite links (VIDEO-CALLING.md §5) — professional-only mint/list/revoke;
+  // claim = the signed-in CLIENT turning a token into an OPEN thread + contact.
+  mintInvite(session: Session, input: { name?: string }): Promise<ContactInvite | null>;
+  listInvites(session: Session): Promise<ContactInvite[]>;
+  revokeInvite(session: Session, input: { id: string }): Promise<void>;
+  /**
+   * Claim results: the thread (fresh or re-opened) for a valid token; 'own'
+   * when the professional opens her own link; null = invalid/expired/claimed
+   * (indistinguishable outside — nothing about her leaks from a dead token).
+   */
+  claimInvite(session: Session, input: { token: string }): Promise<Thread | 'own' | null>;
 
   /**
    * Measured reply speed for a profile (UX-PLAN 3.2), or null below the honest

@@ -66,6 +66,12 @@ function snippet(s: string): string {
                     {m.request_badge()}
                   </span>
                 )}
+                {/* Blocked stays visible to the blocker with its badge (items.md #1). */}
+                {t.state === 'blocked' && (
+                  <span class="flex-none rounded-full bg-muted px-1.5 py-0.5 text-2xs font-bold uppercase tracking-wide text-muted-foreground">
+                    {m.msg_blocked_badge()}
+                  </span>
+                )}
               </span>
               <span class="mt-0.5 flex items-center gap-1.5 text-sm text-muted-foreground">
                 <span class="truncate">{snippet(t.snippet) || m.msg_snippet_empty()}</span>

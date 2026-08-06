@@ -54,9 +54,10 @@ const nav =
     </button>
   </div>
 
-  <!-- Desktop: horizontal tabs up top (mobile navigates via the dock). -->
+  <!-- Horizontal tabs on every size — the dock's Account tab lands here, but
+       Settings & co. need a visible path on mobile too (items.md #2). -->
   <nav
-    class="mt-6 hidden select-none items-stretch gap-6 overflow-x-auto border-b border-border md:flex"
+    class="mt-6 flex select-none items-stretch gap-6 overflow-x-auto border-b border-border [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
     aria-label={m.nav_account()}
   >
     {

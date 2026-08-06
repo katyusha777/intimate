@@ -18,12 +18,16 @@ interface Props {
   loading?: 'lazy' | 'eager';
   /** 'high' on the LCP image (first above-the-fold card/hero frame). */
   fetchpriority?: 'high' | 'low' | 'auto';
+  /** Size variant for /media-served photos (media route ?v=): thumb 200px,
+   *  card 600px, full 1200px WebP. Omit → original bytes. */
+  variant?: 'thumb' | 'card' | 'full';
 }
 
-const { imageKey, src, alt, class: className, loading = 'lazy', fetchpriority } = Astro.props;
+const { imageKey, src, alt, class: className, loading = 'lazy', fetchpriority, variant } = Astro.props;
 const neutral = neutralImageFor(imageKey);
 const dev = safeImageFor(imageKey);
-const real = realImageFor(imageKey, src);
+let real = realImageFor(imageKey, src);
+if (variant && real?.startsWith('/media/')) real += `?v=${variant}`;
 ---
 
 <img

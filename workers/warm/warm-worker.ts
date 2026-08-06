@@ -27,6 +27,11 @@ const ORIGIN = 'https://staging.intimate.nl';
 const LOCALES = ['nl', 'en', 'de'] as const;
 const CONCURRENCY = 8;
 
+// Homepages cache with a short TTL (page-cache HOME_TTL_S — live "online now"
+// count), so they get their own frequent cron; X-Warm forces a re-store there.
+const HOME_URLS = LOCALES.map((l) => `${ORIGIN}/${l}`);
+const HOME_CRON = '*/4 * * * *';
+
 /** Pull every live profile URL from the public per-locale sitemaps. */
 async function profileUrls(env: Env): Promise<string[]> {
   const urls = new Set<string>();
@@ -48,9 +53,8 @@ interface WarmResult {
   hit: number;
 }
 
-/** Fetch every profile URL through the binding; the render stores it in KV. */
-async function warm(env: Env): Promise<WarmResult> {
-  const urls = await profileUrls(env);
+/** Fetch every URL through the binding; the render stores it in KV. */
+async function warm(env: Env, urls: string[]): Promise<WarmResult> {
   const r: WarmResult = { total: urls.length, ok: 0, miss: 0, hit: 0 };
   for (let i = 0; i < urls.length; i += CONCURRENCY) {
     const batch = urls.slice(i, i + CONCURRENCY);
@@ -69,13 +73,15 @@ async function warm(env: Env): Promise<WarmResult> {
 }
 
 export default {
-  async scheduled(_event: unknown, env: Env): Promise<void> {
-    const r = await warm(env);
-    console.log(`[warm] ${r.ok}/${r.total} profiles warmed (miss ${r.miss}, hit ${r.hit})`);
+  async scheduled(event: { cron?: string }, env: Env): Promise<void> {
+    const homesOnly = event.cron === HOME_CRON;
+    const urls = homesOnly ? HOME_URLS : [...HOME_URLS, ...(await profileUrls(env))];
+    const r = await warm(env, urls);
+    if (!homesOnly) console.log(`[warm] ${r.ok}/${r.total} pages warmed (miss ${r.miss}, hit ${r.hit})`);
   },
 
   async fetch(_req: Request, env: Env): Promise<Response> {
-    const r = await warm(env);
+    const r = await warm(env, [...HOME_URLS, ...(await profileUrls(env))]);
     return new Response(
       `warmed ${r.ok}/${r.total} profiles — freshly cached (MISS): ${r.miss}, already warm (HIT): ${r.hit}\n`,
       { headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' } },

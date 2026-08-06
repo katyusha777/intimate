@@ -1,13 +1,14 @@
 /**
  * Calls metadata log (docs/ADMIN.md §11). Calls are peer-to-peer and NEVER
  * recorded — the admin sees metadata only, by architecture. The `call_sessions`
- * table is the durable home; the real WebRTC build writes rows, this reads
- * them. Empty until calls land.
+ * table is the durable home; the WebRTC build (VIDEO-CALLING.md) writes rows,
+ * this reads them.
  */
 import { env } from 'cloudflare:workers';
 import { and, desc, eq } from 'drizzle-orm';
 import { requestDb, type Db } from '@/db/client';
 import { callSessions, profiles } from '@/db/schema';
+import type { CallState } from '@/lib/taxonomy';
 
 const adb = (): Db => requestDb((env as unknown as { HYPERDRIVE: Hyperdrive }).HYPERDRIVE);
 
@@ -19,7 +20,7 @@ export interface CallSession {
   /** Always the professional — clients can never initiate (DB CHECK). */
   initiatedBy: 'professional';
   mode: 'voice' | 'video';
-  state: 'ringing' | 'active' | 'ended' | 'declined' | 'timeout';
+  state: CallState;
   startedAt: string;
   durationS: number;
 }

@@ -1,0 +1,72 @@
+---
+/**
+ * /docs — the help hub (items.md #10): rules, safety, verification and
+ * how-it-works in one aggregated index, linking the existing content pages
+ * (lib/site-pages) + the blog. Full SEO treatment (hard rule 8).
+ */
+import * as m from '@/paraglide/messages';
+import { isLocale, localizePath, samePathAlternates } from '@/lib/i18n';
+import { sitePage, type PageSlug } from '@/lib/site-pages';
+import Layout from '@/layouts/Layout.astro';
+import Section from '@/components/molecules/Section.astro';
+
+const locale = Astro.params.locale;
+if (!isLocale(locale)) return new Response(null, { status: 404 });
+
+/** The hub's shelf: every public content page, grouped for scanning. */
+const GROUPS: { title: string; slugs: PageSlug[] }[] = [
+  { title: m.docs_group_start(), slugs: ['about', 'app'] },
+  { title: m.docs_group_rules(), slugs: ['profile-rules', 'verification'] },
+  { title: m.docs_group_safety(), slugs: ['safety', 'privacy', 'terms'] },
+];
+const pageFor = (slug: PageSlug) => sitePage(slug, locale);
+
+const alternates = samePathAlternates(Astro.url.origin, '/docs/');
+---
+
+<Layout
+  title={`${m.docs_title()} | Intimate`}
+  description={m.docs_meta_description()}
+  canonical={new URL(`/${locale}/docs/`, Astro.url.origin).href}
+  {alternates}
+>
+  <div class="mx-auto max-w-3xl px-4 py-8 md:px-6 md:py-12">
+    <h1 class="display text-3xl md:text-4xl">{m.docs_title()}</h1>
+    <p class="mt-2 max-w-xl text-sm text-muted-foreground">{m.docs_intro()}</p>
+
+    {
+      GROUPS.map((g) => (
+        <Section title={g.title}>
+          <ul class="divide-y divide-border border border-border">
+            {g.slugs.map((slug) => {
+              const page = pageFor(slug);
+              return (
+                <li>
+                  <a
+                    href={localizePath(`/${slug}/`)}
+                    class="flex items-center justify-between gap-3 px-4 py-3.5 transition-colors hover:bg-muted/50"
+                  >
+                    <span class="min-w-0">
+                      <span class="block truncate font-condensed text-base font-bold">{page.title}</span>
+                    </span>
+                    <svg class="size-4 flex-none text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+                  </a>
+                </li>
+              );
+            })}
+          </ul>
+        </Section>
+      ))
+    }
+
+    <Section title={m.section_articles()}>
+      <a
+        href={localizePath('/blog/')}
+        class="flex items-center justify-between gap-3 border border-border px-4 py-3.5 transition-colors hover:bg-muted/50"
+      >
+        <span class="font-condensed text-base font-bold">{m.docs_blog_link()}</span>
+        <svg class="size-4 flex-none text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+      </a>
+    </Section>
+  </div>
+</Layout>

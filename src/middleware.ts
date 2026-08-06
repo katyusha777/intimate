@@ -4,7 +4,7 @@ import { env } from 'cloudflare:workers';
 import { paraglideMiddleware } from '@/paraglide/server';
 import { withRequestDb } from '@/db/client';
 import { negotiateLocale } from '@/lib/i18n';
-import { isAnonymousRequest, isCacheableProfile, servedFromCache, storeInCache, type CacheKv } from '@/lib/page-cache';
+import { HOME_TTL_S, isAnonymousRequest, isCacheableHome, isCacheableProfile, servedFromCache, storeInCache, type CacheKv } from '@/lib/page-cache';
 
 const cacheKv = (): CacheKv | undefined =>
   (env as unknown as Record<string, unknown>).SESSION as CacheKv | undefined;
@@ -63,14 +63,14 @@ const SECURITY_HEADERS: Record<string, string> = {
   'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=(), usb=()',
   'Content-Security-Policy': [
     "default-src 'self'",
-    // Turnstile + (future) PostHog; Astro's hydration/theme scripts are inline.
-    "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com https://eu-assets.i.posthog.com",
+    // Turnstile + (future) PostHog + Plausible; Astro's hydration/theme scripts are inline.
+    "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com https://eu-assets.i.posthog.com https://plausible.io",
     "style-src 'self' 'unsafe-inline'",
     // Own photos ride /media; seed/demo imagery is external https for now.
     "img-src 'self' data: blob: https:",
     "media-src 'self' blob:",
     "font-src 'self'",
-    "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://eu.i.posthog.com",
+    "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://eu.i.posthog.com https://plausible.io",
     'frame-src https://challenges.cloudflare.com',
     "frame-ancestors 'self'",
     "base-uri 'self'",
@@ -98,7 +98,10 @@ const handle = (context: APIContext, next: MiddlewareNext) =>
   // action inside this request reuses it instead of re-connecting.
   withRequestDb(async () => {
   if (context.url.pathname === '/') {
-    const locale = negotiateLocale(context.request.headers.get('accept-language'));
+    const locale = negotiateLocale(
+      context.request.headers.get('accept-language'),
+      context.cookies.get('PARAGLIDE_LOCALE')?.value,
+    );
     return context.redirect(`/${locale}/${context.url.search}`, 302);
   }
   const legacy = LEGACY_ARTICLES[context.url.pathname.replace(/^\/|\/$/g, '')];
@@ -119,17 +122,21 @@ const handle = (context: APIContext, next: MiddlewareNext) =>
   // paint (Layout → /avail.json), so the cached shell is never stale-online.
   // ANON ONLY: a logged-in page SSRs the user's own header (name/avatar), so
   // caching it would leak one user's identity to everyone (isAnonymousRequest).
+  const cacheableHome = isCacheableHome(context.url);
   if (
     context.request.method === 'GET' &&
-    isCacheableProfile(context.url) &&
+    (isCacheableProfile(context.url) || cacheableHome) &&
     isAnonymousRequest(context.request.headers.get('cookie'))
   ) {
     const kv = cacheKv();
     const dep = deployId();
-    const hit = await servedFromCache(kv, dep, context.url);
+    // The warm cron re-stores homepages BEFORE their short TTL lapses (a plain
+    // GET would HIT without extending it) — X-Warm skips the read, not the write.
+    const forceStore = cacheableHome && context.request.headers.get('x-warm') === '1';
+    const hit = forceStore ? null : await servedFromCache(kv, dep, context.url);
     if (hit) return hit;
     const res = await paraglideMiddleware(context.request, () => next());
-    return storeInCache(kv, dep, context.url, res);
+    return storeInCache(kv, dep, context.url, res, cacheableHome ? HOME_TTL_S : undefined);
   }
 
   return paraglideMiddleware(context.request, () => next());

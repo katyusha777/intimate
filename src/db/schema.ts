@@ -42,6 +42,8 @@ import {
   AVAILABLE_FOR,
   BODY_TYPES,
   BREAST_TYPES,
+  CALL_MODES,
+  CALL_STATES,
   CITIES,
   CONVERSATION_MODES,
   CUP_SIZES,
@@ -159,6 +161,10 @@ export const accounts = pgTable(
     idVerification: verificationStateEnum('id_verification').notNull().default('unverified'),
     verificationSubmittedAt: timestamp('verification_submitted_at', { withTimezone: true }),
     verificationReason: text('verification_reason'),
+    // GDPR self-service requests (items.md #6/#7): user flags, admin fulfils
+    // (deletion needs approval; export is a one-click JSON from the admin).
+    deletionRequestedAt: timestamp('deletion_requested_at', { withTimezone: true }),
+    dataRequestedAt: timestamp('data_requested_at', { withTimezone: true }),
     createdAt: createdAt(),
   },
   (t) => [uniqueIndex('accounts_email_idx').on(t.email)],
@@ -355,6 +361,9 @@ export const threads = pgTable(
       .references(() => accounts.id),
     state: threadStateEnum('state').notNull().default('open'),
     blockedBy: partyEnum('blocked_by'),
+    /** "Block & delete" (items.md #1): the party who removed this (blocked)
+     *  thread from their lists. Unblocking clears it. */
+    hiddenBy: partyEnum('hidden_by'),
     createdAt: createdAt(),
     lastMessageAt: timestamp('last_message_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -376,10 +385,33 @@ export const messages = pgTable(
     body: text('body').notNull().default(''),
     imageKey: text('image_key'), // photo kind: Cloudflare Images id (signed on read)
     request: jsonb('request').$type<RequestPayload>(), // request kind: frozen snapshot
+    callId: uuid('call_id').references(() => callSessions.id), // call kind: outcome card
     createdAt: createdAt(),
     readAt: timestamp('read_at', { withTimezone: true }),
   },
   (t) => [index('messages_thread_idx').on(t.threadId, t.createdAt)],
+);
+
+// Single-use contact invite links (VIDEO-CALLING.md §5): she shares the token
+// out-of-band; a signed-in client claims it → open thread + contact row.
+export const contactInvites = pgTable(
+  'contact_invites',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    profileId: uuid('profile_id')
+      .notNull()
+      .references(() => profiles.id),
+    token: text('token').notNull(),
+    name: text('name').notNull().default(''), // pre-fills the contact's name
+    createdAt: createdAt(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    claimedBy: uuid('claimed_by').references(() => accounts.id),
+    claimedAt: timestamp('claimed_at', { withTimezone: true }),
+  },
+  (t) => [
+    uniqueIndex('contact_invites_token_idx').on(t.token),
+    index('contact_invites_profile_idx').on(t.profileId),
+  ],
 );
 
 export const contacts = pgTable(
@@ -504,14 +536,15 @@ export const importJobs = pgTable(
 );
 
 // ---------------------------------------------------------------------------
-// Call sessions (ADMIN.md §11, ARCHITECTURE §10) — metadata ONLY; calls are
-// peer-to-peer and never recorded. `initiated_by = professional` is a CHECK
-// (SECURITY.md §3: clients can never initiate). client_account_id is null for
-// the seeded demo (real calls link the account).
+// Call sessions (ADMIN.md §11, ARCHITECTURE §10, VIDEO-CALLING.md §3) —
+// metadata ONLY; calls are peer-to-peer DTLS-SRTP and never recorded.
+// `initiated_by = professional` is a CHECK (SECURITY.md §3: clients can never
+// initiate). Writes go through server actions exclusively (no browser grants);
+// ring + state sync ride the insert/update trigger broadcasts (0010).
 // ---------------------------------------------------------------------------
 
-export const callModeEnum = pgEnum('call_mode', ['voice', 'video']);
-export const callStateEnum = pgEnum('call_state', ['ringing', 'active', 'ended', 'declined', 'timeout']);
+export const callModeEnum = pgEnum('call_mode', vals(CALL_MODES));
+export const callStateEnum = pgEnum('call_state', vals(CALL_STATES));
 
 export const callSessions = pgTable(
   'call_sessions',
@@ -522,15 +555,22 @@ export const callSessions = pgTable(
       .references(() => profiles.id),
     clientAccountId: uuid('client_account_id').references(() => accounts.id),
     clientName: text('client_name').notNull().default(''),
+    /** The thread the call lives in (nullable only for legacy admin rows). */
+    threadId: uuid('thread_id').references(() => threads.id),
     initiatedBy: text('initiated_by').notNull().default('professional'),
     mode: callModeEnum('mode').notNull(),
-    state: callStateEnum('state').notNull(),
-    startedAt: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),
+    state: callStateEnum('state').notNull().default('ringing'),
+    startedAt: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(), // ring start
+    answeredAt: timestamp('answered_at', { withTimezone: true }),
+    endedAt: timestamp('ended_at', { withTimezone: true }),
+    lastBeatAt: timestamp('last_beat_at', { withTimezone: true }), // 30s heartbeat while active
+    endReason: text('end_reason'), // hangup|timeout|declined|failed|blocked
     durationS: integer('duration_s').notNull().default(0),
   },
   (t) => [
     index('call_sessions_profile_idx').on(t.profileId),
     index('call_sessions_started_idx').on(t.startedAt),
+    index('call_sessions_thread_idx').on(t.threadId, t.startedAt),
     check('call_sessions_initiator', sql`${t.initiatedBy} = 'professional'`),
   ],
 );

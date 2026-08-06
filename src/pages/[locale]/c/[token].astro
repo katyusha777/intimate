@@ -1,0 +1,54 @@
+---
+/**
+ * Invite-link claim (docs/VIDEO-CALLING.md §5): /{locale}/c/{token}.
+ * Signed-in client → claim (idempotent for the claimer) → land IN the thread.
+ * Signed-out → a neutral landing that opens auth and returns here. Dead token
+ * (invalid/expired/claimed-by-other) → friendly dead-end, nothing about her
+ * leaks. Her own link → back to Contacts where the sheet lives.
+ */
+import * as m from '@/paraglide/messages';
+import { messagingApi } from '@/app/api/messaging';
+import { sessionApi } from '@/app/api/session';
+import { isLocale, localizePath } from '@/lib/i18n';
+import Button from '@/components/atoms/Button.astro';
+import Layout from '@/layouts/Layout.astro';
+
+const { locale, token } = Astro.params;
+if (!isLocale(locale) || !token) return new Response(null, { status: 404 });
+
+const session = await sessionApi.current(Astro);
+let dead = false;
+if (session) {
+  const result = await messagingApi.claimInvite(session, { token });
+  if (result === 'own') return Astro.redirect(localizePath('/contacts/'));
+  if (result) return Astro.redirect(`/${locale}/messages/${result.id}/`);
+  dead = true;
+}
+---
+
+<Layout noindex title={`${m.invite_title()} | Intimate`}>
+  <div class="mx-auto grid max-w-md place-items-center px-4 py-24 text-center">
+    {
+      dead ? (
+        <>
+          <p class="font-condensed text-2xl font-bold">{m.invite_dead_title()}</p>
+          <p class="mt-2 text-sm text-muted-foreground">{m.invite_dead_body()}</p>
+          <Button as="a" href={localizePath('/')} class="mt-6">
+            {m.invite_dead_home()}
+          </Button>
+        </>
+      ) : (
+        <>
+          <span class="grid size-14 place-items-center rounded-full bg-brand text-white">
+            <svg class="size-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" /></svg>
+          </span>
+          <h1 class="mt-5 font-condensed text-3xl font-bold">{m.invite_title()}</h1>
+          <p class="mt-2 text-sm text-muted-foreground">{m.invite_body()}</p>
+          <Button data-modal-open="auth" data-auth-tab="login" class="mt-6">
+            {m.invite_signin()}
+          </Button>
+        </>
+      )
+    }
+  </div>
+</Layout>

@@ -1,0 +1,545 @@
+---
+/**
+ * The call dock (docs/VIDEO-CALLING.md §6) — mounted ONCE in Layout for every
+ * signed-in user. Owns the three global call surfaces:
+ *
+ *  · account:{id} subscription → live unread dots (tabbar + header) and, for
+ *    clients, the incoming-call ring (a DB-trigger broadcast — survives page
+ *    navigation because the dock persists on every page).
+ *  · IncomingCall overlay (client): full-screen accept/decline, 30s, vibrate.
+ *  · CallScreen (both parties): full-bleed remote, PiP self-view, controls.
+ *
+ * WebRTC is pure P2P (ARCHITECTURE §10): SDP/ICE ride the `call:{id}` private
+ * channel (openChannel — RLS-authorized), media never touches a server. The
+ * professional's RTCPeerConnection is relay-only when TURN is live (her IP
+ * never reaches a client — VIDEO-CALLING.md §1.1); reason it stays vanilla
+ * script, not an island: state is one module-scoped call object, same
+ * discipline as Thread.astro.
+ *
+ * Signaling payloads are DATA, never instructions (hard rule 7): SDP/candidate
+ * strings go only into RTCPeerConnection APIs, never into the DOM.
+ */
+import * as m from '@/paraglide/messages';
+import type { Session } from '@/app/models/session';
+
+interface Props {
+  session: Session;
+}
+const { session } = Astro.props;
+---
+
+<div
+  data-call-dock
+  transition:persist="calldock"
+  data-account-id={session.accountId}
+  data-role={session.role}
+  data-i18n-ringing={m.call_ringing()}
+  data-i18n-connecting={m.call_connecting()}
+  data-i18n-poor={m.call_poor()}
+  data-i18n-reconnecting={m.call_reconnecting()}
+  data-i18n-busy={m.call_busy()}
+  data-i18n-call-failed={m.call_failed_toast()}
+  data-i18n-declined={m.call_declined_toast()}
+  data-i18n-incoming-video={m.call_incoming_video()}
+  data-i18n-incoming-voice={m.call_incoming_voice()}
+>
+  <!-- ── Incoming ring (client) ─────────────────────────────────────────── -->
+  <div
+    data-incoming
+    hidden
+    class="dark fixed inset-0 z-[70] flex flex-col items-center justify-between bg-neutral-950/95 text-white backdrop-blur-xl"
+    style="padding-top: calc(env(safe-area-inset-top) + 3rem); padding-bottom: calc(env(safe-area-inset-bottom) + 3rem)"
+    role="alertdialog"
+    aria-label={m.call_incoming()}
+  >
+    <div class="flex flex-col items-center gap-4 px-6 text-center">
+      <span class="relative grid size-28 place-items-center">
+        <span class="absolute inset-0 animate-ping rounded-full bg-brand/30" aria-hidden="true"></span>
+        <img data-incoming-avatar src="" alt="" class="relative size-28 rounded-full border-2 border-white/20 object-cover" />
+      </span>
+      <p data-incoming-name class="font-condensed text-3xl font-bold"></p>
+      <p data-incoming-mode class="text-sm text-white/70"></p>
+    </div>
+    <div class="flex items-center gap-16">
+      <button type="button" data-incoming-decline aria-label={m.call_decline()} class="grid size-16 cursor-pointer place-items-center rounded-full bg-white/10 transition-transform active:scale-90">
+        <svg class="size-7 rotate-[135deg]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+      </button>
+      <button type="button" data-incoming-accept aria-label={m.call_accept()} class="grid size-16 cursor-pointer place-items-center rounded-full bg-online text-neutral-950 transition-transform active:scale-90">
+        <svg class="size-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- ── In-call screen (both parties) ──────────────────────────────────── -->
+  <div
+    data-call-screen
+    hidden
+    class="dark fixed inset-0 z-[71] bg-neutral-950 text-white"
+    role="dialog"
+    aria-label={m.call_title()}
+  >
+    <!-- video mode: remote full-bleed + local PiP -->
+    <video data-remote autoplay playsinline class="hidden h-full w-full object-cover"></video>
+    <video
+      data-local
+      autoplay
+      playsinline
+      muted
+      class="absolute right-4 z-10 hidden w-28 rounded-xl border border-white/20 object-cover shadow-soft-lg"
+      style="top: calc(env(safe-area-inset-top) + 1rem)"></video>
+
+    <!-- voice mode / pre-connect: identity panel -->
+    <div data-call-idpanel class="absolute inset-0 flex flex-col items-center justify-center gap-4 px-6 text-center">
+      <span class="relative grid size-28 place-items-center">
+        <span data-call-pulse class="absolute inset-0 animate-ping rounded-full bg-brand/25" aria-hidden="true"></span>
+        <img data-call-avatar src="" alt="" class="relative hidden size-28 rounded-full border-2 border-white/20 object-cover" />
+        <span data-call-initial class="relative grid size-28 place-items-center rounded-full bg-white/10 font-condensed text-5xl font-bold"></span>
+      </span>
+      <p data-call-name class="font-condensed text-3xl font-bold"></p>
+      <p class="flex items-center gap-2 text-sm text-white/70">
+        <span data-call-state-chip></span>
+        <span data-call-timer class="tabular-nums"></span>
+      </p>
+    </div>
+
+    <!-- controls -->
+    <div
+      class="absolute inset-x-0 bottom-0 flex flex-col items-center gap-3"
+      style="padding-bottom: calc(env(safe-area-inset-bottom) + 1.5rem)"
+    >
+      <div class="flex items-center gap-4">
+        <button type="button" data-ctl-mute aria-label={m.call_mute()} aria-pressed="false" class="grid size-14 cursor-pointer place-items-center rounded-full bg-white/10 backdrop-blur transition-[background-color,transform] active:scale-90 aria-pressed:bg-white aria-pressed:text-neutral-950">
+          <svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+        </button>
+        <button type="button" data-ctl-cam aria-label={m.call_camera()} aria-pressed="false" class="hidden size-14 cursor-pointer place-items-center rounded-full bg-white/10 backdrop-blur transition-[background-color,transform] active:scale-90 aria-pressed:bg-white aria-pressed:text-neutral-950 [&:not([hidden])]:grid">
+          <svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg>
+        </button>
+        <button type="button" data-ctl-flip aria-label={m.call_flip()} class="hidden size-14 cursor-pointer place-items-center rounded-full bg-white/10 backdrop-blur transition-transform active:scale-90 [&:not([hidden])]:grid">
+          <svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 19H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5"/><path d="M13 5h7a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-5"/><circle cx="12" cy="12" r="3"/><path d="m18 22-3-3 3-3"/><path d="m6 2 3 3-3 3"/></svg>
+        </button>
+        <button type="button" data-ctl-end aria-label={m.call_end()} class="grid size-16 cursor-pointer place-items-center rounded-full bg-brand text-white transition-transform active:scale-90">
+          <svg class="size-7 rotate-[135deg]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+        </button>
+      </div>
+      <!-- Her one-tap safety exit (professional only): end + block in one. -->
+      <button type="button" data-ctl-endblock hidden class="cursor-pointer text-xs font-medium text-white/60 underline-offset-2 hover:text-white hover:underline">
+        {m.call_end_block()}
+      </button>
+      <p class="text-2xs text-white/40">{m.call_no_recording()}</p>
+    </div>
+  </div>
+</div>
+
+<script>
+  import { actions } from 'astro:actions';
+  import { openChannel } from '@/app/realtime';
+
+  type CallView = {
+    id: string;
+    threadId: string;
+    mode: 'voice' | 'video';
+    state: string;
+    party: 'professional' | 'client';
+    peerName: string;
+    profileId: string;
+    avatarUrl?: string;
+    answeredAt?: string;
+  };
+  type Ice = { iceServers: RTCIceServer[]; relayOnly: boolean };
+
+  const RING_MS = 30_000;
+  const BEAT_MS = 30_000;
+
+  function initCallDock() {
+    const found = document.querySelector<HTMLElement>('[data-call-dock]');
+    if (!found || found.dataset.init) return;
+    const root = found; // narrowed const — closures below keep the non-null type
+    root.dataset.init = '1';
+    const accountId = root.dataset.accountId!;
+    const role = root.dataset.role!;
+
+    const $ = <T extends HTMLElement = HTMLElement>(sel: string) => root.querySelector<T>(sel)!;
+    const incoming = $('[data-incoming]');
+    const screen = $('[data-call-screen]');
+    const remoteEl = $<HTMLVideoElement>('[data-remote]');
+    const localEl = $<HTMLVideoElement>('[data-local]');
+
+    // ── live unread dots (V0 DoD: badge moves without navigation) ─────────
+    const showDots = () => {
+      document.querySelectorAll<HTMLElement>('[data-unread-dot]').forEach((el) => el.classList.remove('hidden'));
+    };
+
+    // ── the one current call ──────────────────────────────────────────────
+    let call: {
+      view: CallView;
+      channel: ReturnType<typeof openChannel> | null;
+      pc: RTCPeerConnection | null;
+      local: MediaStream | null;
+      pendingIce: RTCIceCandidateInit[];
+      timers: number[];
+      wake: { release(): Promise<void> } | null;
+      done: boolean;
+    } | null = null;
+
+    const clearTimers = () => {
+      call?.timers.forEach((t) => clearInterval(t));
+      if (call) call.timers = [];
+    };
+
+    async function teardown(alreadyEnded = false, reason: 'hangup' | 'timeout' | 'failed' = 'hangup') {
+      if (!call || call.done) return;
+      call.done = true;
+      clearTimers();
+      call.channel?.send('end', { reason });
+      call.channel?.close();
+      call.pc?.close();
+      call.local?.getTracks().forEach((t) => t.stop());
+      void call.wake?.release().catch(() => {});
+      if (!alreadyEnded) {
+        try {
+          await actions.call.end({ callId: call.view.id, reason });
+        } catch {
+          /* already terminal server-side */
+        }
+      }
+      remoteEl.srcObject = null;
+      localEl.srcObject = null;
+      screen.hidden = true;
+      incoming.hidden = true;
+      call = null;
+    }
+
+    function setChip(key: 'ringing' | 'connecting' | 'connected' | 'poor' | 'reconnecting') {
+      const el = $('[data-call-state-chip]');
+      const map: Record<string, string | undefined> = {
+        ringing: root.dataset.i18nRinging,
+        connecting: root.dataset.i18nConnecting,
+        connected: '',
+        poor: root.dataset.i18nPoor,
+        reconnecting: root.dataset.i18nReconnecting,
+      };
+      el.textContent = map[key] ?? '';
+      // Voice stays on the identity panel; video hides it once media flows.
+      if (key === 'connected' && call?.view.mode === 'video') {
+        $('[data-call-idpanel]').classList.add('hidden');
+      }
+      $('[data-call-pulse]').classList.toggle('hidden', key === 'connected');
+    }
+
+    function showScreen(view: CallView) {
+      $('[data-call-name]').textContent = view.peerName;
+      const avatar = $<HTMLImageElement>('[data-call-avatar]');
+      const initial = $('[data-call-initial]');
+      // The client sees her photo; she sees his initial (clients have no photos).
+      if (view.party === 'client' && view.avatarUrl) {
+        avatar.src = view.avatarUrl;
+        avatar.classList.remove('hidden');
+        initial.classList.add('hidden');
+      } else {
+        avatar.classList.add('hidden');
+        initial.classList.remove('hidden');
+        initial.textContent = view.peerName.charAt(0).toUpperCase();
+      }
+      const isVideo = view.mode === 'video';
+      remoteEl.classList.toggle('hidden', !isVideo);
+      localEl.classList.toggle('hidden', !isVideo);
+      $('[data-ctl-cam]').hidden = !isVideo;
+      $('[data-ctl-flip]').hidden = !isVideo;
+      $('[data-ctl-endblock]').hidden = view.party !== 'professional';
+      $('[data-call-idpanel]').classList.remove('hidden');
+      screen.hidden = false;
+    }
+
+    function startTimer() {
+      const el = $('[data-call-timer]');
+      const t0 = Date.now();
+      const id = window.setInterval(() => {
+        const s = Math.floor((Date.now() - t0) / 1000);
+        el.textContent = `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+      }, 1000);
+      call?.timers.push(id);
+    }
+
+    async function getMedia(mode: 'voice' | 'video', facing: 'user' | 'environment' = 'user') {
+      return navigator.mediaDevices.getUserMedia(
+        mode === 'video'
+          ? { audio: true, video: { facingMode: facing, width: { ideal: 1280 }, height: { ideal: 720 } } }
+          : { audio: true },
+      );
+    }
+
+    /** Build the RTCPeerConnection + shared handlers (both parties). */
+    function buildPc(ice: Ice, forceRelay: boolean) {
+      const pc = new RTCPeerConnection({
+        iceServers: ice.iceServers,
+        // Her side: relay-only when TURN is live — her address never appears
+        // in any candidate the client can see (VIDEO-CALLING.md §1.1).
+        iceTransportPolicy: forceRelay ? 'relay' : 'all',
+      });
+      pc.ontrack = (e) => {
+        if (call?.view.mode === 'video') remoteEl.srcObject = e.streams[0]!;
+        else {
+          // voice: play remote audio through the (hidden) video element.
+          remoteEl.classList.add('hidden');
+          remoteEl.srcObject = e.streams[0]!;
+        }
+        void remoteEl.play().catch(() => {});
+      };
+      pc.onicecandidate = (e) => {
+        if (e.candidate) call?.channel?.send('ice', { candidate: e.candidate.toJSON() });
+      };
+      pc.onconnectionstatechange = () => {
+        if (!call) return;
+        const s = pc.connectionState;
+        if (s === 'connected') {
+          setChip('connected');
+        } else if (s === 'disconnected') {
+          setChip('reconnecting');
+        } else if (s === 'failed') {
+          void teardown(false, 'failed');
+        }
+      };
+      return pc;
+    }
+
+    async function addIce(candidate: RTCIceCandidateInit) {
+      if (!call?.pc) return;
+      if (!call.pc.remoteDescription) call.pendingIce.push(candidate);
+      else await call.pc.addIceCandidate(candidate).catch(() => {});
+    }
+    async function flushIce() {
+      if (!call?.pc) return;
+      for (const c of call.pendingIce.splice(0)) await call.pc.addIceCandidate(c).catch(() => {});
+    }
+
+    async function beginBeat() {
+      const id = window.setInterval(() => {
+        if (call) void actions.call.beat({ callId: call.view.id });
+      }, BEAT_MS);
+      call?.timers.push(id);
+    }
+
+    async function grabWakeLock() {
+      try {
+        if (call) call.wake = await (navigator as any).wakeLock?.request('screen');
+      } catch {
+        /* not critical */
+      }
+    }
+
+    // ── caller flow (professional) ────────────────────────────────────────
+    async function startCall(threadId: string, mode: 'voice' | 'video') {
+      if (call) return;
+      let res;
+      try {
+        res = await actions.call.start({ threadId, mode });
+      } catch (e) {
+        alertToast((e as { message?: string })?.message?.includes('busy') ? root.dataset.i18nBusy : root.dataset.i18nCallFailed);
+        return;
+      }
+      const { call: view, iceServers, relayOnly } = res.data as { call: CallView; iceServers: RTCIceServer[]; relayOnly: boolean };
+      call = { view, channel: null, pc: null, local: null, pendingIce: [], timers: [], wake: null, done: false };
+      showScreen(view);
+      setChip('ringing');
+      void grabWakeLock();
+
+      call.channel = openChannel(`call:${view.id}`, {
+        accept: async () => {
+          if (!call || call.pc) return;
+          clearTimers();
+          setChip('connecting');
+          try {
+            call.local = await getMedia(view.mode);
+          } catch {
+            return teardown(false, 'failed');
+          }
+          if (view.mode === 'video') {
+            localEl.srcObject = call.local;
+          }
+          const pc = buildPc({ iceServers, relayOnly }, relayOnly);
+          call.pc = pc;
+          call.local.getTracks().forEach((t) => pc.addTrack(t, call!.local!));
+          const offer = await pc.createOffer();
+          await pc.setLocalDescription(offer);
+          call.channel!.send('offer', { sdp: pc.localDescription });
+          startTimer();
+          void beginBeat();
+        },
+        answer: async (p) => {
+          const { sdp } = p as { sdp: RTCSessionDescriptionInit };
+          await call?.pc?.setRemoteDescription(sdp);
+          await flushIce();
+        },
+        decline: () => {
+          alertToast(root.dataset.i18nDeclined);
+          void teardown(true);
+        },
+        ice: (p) => void addIce((p as { candidate: RTCIceCandidateInit }).candidate),
+        end: () => void teardown(true),
+      });
+
+      // 30s unanswered → timeout ("missed" card) — never fake a longer ring.
+      const ringTimer = window.setTimeout(() => {
+        if (call && !call.pc) void teardown(false, 'timeout');
+      }, RING_MS);
+      call.timers.push(ringTimer as unknown as number);
+    }
+
+    // ── callee flow (client) ──────────────────────────────────────────────
+    let ringingId: string | null = null;
+
+    async function showRing(callId: string) {
+      if (call || ringingId) return;
+      let view: CallView;
+      try {
+        view = ((await actions.call.get({ callId })).data as { call: CallView }).call;
+      } catch {
+        return;
+      }
+      if (view.state !== 'ringing') return;
+      ringingId = callId;
+      $<HTMLImageElement>('[data-incoming-avatar]').src = view.avatarUrl ?? '';
+      $('[data-incoming-name]').textContent = view.peerName;
+      $('[data-incoming-mode]').textContent =
+        view.mode === 'video' ? root.dataset.i18nIncomingVideo! : root.dataset.i18nIncomingVoice!;
+      incoming.hidden = false;
+      (navigator as any).vibrate?.([300, 120, 300, 120, 300]);
+      // Auto-dismiss when the caller's 30s timeout lands server-side.
+      window.setTimeout(() => {
+        if (ringingId === callId && !call) {
+          incoming.hidden = true;
+          ringingId = null;
+        }
+      }, RING_MS + 5000);
+
+      $('[data-incoming-accept]').onclick = async () => {
+        incoming.hidden = true;
+        ringingId = null;
+        let ice: Ice;
+        try {
+          const res = await actions.call.accept({ callId });
+          ice = res.data as Ice;
+        } catch {
+          return;
+        }
+        call = { view: { ...view, state: 'active' }, channel: null, pc: null, local: null, pendingIce: [], timers: [], wake: null, done: false };
+        showScreen(call.view);
+        setChip('connecting');
+        void grabWakeLock();
+        try {
+          call.local = await getMedia(view.mode);
+        } catch {
+          return teardown(false, 'failed');
+        }
+        if (view.mode === 'video') localEl.srcObject = call.local;
+        const pc = buildPc(ice, false);
+        call.pc = pc;
+        call.local.getTracks().forEach((t) => pc.addTrack(t, call!.local!));
+        call.channel = openChannel(`call:${callId}`, {
+          offer: async (p) => {
+            const { sdp } = p as { sdp: RTCSessionDescriptionInit };
+            await pc.setRemoteDescription(sdp);
+            await flushIce();
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+            call?.channel?.send('answer', { sdp: pc.localDescription });
+          },
+          ice: (p) => void addIce((p as { candidate: RTCIceCandidateInit }).candidate),
+          end: () => void teardown(true),
+        });
+        call.channel.send('accept', {});
+        startTimer();
+        void beginBeat();
+      };
+      $('[data-incoming-decline]').onclick = () => {
+        incoming.hidden = true;
+        ringingId = null;
+        void actions.call.decline({ callId });
+      };
+    }
+
+    // ── controls ──────────────────────────────────────────────────────────
+    $('[data-ctl-end]').addEventListener('click', () => void teardown());
+    $('[data-ctl-endblock]').addEventListener('click', async () => {
+      const threadId = call?.view.threadId;
+      await teardown();
+      if (threadId) {
+        await actions.messaging.setBlocked({ threadId, blocked: true });
+        location.reload();
+      }
+    });
+    $('[data-ctl-mute]').addEventListener('click', (e) => {
+      const btn = e.currentTarget as HTMLElement;
+      const track = call?.local?.getAudioTracks()[0];
+      if (!track) return;
+      track.enabled = !track.enabled;
+      btn.setAttribute('aria-pressed', String(!track.enabled));
+    });
+    $('[data-ctl-cam]').addEventListener('click', (e) => {
+      const btn = e.currentTarget as HTMLElement;
+      const track = call?.local?.getVideoTracks()[0];
+      if (!track) return;
+      track.enabled = !track.enabled;
+      btn.setAttribute('aria-pressed', String(!track.enabled));
+      localEl.classList.toggle('opacity-30', !track.enabled);
+    });
+    let facing: 'user' | 'environment' = 'user';
+    $('[data-ctl-flip]').addEventListener('click', async () => {
+      if (!call?.pc || !call.local) return;
+      facing = facing === 'user' ? 'environment' : 'user';
+      try {
+        const fresh = await getMedia('video', facing);
+        const newTrack = fresh.getVideoTracks()[0]!;
+        const sender = call.pc.getSenders().find((s) => s.track?.kind === 'video');
+        await sender?.replaceTrack(newTrack);
+        call.local.getVideoTracks().forEach((t) => t.stop());
+        call.local.removeTrack(call.local.getVideoTracks()[0] ?? newTrack);
+        call.local.addTrack(newTrack);
+        localEl.srcObject = fresh;
+        // keep audio from the original stream alive — only video was replaced
+        fresh.getAudioTracks().forEach((t) => t.stop());
+      } catch {
+        /* flip unavailable — stay on current camera */
+      }
+    });
+
+    function alertToast(text?: string) {
+      if (!text) return;
+      const el = document.createElement('div');
+      el.className =
+        'fixed left-1/2 top-4 z-[80] -translate-x-1/2 rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background shadow-soft-lg';
+      el.style.paddingTop = 'calc(0.5rem)';
+      el.textContent = text;
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 3200);
+    }
+
+    // ── account channel: badges (all roles) + ring (client) ───────────────
+    openChannel(`account:${accountId}`, {
+      message: () => showDots(),
+      call: (p) => {
+        const { id, state } = p as { id: string; state: string };
+        if (role !== 'client') return;
+        if (state === 'ringing') void showRing(id);
+        else if (ringingId === id && state !== 'active') {
+          incoming.hidden = true;
+          ringingId = null;
+        }
+      },
+    });
+
+    // Thread header / contact rows ask the dock to place a call.
+    document.addEventListener('intimate:call', (e) => {
+      const { threadId, mode } = (e as CustomEvent<{ threadId: string; mode: 'voice' | 'video' }>).detail;
+      void startCall(threadId, mode);
+    });
+
+    // Leaving the page mid-call = hangup (P2P can't outlive the page).
+    window.addEventListener('pagehide', () => {
+      if (call) void teardown();
+    });
+  }
+
+  initCallDock();
+  document.addEventListener('astro:page-load', initCallDock);
+</script>

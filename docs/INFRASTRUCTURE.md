@@ -66,6 +66,10 @@ deploys keep failing/targeting the old one).
 - **Font Awesome 8 Pro** — self-hosted at `public/fa/` from the kit
   `kit-52886650b2-web`. Contains **thin + brands families ONLY** — `fa-solid`
   / `fa-regular` classes silently render nothing. Use `atoms/Icon.astro`.
+  The served woff2 files are **subset to the icons the app uses** (402 KB →
+  5 KB; pristine fonts in `scripts/fa-full/`). **After adding any new icon
+  name, run `bun scripts/subset-fa.ts`** — it re-scans `src/` and re-subsets;
+  a missed name renders as a blank glyph.
 - **Logos** — pulled from intimate.nl. Naming is by lettering color:
   `logo-light.svg` = white lettering (use on dark surfaces), `logo-dark.svg` =
   dark lettering (use on light surfaces).

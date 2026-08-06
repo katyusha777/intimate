@@ -1,0 +1,24 @@
+---
+/**
+ * Branded 404 (items.md #11). Locale-less by nature (unmatched routes);
+ * paraglide falls back to the base locale for the strings.
+ */
+import * as m from '@/paraglide/messages';
+import Layout from '@/layouts/Layout.astro';
+import Button from '@/components/atoms/Button.astro';
+import { localizePath } from '@/lib/i18n';
+---
+
+<Layout noindex title={`404 | Intimate`}>
+  <div class="mx-auto grid max-w-md place-items-center px-4 py-28 text-center">
+    <p class="display text-7xl">404<span class="text-brand">.</span></p>
+    <h1 class="mt-4 font-condensed text-2xl font-bold">{m.notfound_title()}</h1>
+    <p class="mt-2 text-sm text-muted-foreground">{m.notfound_body()}</p>
+    <div class="mt-7 flex items-center gap-4">
+      <Button as="a" href={localizePath('/')}>{m.notfound_home()}</Button>
+      <a href={localizePath('/search/')} class="text-sm font-medium underline-offset-4 hover:underline">
+        {m.notfound_search()}
+      </a>
+    </div>
+  </div>
+</Layout>

@@ -97,9 +97,8 @@ const moreArticles = articles.filter((a) => a !== featuredArticle).slice(0, 3);
         muted
         loop
         playsinline
-        autoplay
-        preload="metadata"
-        poster="/video/hero-poster.jpg"
+        preload="none"
+        data-poster="/video/hero-poster.jpg"
       >
         <source src="/video/hero.webm" type="video/webm" />
         <source src="/video/hero.mp4" type="video/mp4" />
@@ -146,7 +145,7 @@ const moreArticles = articles.filter((a) => a !== featuredArticle).slice(0, 3);
           rail.map((p, i) => (
             <div class="w-52 flex-none snap-start sm:w-60 lg:w-[calc((100%-4rem)/5)]">
               {/* First rail card = the LCP image on mobile — never lazy. */}
-              <ProfileCard profile={p} loading={i < 3 ? 'eager' : 'lazy'} fetchpriority={i === 0 ? 'high' : undefined} />
+              <ProfileCard profile={p} loading={i < 2 ? 'eager' : 'lazy'} fetchpriority={i === 0 ? 'high' : undefined} />
             </div>
           ))
         }
@@ -160,7 +159,7 @@ const moreArticles = articles.filter((a) => a !== featuredArticle).slice(0, 3);
         <Section title={m.section_online()}>
           <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
             {online.map((p, i) => (
-              <ProfileCard profile={p} loading={i < 4 ? 'eager' : 'lazy'} />
+              <ProfileCard profile={p} loading="lazy" />
             ))}
           </div>
         </Section>

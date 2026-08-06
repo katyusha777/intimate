@@ -68,9 +68,10 @@
 .dark {
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
-  /* Card/popover grays sit closer to the canvas — still gray, a shade darker
-     (sheets, popups, profile surfaces all ride these). */
-  --card: oklch(0.19 0 0);
+  /* Cards/popovers step VISIBLY off the canvas (items.md #14 — "pure black on
+     pure black" flattened every surface; the admin shell's layered greys are
+     the reference). */
+  --card: oklch(0.21 0 0);
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.235 0 0);
   --popover-foreground: oklch(0.985 0 0);
@@ -87,15 +88,15 @@
   --glass-border: color-mix(in oklch, var(--foreground) 16%, transparent);
   --shadow-soft: 0 2px 6px rgb(0 0 0 / 0.3), 0 12px 32px rgb(0 0 0 / 0.35);
   --shadow-soft-lg: 0 4px 10px rgb(0 0 0 / 0.35), 0 18px 44px rgb(0 0 0 / 0.4);
-  --secondary: color-mix(in oklch, var(--foreground) 6%, var(--background));
+  --secondary: color-mix(in oklch, var(--foreground) 9%, var(--background));
   --secondary-foreground: oklch(0.985 0 0);
-  --muted: color-mix(in oklch, var(--foreground) 6%, var(--background));
+  --muted: color-mix(in oklch, var(--foreground) 9%, var(--background));
   --muted-foreground: color-mix(in oklch, var(--foreground) 62%, transparent);
-  --accent: color-mix(in oklch, var(--foreground) 9%, var(--background));
+  --accent: color-mix(in oklch, var(--foreground) 12%, var(--background));
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.704 0.191 22.216);
   --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(0.275 0 0);
+  --border: oklch(0.30 0 0);
   --input: oklch(0.325 0 0);
   --ring: oklch(0.556 0 0);
   --chart-1: oklch(0.81 0.1 252);
@@ -474,6 +475,14 @@
 
   html {
     @apply font-sans;
+  }
+
+  /* Safe-mode placeholder sets glare against the dark canvas (items.md #9) —
+     dim ONLY when a placeholder is showing (data-showing set by the safe-mode
+     script); real photos stay untouched. */
+  .dark img[data-showing='safe'],
+  .dark img[data-showing='dev'] {
+    filter: brightness(0.62) saturate(0.85);
   }
 
   :root {

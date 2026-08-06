@@ -77,7 +77,9 @@ export const GET: APIRoute = async (ctx) => {
     try {
       const result = await IMAGES.input(new Response(buf).body!)
         .transform({ width })
-        .output({ format: 'image/webp' });
+        // Without an explicit quality the binding emits near-lossless WebP
+        // (a 600px card came out 477 KB — bigger than the JPEG original).
+        .output({ format: 'image/webp', quality: 80 });
       const r = result.response();
       const headers = new Headers(r.headers);
       headers.set('Cache-Control', cacheControl);

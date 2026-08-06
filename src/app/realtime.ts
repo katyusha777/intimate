@@ -78,6 +78,55 @@ function liveChannel(topic: string, onEvent: () => void): () => void {
 }
 
 /**
+ * Event-driven private channel (VIDEO-CALLING.md §4/§6): named-event handlers
+ * plus a send() for browser-originated broadcasts (SDP/ICE signaling — the
+ * "call participants send" RLS policy authorizes it). Unlike subscribe() there
+ * is NO polling fallback: signaling is meaningless without the socket, and the
+ * caller handles failure honestly (call state chip → action-driven teardown).
+ */
+export function openChannel(
+  topic: string,
+  handlers: Record<string, (payload: unknown) => void>,
+): { send: (event: string, payload: unknown) => void; close: () => void } {
+  let closed = false;
+  let ch: ReturnType<ReturnType<typeof supabaseBrowser>['channel']> | null = null;
+  const queue: Array<[string, unknown]> = [];
+  const supabase = supabaseBrowser();
+  void (async () => {
+    try {
+      await supabase.realtime.setAuth();
+      if (closed) return;
+      let c = supabase.channel(topic, { config: { private: true } });
+      for (const [event, fn] of Object.entries(handlers)) {
+        c = c.on('broadcast', { event }, ({ payload }) => fn(payload));
+      }
+      c.subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          ch = c;
+          for (const [event, payload] of queue.splice(0)) {
+            void c.send({ type: 'broadcast', event, payload });
+          }
+        }
+      });
+      if (closed) void supabase.removeChannel(c);
+    } catch {
+      /* socket unavailable — sends stay queued; callers time out honestly */
+    }
+  })();
+  return {
+    send(event, payload) {
+      if (ch) void ch.send({ type: 'broadcast', event, payload });
+      else queue.push([event, payload]);
+    },
+    close() {
+      closed = true;
+      if (ch) void supabase.removeChannel(ch);
+      ch = null;
+    },
+  };
+}
+
+/**
  * Presence heartbeat (SUPABASE.md §5.4): the professional's own island touches
  * `profiles.last_active_at` on a slow cadence — an RLS-guarded, column-scoped
  * own-row update (0001 "owner heartbeat" policy + last_active_at grant). Powers

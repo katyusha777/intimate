@@ -26,12 +26,21 @@ export interface CacheKv {
 
 const GEN_KEY = 'pc:gen';
 const TTL_S = 86_400; // 24h — content freshness comes from the bust, not the TTL.
+// The homepage TTL is short instead: its SSR'd "online now" count has no
+// client-side refresh, so freshness DOES come from the TTL here.
+export const HOME_TTL_S = 300;
 // Canonical public profile page only: /{locale}/profile/{slug}/ — NOT /avail.json,
 // /_server-islands, or anything with a query string.
 const PROFILE_RE = /^\/(nl|en|de)\/profile\/[^/]+\/?$/;
+const HOME_RE = /^\/(nl|en|de)\/?$/;
 
 export function isCacheableProfile(url: URL): boolean {
   return url.search === '' && PROFILE_RE.test(url.pathname);
+}
+
+/** The locale homepages — the heaviest SSR (fold counts + two profile strips). */
+export function isCacheableHome(url: URL): boolean {
+  return url.search === '' && HOME_RE.test(url.pathname);
 }
 
 /**
@@ -73,6 +82,7 @@ export async function storeInCache(
   deployId: string,
   url: URL,
   res: Response,
+  ttl = TTL_S,
 ): Promise<Response> {
   const ct = res.headers.get('content-type') ?? '';
   if (!kv || res.status !== 200 || !ct.includes('text/html') || res.headers.has('set-cookie')) {
@@ -80,7 +90,7 @@ export async function storeInCache(
   }
   const html = await res.text();
   const gen = (await kv.get(GEN_KEY)) ?? '0';
-  await kv.put(cacheKey(deployId, gen, url.pathname), html, { expirationTtl: TTL_S });
+  await kv.put(cacheKey(deployId, gen, url.pathname), html, { expirationTtl: ttl });
   return new Response(html, {
     status: 200,
     headers: { 'content-type': ct, 'cache-control': REVALIDATE, 'x-cache': 'MISS' },

@@ -8,7 +8,7 @@
   // Every 6h (24h cache TTL leaves ample margin). This is THE warm schedule now
   // that the GitHub Actions cron is retired.
   "triggers": {
-    "crons": ["0 */6 * * *"]
+    "crons": ["0 */6 * * *", "*/4 * * * *"] // full sweep 6-hourly; homepages every 4 min (short HOME_TTL_S)
   },
   // In-process call into the main worker — no DNS, no self-fetch, no 522.
   "services": [

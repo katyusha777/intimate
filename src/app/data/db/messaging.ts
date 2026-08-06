@@ -13,12 +13,22 @@
  */
 import { and, eq, inArray, isNull, ne, sql, type SQL } from 'drizzle-orm';
 import { type Db } from '@/db/client';
-import { accounts, contacts, conversationSettings, messages, profiles, threads } from '@/db/schema';
+import {
+  accounts,
+  callSessions,
+  contactInvites,
+  contacts,
+  conversationSettings,
+  messages,
+  profiles,
+  threads,
+} from '@/db/schema';
 import {
   ConversationSettingsSchema,
   RequestPayloadSchema,
   ThreadSchema,
   replySpeed,
+  type ContactInvite,
   type ContactItem,
   type ConversationSettings,
   type Message,
@@ -36,7 +46,8 @@ const iso = (v: Date | string): string => (v instanceof Date ? v : new Date(v)).
 // ── projection ──────────────────────────────────────────────────────────────
 
 type MsgRow = typeof messages.$inferSelect;
-function toMessage(m: MsgRow): Message {
+type CallInfo = NonNullable<Message['call']>;
+function toMessage(m: MsgRow, calls?: Map<string, CallInfo>): Message {
   return {
     id: m.id,
     sender: m.sender,
@@ -44,9 +55,21 @@ function toMessage(m: MsgRow): Message {
     body: m.body,
     photo: m.imageKey ?? undefined, // chat photo (data-URL inline for now)
     request: m.request ?? undefined,
+    call: m.callId ? calls?.get(m.callId) : undefined, // call card ← its session
     createdAt: iso(m.createdAt),
     readAt: m.readAt ? iso(m.readAt) : undefined,
   };
+}
+
+/** call_id → {mode,state,seconds} for the call cards in a message batch. */
+async function callInfoFor(d: Db, msgs: MsgRow[]): Promise<Map<string, CallInfo>> {
+  const ids = [...new Set(msgs.flatMap((m) => (m.callId ? [m.callId] : [])))];
+  if (!ids.length) return new Map();
+  const rows = await d
+    .select({ id: callSessions.id, mode: callSessions.mode, state: callSessions.state, seconds: callSessions.durationS })
+    .from(callSessions)
+    .where(inArray(callSessions.id, ids));
+  return new Map(rows.map((r) => [r.id, { mode: r.mode, state: r.state, seconds: r.seconds }]));
 }
 
 interface ThreadJoin {
@@ -58,6 +81,7 @@ interface ThreadJoin {
   clientName: string | null;
   state: Thread['state'];
   blockedBy: Party | null;
+  hiddenBy: Party | null;
   createdAt: Date;
   lastMessageAt: Date;
   pinned: boolean | null;
@@ -66,7 +90,7 @@ interface ThreadJoin {
   privateSetUnlocked: boolean | null;
 }
 
-function toThread(r: ThreadJoin, msgs: MsgRow[]): Thread {
+function toThread(r: ThreadJoin, msgs: MsgRow[], calls?: Map<string, CallInfo>): Thread {
   const email = r.clientEmail ?? '';
   return ThreadSchema.parse({
     id: r.id,
@@ -77,13 +101,14 @@ function toThread(r: ThreadJoin, msgs: MsgRow[]): Thread {
     clientName: r.clientName ?? email.split('@')[0] ?? 'Client',
     state: r.state,
     blockedBy: r.blockedBy ?? undefined,
+    hiddenBy: r.hiddenBy ?? undefined,
     createdAt: iso(r.createdAt),
     lastMessageAt: iso(r.lastMessageAt),
     pinned: r.pinned ?? false,
     note: r.note ?? '',
     clientMediaAllowed: r.clientMediaAllowed ?? false,
     privateSetUnlocked: r.privateSetUnlocked ?? false,
-    messages: msgs.map(toMessage),
+    messages: msgs.map((m) => toMessage(m, calls)),
   });
 }
 
@@ -99,6 +124,7 @@ async function loadThreads(d: Db, where: SQL): Promise<Thread[]> {
       clientName: accounts.displayName,
       state: threads.state,
       blockedBy: threads.blockedBy,
+      hiddenBy: threads.hiddenBy,
       createdAt: threads.createdAt,
       lastMessageAt: threads.lastMessageAt,
       pinned: contacts.pinned,
@@ -116,9 +142,10 @@ async function loadThreads(d: Db, where: SQL): Promise<Thread[]> {
   // push snippet+unread into SQL when a pro's inbox gets large.
   const ids = rows.map((r) => r.id);
   const msgs = await d.select().from(messages).where(inArray(messages.threadId, ids)).orderBy(messages.createdAt);
+  const calls = await callInfoFor(d, msgs);
   const byThread = new Map<string, MsgRow[]>();
   for (const m of msgs) (byThread.get(m.threadId) ?? byThread.set(m.threadId, []).get(m.threadId)!).push(m);
-  return rows.map((r) => toThread(r, byThread.get(r.id) ?? []));
+  return rows.map((r) => toThread(r, byThread.get(r.id) ?? [], calls));
 }
 
 /** Which side is the session on? Same law as the mock (client keyed by email). */
@@ -136,6 +163,7 @@ function snippetFor(t: Thread): string {
   const last = [...t.messages].reverse().find((m) => m.kind !== 'system');
   if (!last) return '';
   if (last.kind === 'photo') return '📷';
+  if (last.kind === 'call') return '📞';
   if (last.kind === 'request') return 'msg_snippet_request';
   return last.body;
 }
@@ -164,6 +192,18 @@ async function liveProfileId(d: Db, slug: string): Promise<{ id: string } | unde
   return (
     await d.select({ id: profiles.id }).from(profiles).where(and(eq(profiles.slug, slug), eq(profiles.state, 'live'))).limit(1)
   )[0];
+}
+
+type InviteRow = typeof contactInvites.$inferSelect;
+function toInvite(r: InviteRow): ContactInvite {
+  return {
+    id: r.id,
+    token: r.token,
+    name: r.name,
+    createdAt: iso(r.createdAt),
+    expiresAt: iso(r.expiresAt),
+    claimed: !!r.claimedBy,
+  };
 }
 
 async function findThread(d: Db, profileId: string, clientAccountId: string): Promise<Thread | null> {
@@ -246,7 +286,9 @@ export function makeMessagingApi(db: () => Db): MessagingApi {
       : eq(threads.clientAccountId, session.accountId);
     const party: Party = session.profileId ? 'professional' : 'client';
     return (await loadThreads(d, where))
-      .filter((t) => t.state !== 'blocked')
+      // Blocked threads stay listed for the BLOCKER (badge in the UI) unless
+      // they chose block-&-delete (hiddenBy). The blocked side never sees it.
+      .filter((t) => (t.state !== 'blocked' || t.blockedBy === party) && t.hiddenBy !== party)
       .map((t) => toSummary(t, party))
       .sort((a, b) => Number(b.pinned) - Number(a.pinned) || b.lastMessageAt.localeCompare(a.lastMessageAt));
   },
@@ -398,17 +440,34 @@ export function makeMessagingApi(db: () => Db): MessagingApi {
     if (allowed) await d.insert(messages).values({ threadId, sender: 'system', kind: 'system', body: 'msg_system_media_on' });
   },
 
-  async setBlocked(session, { threadId, blocked }) {
+  async setBlocked(session, { threadId, blocked, del }) {
     const d = db();
     const [t] = await loadThreads(d, eq(threads.id, threadId));
     if (!t) return;
     const party = partyOf(session, t);
     if (!party) return;
     if (blocked) {
-      await d.update(threads).set({ state: 'blocked', blockedBy: party }).where(eq(threads.id, threadId));
+      // Plain block keeps the thread listed with a badge; "block & delete"
+      // also hides it from the blocker's lists (items.md #1).
+      await d
+        .update(threads)
+        .set({ state: 'blocked', blockedBy: party, hiddenBy: del ? party : t.hiddenBy ?? null })
+        .where(eq(threads.id, threadId));
     } else if (t.blockedBy === party) {
-      await d.update(threads).set({ state: 'open', blockedBy: null }).where(eq(threads.id, threadId));
+      // Unblock restores fully — the hidden flag clears so the chat reappears.
+      await d.update(threads).set({ state: 'open', blockedBy: null, hiddenBy: null }).where(eq(threads.id, threadId));
     }
+  },
+
+  async hideThread(session, { threadId }) {
+    const d = db();
+    const [t] = await loadThreads(d, eq(threads.id, threadId));
+    if (!t) return;
+    const party = partyOf(session, t);
+    // Delete-later exists only for a thread YOU blocked (an open chat can't be
+    // deleted — the 1-thread-per-pair row is the anti-spam bedrock).
+    if (!party || t.state !== 'blocked' || t.blockedBy !== party) return;
+    await d.update(threads).set({ hiddenBy: party }).where(eq(threads.id, threadId));
   },
 
   async listBlocked(session) {
@@ -425,9 +484,10 @@ export function makeMessagingApi(db: () => Db): MessagingApi {
   async listContacts(session) {
     if (!session.profileId) return [];
     const d = db();
-    // Conversation contacts (auto): every non-blocked thread of her profile.
+    // Conversation contacts (auto): her threads — blocked ones stay with a
+    // badge unless she chose block-&-delete (items.md #1).
     const fromThreads: ContactItem[] = (await loadThreads(d, eq(threads.profileId, session.profileId)))
-      .filter((t) => t.state !== 'blocked')
+      .filter((t) => (t.state !== 'blocked' || t.blockedBy === 'professional') && t.hiddenBy !== 'professional')
       .map((t) => ({
         id: t.id,
         name: t.clientName,
@@ -437,6 +497,7 @@ export function makeMessagingApi(db: () => Db): MessagingApi {
         kind: 'thread' as const,
         threadId: t.id,
         mediaAllowed: t.clientMediaAllowed,
+        blocked: t.state === 'blocked',
       }));
     // Manual address-book entries (contacts rows with no thread).
     const manual = await d
@@ -475,6 +536,86 @@ export function makeMessagingApi(db: () => Db): MessagingApi {
     await db()
       .delete(contacts)
       .where(and(eq(contacts.id, id), eq(contacts.profileId, session.profileId), eq(contacts.kind, 'manual')));
+  },
+
+  // ── invite links (VIDEO-CALLING.md §5) ────────────────────────────────────
+
+  async mintInvite(session, { name = '' }) {
+    if (!session.profileId) return null;
+    // 128-bit random token, hex — the URL is the credential; single-use.
+    const token = [...crypto.getRandomValues(new Uint8Array(16))]
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
+    const [row] = await db()
+      .insert(contactInvites)
+      .values({
+        profileId: session.profileId,
+        token,
+        name: name.trim().slice(0, 60),
+        expiresAt: new Date(Date.now() + 7 * 86_400_000),
+      })
+      .returning();
+    return row ? toInvite(row) : null;
+  },
+
+  async listInvites(session) {
+    if (!session.profileId) return [];
+    // Active links only (unclaimed, unexpired) — claimed/expired ones are noise.
+    const rows = await db()
+      .select()
+      .from(contactInvites)
+      .where(and(eq(contactInvites.profileId, session.profileId), isNull(contactInvites.claimedBy)));
+    const now = new Date();
+    return rows
+      .filter((r) => new Date(r.expiresAt) > now)
+      .map(toInvite)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  },
+
+  async revokeInvite(session, { id }) {
+    if (!session.profileId) return;
+    await db()
+      .delete(contactInvites)
+      .where(and(eq(contactInvites.id, id), eq(contactInvites.profileId, session.profileId)));
+  },
+
+  async claimInvite(session, { token }) {
+    const d = db();
+    const clean = token.trim().toLowerCase();
+    if (!/^[0-9a-f]{32}$/.test(clean)) return null;
+    const [inv] = await d.select().from(contactInvites).where(eq(contactInvites.token, clean)).limit(1);
+    if (!inv) return null;
+    if (session.profileId === inv.profileId) return 'own'; // she opened her own link
+    if (session.profileId) return null; // professionals can't claim invites
+    // Idempotent for the claimer; dead for everyone else. Expiry checked only
+    // for fresh claims (a claimed link keeps routing its claimer to the thread).
+    if (inv.claimedBy && inv.claimedBy !== session.accountId) return null;
+    if (!inv.claimedBy && new Date(inv.expiresAt) < new Date()) return null;
+
+    let thread = await findThread(d, inv.profileId, session.accountId);
+    if (thread?.state === 'blocked') return null; // her invite never un-blocks
+    if (!thread) {
+      thread = await createThread(d, inv.profileId, session.accountId, 'open');
+    } else if (thread.state !== 'open') {
+      // pending/frozen → her invite IS the accept: open it up.
+      await d.update(threads).set({ state: 'open' }).where(eq(threads.id, thread.id));
+      thread = (await loadThreads(d, eq(threads.id, thread.id)))[0]!;
+    }
+    if (!inv.claimedBy) {
+      await d
+        .update(contactInvites)
+        .set({ claimedBy: session.accountId, claimedAt: new Date() })
+        .where(and(eq(contactInvites.id, inv.id), isNull(contactInvites.claimedBy)));
+      // Her label for the link ("Mark — regular") lands in her private note so
+      // she recognizes who arrived; never visible to him.
+      if (inv.name) {
+        await d
+          .update(contacts)
+          .set({ note: inv.name })
+          .where(and(eq(contacts.threadId, thread.id), eq(contacts.note, '')));
+      }
+    }
+    return thread;
   },
 
   async replySpeedFor(profileId): Promise<ReplySpeed | null> {

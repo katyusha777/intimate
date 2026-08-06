@@ -184,8 +184,10 @@ const TRIGGER = {
           close();
           const v = opt.dataset.value ?? '';
           // Language mode: this page already computed its localized alternate
-          // URLs (hreflang, incl. localized slugs) — just follow them.
+          // URLs (hreflang, incl. localized slugs) — just follow them. Cookie
+          // makes the pick stick for future `/` visits (items.md #5).
           if (cbx.dataset.cbxLang !== undefined) {
+            document.cookie = `PARAGLIDE_LOCALE=${v}; path=/; max-age=31536000; samesite=lax`;
             const alt = document.querySelector<HTMLLinkElement>(
               `link[rel="alternate"][hreflang="${v}"]`,
             );
