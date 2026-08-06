@@ -81,12 +81,20 @@ const TOP_CITIES = CITIES.slice(0, 6);
         b.dataset.cityInit = '1';
         b.addEventListener('click', () => pick(b.dataset.cityPick, b.textContent.trim().toUpperCase()));
       });
-      // First-visit auto-open: no chosen city, not previously dismissed.
+      // First-visit auto-open: no chosen city, not previously dismissed — but
+      // NEVER over the 18+ gate. That gate is a plain overlay while this sheet
+      // is a native <dialog> modal (browser top layer), so z-index can't cover
+      // it; instead we wait for the gate's accept event before opening.
       const dlg = document.getElementById('city-sheet');
-      if (!manual && dlg && dlg.openSheet && !hasCity() && !localStorage.getItem('city_asked')) {
-        // mark immediately so a reload before choosing doesn't nag twice
-        localStorage.setItem('city_asked', '1');
-        setTimeout(() => dlg.openSheet(), 350);
+      if (!manual && dlg && dlg.openSheet && !hasCity() && !localStorage.getItem('city_asked') && !dlg.dataset.cityWaiting) {
+        dlg.dataset.cityWaiting = '1';
+        const open = () => {
+          // mark on open so a reload before choosing doesn't nag twice
+          localStorage.setItem('city_asked', '1');
+          setTimeout(() => dlg.openSheet(), 350);
+        };
+        if (/(?:^|;\s*)age_ok=1/.test(document.cookie)) open();
+        else document.addEventListener('age-ok', open, { once: true });
       }
     }
     init();

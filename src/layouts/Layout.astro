@@ -173,6 +173,8 @@ const unread =
           document.cookie = 'age_ok=1; path=/; max-age=31536000; samesite=lax';
           document.documentElement.style.overflow = '';
           gate.remove();
+          // Let deferred first-visit UI (the city sheet) open now the gate is gone.
+          document.dispatchEvent(new Event('age-ok'));
         });
       })();
     </script>
