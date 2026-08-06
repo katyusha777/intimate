@@ -60,7 +60,9 @@ const SECURITY_HEADERS: Record<string, string> = {
   'X-Content-Type-Options': 'nosniff',
   'X-Frame-Options': 'SAMEORIGIN',
   'Referrer-Policy': 'no-referrer',
-  'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=(), usb=()',
+  // camera/microphone = self: WebRTC voice/video calls need getUserMedia on our
+  // own origin (empty () blocked it entirely — "not allowed in this document").
+  'Permissions-Policy': 'camera=(self), microphone=(self), geolocation=(), payment=(), usb=()',
   'Content-Security-Policy': [
     "default-src 'self'",
     // Turnstile + (future) PostHog + Plausible; Astro's hydration/theme scripts are inline.
