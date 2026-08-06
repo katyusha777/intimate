@@ -427,7 +427,27 @@ export function makeMessagingApi(db: () => Db): MessagingApi {
     const d = db();
     const [t] = await loadThreads(d, eq(threads.id, threadId));
     if (!t || partyOf(session, t) !== 'professional') return;
-    await d.update(contacts).set({ pinned }).where(eq(contacts.threadId, threadId));
+    const updated = await d
+      .update(contacts)
+      .set({ pinned })
+      .where(eq(contacts.threadId, threadId))
+      .returning({ id: contacts.id });
+    if (updated.length || !pinned) return;
+    // Starring a thread that never became a contact makes it one — her
+    // address book IS the favorites surface (conversation-derived row).
+    const [row] = await d
+      .select({ clientAccountId: threads.clientAccountId })
+      .from(threads)
+      .where(eq(threads.id, threadId))
+      .limit(1);
+    await d.insert(contacts).values({
+      profileId: t.profileId,
+      kind: 'thread',
+      threadId,
+      clientAccountId: row?.clientAccountId ?? null,
+      name: t.clientName || t.clientEmail.split('@')[0] || 'Client',
+      pinned: true,
+    });
   },
 
   async setMediaAllowed(session, { threadId, allowed }) {

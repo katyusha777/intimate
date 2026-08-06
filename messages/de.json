@@ -785,6 +785,7 @@
   "call_end": "Auflegen",
   "call_end_block": "Auflegen & blockieren",
   "call_media_blocked": "Mikrofon oder Kamera ist blockiert — erlaube den Zugriff für diese Seite und versuch es erneut.",
+  "call_swap": "Ansicht wechseln",
   "call_tap_sound": "Für Ton tippen",
   "call_no_recording": "Anrufe laufen direkt zwischen euch beiden — nie aufgezeichnet.",
   "call_ringing": "Klingelt…",

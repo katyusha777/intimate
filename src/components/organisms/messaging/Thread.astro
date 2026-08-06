@@ -77,7 +77,10 @@ const utcTime = (iso: string): string =>
   data-cc-video={m.call_card_video()}
 >
   <!-- Header -->
-  <header class="flex flex-none items-center gap-2 border-b border-border px-3 py-2.5">
+  <header
+    class="flex flex-none items-center gap-2 border-b border-border px-3 pb-2.5"
+    style="padding-top: calc(env(safe-area-inset-top) + 0.625rem)"
+  >
     <a
       href={localizePath('/messages/')}
       aria-label={m.msg_back()}
@@ -95,6 +98,21 @@ const utcTime = (iso: string): string =>
       )
     }
     <span class="min-w-0 flex-1 truncate font-condensed text-lg font-bold">{otherName}</span>
+
+    {
+      viewer === 'professional' && (
+        <button
+          type="button"
+          data-pin-star
+          aria-label={m.msg_pin()}
+          aria-pressed={thread.pinned ? 'true' : 'false'}
+          class="grid size-9 flex-none cursor-pointer place-items-center rounded-full transition-colors hover:bg-muted"
+        >
+          <svg data-star-outline class:list={['size-5', thread.pinned && 'hidden']} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7.4L12 17l-6.3 4.4L8 14 2 9.4h7.6z"/></svg>
+          <svg data-star-fill class:list={['size-5 text-brand', !thread.pinned && 'hidden']} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7.4L12 17l-6.3 4.4L8 14 2 9.4h7.6z"/></svg>
+        </button>
+      )
+    }
 
     {
       canCall && (
@@ -140,11 +158,6 @@ const utcTime = (iso: string): string =>
         {
           viewer === 'professional' && (
             <>
-              <label class="flex cursor-pointer items-center justify-between gap-3 px-3.5 py-2.5 text-sm hover:bg-muted">
-                {m.msg_pin()}
-                <input type="checkbox" data-pin checked={thread.pinned} class="sr-only" />
-                <span class="switch-track" aria-hidden="true" />
-              </label>
               <label class="flex cursor-pointer items-center justify-between gap-3 px-3.5 py-2.5 text-sm hover:bg-muted">
                 {m.msg_allow_photos()}
                 <input type="checkbox" data-allow-photos checked={thread.clientMediaAllowed} class="sr-only" />
@@ -566,6 +579,16 @@ const utcTime = (iso: string): string =>
       });
     }
 
+    // Header star = favorite/pin toggle (optimistic; inbox groups by it).
+    const star = root.querySelector<HTMLElement>('[data-pin-star]');
+    star?.addEventListener('click', () => {
+      const now = star.getAttribute('aria-pressed') !== 'true';
+      star.setAttribute('aria-pressed', String(now));
+      star.querySelector('[data-star-outline]')?.classList.toggle('hidden', now);
+      star.querySelector('[data-star-fill]')?.classList.toggle('hidden', !now);
+      void actions.messaging.setPinned({ threadId, pinned: now });
+    });
+
     // Overflow menu + contact controls.
     const menu = root.querySelector<HTMLElement>('[data-thread-menu]');
     if (menu) {
@@ -574,9 +597,6 @@ const utcTime = (iso: string): string =>
       btn.addEventListener('click', () => (panel.hidden = !panel.hidden));
       document.addEventListener('click', (e) => {
         if (!menu.contains(e.target as Node)) panel.hidden = true;
-      });
-      menu.querySelector('[data-pin]')?.addEventListener('change', (e) => {
-        actions.messaging.setPinned({ threadId, pinned: (e.target as HTMLInputElement).checked });
       });
       menu.querySelector('[data-allow-photos]')?.addEventListener('change', (e) => {
         actions.messaging.setMediaAllowed({

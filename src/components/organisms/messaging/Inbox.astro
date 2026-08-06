@@ -28,6 +28,21 @@ function utcTime(iso: string): string {
 function snippet(s: string): string {
   return s === 'msg_snippet_request' ? m.msg_snippet_request() : s;
 }
+
+/**
+ * Professional inbox splits into Favorites (starred contacts) above Messages;
+ * data layer already sorts pinned-first + recency, so the split preserves
+ * order. Clients see one flat list. One row template — headers interleave.
+ */
+const pinnedRows = viewer === 'professional' ? threads.filter((t) => t.pinned) : [];
+const restRows = viewer === 'professional' ? threads.filter((t) => !t.pinned) : threads;
+type Item = { header: string } | { t: ThreadSummary };
+const items: Item[] = [
+  ...(pinnedRows.length ? [{ header: m.nav_favorites() }] : []),
+  ...pinnedRows.map((t) => ({ t })),
+  ...(pinnedRows.length && restRows.length ? [{ header: m.msg_title() }] : []),
+  ...restRows.map((t) => ({ t })),
+];
 ---
 
 {
@@ -39,7 +54,15 @@ function snippet(s: string): string {
     </div>
   ) : (
     <ul class="divide-y divide-border">
-      {threads.map((t) => (
+      {items.map((item) => {
+        if ('header' in item)
+          return (
+            <li class="pb-1 pt-4 first:pt-2">
+              <span class="eyebrow">{item.header}</span>
+            </li>
+          );
+        const t = item.t;
+        return (
         <li>
           <a
             href={localizePath(`/messages/${t.id}/`)}
@@ -87,7 +110,8 @@ function snippet(s: string): string {
             </span>
           </a>
         </li>
-      ))}
+        );
+      })}
     </ul>
   )
 }

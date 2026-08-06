@@ -82,7 +82,7 @@ const tabs =
           data-page-sheet={t.sheet ? '' : undefined}
           aria-label={t.label}
           class:list={[
-            'relative flex h-13 w-14 flex-none flex-col items-center justify-center gap-0.5 rounded-2xl transition-[color,transform] active:scale-[0.92]',
+            'relative flex h-13 min-w-14 flex-none flex-col items-center justify-center gap-0.5 rounded-2xl px-2 transition-[color,transform] active:scale-[0.92]',
             t.active ? 'text-foreground' : 'text-muted-foreground',
           ]}
           aria-current={t.active ? 'page' : undefined}

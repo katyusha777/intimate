@@ -13,6 +13,12 @@ export default defineConfig({
   build: { inlineStylesheets: 'always' },
   prefetch: { prefetchAll: true },
   vite: {
+    // Never inline component scripts into the HTML: an inline module script
+    // on any page makes ClientRouter inject a `data:` probe script on every
+    // view transition, which our CSP (rightly) blocks — console noise on
+    // every navigation. External hashed files also cache across pages.
+    // (CSS is untouched — inlineStylesheets:'always' above bypasses this.)
+    build: { assetsInlineLimit: 0 },
     plugins: [
       tailwindcss(),
       paraglideVitePlugin({

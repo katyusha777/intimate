@@ -93,12 +93,16 @@ const { session } = Astro.props;
          at the tap gesture; iOS can't do audio via hidden <video>). -->
     <video data-remote autoplay playsinline muted class="hidden h-full w-full object-cover"></video>
     <audio data-remote-audio class="hidden"></audio>
+    <!-- PiP self-view; tapping it swaps which stream fills the screen (both
+         video elements are muted forever, so the swap can never echo). -->
     <video
       data-local
       autoplay
       playsinline
       muted
-      class="absolute right-4 z-10 hidden w-28 rounded-xl border border-white/20 object-cover shadow-soft-lg"
+      role="button"
+      aria-label={m.call_swap()}
+      class="absolute right-4 z-10 hidden w-28 cursor-pointer rounded-xl border border-white/20 object-cover shadow-soft-lg"
       style="top: calc(env(safe-area-inset-top) + 1rem)"></video>
 
     <!-- Autoplay recovery: shown only when the browser refused un-gestured
@@ -216,6 +220,8 @@ const { session } = Astro.props;
       /** Caller only: media + pc + local offer, resolved during the ring. */
       prep: Promise<void> | null;
       accepted: boolean;
+      /** PiP tap swaps which stream fills the screen (video mode only). */
+      swapped: boolean;
       trickle: boolean;
       outIce: RTCIceCandidateInit[];
       pendingIce: RTCIceCandidateInit[];
@@ -280,9 +286,11 @@ const { session } = Astro.props;
         reconnecting: root.dataset.i18nReconnecting,
       };
       el.textContent = map[key] ?? '';
-      // Voice stays on the identity panel; video hides it once media flows.
-      if (key === 'connected' && call?.view.mode === 'video') {
-        $('[data-call-idpanel]').classList.add('hidden');
+      // Voice keeps the identity panel; video hides it while media flows and
+      // brings it BACK for any non-connected state — "Reconnecting…" must be
+      // visible over the frozen remote frame, not inside a hidden panel.
+      if (call?.view.mode === 'video') {
+        $('[data-call-idpanel]').classList.toggle('hidden', key === 'connected');
       }
       $('[data-call-pulse]').classList.toggle('hidden', key === 'connected');
     }
@@ -387,6 +395,20 @@ const { session } = Astro.props;
       audioEl.srcObject = null;
       remoteEl.srcObject = null;
     }
+
+    /** Route local/remote video into main vs PiP per the swap flag. */
+    function applyVideoLayout() {
+      if (!call?.local || call.view.mode !== 'video') return;
+      remoteEl.srcObject = call.swapped ? call.local : call.remoteVideo;
+      localEl.srcObject = call.swapped ? call.remoteVideo : call.local;
+      void remoteEl.play().catch(() => {});
+      void localEl.play().catch(() => {});
+    }
+    localEl.addEventListener('click', () => {
+      if (!call || call.done) return;
+      call.swapped = !call.swapped;
+      applyVideoLayout();
+    });
 
     /** Build the RTCPeerConnection + shared handlers (both parties). */
     function buildPc(ice: Ice, forceRelay: boolean) {
@@ -604,6 +626,7 @@ const { session } = Astro.props;
         remoteVideo: remote.video,
         prep: null,
         accepted: false,
+        swapped: false,
         trickle: false,
         outIce: [],
         pendingIce: [],
@@ -678,7 +701,7 @@ const { session } = Astro.props;
           return;
         }
         me.local = local;
-        if (view.mode === 'video') localEl.srcObject = local;
+        applyVideoLayout();
         const pc = buildPc(me.ice, relayOnly);
         me.pc = pc;
         local.getTracks().forEach((t) => pc.addTrack(t, local));
@@ -763,6 +786,7 @@ const { session } = Astro.props;
           remoteVideo: remote.video,
           prep: null,
           accepted: true,
+          swapped: false,
           trickle: false,
           outIce: [],
           pendingIce: [],
@@ -820,7 +844,7 @@ const { session } = Astro.props;
           return;
         }
         me.local = local;
-        if (view.mode === 'video') localEl.srcObject = local;
+        applyVideoLayout();
         const pc = buildPc(ice, false);
         me.pc = pc;
         local.getTracks().forEach((t) => pc.addTrack(t, local));
@@ -882,7 +906,9 @@ const { session } = Astro.props;
           call.local.removeTrack(old);
         }
         call.local.addTrack(newTrack);
-        localEl.srcObject = fresh;
+        // call.local is live in whichever element currently shows it — the
+        // track replacement propagates; re-route only to honor a swap.
+        applyVideoLayout();
       } catch {
         /* flip unavailable — stay on current camera */
       }

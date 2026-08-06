@@ -785,6 +785,7 @@
   "call_end": "End call",
   "call_end_block": "End & block",
   "call_media_blocked": "Microphone or camera is blocked — allow access for this site and try again.",
+  "call_swap": "Switch view",
   "call_tap_sound": "Tap for sound",
   "call_no_recording": "Calls are direct between you two — never recorded.",
   "call_ringing": "Ringing…",
