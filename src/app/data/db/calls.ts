@@ -119,8 +119,11 @@ async function finish(d: Db, c: SessionRow, to: CallState, reason: string): Prom
  * one if support tickets say so.
  */
 async function sweepStale(d: Db, profileId: string): Promise<void> {
-  const staleRing = new Date(Date.now() - RING_TIMEOUT_MS * 2);
-  const staleBeat = new Date(Date.now() - 2 * 60_000);
+  // ISO strings, not Date objects: postgres-js can't infer a raw-SQL param's
+  // type under prepare:false and throws trying to bind a bare Date (the
+  // call.start 500). The ::timestamptz cast keeps the comparison correct.
+  const staleRing = new Date(Date.now() - RING_TIMEOUT_MS * 2).toISOString();
+  const staleBeat = new Date(Date.now() - 2 * 60_000).toISOString();
   const zombies = await d
     .select({ id: callSessions.id })
     .from(callSessions)
@@ -128,9 +131,9 @@ async function sweepStale(d: Db, profileId: string): Promise<void> {
       and(
         eq(callSessions.profileId, profileId),
         inArray(callSessions.state, ['ringing', 'active']),
-        sql`(${callSessions.state} = 'ringing' and ${callSessions.startedAt} < ${staleRing})
+        sql`(${callSessions.state} = 'ringing' and ${callSessions.startedAt} < ${staleRing}::timestamptz)
          or (${callSessions.state} = 'active'
-             and coalesce(${callSessions.lastBeatAt}, ${callSessions.startedAt}) < ${staleBeat})`,
+             and coalesce(${callSessions.lastBeatAt}, ${callSessions.startedAt}) < ${staleBeat}::timestamptz)`,
       ),
     );
   for (const z of zombies) {

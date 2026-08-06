@@ -334,7 +334,14 @@ const { session } = Astro.props;
       try {
         res = await actions.call.start({ threadId, mode });
       } catch (e) {
-        alertToast((e as { message?: string })?.message?.includes('busy') ? root.dataset.i18nBusy : root.dataset.i18nCallFailed);
+        // Network/transport failure (the action itself returns errors as res.error).
+        alertToast(root.dataset.i18nCallFailed);
+        return;
+      }
+      // Astro actions surface handler errors on res.error (no throw) — check it
+      // before touching res.data, or a 500/busy would crash the dock here.
+      if (res.error || !res.data) {
+        alertToast(res.error?.code === 'CONFLICT' ? root.dataset.i18nBusy : root.dataset.i18nCallFailed);
         return;
       }
       const { call: view, iceServers, relayOnly } = res.data as { call: CallView; iceServers: RTCIceServer[]; relayOnly: boolean };
