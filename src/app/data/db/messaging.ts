@@ -519,6 +519,33 @@ export function makeMessagingApi(db: () => Db): MessagingApi {
 
   async addContact(session, { name, handle = '', note = '' }) {
     if (!session.profileId) return;
+    // Adding a KNOWN email connects to that client's account (speed-dial,
+    // VIDEO-CALLING.md §0): open a thread so she can message/call — not an inert
+    // card. No match → a plain address-book entry, as before.
+    const email = handle.trim().toLowerCase();
+    if (email.includes('@')) {
+      const d = db();
+      const [acct] = await d
+        .select({ id: accounts.id })
+        .from(accounts)
+        .where(and(sql`lower(${accounts.email}) = ${email}`, eq(accounts.accountType, 'client')))
+        .limit(1);
+      if (acct && acct.id !== session.accountId) {
+        let thread = await findThread(d, session.profileId, acct.id);
+        if (thread?.state === 'blocked') return; // never silently reconnect a block
+        if (!thread) thread = await createThread(d, session.profileId, acct.id, 'open');
+        else if (thread.state !== 'open')
+          await d.update(threads).set({ state: 'open' }).where(eq(threads.id, thread.id));
+        // Her private label lands on the thread contact's note (never shown to him).
+        const label = note.trim() || name.trim();
+        if (label)
+          await d
+            .update(contacts)
+            .set({ note: label })
+            .where(and(eq(contacts.threadId, thread.id), eq(contacts.kind, 'thread')));
+        return;
+      }
+    }
     await db().insert(contacts).values({ profileId: session.profileId, kind: 'manual', name, handle, note });
   },
 
