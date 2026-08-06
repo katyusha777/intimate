@@ -6,10 +6,10 @@
  */
 import { env } from 'cloudflare:workers';
 import { and, desc, eq } from 'drizzle-orm';
-import { createDb, type Db } from '@/db/client';
+import { requestDb, type Db } from '@/db/client';
 import { callSessions, profiles } from '@/db/schema';
 
-const adb = (): Db => createDb((env as unknown as { HYPERDRIVE: Hyperdrive }).HYPERDRIVE);
+const adb = (): Db => requestDb((env as unknown as { HYPERDRIVE: Hyperdrive }).HYPERDRIVE);
 
 export interface CallSession {
   id: string;

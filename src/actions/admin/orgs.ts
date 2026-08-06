@@ -5,12 +5,12 @@
  */
 import { env } from 'cloudflare:workers';
 import { eq } from 'drizzle-orm';
-import { createDb, type Db } from '@/db/client';
+import { requestDb, type Db } from '@/db/client';
 import { orgs, profiles } from '@/db/schema';
 import { profilesApi } from '@/app/api/profiles';
 import { completeness } from './entities';
 
-const adb = (): Db => createDb((env as unknown as { HYPERDRIVE: Hyperdrive }).HYPERDRIVE);
+const adb = (): Db => requestDb((env as unknown as { HYPERDRIVE: Hyperdrive }).HYPERDRIVE);
 
 export interface Org {
   id: string;

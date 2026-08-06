@@ -54,19 +54,21 @@ const time = (iso: string) => iso.replace('T', ' ').slice(5, 16);
                 {metas.length === 0 ? (
                   <tr><td colspan="5" class="px-3 py-10 text-center text-muted-foreground">{m.adm_msg_empty()}</td></tr>
                 ) : (
-                  metas.map((m) => (
-                    <tr class:list={['transition-colors hover:bg-muted', m.id === threadId && 'bg-muted']}>
-                      <td class="px-3 py-2 font-medium">{m.profileName}</td>
-                      <td class="px-3 py-2 text-muted-foreground">{m.clientName}</td>
-                      <td class="px-3 py-2 tabular-nums">{m.messageCount}{m.hasMedia && ' 📷'}</td>
-                      <td class="px-3 py-2 text-2xs text-muted-foreground">{time(m.lastMessageAt)}</td>
+                  // `t`, not `m` — a map param named `m` shadows the Paraglide
+                  // messages import and turns m.adm_*() into a runtime 500.
+                  metas.map((t) => (
+                    <tr data-href={`/admin/messaging?thread=${t.id}`} class:list={['cursor-pointer transition-colors hover:bg-muted', t.id === threadId && 'bg-muted']}>
+                      <td class="px-3 py-2 font-medium">{t.profileName}</td>
+                      <td class="px-3 py-2 text-muted-foreground">{t.clientName}</td>
+                      <td class="px-3 py-2 tabular-nums">{t.messageCount}{t.hasMedia && ' 📷'}</td>
+                      <td class="px-3 py-2 text-2xs text-muted-foreground">{time(t.lastMessageAt)}</td>
                       <td class="px-3 py-2 text-right">
                         {canContent ? (
                           <details class="inline-block text-left">
                             <summary class="cursor-pointer text-2xs font-medium text-brand">{m.adm_msg_open()} ▾</summary>
                             <div class="absolute z-10 mt-1 border border-border bg-background p-1 shadow-soft-lg">
                               {REASONS.map((r) => (
-                                <a href={`/admin/messaging?thread=${m.id}&reason=${r}`} class="block whitespace-nowrap px-2 py-1 text-2xs hover:bg-muted">{humanize(r)}</a>
+                                <a href={`/admin/messaging?thread=${t.id}&reason=${r}`} class="block whitespace-nowrap px-2 py-1 text-2xs hover:bg-muted">{humanize(r)}</a>
                               ))}
                             </div>
                           </details>
@@ -86,7 +88,14 @@ const time = (iso: string) => iso.replace('T', ' ').slice(5, 16);
               {!canContent ? (
                 <p class="text-sm text-muted-foreground" set:html={m.adm_msg_super_required()} />
               ) : !thread ? (
-                <p class="text-sm text-muted-foreground">{m.adm_msg_pick_reason()}</p>
+                <div class="space-y-2">
+                  <p class="text-sm text-muted-foreground">{m.adm_msg_pick_reason()}</p>
+                  {REASONS.map((r) => (
+                    <a href={`/admin/messaging?thread=${threadId}&reason=${r}`} class="slab-cut block border border-foreground/20 px-3 py-2 text-sm font-medium transition-colors hover:bg-muted">
+                      {humanize(r)}
+                    </a>
+                  ))}
+                </div>
               ) : (
                 <>
                   <div class="border-b border-border pb-2">
@@ -115,3 +124,19 @@ const time = (iso: string) => iso.replace('T', ' ').slice(5, 16);
     )
   }
 </AdminShell>
+
+<script>
+  // Whole thread row opens the governed reason picker (the Open ▾ dropdown stays).
+  function initThreadRows() {
+    document.querySelectorAll<HTMLTableRowElement>('tr[data-href]').forEach((row) => {
+      if (row.dataset.init) return;
+      row.dataset.init = '1';
+      row.addEventListener('click', (e) => {
+        if ((e.target as HTMLElement).closest('a, button, details')) return;
+        location.href = row.dataset.href!;
+      });
+    });
+  }
+  initThreadRows();
+  document.addEventListener('astro:page-load', initThreadRows);
+</script>

@@ -30,7 +30,7 @@ interface Props {
 const { title, section = '' } = Astro.props;
 
 const session = await getAdmin(Astro);
-const badges = session ? await adminBadges() : { escalations: 0, reportsOpen: 0 };
+const badges = session ? await adminBadges() : { escalations: 0, reportsOpen: 0, verificationOpen: 0 };
 
 /** Nav items with the role capability that may see them (super sees all). */
 const NAV: { key: string; label: string; href: string; roles: AdminRole[]; icon: string; badge?: number }[] = [
@@ -40,6 +40,7 @@ const NAV: { key: string; label: string; href: string; roles: AdminRole[]; icon:
   { key: 'reports', label: m.adm_nav_reports(), href: '/admin/reports', roles: ['moderator', 'super'], icon: '<path d="M4 15V4a1 1 0 0 1 1-1h14l-3 5 3 5H5a1 1 0 0 0-1 1z"/><path d="M4 22v-7"/>', badge: badges.reportsOpen },
   { key: 'imports', label: m.adm_nav_imports(), href: '/admin/imports', roles: ['moderator', 'super'], icon: '<path d="M12 3v12"/><path d="m8 11 4 4 4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/>' },
   { key: 'profiles', label: m.adm_nav_profiles(), href: '/admin/profiles', roles: ['moderator', 'support', 'super'], icon: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/>' },
+  { key: 'users', label: m.adm_nav_users(), href: '/admin/users', roles: ['moderator', 'support', 'super'], icon: '<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/><circle cx="11" cy="9" r="2.5"/><path d="M6.8 15.5c.8-1.8 2.4-2.8 4.2-2.8s3.4 1 4.2 2.8"/>' },
   { key: 'clients', label: m.adm_nav_clients(), href: '/admin/clients', roles: ['support', 'super'], icon: '<circle cx="9" cy="8" r="3.5"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M17 5a3.5 3.5 0 0 1 0 7"/>' },
   { key: 'organizations', label: m.adm_nav_agencies(), href: '/admin/organizations', roles: ['moderator', 'support', 'super'], icon: '<path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 9h.01M9 13h.01M9 17h.01M15 9h.01M15 13h.01M15 17h.01"/>' },
   { key: 'messaging', label: m.adm_nav_messaging(), href: '/admin/messaging', roles: ['moderator', 'support', 'super'], icon: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/>' },

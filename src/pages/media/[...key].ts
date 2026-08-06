@@ -12,7 +12,7 @@
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
 import { and, eq } from 'drizzle-orm';
-import { createDb } from '@/db/client';
+import { requestDb } from '@/db/client';
 import { contacts, profiles } from '@/db/schema';
 import { sessionApi } from '@/app/api/session';
 
@@ -27,7 +27,7 @@ const VARIANT_WIDTH: Record<string, number> = { thumb: 200, card: 600, full: 120
 async function canViewPrivate(ctx: Parameters<APIRoute>[0], profileId: string): Promise<boolean> {
   const session = await sessionApi.current(ctx);
   if (!session) return false;
-  const d = createDb((env as unknown as { HYPERDRIVE: Hyperdrive }).HYPERDRIVE);
+  const d = requestDb((env as unknown as { HYPERDRIVE: Hyperdrive }).HYPERDRIVE);
   const owner = await d
     .select({ id: profiles.id })
     .from(profiles)

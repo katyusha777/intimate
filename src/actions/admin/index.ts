@@ -16,14 +16,14 @@ import { claimItem, record, releaseItem, requireAdmin } from './lib';
 
 const sessionKv = () => (env as unknown as Record<string, unknown>).SESSION as CacheKv | undefined;
 import { and, eq } from 'drizzle-orm';
-import { createDb } from '@/db/client';
+import { requestDb } from '@/db/client';
 import { media } from '@/db/schema';
 import { approveWholeSubmission, decideModeration } from './queues';
 import { setProfileState } from './entities';
 import { retryImport } from './imports';
 import type { AdminAction, ProfileState } from '@/lib/taxonomy';
 
-const adb = () => createDb((env as unknown as { HYPERDRIVE: Hyperdrive }).HYPERDRIVE);
+const adb = () => requestDb((env as unknown as { HYPERDRIVE: Hyperdrive }).HYPERDRIVE);
 
 export const admin = {
   // --- queue claims (broadcast "X is reviewing", §5) ---

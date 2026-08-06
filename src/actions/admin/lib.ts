@@ -7,7 +7,7 @@
 import { env } from 'cloudflare:workers';
 import { ActionError } from 'astro:actions';
 import { and, desc, eq } from 'drizzle-orm';
-import { createDb } from '@/db/client';
+import { requestDb } from '@/db/client';
 import { accounts, auditLog, verificationDocs } from '@/db/schema';
 import { sessionApi } from '@/app/api/session';
 import type { Session } from '@/app/models/session';
@@ -21,7 +21,7 @@ interface Kv {
 function kv(): Kv | undefined {
   return (env as unknown as Record<string, unknown>).SESSION as Kv | undefined;
 }
-const adb = () => createDb((env as unknown as { HYPERDRIVE: Hyperdrive }).HYPERDRIVE);
+const adb = () => requestDb((env as unknown as { HYPERDRIVE: Hyperdrive }).HYPERDRIVE);
 const now = () => new Date().toISOString();
 
 /** Context shape shared by Astro pages (Astro.*) and action handlers. */

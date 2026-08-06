@@ -16,9 +16,11 @@ export default defineConfig({
         project: './project.inlang',
         outdir: './src/paraglide',
         // Locale comes from the URL prefix — every page lives under /{locale}/.
-        // 'cookie' only ever decides on locale-less routes (/admin, /auth):
-        // the url strategy wins first wherever a prefix exists.
         strategy: ['url', 'cookie', 'baseLocale'],
+        // /admin is locale-less: no 'url' strategy there, or the middleware
+        // 307s /admin → /{locale}/admin (redirect loop with our un-prefixing
+        // redirect). Cookie (the NL/EN toggle) decides, falling back to en.
+        routeStrategies: [{ match: '/admin{/*}?', strategy: ['cookie', 'baseLocale'] }],
         urlPatterns: [
           {
             pattern: '/:path(.*)?',

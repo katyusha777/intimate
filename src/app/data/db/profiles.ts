@@ -11,7 +11,7 @@
  * gender/services into SQL when the live-profile count makes it matter.
  */
 import { eq, inArray } from 'drizzle-orm';
-import { createDb, type Db } from '@/db/client';
+import { requestDb, requestMemo, type Db } from '@/db/client';
 import { media, profiles } from '@/db/schema';
 import {
   applyProfileListParams,
@@ -102,11 +102,28 @@ export function toProfile(
   });
 }
 
-async function liveProfiles(db: Db, now: Date, slug?: string): Promise<Profile[]> {
+/** Request-memoized: the promise is cached, so the home page's three
+ *  concurrent list() calls share ONE catalog fetch (2 queries instead of 6).
+ *  requestMemo() is undefined outside a request → tests/scripts stay uncached. */
+function liveProfiles(db: Db, now: Date, slug?: string, city?: string): Promise<Profile[]> {
+  const memo = requestMemo();
+  const key = `live-profiles:${slug ?? ''}|${city ?? ''}`;
+  const hit = memo?.get(key) as Promise<Profile[]> | undefined;
+  if (hit) return hit;
+  const fresh = fetchLiveProfiles(db, now, slug, city);
+  memo?.set(key, fresh);
+  return fresh;
+}
+
+async function fetchLiveProfiles(db: Db, now: Date, slug?: string, city?: string): Promise<Profile[]> {
   const rows = await db.query.profiles
     .findMany({
       where: (p, { and, eq }) =>
-        slug === undefined ? eq(p.state, 'live') : and(eq(p.state, 'live'), eq(p.slug, slug)),
+        and(
+          eq(p.state, 'live'),
+          slug === undefined ? undefined : eq(p.slug, slug),
+          city === undefined ? undefined : eq(p.city, city as (typeof p.city)['_']['data']),
+        ),
     })
     .catch((e: unknown) => {
       // Surface the driver error — drizzle's wrapper hides the real cause.
@@ -139,7 +156,12 @@ export function makeProfilesApi(db: Db): ProfilesApi {
   return {
     async list(params = {}) {
       const now = new Date();
-      return applyProfileListParams(await liveProfiles(db, now), params, now);
+      // City pushdown: city hubs + the similar-profiles fetch on every profile
+      // page shouldn't drag the whole live catalog over the wire. Only a
+      // sidebar cities-union needs the full set (applyProfileListParams then
+      // filters identically either way — same results as the json backend).
+      const cityPush = params.cities?.length ? undefined : params.city;
+      return applyProfileListParams(await liveProfiles(db, now, undefined, cityPush), params, now);
     },
     async bySlug(slug) {
       return (await liveProfiles(db, new Date(), slug))[0] ?? null;
@@ -167,7 +189,7 @@ export function makeProfilesApi(db: Db): ProfilesApi {
  * thread ctx.waitUntil through if socket lingering ever measures as a problem.
  */
 export function profilesDbApi(binding: () => Pick<Hyperdrive, 'connectionString'>): ProfilesApi {
-  const api = () => makeProfilesApi(createDb(binding()));
+  const api = () => makeProfilesApi(requestDb(binding()));
   return {
     list: (p) => api().list(p),
     bySlug: (s) => api().bySlug(s),

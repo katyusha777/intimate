@@ -8,7 +8,7 @@
  */
 import { env } from 'cloudflare:workers';
 import { and, eq, inArray, sql } from 'drizzle-orm';
-import { createDb, type Db } from '@/db/client';
+import { requestDb, type Db } from '@/db/client';
 import { accounts, favorites, media, profiles, verificationDocs } from '@/db/schema';
 import {
   AccountSchema,
@@ -24,7 +24,7 @@ import { mediaUrl, toProfile } from '@/app/data/db/profiles';
 import { CITIES, POLICY_MIN_AGE } from '@/lib/taxonomy';
 import type { Session } from '@/app/models/session';
 
-const db = (): Db => createDb((env as unknown as { HYPERDRIVE: Hyperdrive }).HYPERDRIVE);
+const db = (): Db => requestDb((env as unknown as { HYPERDRIVE: Hyperdrive }).HYPERDRIVE);
 const bucket = (): R2Bucket => (env as unknown as { MEDIA: R2Bucket }).MEDIA;
 // Toxic-waste ID docs (hard rule 3): a SEPARATE private EU bucket — never the
 // public MEDIA one, never public-served, never logged.

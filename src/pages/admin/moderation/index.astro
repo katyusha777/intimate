@@ -108,6 +108,7 @@ const rows = items.map((m) => ({
 
 <script>
   import { actions } from 'astro:actions';
+  import * as m from '@/paraglide/messages';
   function initMod() {
     const panel = document.querySelector<HTMLElement>('[data-mod]');
     if (!panel || panel.dataset.init) return;
@@ -119,14 +120,27 @@ const rows = items.map((m) => ({
       b.addEventListener('click', () => b.classList.toggle('shown')),
     );
     const reason = panel.querySelector('[data-reason]') as unknown as HTMLSelectElement;
+    // Optimistic close (see verification page — SSR lists lag writes).
+    const flash = (msg: string, ok = true) => {
+      const p = document.createElement('p');
+      p.className = ok ? 'text-sm font-medium text-online' : 'text-sm font-medium text-brand';
+      p.textContent = msg;
+      return p;
+    };
+    const done = (msg: string) => {
+      document.querySelector(`a[href="/admin/moderation?item=${id}"]`)?.closest('li')?.remove();
+      panel.replaceChildren(flash(msg));
+      history.replaceState({}, '', '/admin/moderation');
+    };
+    const fail = (message: string) => panel.prepend(flash(m.adm_action_failed({ message }), false));
     panel.querySelector('[data-approve]')!.addEventListener('click', async () => {
-      await actions.admin.moderationDecision({ id, decision: 'approve' });
-      location.href = '/admin/moderation';
+      const { error } = await actions.admin.moderationDecision({ id, decision: 'approve' });
+      error ? fail(error.message) : done(m.adm_done_approved());
     });
     panel.querySelector('[data-reject]')!.addEventListener('click', async () => {
       if (!reason.value) { reason.focus(); return; }
-      await actions.admin.moderationDecision({ id, decision: 'reject', reason: reason.value as any });
-      location.href = '/admin/moderation';
+      const { error } = await actions.admin.moderationDecision({ id, decision: 'reject', reason: reason.value as any });
+      error ? fail(error.message) : done(m.adm_done_rejected());
     });
   }
   initMod();

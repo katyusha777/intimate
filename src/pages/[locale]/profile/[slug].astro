@@ -11,6 +11,7 @@ import { accountApi } from '@/app/api/account';
 import { sessionApi } from '@/app/api/session';
 import { availabilityState, localizedDescription, profileAge } from '@/app/models/profile';
 import { isLocale, samePathAlternates } from '@/lib/i18n';
+import { realImageFor } from '@/lib/safe-images';
 import { breadcrumbJsonLd, cityName } from '@/lib/seo';
 import ProfileDetail from '@/components/organisms/profile/ProfileDetail.astro';
 import ProfileAdminBar from '@/components/organisms/profile/ProfileAdminBar.astro';
@@ -23,9 +24,11 @@ if (!isLocale(locale) || !slug) return new Response(null, { status: 404 });
 // own not-yet-live profile shouldn't hit a 404 — fetch it (all states) when the
 // signed-in owner asks for her own slug. Authenticated → never edge-cached
 // (middleware caches anonymous only), so a draft never leaks.
-const session = await sessionApi.current(Astro);
+// Session and the profile row are independent — fetch concurrently (each is a
+// separate DB/auth round trip; serializing them was pure added TTFB).
+const [session, publicProfile] = await Promise.all([sessionApi.current(Astro), profilesApi.bySlug(slug)]);
 const isAdmin = session?.role === 'admin';
-let p = await profilesApi.bySlug(slug);
+let p = publicProfile;
 let preview = false;
 if (!p) {
   if (session?.role === 'advertiser' && session.profileSlug === slug) {
@@ -103,6 +106,7 @@ const jsonLd = [
   noindex={preview}
   alternates={preview ? undefined : samePathAlternates(Astro.url.origin, `/profile/${p.slug}/`)}
   {jsonLd}
+  preloadImage={realImageFor(`${p.id}-0`, p.photos[0])}
 >
   {isAdmin && <ProfileAdminBar profile={p} />}
   {

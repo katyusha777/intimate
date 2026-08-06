@@ -84,6 +84,7 @@ const rows = items.map((r) => ({
 
 <script>
   import { actions } from 'astro:actions';
+  import * as m from '@/paraglide/messages';
   function initReport() {
     const panel = document.querySelector<HTMLElement>('[data-report]');
     if (!panel || panel.dataset.init) return;
@@ -91,14 +92,27 @@ const rows = items.map((r) => ({
     const id = panel.dataset.id!;
     actions.admin.claim({ itemKey: `report:${id}` });
     const resolution = panel.querySelector('[data-resolution]') as unknown as HTMLSelectElement;
+    // Optimistic close (see verification page — SSR lists lag writes).
+    const flash = (msg: string, ok = true) => {
+      const p = document.createElement('p');
+      p.className = ok ? 'text-sm font-medium text-online' : 'text-sm font-medium text-brand';
+      p.textContent = msg;
+      return p;
+    };
+    const done = (msg: string) => {
+      document.querySelector(`a[href="/admin/reports?item=${id}"]`)?.closest('li')?.remove();
+      panel.replaceChildren(flash(msg));
+      history.replaceState({}, '', '/admin/reports');
+    };
+    const fail = (message: string) => panel.prepend(flash(m.adm_action_failed({ message }), false));
     panel.querySelector('[data-resolve]')!.addEventListener('click', async () => {
       if (!resolution.value) { resolution.focus(); return; }
-      await actions.admin.reportDecision({ id, decision: 'resolve', resolution: resolution.value as any });
-      location.href = '/admin/reports';
+      const { error } = await actions.admin.reportDecision({ id, decision: 'resolve', resolution: resolution.value as any });
+      error ? fail(error.message) : done(m.adm_done_resolved());
     });
     panel.querySelector('[data-dismiss]')!.addEventListener('click', async () => {
-      await actions.admin.reportDecision({ id, decision: 'dismiss' });
-      location.href = '/admin/reports';
+      const { error } = await actions.admin.reportDecision({ id, decision: 'dismiss' });
+      error ? fail(error.message) : done(m.adm_done_dismissed());
     });
   }
   initReport();

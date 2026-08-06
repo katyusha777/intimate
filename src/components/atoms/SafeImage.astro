@@ -6,7 +6,7 @@
  * (the anime build-in-public skin) or `data-real` (photos off) per the cookie.
  * No-JS keeps the neutral set — the correct fail-closed posture.
  */
-import { neutralImageFor, nsfwImageFor, safeImageFor } from '@/lib/safe-images';
+import { neutralImageFor, realImageFor, safeImageFor } from '@/lib/safe-images';
 
 interface Props {
   /** Stable key (profile/media id) — picks the deterministic safe image. */
@@ -16,14 +16,14 @@ interface Props {
   alt: string;
   class?: string;
   loading?: 'lazy' | 'eager';
+  /** 'high' on the LCP image (first above-the-fold card/hero frame). */
+  fetchpriority?: 'high' | 'low' | 'auto';
 }
 
-const { imageKey, src, alt, class: className, loading = 'lazy' } = Astro.props;
+const { imageKey, src, alt, class: className, loading = 'lazy', fetchpriority } = Astro.props;
 const neutral = neutralImageFor(imageKey);
 const dev = safeImageFor(imageKey);
-/* Dummy-data photos point into /safeimg — those get a deterministic NSFW
- * stand-in instead, so the safe-mode toggle actually changes the imagery. */
-const real = src && !src.startsWith('/safeimg/') ? src : nsfwImageFor(imageKey);
+const real = realImageFor(imageKey, src);
 ---
 
 <img
@@ -33,6 +33,7 @@ const real = src && !src.startsWith('/safeimg/') ? src : nsfwImageFor(imageKey);
   data-real={real}
   alt={alt}
   loading={loading}
+  fetchpriority={fetchpriority}
   decoding="async"
   class:list={['object-cover', className]}
 />

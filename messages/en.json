@@ -626,7 +626,6 @@
   "adm_select_reason": "Select reason…",
   "adm_reject": "Reject",
   "adm_escalate": "Escalate to super",
-  "adm_escalated_alert": "Escalated to super.",
   "adm_mod_kind_new_profile": "New profile",
   "adm_mod_kind_profile_edit": "Profile edit",
   "adm_mod_kind_media": "Flagged media",
@@ -767,5 +766,13 @@
   "adm_users_profile_state": "Profile state",
   "adm_users_id_verification": "ID verification",
   "adm_users_reports_against": "Reports against profile",
-  "adm_users_open_profile": "Open public profile"
+  "adm_users_open_profile": "Open public profile",
+  "adm_done_approved": "Approved ✓",
+  "adm_done_rejected": "Rejected ✓",
+  "adm_done_resolved": "Resolved ✓",
+  "adm_done_dismissed": "Dismissed ✓",
+  "adm_done_escalated": "Escalated — pinned for super review.",
+  "adm_action_failed": "Action failed: {message}",
+  "adm_nav_users": "Users",
+  "adm_done_saved": "Saved ✓"
 }

@@ -37,9 +37,13 @@ interface Props {
   noindex?: boolean;
   /** Immersive full-screen page (chat thread): drop header/footer/dock chrome. */
   bare?: boolean;
+  /** LCP image URL (realImageFor) — preloaded because the preload scanner
+   *  can't see SafeImage's data-real; without it the hero/first-card photo is
+   *  only discovered when the safe-mode swap script runs at end of body. */
+  preloadImage?: string;
 }
 
-const { title = m.app_name(), description, canonical, alternates, jsonLd = [], noindex, bare } = Astro.props;
+const { title = m.app_name(), description, canonical, alternates, jsonLd = [], noindex, bare, preloadImage } = Astro.props;
 const locale = getLocale();
 
 /* Session-aware chrome: layouts may read the seam (docs/API.md). */
@@ -80,8 +84,12 @@ const unread =
     ))}
     <link rel="manifest" href="/manifest.webmanifest" />
     <!-- Font Awesome 8 Pro (kit: thin + brands), self-hosted from public/fa/.
-         Fonts download lazily, only when a fa-* glyph is actually rendered. -->
-    <link rel="stylesheet" href="/fa/css/all.min.css" />
+         Loaded ASYNC (print→all swap): 41KB of icon CSS was the biggest
+         render-blocker (~1.3s on slow 4G) and icons aren't first-paint
+         critical. Fonts still download lazily, only when a glyph renders. -->
+    <link rel="stylesheet" href="/fa/css/all.min.css" media="print" onload="this.media='all'" />
+    <noscript><link rel="stylesheet" href="/fa/css/all.min.css" /></noscript>
+    {preloadImage && <link rel="preload" as="image" href={preloadImage} fetchpriority="high" />}
     <link rel="icon" data-real-icon href="/icons/icon.svg" type="image/svg+xml" />
     <!-- Dark is the site default (theme rides localStorage, not the device). -->
     <meta name="theme-color" content="#171717" />

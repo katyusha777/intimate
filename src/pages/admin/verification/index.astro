@@ -139,18 +139,32 @@ const rows = items.map((i) => ({
     actions.admin.claim({ itemKey: `verify:${email.toLowerCase()}` });
 
     const reason = panel.querySelector('[data-reason]') as unknown as HTMLSelectElement;
+    // Optimistic close: drop the row + panel in place instead of re-rendering
+    // the SSR list (DB reads can lag writes behind the Hyperdrive query cache).
+    const flash = (msg: string, ok = true) => {
+      const p = document.createElement('p');
+      p.className = ok ? 'text-sm font-medium text-online' : 'text-sm font-medium text-brand';
+      p.textContent = msg;
+      return p;
+    };
+    const done = (msg: string) => {
+      document.querySelector(`a[href="/admin/verification?item=${encodeURIComponent(email)}"]`)?.closest('li')?.remove();
+      panel.replaceChildren(flash(msg));
+      history.replaceState({}, '', '/admin/verification');
+    };
+    const fail = (message: string) => panel.prepend(flash(m.adm_action_failed({ message }), false));
     const approve = async () => {
-      await actions.admin.verificationDecision({ email, decision: 'approve' });
-      location.href = '/admin/verification';
+      const { error } = await actions.admin.verificationDecision({ email, decision: 'approve' });
+      error ? fail(error.message) : done(m.adm_done_approved());
     };
     const reject = async () => {
       if (!reason.value) { reason.focus(); return; }
-      await actions.admin.verificationDecision({ email, decision: 'reject', reason: reason.value as any });
-      location.href = '/admin/verification';
+      const { error } = await actions.admin.verificationDecision({ email, decision: 'reject', reason: reason.value as any });
+      error ? fail(error.message) : done(m.adm_done_rejected());
     };
     const escalate = async () => {
-      await actions.admin.escalate({ entityType: 'account', entityId: email });
-      alert(m.adm_escalated_alert());
+      const { error } = await actions.admin.escalate({ entityType: 'account', entityId: email });
+      error ? fail(error.message) : panel.prepend(flash(m.adm_done_escalated()));
     };
     panel.querySelector('[data-approve]')!.addEventListener('click', approve);
     panel.querySelector('[data-reject]')!.addEventListener('click', reject);

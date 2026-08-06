@@ -20,7 +20,7 @@ const btn =
 <div class="dark bg-neutral-950 text-white" data-admin-bar data-profile-id={p.id}>
   <div class="mx-auto flex max-w-5xl flex-wrap items-center gap-3 px-4 py-3">
     <span class="eyebrow text-2xs text-brand">Admin</span>
-    <span class="border border-white/30 px-2 py-0.5 text-2xs font-bold uppercase tracking-wide">{p.state}</span>
+    <span data-admin-chip class="border border-white/30 px-2 py-0.5 text-2xs font-bold uppercase tracking-wide">{p.state}</span>
 
     <div class="flex flex-wrap items-center gap-2">
       {p.state !== 'live' && <button type="button" class={btn} data-admin-state="approve">Set live</button>}
@@ -76,18 +76,21 @@ const btn =
         status.textContent = msg;
       };
 
+      // Optimistic: update the chip in place — a reload can read stale data
+      // for up to a minute (Hyperdrive query cache), which looks like failure.
+      const NEW_STATE = { approve: 'live', pause: 'paused', block: 'blocked', unblock: 'live' } as const;
       bar.querySelectorAll<HTMLButtonElement>('[data-admin-state]').forEach((b) =>
         b.addEventListener('click', async () => {
-          const action = b.dataset.adminState as 'approve' | 'pause' | 'block' | 'unblock';
+          const action = b.dataset.adminState as keyof typeof NEW_STATE;
           const reason = bar.querySelector<HTMLInputElement>('[data-admin-reason]')?.value || undefined;
           if (action === 'block' && !reason) return say('Blocking needs a reason.');
           b.disabled = true;
           const { error } = await actions.admin.profileState({ id, action, reason });
-          if (error) {
-            b.disabled = false;
-            return say(`Failed: ${error.message}`);
-          }
-          location.reload();
+          b.disabled = false;
+          if (error) return say(`Failed: ${error.message}`);
+          const chip = bar.querySelector<HTMLElement>('[data-admin-chip]');
+          if (chip) chip.textContent = NEW_STATE[action];
+          say(`Saved — ${NEW_STATE[action]}.`);
         }),
       );
 
@@ -99,7 +102,8 @@ const btn =
             b.disabled = false;
             return say(`Failed: ${error.message}`);
           }
-          location.reload();
+          b.closest('span')?.remove();
+          say('Photo rejected.');
         }),
       );
     });

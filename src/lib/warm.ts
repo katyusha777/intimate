@@ -9,7 +9,7 @@
  * one pass.
  */
 import { eq } from 'drizzle-orm';
-import { createDb } from '@/db/client';
+import { requestDb } from '@/db/client';
 import { profiles } from '@/db/schema';
 import { LOCALES } from '@/lib/taxonomy';
 
@@ -20,7 +20,7 @@ export async function listWarmUrls(opts: {
   cap?: number;
 }): Promise<string[]> {
   const locales = opts.locales ?? LOCALES;
-  const db = createDb(opts.hyperdrive);
+  const db = requestDb(opts.hyperdrive);
   const rows = await db.select({ slug: profiles.slug }).from(profiles).where(eq(profiles.state, 'live'));
   const urls = rows.flatMap((r) => locales.map((l) => `${opts.origin}/${l}/profile/${r.slug}/`));
   return urls.slice(0, opts.cap ?? 600);

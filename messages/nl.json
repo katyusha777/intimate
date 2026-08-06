@@ -626,7 +626,6 @@
   "adm_select_reason": "Kies een reden…",
   "adm_reject": "Afwijzen",
   "adm_escalate": "Escaleren naar super",
-  "adm_escalated_alert": "Geëscaleerd naar super.",
   "adm_mod_kind_new_profile": "Nieuw profiel",
   "adm_mod_kind_profile_edit": "Profielwijziging",
   "adm_mod_kind_media": "Gemarkeerde media",
@@ -767,5 +766,13 @@
   "adm_users_profile_state": "Profielstatus",
   "adm_users_id_verification": "ID-verificatie",
   "adm_users_reports_against": "Meldingen tegen profiel",
-  "adm_users_open_profile": "Publiek profiel openen"
+  "adm_users_open_profile": "Publiek profiel openen",
+  "adm_done_approved": "Goedgekeurd ✓",
+  "adm_done_rejected": "Afgewezen ✓",
+  "adm_done_resolved": "Opgelost ✓",
+  "adm_done_dismissed": "Afgewezen zonder actie ✓",
+  "adm_done_escalated": "Geëscaleerd — vastgezet voor super-review.",
+  "adm_action_failed": "Actie mislukt: {message}",
+  "adm_nav_users": "Gebruikers",
+  "adm_done_saved": "Opgeslagen ✓"
 }

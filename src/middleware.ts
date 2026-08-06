@@ -1,6 +1,8 @@
 import { defineMiddleware } from 'astro:middleware';
+import type { APIContext, MiddlewareNext } from 'astro';
 import { env } from 'cloudflare:workers';
 import { paraglideMiddleware } from '@/paraglide/server';
+import { withRequestDb } from '@/db/client';
 import { negotiateLocale } from '@/lib/i18n';
 import { isAnonymousRequest, isCacheableProfile, servedFromCache, storeInCache, type CacheKv } from '@/lib/page-cache';
 
@@ -46,7 +48,55 @@ const LEGACY_ARTICLES: Record<string, string> = {
   'welkom-bij-intimate': 'welkom-bij-intimate',
 };
 
+/**
+ * Security headers on every response (securityheaders.com A): defence-in-depth
+ * for an adult platform — no framing, no MIME sniffing, and NO REFERRER leaked
+ * on outbound clicks (a profile URL in a Referer header is a privacy leak).
+ * CSP allows 'unsafe-inline' scripts for now (Astro inline hydration/theme
+ * scripts); tightening to hashes is the follow-up, not a blocker.
+ */
+const SECURITY_HEADERS: Record<string, string> = {
+  'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'SAMEORIGIN',
+  'Referrer-Policy': 'no-referrer',
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=(), usb=()',
+  'Content-Security-Policy': [
+    "default-src 'self'",
+    // Turnstile + (future) PostHog; Astro's hydration/theme scripts are inline.
+    "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com https://eu-assets.i.posthog.com",
+    "style-src 'self' 'unsafe-inline'",
+    // Own photos ride /media; seed/demo imagery is external https for now.
+    "img-src 'self' data: blob: https:",
+    "media-src 'self' blob:",
+    "font-src 'self'",
+    "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://eu.i.posthog.com",
+    'frame-src https://challenges.cloudflare.com',
+    "frame-ancestors 'self'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    'upgrade-insecure-requests',
+  ].join('; '),
+};
+
 export const onRequest = defineMiddleware(async (context, next) => {
+  // HTTPS is the only front door — the zone accepted plain HTTP with a 200.
+  if (context.url.protocol === 'http:') {
+    return context.redirect(context.url.href.replace(/^http:/, 'https:'), 301);
+  }
+  const res = await handle(context, next);
+  try {
+    for (const [k, v] of Object.entries(SECURITY_HEADERS)) res.headers.set(k, v);
+  } catch {
+    /* immutable headers (passthrough response) — serve as-is */
+  }
+  return res;
+});
+
+const handle = (context: APIContext, next: MiddlewareNext) =>
+  // One shared DB client per request (db/client.ts requestDb) — every seam and
+  // action inside this request reuses it instead of re-connecting.
+  withRequestDb(async () => {
   if (context.url.pathname === '/') {
     const locale = negotiateLocale(context.request.headers.get('accept-language'));
     return context.redirect(`/${locale}/${context.url.search}`, 302);
@@ -83,4 +133,4 @@ export const onRequest = defineMiddleware(async (context, next) => {
   }
 
   return paraglideMiddleware(context.request, () => next());
-});
+  });

@@ -9,6 +9,7 @@ import SafeImage from '@/components/atoms/SafeImage.astro';
 import CitySheet from '@/components/molecules/CitySheet.astro';
 import Button from '@/components/atoms/Button.astro';
 import { articlesForLocale } from '@/lib/articles';
+import { realImageFor } from '@/lib/safe-images';
 import { profilesApi } from '@/app/api/profiles';
 import { sessionApi } from '@/app/api/session';
 
@@ -38,6 +39,8 @@ const [{ items: online, total: onlineCount }, { items: fresh }, { items: feature
   ]);
 
 const rail = featured.slice(0, 8);
+// First rail card = the mobile LCP; key mirrors PhotoCarousel's `${keyBase}-0`.
+const lcpImage = rail[0] && realImageFor(`${rail[0].id}-0`, rail[0].photos[0]);
 const featuredArticle = articles.find((a) => a.data.featured) ?? articles[0];
 const moreArticles = articles.filter((a) => a !== featuredArticle).slice(0, 3);
 
@@ -48,6 +51,7 @@ const moreArticles = articles.filter((a) => a !== featuredArticle).slice(0, 3);
   canonical={new URL(`/${locale}/`, Astro.url.origin).href}
   {alternates}
   {jsonLd}
+  preloadImage={lcpImage}
 >
   <!-- ===================================================================
        MOBILE FOLD (UX-PLAN 1.1) — the every-visit question, "who's here now?"
@@ -139,9 +143,10 @@ const moreArticles = articles.filter((a) => a !== featuredArticle).slice(0, 3);
         class="-mb-6 flex snap-x snap-mandatory gap-4 overflow-x-auto pb-10 pt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {
-          rail.map((p) => (
+          rail.map((p, i) => (
             <div class="w-52 flex-none snap-start sm:w-60 lg:w-[calc((100%-4rem)/5)]">
-              <ProfileCard profile={p} />
+              {/* First rail card = the LCP image on mobile — never lazy. */}
+              <ProfileCard profile={p} loading={i < 3 ? 'eager' : 'lazy'} fetchpriority={i === 0 ? 'high' : undefined} />
             </div>
           ))
         }

@@ -6,11 +6,11 @@
  */
 import { env } from 'cloudflare:workers';
 import { and, desc, eq } from 'drizzle-orm';
-import { createDb } from '@/db/client';
+import { requestDb } from '@/db/client';
 import { importJobs } from '@/db/schema';
 import type { ImportJobState } from '@/lib/taxonomy';
 
-const adb = () => createDb((env as unknown as { HYPERDRIVE: Hyperdrive }).HYPERDRIVE);
+const adb = () => requestDb((env as unknown as { HYPERDRIVE: Hyperdrive }).HYPERDRIVE);
 
 export interface ImportJob {
   id: string;

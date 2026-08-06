@@ -19,9 +19,11 @@ interface Props {
   profile: Profile;
   variant?: 'grid' | 'featured' | 'compact' | 'mini';
   loading?: 'lazy' | 'eager';
+  /** 'high' on the first above-the-fold card — it's the page's LCP image. */
+  fetchpriority?: 'high' | 'low' | 'auto';
 }
 
-const { profile: p, variant = 'grid', loading = 'lazy' } = Astro.props;
+const { profile: p, variant = 'grid', loading = 'lazy', fetchpriority } = Astro.props;
 const cityName = CITIES.find((c) => c.slug === p.city)?.name ?? p.city;
 const href = localizePath(`/profile/${p.slug}/`);
 
@@ -50,7 +52,7 @@ const heartCut = `cut-${(hash + 1) % 4}`;
       class="group relative block aspect-[3/4] transition-transform duration-200 active:scale-[0.98]"
     >
       <div class="absolute inset-0 overflow-hidden rounded-lg bg-neutral-950 shadow-soft transition-shadow duration-200 group-hover:shadow-soft-lg">
-        <PhotoCarousel photos={p.photos} keyBase={p.id} alt={p.name} class="h-full" {loading} />
+        <PhotoCarousel photos={p.photos} keyBase={p.id} alt={p.name} class="h-full" {loading} {fetchpriority} />
       </div>
       <!-- Live signal on the photo's top-left corner (heart owns top-right):
            just the pulsing dot, no slab behind it. -->

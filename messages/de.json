@@ -626,7 +626,6 @@
   "adm_select_reason": "Grund wählen…",
   "adm_reject": "Ablehnen",
   "adm_escalate": "An Super eskalieren",
-  "adm_escalated_alert": "An Super eskaliert.",
   "adm_mod_kind_new_profile": "Neues Profil",
   "adm_mod_kind_profile_edit": "Profiländerung",
   "adm_mod_kind_media": "Markierte Medien",
@@ -767,5 +766,13 @@
   "adm_users_profile_state": "Profilstatus",
   "adm_users_id_verification": "ID-Verifizierung",
   "adm_users_reports_against": "Meldungen gegen Profil",
-  "adm_users_open_profile": "Öffentliches Profil öffnen"
+  "adm_users_open_profile": "Öffentliches Profil öffnen",
+  "adm_done_approved": "Genehmigt ✓",
+  "adm_done_rejected": "Abgelehnt ✓",
+  "adm_done_resolved": "Gelöst ✓",
+  "adm_done_dismissed": "Verworfen ✓",
+  "adm_done_escalated": "Eskaliert — für Super-Review angeheftet.",
+  "adm_action_failed": "Aktion fehlgeschlagen: {message}",
+  "adm_nav_users": "Benutzer",
+  "adm_done_saved": "Gespeichert ✓"
 }

@@ -32,7 +32,7 @@ const { profile: p, replySpeed, isOwner = false } = Astro.props;
     aria-label={m.profile_gallery()}
     class="absolute inset-0 h-full w-full cursor-pointer"
   >
-    <SafeImage imageKey={`${p.id}-0`} src={p.photos[0]} alt={p.name} class="h-full w-full" loading="eager" />
+    <SafeImage imageKey={`${p.id}-0`} src={p.photos[0]} alt={p.name} class="h-full w-full" loading="eager" fetchpriority="high" />
   </button>
 
   <!-- top chrome -->

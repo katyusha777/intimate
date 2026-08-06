@@ -137,3 +137,14 @@ export function safeImageFor(key: string): string {
 export function nsfwImageFor(key: string): string {
   return NSFW_IMAGES[fnv(key) % NSFW_IMAGES.length]!;
 }
+
+/**
+ * The image shown when safe mode is OFF (the default): the real photo, or the
+ * deterministic NSFW stand-in for dummy data (/safeimg paths have no real
+ * photo). SafeImage renders it into data-real; pages preload it for the LCP
+ * card — the browser's preload scanner can't see data-real, so without the
+ * preload the LCP image is only discovered when the swap script runs.
+ */
+export function realImageFor(key: string, src?: string): string {
+  return src && !src.startsWith('/safeimg/') ? src : nsfwImageFor(key);
+}

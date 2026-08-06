@@ -13,13 +13,15 @@ interface Props {
   class?: string;
   /** Loading strategy for the first frame; the rest are always lazy. */
   loading?: 'lazy' | 'eager';
+  /** Fetch priority for the first frame — 'high' when it's the LCP candidate. */
+  fetchpriority?: 'high' | 'low' | 'auto';
   /** Allow direct touch/trackpad swiping (profile hero). */
   swipe?: boolean;
   /** Story-style progress segments across the top. */
   bars?: boolean;
 }
 
-const { photos, keyBase, alt, class: className, loading = 'lazy', swipe, bars } = Astro.props;
+const { photos, keyBase, alt, class: className, loading = 'lazy', fetchpriority, swipe, bars } = Astro.props;
 
 /* Arrows join the hand-cut family: per-card cut/tilt from the keyBase hash,
  * left and right deliberately different. */
@@ -45,6 +47,7 @@ const cutR = `cut-${(hash + 2) % 4}`;
           alt={`${alt} — photo ${i + 1}`}
           class="h-full w-full flex-none snap-center"
           loading={i === 0 ? loading : 'lazy'}
+          fetchpriority={i === 0 ? fetchpriority : undefined}
         />
       ))
     }

@@ -6,7 +6,7 @@
  */
 import { env } from 'cloudflare:workers';
 import { and, eq, sql } from 'drizzle-orm';
-import { createDb, type Db } from '@/db/client';
+import { requestDb, type Db } from '@/db/client';
 import { accounts, media, profiles } from '@/db/schema';
 import { accountApi } from '@/app/api/account';
 import { reportsApi } from '@/app/api/reports';
@@ -14,7 +14,7 @@ import { profilesApi } from '@/app/api/profiles';
 import { getClaims } from './lib';
 import type { ModerationItem, Overview, ReportItem, VerificationItem } from './types';
 
-const adb = (): Db => createDb((env as unknown as { HYPERDRIVE: Hyperdrive }).HYPERDRIVE);
+const adb = (): Db => requestDb((env as unknown as { HYPERDRIVE: Hyperdrive }).HYPERDRIVE);
 
 const CITY_TARGET = 10; // supply goal per city
 
