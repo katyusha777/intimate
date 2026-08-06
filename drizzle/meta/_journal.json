@@ -36,6 +36,34 @@
       "when": 1785807225003,
       "tag": "0004_ambiguous_blue_blade",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1785887506373,
+      "tag": "0005_nifty_mojo",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1785967549698,
+      "tag": "0006_odd_scarecrow",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1785969954111,
+      "tag": "0007_curvy_santa_claus",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1785973060502,
+      "tag": "0008_cold_gauntlet",
+      "breakpoints": true
     }
   ]
 }

@@ -5,9 +5,9 @@
  * live in ./index.ts. In prod these become Postgres views/functions (§13).
  */
 import { env } from 'cloudflare:workers';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { createDb, type Db } from '@/db/client';
-import { media, profiles } from '@/db/schema';
+import { accounts, media, profiles } from '@/db/schema';
 import { accountApi } from '@/app/api/account';
 import { reportsApi } from '@/app/api/reports';
 import { profilesApi } from '@/app/api/profiles';
@@ -114,8 +114,8 @@ export async function moderationQueue(): Promise<ModerationItem[]> {
 }
 
 /**
- * Act on a moderation item (replaces the mock's KV removal): approve/reject the
- * underlying entity. `profile:<id>` → live | draft (resubmit); `media:<id>` →
+ * Act on a moderation item: approve/reject the underlying entity.
+ * `profile:<id>` → live | draft (resubmit); `media:<id>` →
  * approve/reject all that profile's pending media.
  */
 export async function decideModeration(id: string, approve: boolean): Promise<void> {
@@ -123,6 +123,9 @@ export async function decideModeration(id: string, approve: boolean): Promise<vo
   if (!entityId) return;
   if (kind === 'profile') {
     await profilesApi.setState(entityId, approve ? 'live' : 'draft');
+    // One submission, one approval: publishing a profile also clears its ID
+    // verification + its pending photos (the "approve everything at once" merge).
+    if (approve) await approveWholeSubmission({ profileId: entityId });
   } else if (kind === 'media') {
     await adb()
       .update(media)
@@ -131,10 +134,47 @@ export async function decideModeration(id: string, approve: boolean): Promise<vo
   }
 }
 
-/** Light badges for the shell (escalation banner + nav counts) — no heavy builds. */
-export async function adminBadges(): Promise<{ escalations: number; reportsOpen: number }> {
-  const [escalations, reportsOpen] = await Promise.all([reportsApi.escalationCount(), reportsApi.openCount()]);
-  return { escalations, reportsOpen };
+/**
+ * The merge: one approval completes a whole submission — ID verification +
+ * profile publish + its pending photos — so an admin never has to approve the
+ * same person in two places. Callable by email (verification queue) or by
+ * profileId (moderation/profiles), whichever the admin acted from.
+ */
+export async function approveWholeSubmission(by: { email?: string; profileId?: string }): Promise<void> {
+  const d = adb();
+  // Resolve account + profile from whichever key we were given.
+  let accountId: string | undefined;
+  let profileId = by.profileId;
+  if (by.email) {
+    const [acc] = await d.select({ id: accounts.id }).from(accounts).where(eq(accounts.email, by.email));
+    accountId = acc?.id;
+    if (accountId && !profileId) {
+      const [p] = await d.select({ id: profiles.id }).from(profiles).where(eq(profiles.accountId, accountId));
+      profileId = p?.id;
+    }
+  } else if (profileId) {
+    const [p] = await d.select({ accountId: profiles.accountId }).from(profiles).where(eq(profiles.id, profileId));
+    accountId = p?.accountId;
+  }
+  // Clear a pending ID verification.
+  if (accountId) {
+    await d.update(accounts).set({ idVerification: 'approved' }).where(and(eq(accounts.id, accountId), eq(accounts.idVerification, 'pending')));
+  }
+  // Publish a submitted profile + approve its pending photos.
+  if (profileId) {
+    await d.update(profiles).set({ state: 'live' }).where(and(eq(profiles.id, profileId), eq(profiles.state, 'pending_review')));
+    await d.update(media).set({ state: 'approved' }).where(and(eq(media.profileId, profileId), eq(media.state, 'pending_review')));
+  }
+}
+
+/** Light badges for the shell (nav counts) — no heavy builds. */
+export async function adminBadges(): Promise<{ escalations: number; reportsOpen: number; verificationOpen: number }> {
+  const [escalations, reportsOpen, verifyRows] = await Promise.all([
+    reportsApi.escalationCount(),
+    reportsApi.openCount(),
+    adb().select({ n: sql<number>`count(*)::int` }).from(accounts).where(eq(accounts.idVerification, 'pending')),
+  ]);
+  return { escalations, reportsOpen, verificationOpen: verifyRows[0]?.n ?? 0 };
 }
 
 // --- Overview cockpit (§4) ------------------------------------------------

@@ -259,12 +259,34 @@
     height: 1rem;
     flex: none;
     cursor: pointer;
-    border: 1px solid color-mix(in oklch, var(--foreground) 35%, transparent);
+    /* Clearly reads as an empty checkbox at rest (was invisible: Tailwind
+       Preflight's `border:0 solid` on * beats this @layer rule, so !important —
+       same reason the :checked colours need it). */
+    border: 1.5px solid color-mix(in oklch, var(--foreground) 70%, transparent) !important;
   }
   .cbx-box:checked {
-    border-color: var(--foreground);
-    background: var(--foreground);
-    box-shadow: inset 0 0 0 3px var(--background);
+    /* Unmistakable when ticked: brand fill + white check (was a subtle inset
+       square that read as "maybe selected?"). Brand + white works both themes.
+       !important: this @layer components rule otherwise loses border/bg colour
+       to a higher-priority layer — the tick must always read as selected. */
+    border-color: var(--brand) !important;
+    background-color: var(--brand) !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='white' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.5 8.5l3 3 6-7'/%3E%3C/svg%3E");
+    background-size: 100%;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+
+  /* Number inputs: no native spin buttons — they overlap the €/value and the
+     fields are typed, never stepped. */
+  input[type='number']::-webkit-inner-spin-button,
+  input[type='number']::-webkit-outer-spin-button {
+    appearance: none;
+    margin: 0;
+  }
+  input[type='number'] {
+    appearance: textfield;
+    -moz-appearance: textfield;
   }
 
   /* Switch: rounded pill track + round thumb sliding to online. */
@@ -274,7 +296,9 @@
     height: 1.25rem;
     flex: none;
     border-radius: 9999px;
-    border: 1px solid color-mix(in oklch, var(--foreground) 35%, transparent);
+    /* !important: Preflight's `border:0 solid` on * beats this @layer rule —
+       same as .cbx-box; without it the track is an invisible blob. */
+    border: 1.5px solid color-mix(in oklch, var(--foreground) 70%, transparent) !important;
     transition:
       border-color 0.15s ease,
       background-color 0.15s ease;
@@ -293,7 +317,7 @@
       background-color 0.15s ease;
   }
   input:checked + .switch-track {
-    border-color: var(--online);
+    border-color: var(--online) !important;
   }
   input:checked + .switch-track::after {
     transform: translateX(1rem);
@@ -377,12 +401,14 @@
     flex: none;
     cursor: pointer;
     border-radius: 9999px;
-    border: 1px solid color-mix(in oklch, var(--foreground) 35%, transparent);
+    /* !important: Preflight's `border:0 solid` on * otherwise wins and the ring
+       vanishes (radios looked like broken squares). */
+    border: 1.5px solid color-mix(in oklch, var(--foreground) 70%, transparent) !important;
   }
   .radio-dot:checked {
-    border-color: var(--foreground);
-    background: var(--foreground);
-    box-shadow: inset 0 0 0 3px var(--background);
+    border-color: var(--brand) !important;
+    /* Filled brand centre dot inside the ring. */
+    background: radial-gradient(circle at center, var(--brand) 0 42%, transparent 46%);
   }
 
   /* Misprint motion accent (DESIGN §1.1 rule 3): the anaglyph pink/cyan split

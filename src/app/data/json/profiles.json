@@ -135,7 +135,18 @@
       "/nsfwimg/agung-setiawan-uqIQkQE0gtM-unsplash.jpg",
       "/nsfwimg/brian-lawson-MRRgFUt3V0Q-unsplash.jpg"
     ],
-    "phone": "+31 6 68609949"
+    "phone": "+31 6 68609949",
+    "appearance": "west_european",
+    "bodyType": "slim",
+    "hairColor": "blonde",
+    "cupSize": "a",
+    "heightCm": 160,
+    "availableFor": [
+      "men"
+    ],
+    "whatsapp": "+31 6 12345678",
+    "telegram": "@eva",
+    "instagram": "eva_nl"
   },
   {
     "id": "p02",
@@ -258,7 +269,16 @@
     "paymentMethods": [
       "cash"
     ],
-    "phone": "+31 6 50066555"
+    "phone": "+31 6 50066555",
+    "appearance": "east_european",
+    "bodyType": "athletic",
+    "hairColor": "brunette",
+    "cupSize": "b",
+    "heightCm": 163,
+    "availableFor": [
+      "men",
+      "couples"
+    ]
   },
   {
     "id": "p03",
@@ -370,7 +390,18 @@
       "cash",
       "pin"
     ],
-    "phone": "+31 6 62739009"
+    "phone": "+31 6 62739009",
+    "appearance": "scandinavian",
+    "bodyType": "average",
+    "hairColor": "black",
+    "cupSize": "c",
+    "heightCm": 166,
+    "availableFor": [
+      "men",
+      "women",
+      "couples"
+    ],
+    "whatsapp": "+31 6 12345678"
   },
   {
     "id": "p04",
@@ -495,7 +526,17 @@
       "cash",
       "bank_transfer"
     ],
-    "phone": "+31 6 25711138"
+    "phone": "+31 6 25711138",
+    "appearance": "mediterranean",
+    "bodyType": "curvy",
+    "hairColor": "red",
+    "cupSize": "d",
+    "heightCm": 169,
+    "availableFor": [
+      "men",
+      "women"
+    ],
+    "telegram": "@zara"
   },
   {
     "id": "p05",
@@ -624,7 +665,17 @@
       "cash",
       "pin"
     ],
-    "phone": "+31 6 48155341"
+    "phone": "+31 6 48155341",
+    "appearance": "latina",
+    "bodyType": "bbw",
+    "hairColor": "grey",
+    "cupSize": "e",
+    "heightCm": 172,
+    "availableFor": [
+      "men"
+    ],
+    "whatsapp": "+31 6 12345678",
+    "instagram": "jade_nl"
   },
   {
     "id": "p06",
@@ -742,7 +793,16 @@
     "paymentMethods": [
       "cash"
     ],
-    "phone": "+31 6 55658133"
+    "phone": "+31 6 55658133",
+    "appearance": "asian",
+    "bodyType": "muscular",
+    "hairColor": "colored",
+    "cupSize": "f_plus",
+    "heightCm": 175,
+    "availableFor": [
+      "men",
+      "couples"
+    ]
   },
   {
     "id": "p07",
@@ -859,7 +919,19 @@
       "bank_transfer",
       "crypto"
     ],
-    "phone": "+31 6 84826530"
+    "phone": "+31 6 84826530",
+    "appearance": "african",
+    "bodyType": "slim",
+    "hairColor": "blonde",
+    "cupSize": "a",
+    "heightCm": 178,
+    "availableFor": [
+      "men",
+      "women",
+      "couples"
+    ],
+    "whatsapp": "+31 6 12345678",
+    "telegram": "@isa"
   },
   {
     "id": "p08",
@@ -977,7 +1049,16 @@
     "paymentMethods": [
       "cash"
     ],
-    "phone": "+31 6 23046423"
+    "phone": "+31 6 23046423",
+    "appearance": "caribbean",
+    "bodyType": "athletic",
+    "hairColor": "brunette",
+    "cupSize": "b",
+    "heightCm": 181,
+    "availableFor": [
+      "men",
+      "women"
+    ]
   },
   {
     "id": "p09",
@@ -1101,7 +1182,17 @@
       "cash",
       "pin"
     ],
-    "phone": "+31 6 51812552"
+    "phone": "+31 6 51812552",
+    "appearance": "middle_eastern",
+    "bodyType": "average",
+    "hairColor": "black",
+    "cupSize": "c",
+    "heightCm": 184,
+    "availableFor": [
+      "men"
+    ],
+    "whatsapp": "+31 6 12345678",
+    "instagram": "yasmin_nl"
   },
   {
     "id": "p10",
@@ -1225,7 +1316,17 @@
       "cash",
       "bank_transfer"
     ],
-    "phone": "+31 6 80635979"
+    "phone": "+31 6 80635979",
+    "appearance": "mixed",
+    "bodyType": "curvy",
+    "hairColor": "red",
+    "cupSize": "d",
+    "heightCm": 162,
+    "availableFor": [
+      "men",
+      "couples"
+    ],
+    "telegram": "@lena"
   },
   {
     "id": "p11",
@@ -1351,7 +1452,18 @@
       "cash",
       "pin"
     ],
-    "phone": "+31 6 50330445"
+    "phone": "+31 6 50330445",
+    "appearance": "west_european",
+    "bodyType": "bbw",
+    "hairColor": "grey",
+    "cupSize": "e",
+    "heightCm": 165,
+    "availableFor": [
+      "men",
+      "women",
+      "couples"
+    ],
+    "whatsapp": "+31 6 12345678"
   },
   {
     "id": "p12",
@@ -1472,7 +1584,16 @@
     "paymentMethods": [
       "cash"
     ],
-    "phone": "+31 6 61038246"
+    "phone": "+31 6 61038246",
+    "appearance": "east_european",
+    "bodyType": "muscular",
+    "hairColor": "colored",
+    "cupSize": "f_plus",
+    "heightCm": 168,
+    "availableFor": [
+      "men",
+      "women"
+    ]
   },
   {
     "id": "p13",
@@ -1588,7 +1709,18 @@
       "bank_transfer",
       "crypto"
     ],
-    "phone": "+31 6 31373767"
+    "phone": "+31 6 31373767",
+    "appearance": "scandinavian",
+    "bodyType": "slim",
+    "hairColor": "blonde",
+    "cupSize": "a",
+    "heightCm": 171,
+    "availableFor": [
+      "men"
+    ],
+    "whatsapp": "+31 6 12345678",
+    "telegram": "@luna",
+    "instagram": "luna_nl"
   },
   {
     "id": "p14",
@@ -1706,7 +1838,16 @@
     "paymentMethods": [
       "cash"
     ],
-    "phone": "+31 6 45591298"
+    "phone": "+31 6 45591298",
+    "appearance": "mediterranean",
+    "bodyType": "athletic",
+    "hairColor": "brunette",
+    "cupSize": "b",
+    "heightCm": 174,
+    "availableFor": [
+      "men",
+      "couples"
+    ]
   },
   {
     "id": "p15",
@@ -1833,7 +1974,18 @@
       "cash",
       "pin"
     ],
-    "phone": "+31 6 35766493"
+    "phone": "+31 6 35766493",
+    "appearance": "latina",
+    "bodyType": "average",
+    "hairColor": "black",
+    "cupSize": "c",
+    "heightCm": 177,
+    "availableFor": [
+      "men",
+      "women",
+      "couples"
+    ],
+    "whatsapp": "+31 6 12345678"
   },
   {
     "id": "p16",
@@ -1954,7 +2106,17 @@
       "cash",
       "bank_transfer"
     ],
-    "phone": "+31 6 63657231"
+    "phone": "+31 6 63657231",
+    "appearance": "asian",
+    "bodyType": "curvy",
+    "hairColor": "red",
+    "cupSize": "d",
+    "heightCm": 180,
+    "availableFor": [
+      "men",
+      "women"
+    ],
+    "telegram": "@julia"
   },
   {
     "id": "p17",
@@ -2069,7 +2231,17 @@
       "cash",
       "pin"
     ],
-    "phone": "+31 6 76424124"
+    "phone": "+31 6 76424124",
+    "appearance": "african",
+    "bodyType": "bbw",
+    "hairColor": "grey",
+    "cupSize": "e",
+    "heightCm": 183,
+    "availableFor": [
+      "men"
+    ],
+    "whatsapp": "+31 6 12345678",
+    "instagram": "nina_nl"
   },
   {
     "id": "p18",
@@ -2188,7 +2360,16 @@
     "paymentMethods": [
       "cash"
     ],
-    "phone": "+31 6 14789657"
+    "phone": "+31 6 14789657",
+    "appearance": "caribbean",
+    "bodyType": "muscular",
+    "hairColor": "colored",
+    "cupSize": "f_plus",
+    "heightCm": 161,
+    "availableFor": [
+      "men",
+      "couples"
+    ]
   },
   {
     "id": "p19",
@@ -2313,7 +2494,19 @@
       "bank_transfer",
       "crypto"
     ],
-    "phone": "+31 6 57486908"
+    "phone": "+31 6 57486908",
+    "appearance": "middle_eastern",
+    "bodyType": "slim",
+    "hairColor": "blonde",
+    "cupSize": "a",
+    "heightCm": 164,
+    "availableFor": [
+      "men",
+      "women",
+      "couples"
+    ],
+    "whatsapp": "+31 6 12345678",
+    "telegram": "@elif"
   },
   {
     "id": "p20",
@@ -2435,7 +2628,16 @@
     "paymentMethods": [
       "cash"
     ],
-    "phone": "+31 6 23394546"
+    "phone": "+31 6 23394546",
+    "appearance": "mixed",
+    "bodyType": "athletic",
+    "hairColor": "brunette",
+    "cupSize": "b",
+    "heightCm": 167,
+    "availableFor": [
+      "men",
+      "women"
+    ]
   },
   {
     "id": "p21",
@@ -2558,7 +2760,17 @@
       "cash",
       "pin"
     ],
-    "phone": "+31 6 94227341"
+    "phone": "+31 6 94227341",
+    "appearance": "west_european",
+    "bodyType": "average",
+    "hairColor": "black",
+    "cupSize": "c",
+    "heightCm": 170,
+    "availableFor": [
+      "men"
+    ],
+    "whatsapp": "+31 6 12345678",
+    "instagram": "daan_nl"
   },
   {
     "id": "p22",
@@ -2682,7 +2894,17 @@
       "cash",
       "bank_transfer"
     ],
-    "phone": "+31 6 12212276"
+    "phone": "+31 6 12212276",
+    "appearance": "east_european",
+    "bodyType": "curvy",
+    "hairColor": "red",
+    "cupSize": "d",
+    "heightCm": 173,
+    "availableFor": [
+      "men",
+      "couples"
+    ],
+    "telegram": "@max"
   },
   {
     "id": "p23",
@@ -2793,7 +3015,18 @@
       "cash",
       "pin"
     ],
-    "phone": "+31 6 91870350"
+    "phone": "+31 6 91870350",
+    "appearance": "scandinavian",
+    "bodyType": "bbw",
+    "hairColor": "grey",
+    "cupSize": "e",
+    "heightCm": 176,
+    "availableFor": [
+      "men",
+      "women",
+      "couples"
+    ],
+    "whatsapp": "+31 6 12345678"
   },
   {
     "id": "p24",
@@ -2908,7 +3141,16 @@
     "paymentMethods": [
       "cash"
     ],
-    "phone": "+31 6 37131424"
+    "phone": "+31 6 37131424",
+    "appearance": "mediterranean",
+    "bodyType": "muscular",
+    "hairColor": "colored",
+    "cupSize": "f_plus",
+    "heightCm": 179,
+    "availableFor": [
+      "men",
+      "women"
+    ]
   },
   {
     "id": "p25",
@@ -3042,7 +3284,18 @@
       "bank_transfer",
       "crypto"
     ],
-    "phone": "+31 6 55941982"
+    "phone": "+31 6 55941982",
+    "appearance": "latina",
+    "bodyType": "slim",
+    "hairColor": "blonde",
+    "cupSize": "a",
+    "heightCm": 182,
+    "availableFor": [
+      "men"
+    ],
+    "whatsapp": "+31 6 12345678",
+    "telegram": "@chantal",
+    "instagram": "chantal_nl"
   },
   {
     "id": "p26",
@@ -3159,7 +3412,16 @@
     "paymentMethods": [
       "cash"
     ],
-    "phone": "+31 6 33207952"
+    "phone": "+31 6 33207952",
+    "appearance": "asian",
+    "bodyType": "athletic",
+    "hairColor": "brunette",
+    "cupSize": "b",
+    "heightCm": 160,
+    "availableFor": [
+      "men",
+      "couples"
+    ]
   },
   {
     "id": "p27",
@@ -3271,7 +3533,18 @@
       "cash",
       "pin"
     ],
-    "phone": "+31 6 86483413"
+    "phone": "+31 6 86483413",
+    "appearance": "african",
+    "bodyType": "average",
+    "hairColor": "black",
+    "cupSize": "c",
+    "heightCm": 163,
+    "availableFor": [
+      "men",
+      "women",
+      "couples"
+    ],
+    "whatsapp": "+31 6 12345678"
   },
   {
     "id": "p28",
@@ -3390,7 +3663,17 @@
       "cash",
       "bank_transfer"
     ],
-    "phone": "+31 6 12048341"
+    "phone": "+31 6 12048341",
+    "appearance": "caribbean",
+    "bodyType": "curvy",
+    "hairColor": "red",
+    "cupSize": "d",
+    "heightCm": 166,
+    "availableFor": [
+      "men",
+      "women"
+    ],
+    "telegram": "@vera"
   },
   {
     "id": "p29",
@@ -3513,7 +3796,17 @@
       "cash",
       "pin"
     ],
-    "phone": "+31 6 22316954"
+    "phone": "+31 6 22316954",
+    "appearance": "middle_eastern",
+    "bodyType": "bbw",
+    "hairColor": "grey",
+    "cupSize": "e",
+    "heightCm": 169,
+    "availableFor": [
+      "men"
+    ],
+    "whatsapp": "+31 6 12345678",
+    "instagram": "iris_nl"
   },
   {
     "id": "p30",
@@ -3634,6 +3927,15 @@
     "paymentMethods": [
       "cash"
     ],
-    "phone": "+31 6 29351868"
+    "phone": "+31 6 29351868",
+    "appearance": "mixed",
+    "bodyType": "muscular",
+    "hairColor": "colored",
+    "cupSize": "f_plus",
+    "heightCm": 172,
+    "availableFor": [
+      "men",
+      "couples"
+    ]
   }
 ]

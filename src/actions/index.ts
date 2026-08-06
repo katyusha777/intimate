@@ -110,8 +110,9 @@ export const server = {
         // AI-adjacent rule applies to users too: input is data — strict parse.
         const parsed = ProfileEditSchema.partial().safeParse(patch);
         if (!parsed.success) {
-          const i = parsed.error.issues[0];
-          throw new ActionError({ code: "BAD_REQUEST", message: `${i.path.join(".") || "field"}: ${i.message}` });
+          // Surface the human message only — never the technical field path
+          // ("birthDate: …") which reads as a bug to a non-technical advertiser.
+          throw new ActionError({ code: "BAD_REQUEST", message: parsed.error.issues[0].message });
         }
         // Writes her profiles row directly — edits publish immediately; the
         // first save creates the draft (ADMIN.md §6, DATA.md).

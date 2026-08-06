@@ -7,6 +7,7 @@
 import { getAdmin, listAudit } from '@/actions/admin/lib';
 import { ADMIN_ACTIONS } from '@/lib/taxonomy';
 import AdminShell from '@/components/organisms/admin/AdminShell.astro';
+import * as m from '@/paraglide/messages';
 
 const session = await getAdmin(Astro);
 const action = Astro.url.searchParams.get('action') ?? '';
@@ -17,26 +18,26 @@ const humanize = (s: string) => s.replace(/_/g, ' ').replace(/^./, (c) => c.toUp
 const when = (iso: string) => iso.replace('T', ' ').slice(0, 16) + 'Z';
 ---
 
-<AdminShell title="Audit log" section="audit">
+<AdminShell title={m.adm_nav_audit()} section="audit">
   {
     session && (
       <div>
         <div class="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h1 class="display text-3xl">Audit log</h1>
-            <p class="mt-1 text-sm text-muted-foreground">{entries.length} entries{action ? ` · ${humanize(action)}` : ''}</p>
+            <h1 class="display text-3xl">{m.adm_nav_audit()}</h1>
+            <p class="mt-1 text-sm text-muted-foreground">{m.adm_audit_meta({ count: entries.length })}{action ? ` · ${humanize(action)}` : ''}</p>
           </div>
           <form method="get" class="flex items-end gap-2">
             <label class="text-sm">
-              <span class="mb-1 block text-xs font-medium text-muted-foreground">Action</span>
+              <span class="mb-1 block text-xs font-medium text-muted-foreground">{m.adm_th_action()}</span>
               <select name="action" class="slab-cut border border-foreground/20 bg-background px-3 py-2 text-sm">
-                <option value="">All actions</option>
+                <option value="">{m.adm_audit_all_actions()}</option>
                 {ADMIN_ACTIONS.map((a) => <option value={a} selected={a === action}>{humanize(a)}</option>)}
               </select>
             </label>
-            <button type="submit" class="slab-cut border border-foreground/20 px-3 py-2 text-sm font-medium">Filter</button>
-            <a href="/admin/audit" class="px-2 py-2 text-sm text-muted-foreground hover:text-foreground">Reset</a>
-            <button type="button" data-export-csv class="slab-cut border border-foreground/20 px-3 py-2 text-sm font-medium">Export CSV</button>
+            <button type="submit" class="slab-cut border border-foreground/20 px-3 py-2 text-sm font-medium">{m.adm_filter()}</button>
+            <a href="/admin/audit" class="px-2 py-2 text-sm text-muted-foreground hover:text-foreground">{m.filter_reset()}</a>
+            <button type="button" data-export-csv class="slab-cut border border-foreground/20 px-3 py-2 text-sm font-medium">{m.adm_audit_export()}</button>
           </form>
         </div>
         <script type="application/json" data-audit-json set:html={JSON.stringify(entries.map((e) => ({ at: e.at, admin: e.adminEmail, role: e.adminRole, action: e.action, entity: `${e.entityType}:${e.entityId}`, reason: e.reason ?? '' })))} />
@@ -59,17 +60,17 @@ const when = (iso: string) => iso.replace('T', ' ').slice(0, 16) + 'Z';
           <table class="w-full min-w-[720px] text-left text-sm">
             <thead class="border-b border-border bg-muted text-2xs uppercase tracking-wide text-muted-foreground">
               <tr>
-                <th class="px-3 py-2 font-semibold">Time (UTC)</th>
-                <th class="px-3 py-2 font-semibold">Admin</th>
-                <th class="px-3 py-2 font-semibold">Role</th>
-                <th class="px-3 py-2 font-semibold">Action</th>
-                <th class="px-3 py-2 font-semibold">Entity</th>
-                <th class="px-3 py-2 font-semibold">Reason</th>
+                <th class="px-3 py-2 font-semibold">{m.adm_th_time_utc()}</th>
+                <th class="px-3 py-2 font-semibold">{m.adm_title()}</th>
+                <th class="px-3 py-2 font-semibold">{m.adm_th_role()}</th>
+                <th class="px-3 py-2 font-semibold">{m.adm_th_action()}</th>
+                <th class="px-3 py-2 font-semibold">{m.adm_th_entity()}</th>
+                <th class="px-3 py-2 font-semibold">{m.verify_reason_label()}</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-border">
               {entries.length === 0 ? (
-                <tr><td colspan="6" class="px-3 py-10 text-center text-muted-foreground">No entries.</td></tr>
+                <tr><td colspan="6" class="px-3 py-10 text-center text-muted-foreground">{m.adm_audit_empty()}</td></tr>
               ) : (
                 entries.map((e) => (
                   <tr class:list={[SENSITIVE.has(e.action) && 'bg-brand/5']}>

@@ -15,8 +15,10 @@ export default defineConfig({
       paraglideVitePlugin({
         project: './project.inlang',
         outdir: './src/paraglide',
-        // Locale comes from the URL prefix — every page lives under /{locale}/
-        strategy: ['url', 'baseLocale'],
+        // Locale comes from the URL prefix — every page lives under /{locale}/.
+        // 'cookie' only ever decides on locale-less routes (/admin, /auth):
+        // the url strategy wins first wherever a prefix exists.
+        strategy: ['url', 'cookie', 'baseLocale'],
         urlPatterns: [
           {
             pattern: '/:path(.*)?',

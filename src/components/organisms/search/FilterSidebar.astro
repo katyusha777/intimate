@@ -11,8 +11,8 @@
  * keeping tab and filter as one dimension.
  */
 import * as m from '@/paraglide/messages';
-import { serviceCategoryLabel, serviceLabel, sortLabel } from '@/lib/labels';
-import { CITIES, SERVICES, SERVICE_CATEGORIES, SORT_OPTIONS } from '@/lib/taxonomy';
+import { meetingTypeLabel, serviceCategoryLabel, serviceLabel, sortLabel } from '@/lib/labels';
+import { CITIES, MEETING_TYPES, SERVICES, SERVICE_CATEGORIES, SORT_OPTIONS } from '@/lib/taxonomy';
 import type { ProfileListParams } from '@/app/models/profile';
 import Icon from '@/components/atoms/Icon.astro';
 import Input from '@/components/atoms/Input.astro';
@@ -43,8 +43,10 @@ const genderOptions = [
   { value: 'men', label: m.gender_tab_men() },
   { value: 'trans', label: m.gender_tab_trans() },
 ];
-/* Effective location set: main city (path, set top-right) + extra sidebar cities. */
-const selectedCities = new Set([params.city, ...(params.cities ?? [])].filter(Boolean));
+/* Extra cities explicitly checked here. The MAIN city lives in the path
+   (header combobox) and is deliberately NOT re-emitted as a `cities` checkbox:
+   re-checking it made every header city switch accumulate the previous city. */
+const selectedCities = new Set(params.cities ?? []);
 
 const group = 'space-y-3 border-b border-border py-5 first:pt-0';
 const heading = 'font-condensed text-sm font-bold uppercase tracking-wide';
@@ -104,29 +106,47 @@ const row = 'flex cursor-pointer select-none items-center gap-2.5 text-sm hover:
       </span>
     </div>
 
-    <!-- Gender: on desktop the header tabs own it; the mobile filter sheet
-         carries the same radio here (the header hides gender on mobile). -->
-    {
-      sheet && (
-        <div class={group}>
-          <h3 class={heading}>{m.filter_gender()}</h3>
-          <div class="space-y-2">
-            {genderOptions.map((g) => (
-              <label class={row}>
-                <input
-                  type="radio"
-                  name="gender"
-                  value={g.value}
-                  checked={g.value === genderPick}
-                  class="radio-dot"
-                />
-                {g.label}
-              </label>
-            ))}
-          </div>
-        </div>
-      )
-    }
+    <!-- Gender: the header tabs set it too — this radio mirrors them so the
+         pick is always visible with the other filters (same `gender` param;
+         per-viewport input disabling keeps desktop/sheet copies from doubling). -->
+    <div class={group}>
+      <h3 class={heading}>{m.filter_gender()}</h3>
+      <div class="space-y-2">
+        {
+          genderOptions.map((g) => (
+            <label class={row}>
+              <input
+                type="radio"
+                name="gender"
+                value={g.value}
+                checked={g.value === genderPick}
+                class="radio-dot"
+              />
+              {g.label}
+            </label>
+          ))
+        }
+      </div>
+    </div>
+
+    <!-- Visit type (always present; preset pages arrive with their radio checked) -->
+    <div class={group}>
+      <h3 class={heading}>{m.filter_visit()}</h3>
+      <div class="space-y-2">
+        <label class={row}>
+          <input type="radio" name={visitNav ? undefined : 'visit'} data-visit-nav={visitNav || undefined} value="" checked={!params.meetingType} class="radio-dot" />
+          {m.filter_any()}
+        </label>
+        {
+          MEETING_TYPES.map((t) => (
+            <label class={row}>
+              <input type="radio" name={visitNav ? undefined : 'visit'} data-visit-nav={visitNav || undefined} value={t} checked={params.meetingType === t} class="radio-dot" />
+              {meetingTypeLabel(t)}
+            </label>
+          ))
+        }
+      </div>
+    </div>
 
     <!-- Availability: the two live-now switches (moved out of the control
          rail — quick filters live with the other filters). -->
@@ -247,25 +267,6 @@ const row = 'flex cursor-pointer select-none items-center gap-2.5 text-sm hover:
             );
           })
         }
-      </div>
-    </div>
-
-    <!-- Visit type (always present; preset pages arrive with their radio checked) -->
-    <div class={group}>
-      <h3 class={heading}>{m.filter_visit()}</h3>
-      <div class="space-y-2">
-        <label class={row}>
-          <input type="radio" name={visitNav ? undefined : 'visit'} data-visit-nav={visitNav || undefined} value="" checked={!params.meetingType} class="radio-dot" />
-          {m.filter_any()}
-        </label>
-        <label class={row}>
-          <input type="radio" name={visitNav ? undefined : 'visit'} data-visit-nav={visitNav || undefined} value="incall" checked={params.meetingType === 'incall'} class="radio-dot" />
-          {m.cat_private()}
-        </label>
-        <label class={row}>
-          <input type="radio" name={visitNav ? undefined : 'visit'} data-visit-nav={visitNav || undefined} value="outcall" checked={params.meetingType === 'outcall'} class="radio-dot" />
-          {m.cat_escort()}
-        </label>
       </div>
     </div>
 

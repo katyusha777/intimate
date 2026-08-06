@@ -56,18 +56,23 @@ const stepDone = 'grid size-8 flex-none place-items-center bg-online font-conden
               {m.verify_send_code()}
             </Button>
           </div>
-          <div class="hidden items-end gap-2" data-sms-check>
-            <SlabField
-              label={m.verify_code_label()}
-              name="code"
-              inputmode="numeric"
-              placeholder="000000"
-              maxlength="6"
-              class="flex-1"
-            />
-            <Button size="sm" type="button" data-sms-verify class="mb-1">
-              {m.verify_check_code()}
-            </Button>
+          {/* Slides down BELOW the phone once the code is sent — a clearly
+              separate input, not a swap of the phone field. */}
+          <div hidden data-sms-check class="sms-slide space-y-2">
+            <p class="text-xs text-muted-foreground">{m.verify_code_sent()}</p>
+            <div class="flex items-end gap-2">
+              <SlabField
+                label={m.verify_code_label()}
+                name="code"
+                inputmode="numeric"
+                placeholder="000000"
+                maxlength="6"
+                class="flex-1"
+              />
+              <Button size="sm" type="button" data-sms-verify class="mb-1">
+                {m.verify_check_code()}
+              </Button>
+            </div>
           </div>
           <p data-sms-error class="hidden text-sm font-medium text-brand">{m.auth_error()}</p>
         </div>
@@ -104,8 +109,8 @@ const stepDone = 'grid size-8 flex-none place-items-center bg-online font-conden
             </label>
           </div>
           <p class="text-xs leading-relaxed text-muted-foreground">{m.verify_privacy()}</p>
-          <Button type="button" data-id-submit disabled>{m.verify_submit()}</Button>
-          <p data-id-error class="hidden text-sm font-medium text-brand">{m.auth_error()}</p>
+          <Button type="button" data-id-submit>{m.verify_submit()}</Button>
+          <p data-id-error class="hidden whitespace-pre-line text-sm font-medium text-brand"></p>
         </div>
       )
     }
@@ -113,22 +118,49 @@ const stepDone = 'grid size-8 flex-none place-items-center bg-online font-conden
       idState === 'pending' && (
         <div class="space-y-4 border-l border-border pl-7">
           <p class="max-w-md text-sm leading-relaxed text-muted-foreground">{m.verify_privacy()}</p>
-          <button
-            type="button"
-            data-id-approve
-            class="cursor-pointer border border-foreground/20 px-3.5 py-2 text-xs font-medium text-muted-foreground transition-colors hover:border-foreground/60 hover:text-foreground"
-          >
-            {m.verify_demo_approve()}
-          </button>
+          {/* Dev-only shortcut for the not-yet-wired moderation queue. Never on
+              staging/prod — real approval runs through /admin (verify queue). */}
+          {import.meta.env.DEV && (
+            <button
+              type="button"
+              data-id-approve
+              class="cursor-pointer border border-foreground/20 px-3.5 py-2 text-xs font-medium text-muted-foreground transition-colors hover:border-foreground/60 hover:text-foreground"
+            >
+              {m.verify_demo_approve()}
+            </button>
+          )}
         </div>
       )
     }
   </section>
 </div>
 
+<style>
+  /* Code field slides down when revealed (not a jarring pop). */
+  .sms-slide {
+    animation: sms-slide-down 0.28s cubic-bezier(0.25, 1, 0.5, 1);
+  }
+  @keyframes sms-slide-down {
+    from {
+      opacity: 0;
+      transform: translateY(-0.4rem);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .sms-slide {
+      animation: none;
+    }
+  }
+</style>
+
 <script>
   import { actions } from 'astro:actions';
   import { reencode } from '@/lib/reencode';
+  import * as m from '@/paraglide/messages';
 
   // Default to the Netherlands: bare/national numbers (06…, 612…) become +31;
   // an explicit + or 00 country code is respected. Server re-validates E.164.
@@ -146,20 +178,39 @@ const stepDone = 'grid size-8 flex-none place-items-center bg-online font-conden
       root.dataset.init = '1';
       const err = root.querySelector<HTMLElement>('[data-sms-error]');
 
-      root.querySelector<HTMLElement>('[data-sms-send]')?.addEventListener('click', async () => {
+      const sendBtn = root.querySelector<HTMLButtonElement>('[data-sms-send]');
+      sendBtn?.addEventListener('click', async () => {
+        // Guard against the double-tap that made "first click did nothing":
+        // the click IS handled, but with no busy state it read as a no-op.
+        if (sendBtn.dataset.loading) return;
         err?.classList.add('hidden');
-        const phone = toE164(
-          root.querySelector<HTMLInputElement>('[data-sms-start] input[name="phone"]')!.value,
-        );
-        const { error } = await actions.account.startSms({ phone });
-        if (error) return err?.classList.remove('hidden');
-        root.querySelector('[data-sms-start]')?.classList.add('hidden');
-        const check = root.querySelector<HTMLElement>('[data-sms-check]')!;
-        check.classList.remove('hidden');
-        check.classList.add('flex');
+        const phoneInput = root.querySelector<HTMLInputElement>('[data-sms-start] input[name="phone"]')!;
+        const phone = toE164(phoneInput.value);
+        sendBtn.dataset.loading = '1';
+        // Visible busy state — the original "first click did nothing" was a
+        // no-feedback async call; dim + block until Twilio answers.
+        sendBtn.style.opacity = '0.6';
+        sendBtn.style.pointerEvents = 'none';
+        try {
+          const { error } = await actions.account.startSms({ phone });
+          if (error) {
+            err?.classList.remove('hidden');
+            return;
+          }
+          // Reveal the code input BELOW the phone (phone stays visible, locked).
+          phoneInput.readOnly = true;
+          const check = root.querySelector<HTMLElement>('[data-sms-check]')!;
+          check.hidden = false;
+          check.querySelector<HTMLInputElement>('input[name="code"]')?.focus();
+        } finally {
+          delete sendBtn.dataset.loading;
+          sendBtn.style.opacity = '';
+          sendBtn.style.pointerEvents = '';
+        }
       });
 
-      root.querySelector<HTMLElement>('[data-sms-verify]')?.addEventListener('click', async () => {
+      const verifyBtn = root.querySelector<HTMLElement>('[data-sms-verify]');
+      verifyBtn?.addEventListener('click', async () => {
         err?.classList.add('hidden');
         const code = root.querySelector<HTMLInputElement>('[data-sms-check] input[name="code"]')!.value;
         const { error } = await actions.account.checkSms({ code });
@@ -167,17 +218,36 @@ const stepDone = 'grid size-8 flex-none place-items-center bg-online font-conden
         location.reload();
       });
 
+      // Enter in an input fires its action button (these aren't <form> submits).
+      const onEnter = (sel: string, btn: HTMLElement | null | undefined) =>
+        root.querySelector<HTMLInputElement>(sel)?.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') { e.preventDefault(); btn?.click(); }
+        });
+      onEnter('[data-sms-start] input[name="phone"]', sendBtn);
+      onEnter('[data-sms-check] input[name="code"]', verifyBtn);
+
       // ID step: both files chosen → enable submit. Files are read only to be
       // discarded — the mock never uploads them (toxic waste rule).
       const doc = root.querySelector<HTMLInputElement>('[data-id-doc]');
       const selfie = root.querySelector<HTMLInputElement>('[data-id-selfie]');
       const submit = root.querySelector<HTMLButtonElement>('[data-id-submit]');
+      // Phone form still present in the DOM ⇒ phone not yet verified.
+      const phoneVerified = () => !root.querySelector('[data-sms-start]');
+      // Inline style, not a Tailwind class: classes added at runtime aren't
+      // compiled (Tailwind only emits what it sees in source), so a JS-toggled
+      // `border-brand` would have no CSS. Inline colour is reliable.
+      const markMissing = (inp: HTMLInputElement | null, missing: boolean) => {
+        const label = inp?.closest<HTMLElement>('label');
+        if (label) label.style.borderColor = missing ? 'var(--brand)' : '';
+      };
       const sync = () => {
         [doc, selfie].forEach((inp) => {
           const label = inp?.closest('label')?.querySelector('[data-file-label]');
-          if (inp?.files?.[0] && label) label.textContent = `✓ ${inp.files[0].name}`;
+          if (inp?.files?.[0]) {
+            if (label) label.textContent = `✓ ${inp.files[0].name}`;
+            markMissing(inp, false);
+          }
         });
-        if (submit) submit.disabled = !(doc?.files?.[0] && selfie?.files?.[0]);
       };
       doc?.addEventListener('change', sync);
       selfie?.addEventListener('change', sync);
@@ -185,7 +255,18 @@ const stepDone = 'grid size-8 flex-none place-items-center bg-online font-conden
       submit?.addEventListener('click', async () => {
         const docFile = doc?.files?.[0];
         const selfieFile = selfie?.files?.[0];
-        if (!docFile || !selfieFile || submit.dataset.loading) return;
+        // Validate on click and TELL the user what's missing (red), instead of a
+        // silently-disabled button that gives no feedback.
+        const missing: string[] = [];
+        if (!phoneVerified()) missing.push(m.verify_need_phone());
+        if (!docFile) { missing.push(m.verify_need_doc()); markMissing(doc, true); }
+        if (!selfieFile) { missing.push(m.verify_need_selfie()); markMissing(selfie, true); }
+        if (missing.length) {
+          idErr!.textContent = m.verify_fix_missing() + '\n• ' + missing.join('\n• ');
+          idErr!.classList.remove('hidden');
+          return;
+        }
+        if (submit.dataset.loading) return;
         submit.dataset.loading = '1';
         submit.disabled = true;
         idErr?.classList.add('hidden');
@@ -202,7 +283,10 @@ const stepDone = 'grid size-8 flex-none place-items-center bg-online font-conden
         } catch {
           submit.disabled = false;
           delete submit.dataset.loading;
-          idErr?.classList.remove('hidden');
+          if (idErr) {
+            idErr.textContent = m.auth_error();
+            idErr.classList.remove('hidden');
+          }
         }
       });
 

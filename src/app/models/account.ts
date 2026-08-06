@@ -20,10 +20,16 @@ export const ProfileEditSchema = z.object({
   name: z.string().trim().min(2).max(40),
   // Policy age gate (ARCHITECTURE §8.4): 21+ (POLICY_MIN_AGE). DB CHECK backs it.
   birthDate: z.iso.date().refine((d) => profileAge(d) >= POLICY_MIN_AGE, {
-    message: `must be at least ${POLICY_MIN_AGE}`,
+    message: `You must be at least ${POLICY_MIN_AGE} to advertise.`,
   }),
   gender: z.enum(GENDERS),
   city: z.enum(CITY_SLUGS),
+  // Direct contact channels (open buttons). Handles are UGC — validated for
+  // length here; the URL builder sanitizes to a safe charset before linking.
+  phone: z.string().trim().max(30).optional(),
+  whatsapp: z.string().trim().max(30).optional(),
+  telegram: z.string().trim().max(40).optional(),
+  instagram: z.string().trim().max(40).optional(),
   // priceFrom is derived from `rates` (UX-PLAN 2.1) — not directly editable.
   rates: z.array(RateRowSchema).max(24), // presets + her custom line items
   depositPolicy: z.string().trim().max(200).optional(),

@@ -1,0 +1,109 @@
+---
+/**
+ * In-place moderation strip — renders ONLY for an admin session, on the public
+ * profile page (ADMIN.md §8: act where you look). State changes + single-photo
+ * takedowns ride the guarded admin actions (astro:actions client — no import
+ * from the admin fence); every action is role-checked + audit-logged server-side.
+ */
+import type { Profile } from '@/app/models/profile';
+import SafeImage from '@/components/atoms/SafeImage.astro';
+
+interface Props {
+  profile: Profile;
+}
+const { profile: p } = Astro.props;
+
+const btn =
+  'slab-cut cursor-pointer border border-white/30 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide transition-colors hover:bg-white hover:text-neutral-950 disabled:opacity-50';
+---
+
+<div class="dark bg-neutral-950 text-white" data-admin-bar data-profile-id={p.id}>
+  <div class="mx-auto flex max-w-5xl flex-wrap items-center gap-3 px-4 py-3">
+    <span class="eyebrow text-2xs text-brand">Admin</span>
+    <span class="border border-white/30 px-2 py-0.5 text-2xs font-bold uppercase tracking-wide">{p.state}</span>
+
+    <div class="flex flex-wrap items-center gap-2">
+      {p.state !== 'live' && <button type="button" class={btn} data-admin-state="approve">Set live</button>}
+      {p.state === 'live' && <button type="button" class={btn} data-admin-state="pause">Pause</button>}
+      {p.state !== 'blocked' && <button type="button" class={btn} data-admin-state="block">Block</button>}
+      {p.state === 'blocked' && <button type="button" class={btn} data-admin-state="unblock">Unblock</button>}
+      <input
+        data-admin-reason
+        placeholder="Reason (block)"
+        class="slab-cut border border-white/30 bg-transparent px-2.5 py-1.5 text-xs outline-none placeholder:text-white/40 focus:border-white"
+      />
+    </div>
+
+    <a href="/admin/profiles" class="ml-auto text-xs font-medium text-white/60 underline-offset-2 hover:text-white hover:underline">
+      Open admin →
+    </a>
+
+    {
+      p.photos.length > 0 && (
+        <div class="flex w-full flex-wrap items-center gap-2 border-t border-white/15 pt-3">
+          <span class="text-2xs uppercase tracking-wide text-white/50">Remove photo:</span>
+          {p.photos.map((url) => (
+            <span class="relative">
+              <SafeImage imageKey={url} src={url} alt="" class="size-12" />
+              <button
+                type="button"
+                data-admin-photo={url}
+                aria-label="Reject photo"
+                class="absolute -right-1.5 -top-1.5 grid size-5 cursor-pointer place-items-center bg-brand text-2xs font-bold text-white"
+              >
+                ✕
+              </button>
+            </span>
+          ))}
+        </div>
+      )
+    }
+    <p data-admin-status class="w-full text-xs text-white/60" aria-live="polite" hidden></p>
+  </div>
+</div>
+
+<script>
+  import { actions } from 'astro:actions';
+
+  function initAdminBar() {
+    document.querySelectorAll<HTMLElement>('[data-admin-bar]').forEach((bar) => {
+      if (bar.dataset.init) return;
+      bar.dataset.init = '1';
+      const id = bar.dataset.profileId!;
+      const status = bar.querySelector<HTMLElement>('[data-admin-status]')!;
+      const say = (msg: string) => {
+        status.hidden = false;
+        status.textContent = msg;
+      };
+
+      bar.querySelectorAll<HTMLButtonElement>('[data-admin-state]').forEach((b) =>
+        b.addEventListener('click', async () => {
+          const action = b.dataset.adminState as 'approve' | 'pause' | 'block' | 'unblock';
+          const reason = bar.querySelector<HTMLInputElement>('[data-admin-reason]')?.value || undefined;
+          if (action === 'block' && !reason) return say('Blocking needs a reason.');
+          b.disabled = true;
+          const { error } = await actions.admin.profileState({ id, action, reason });
+          if (error) {
+            b.disabled = false;
+            return say(`Failed: ${error.message}`);
+          }
+          location.reload();
+        }),
+      );
+
+      bar.querySelectorAll<HTMLButtonElement>('[data-admin-photo]').forEach((b) =>
+        b.addEventListener('click', async () => {
+          b.disabled = true;
+          const { error } = await actions.admin.mediaReject({ profileId: id, url: b.dataset.adminPhoto! });
+          if (error) {
+            b.disabled = false;
+            return say(`Failed: ${error.message}`);
+          }
+          location.reload();
+        }),
+      );
+    });
+  }
+  initAdminBar();
+  document.addEventListener('astro:page-load', initAdminBar);
+</script>

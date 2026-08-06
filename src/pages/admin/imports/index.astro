@@ -1,11 +1,12 @@
 ---
 /**
  * Imports queue (docs/ADMIN.md §3): job monitor — states, failures, retries.
- * Rides on the real import pipeline; seeded mock for now.
+ * Reads `import_jobs` — empty until the import pipeline lands.
  */
 import { getAdmin } from '@/actions/admin/lib';
 import { listImports } from '@/actions/admin/imports';
 import AdminShell from '@/components/organisms/admin/AdminShell.astro';
+import * as m from '@/paraglide/messages';
 
 const session = await getAdmin(Astro);
 const jobs = session ? await listImports() : [];
@@ -17,27 +18,27 @@ const stateClass = (s: string) =>
   s === 'failed' ? 'text-brand' : s === 'confirmed' || s === 'ready_for_review' ? 'text-online' : 'text-amber-500';
 ---
 
-<AdminShell title="Imports" section="imports">
+<AdminShell title={m.adm_nav_imports()} section="imports">
   {
     session && (
       <div>
-        <h1 class="display text-3xl">Imports</h1>
-        <p class="mt-1 text-sm text-muted-foreground">{jobs.length} jobs · {failed} failed</p>
+        <h1 class="display text-3xl">{m.adm_nav_imports()}</h1>
+        <p class="mt-1 text-sm text-muted-foreground">{m.adm_imports_meta({ count: jobs.length, failed })}</p>
 
         <div class="mt-6 overflow-x-auto border border-border">
           <table class="w-full min-w-[720px] text-left text-sm">
             <thead class="border-b border-border bg-muted text-2xs uppercase tracking-wide text-muted-foreground">
               <tr>
-                <th class="px-3 py-2 font-semibold">Source</th>
-                <th class="px-3 py-2 font-semibold">State</th>
-                <th class="px-3 py-2 font-semibold">Detail</th>
-                <th class="px-3 py-2 font-semibold">Created</th>
+                <th class="px-3 py-2 font-semibold">{m.adm_th_source()}</th>
+                <th class="px-3 py-2 font-semibold">{m.adm_th_state()}</th>
+                <th class="px-3 py-2 font-semibold">{m.adm_th_detail()}</th>
+                <th class="px-3 py-2 font-semibold">{m.adm_th_created()}</th>
                 <th class="px-3 py-2 font-semibold" />
               </tr>
             </thead>
             <tbody class="divide-y divide-border">
               {jobs.length === 0 ? (
-                <tr><td colspan="5" class="px-3 py-10 text-center text-muted-foreground">No import jobs.</td></tr>
+                <tr><td colspan="5" class="px-3 py-10 text-center text-muted-foreground">{m.adm_imports_empty()}</td></tr>
               ) : (
                 jobs.map((j) => (
                   <tr class="hover:bg-muted">
@@ -47,7 +48,7 @@ const stateClass = (s: string) =>
                     <td class="px-3 py-2 text-2xs text-muted-foreground">{when(j.createdAt)}</td>
                     <td class="px-3 py-2 text-right">
                       {j.state === 'failed' && (
-                        <button type="button" data-retry={j.id} class="slab-cut border border-foreground/20 px-2.5 py-1 text-2xs font-bold uppercase hover:border-foreground/60">Retry</button>
+                        <button type="button" data-retry={j.id} class="slab-cut border border-foreground/20 px-2.5 py-1 text-2xs font-bold uppercase hover:border-foreground/60">{m.adm_imports_retry()}</button>
                       )}
                     </td>
                   </tr>

@@ -33,7 +33,11 @@ export async function seed(url: string): Promise<number> {
       // profile, and that row would block the delete.
       const seeded = tx`select id from profiles where account_id in (select id from accounts where email like '%@seed.local')`;
       await tx`delete from favorites where profile_id in (${seeded})`;
+      await tx`delete from conversation_settings where profile_id in (${seeded})`;
       await tx`delete from media where profile_id in (${seeded})`;
+      await tx`delete from call_sessions where profile_id in (${seeded})`;
+      // ponytail: threads/contacts also FK profiles but hold real user messages —
+      // if a re-seed ever hits that FK, decide deliberately instead of cascading.
       await tx`delete from profiles where account_id in (select id from accounts where email like '%@seed.local')`;
       await tx`delete from accounts where email like '%@seed.local'`;
 
@@ -67,6 +71,14 @@ export async function seed(url: string): Promise<number> {
           amenities: p.amenities,
           payment_methods: p.paymentMethods,
           available_for: p.availableFor,
+          appearance: p.appearance ?? null,
+          body_type: p.bodyType ?? null,
+          hair_color: p.hairColor ?? null,
+          cup_size: p.cupSize ?? null,
+          height_cm: p.heightCm ?? null,
+          whatsapp: p.whatsapp ?? null,
+          telegram: p.telegram ?? null,
+          instagram: p.instagram ?? null,
           opening_hours: JSON.stringify(p.openingHours),
           description: p.description,
           description_translations: JSON.stringify(p.descriptionTranslations),
@@ -80,6 +92,11 @@ export async function seed(url: string): Promise<number> {
           await tx`insert into media (profile_id, state, image_key, is_private, position) values
             (${seedProfileId(i)}, 'approved', ${m.key}, ${m.isPrivate}, ${m.pos})`;
         }
+        // Demo data opts into messaging so the flagship request flow works out
+        // of the box — real professionals still default OFF (product law). Every
+        // 3rd gets a screening question for variety.
+        await tx`insert into conversation_settings (profile_id, mode, screening_question) values
+          (${seedProfileId(i)}, 'everyone', ${i % 3 === 0 ? 'How did you find me?' : ''})`;
       }
     });
     return all.length;

@@ -1,8 +1,8 @@
 /**
- * Admin server core (docs/ADMIN.md §1, §0.3): the role guard, the audit log,
- * and queue claims. Lives inside the admin fence. In prod the guard also
- * asserts Cloudflare Access + Supabase aal2 (MFA) and the stores are Postgres
- * with trigger-based audit; here they're mock KV — the seam swap.
+ * Admin server core (docs/ADMIN.md §1, §0.3): the role guard, the audit log
+ * (Postgres, trigger-guarded append-only), and queue claims (ephemeral KV soft
+ * locks). Lives inside the admin fence. Remaining hardening: Cloudflare Access
+ * + Supabase aal2 (MFA) assertions in the guard (§1).
  */
 import { env } from 'cloudflare:workers';
 import { ActionError } from 'astro:actions';

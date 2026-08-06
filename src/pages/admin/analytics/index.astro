@@ -7,6 +7,7 @@
 import { getAdmin } from '@/actions/admin/lib';
 import { analytics } from '@/actions/admin/analytics';
 import AdminShell from '@/components/organisms/admin/AdminShell.astro';
+import * as m from '@/paraglide/messages';
 
 const session = await getAdmin(Astro);
 const a = session ? await analytics() : null;
@@ -19,33 +20,33 @@ function Bars(rows: { label: string; count: number }[], color = 'bg-foreground')
 }
 const sections = a
   ? [
-      { title: 'Verification funnel', data: Bars([
-        { label: 'Unverified', count: a.verification.unverified },
-        { label: 'Pending', count: a.verification.pending },
-        { label: 'Approved', count: a.verification.approved },
-        { label: 'Rejected', count: a.verification.rejected },
+      { title: m.adm_analytics_funnel(), data: Bars([
+        { label: m.adm_unverified(), count: a.verification.unverified },
+        { label: m.adm_pending(), count: a.verification.pending },
+        { label: m.adm_approved(), count: a.verification.approved },
+        { label: m.verify_rejected(), count: a.verification.rejected },
       ]) },
-      { title: 'Reports', data: Bars([
-        { label: 'Open', count: a.reports.open },
-        { label: 'Resolved', count: a.reports.resolved },
-        { label: 'Dismissed', count: a.reports.dismissed },
-        { label: 'Escalations', count: a.reports.escalations },
+      { title: m.adm_nav_reports(), data: Bars([
+        { label: m.adm_open_state(), count: a.reports.open },
+        { label: m.adm_resolved(), count: a.reports.resolved },
+        { label: m.adm_dismissed(), count: a.reports.dismissed },
+        { label: m.adm_escalations(), count: a.reports.escalations },
       ]) },
-      { title: 'Report reasons', data: Bars(a.reportReasons.map((r) => ({ label: humanize(r.reason), count: r.count }))) },
-      { title: 'Completeness', data: Bars(a.completenessBuckets) },
-      { title: 'Supply by category', data: Bars(a.byServiceCategory.map((c) => ({ label: humanize(c.category), count: c.count }))) },
-      { title: 'Admin throughput', data: Bars(a.adminThroughput.map((t) => ({ label: t.admin, count: t.actions }))) },
+      { title: m.adm_analytics_report_reasons(), data: Bars(a.reportReasons.map((r) => ({ label: humanize(r.reason), count: r.count }))) },
+      { title: m.adm_field_completeness(), data: Bars(a.completenessBuckets) },
+      { title: m.adm_analytics_supply_category(), data: Bars(a.byServiceCategory.map((c) => ({ label: humanize(c.category), count: c.count }))) },
+      { title: m.adm_analytics_throughput(), data: Bars(a.adminThroughput.map((t) => ({ label: t.admin, count: t.actions }))) },
     ]
   : [];
 ---
 
-<AdminShell title="Analytics" section="analytics">
+<AdminShell title={m.adm_nav_analytics()} section="analytics">
   {
     a && (
       <div>
-        <h1 class="display text-3xl">Analytics</h1>
+        <h1 class="display text-3xl">{m.adm_nav_analytics()}</h1>
         <p class="mt-1 text-sm text-muted-foreground">
-          First-party ops numbers · {a.totals.profiles} profiles · {a.totals.accounts} accounts · {a.totals.auditEntries} audit entries
+          {m.adm_analytics_meta({ profiles: a.totals.profiles, accounts: a.totals.accounts, entries: a.totals.auditEntries })}
         </p>
 
         <div class="mt-6 grid gap-6 md:grid-cols-2">
@@ -54,7 +55,7 @@ const sections = a
               <h2 class="font-condensed text-sm font-bold uppercase tracking-wide text-muted-foreground">{s.title}</h2>
               <div class="mt-3 space-y-1.5">
                 {s.data.rows.length === 0 ? (
-                  <p class="text-xs text-muted-foreground">No data.</p>
+                  <p class="text-xs text-muted-foreground">{m.adm_no_data()}</p>
                 ) : (
                   s.data.rows.map((r) => (
                     <div class="flex items-center gap-2 text-sm">
@@ -72,8 +73,7 @@ const sections = a
         </div>
 
         <p class="mt-6 text-2xs text-muted-foreground">
-          Contact-clicks (north star) + trend series need the events table — arrive with the Postgres swap.
-          Product analytics live in PostHog (deep-linked), not rebuilt here.
+          {m.adm_analytics_note()}
         </p>
       </div>
     )

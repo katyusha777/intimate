@@ -27,8 +27,8 @@ const item =
     class="flex cursor-pointer items-center gap-2 rounded-full py-0.5 pl-0.5 pr-2 text-sm font-semibold transition-colors hover:text-brand"
   >
     {
-      session.profileId ? (
-        <SafeImage imageKey={session.profileId} alt={session.name} class="size-8 rounded-full" />
+      session.avatarUrl ? (
+        <SafeImage imageKey={session.profileId ?? session.accountId} src={session.avatarUrl} alt={session.name} class="size-8 rounded-full" />
       ) : (
         <span class="grid size-8 place-items-center rounded-full bg-foreground font-condensed text-sm font-bold text-background">
           {session.name.charAt(0)}
@@ -58,6 +58,8 @@ const item =
       )
     }
     {
+      /* Always available to the owner — the profile route serves a preview
+         (with a "not live yet" banner) when it isn't live, so no more 404. */
       isAdvertiser && session.profileSlug && (
         <a href={localizePath(`/profile/${session.profileSlug}/`)} class={item} role="menuitem">
           <svg class="size-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" /><circle cx="12" cy="12" r="3" /></svg>

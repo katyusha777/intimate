@@ -10,6 +10,7 @@ import { accountApi } from '@/app/api/account';
 import { profilesApi } from '@/app/api/profiles';
 import AdminShell from '@/components/organisms/admin/AdminShell.astro';
 import SafeImage from '@/components/atoms/SafeImage.astro';
+import * as m from '@/paraglide/messages';
 
 const session = await getAdmin(Astro);
 const clients = session ? await listClients() : [];
@@ -21,27 +22,27 @@ const { items: profiles } = session ? await profilesApi.list({ limit: 60 }) : { 
 const favProfiles = acct ? profiles.filter((p) => acct.favorites.includes(p.slug)) : [];
 ---
 
-<AdminShell title="Clients" section="clients">
+<AdminShell title={m.adm_nav_clients()} section="clients">
   {
     session && (
       <div>
-        <h1 class="display text-3xl">Clients</h1>
-        <p class="mt-1 text-sm text-muted-foreground">{clients.length} accounts</p>
+        <h1 class="display text-3xl">{m.adm_nav_clients()}</h1>
+        <p class="mt-1 text-sm text-muted-foreground">{m.adm_clients_meta({ count: clients.length })}</p>
 
         <div class="mt-5 grid gap-6 lg:grid-cols-[1fr_22rem]">
           <div class="overflow-x-auto border border-border">
             <table class="w-full min-w-[520px] text-left text-sm">
               <thead class="border-b border-border bg-muted text-2xs uppercase tracking-wide text-muted-foreground">
                 <tr>
-                  <th class="px-3 py-2 font-semibold">Client</th>
-                  <th class="px-3 py-2 font-semibold">Phone</th>
-                  <th class="px-3 py-2 font-semibold">Favorites</th>
-                  <th class="px-3 py-2 font-semibold">Reports made</th>
+                  <th class="px-3 py-2 font-semibold">{m.role_client()}</th>
+                  <th class="px-3 py-2 font-semibold">{m.editor_phone()}</th>
+                  <th class="px-3 py-2 font-semibold">{m.nav_favorites()}</th>
+                  <th class="px-3 py-2 font-semibold">{m.adm_clients_reports_made()}</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-border">
                 {clients.length === 0 ? (
-                  <tr><td colspan="4" class="px-3 py-10 text-center text-muted-foreground">No clients yet.</td></tr>
+                  <tr><td colspan="4" class="px-3 py-10 text-center text-muted-foreground">{m.adm_clients_empty()}</td></tr>
                 ) : (
                   clients.map((c) => (
                     <tr class:list={['transition-colors hover:bg-muted', c.email === email && 'bg-muted']}>
@@ -51,7 +52,7 @@ const favProfiles = acct ? profiles.filter((p) => acct.favorites.includes(p.slug
                           <span class="min-w-0"><span class="block truncate font-medium">{c.name}</span><span class="block truncate text-2xs text-muted-foreground">{c.email}</span></span>
                         </a>
                       </td>
-                      <td class:list={['px-3 py-2 text-xs', c.phoneVerified ? 'text-online' : 'text-muted-foreground']}>{c.phoneVerified ? 'Verified' : '—'}</td>
+                      <td class:list={['px-3 py-2 text-xs', c.phoneVerified ? 'text-online' : 'text-muted-foreground']}>{c.phoneVerified ? m.verified() : '—'}</td>
                       <td class="px-3 py-2 tabular-nums">{c.favorites}</td>
                       <td class:list={['px-3 py-2 tabular-nums', c.reportsMade > 0 && 'text-brand']}>{c.reportsMade}</td>
                     </tr>
@@ -69,16 +70,16 @@ const favProfiles = acct ? profiles.filter((p) => acct.favorites.includes(p.slug
               </div>
               <dl class="grid grid-cols-2 gap-px overflow-hidden border border-border bg-border text-xs">
                 {[
-                  ['Phone', selected.phoneVerified ? 'Verified' : '—'],
-                  ['Favorites', String(selected.favorites)],
-                  ['Reports made', String(selected.reportsMade)],
+                  [m.editor_phone(), selected.phoneVerified ? m.verified() : '—'],
+                  [m.nav_favorites(), String(selected.favorites)],
+                  [m.adm_clients_reports_made(), String(selected.reportsMade)],
                 ].map(([k, v]) => (
                   <div class="bg-card px-2.5 py-1.5"><dt class="text-2xs uppercase tracking-wide text-muted-foreground">{k}</dt><dd class="font-medium">{v}</dd></div>
                 ))}
               </dl>
               {favProfiles.length > 0 && (
                 <div>
-                  <p class="text-2xs uppercase tracking-wide text-muted-foreground">Favorited</p>
+                  <p class="text-2xs uppercase tracking-wide text-muted-foreground">{m.adm_clients_favorited()}</p>
                   <div class="mt-2 flex flex-wrap gap-2">
                     {favProfiles.map((p) => (
                       <a href={`/admin/profiles?id=${p.id}`} class="flex items-center gap-1.5 border border-border py-1 pl-1 pr-2 text-xs hover:bg-muted">
@@ -89,7 +90,7 @@ const favProfiles = acct ? profiles.filter((p) => acct.favorites.includes(p.slug
                   </div>
                 </div>
               )}
-              <p class="text-2xs text-muted-foreground">Status actions (warn / suspend / block) arrive with platform messaging (§10).</p>
+              <p class="text-2xs text-muted-foreground">{m.adm_status_actions_note()}</p>
             </aside>
           )}
         </div>

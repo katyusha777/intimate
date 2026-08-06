@@ -24,7 +24,7 @@ test('a fresh signature verifies', async () => {
 test('an expired signature is rejected', async () => {
   const now = 1_000_000;
   const { exp, sig } = parse(await signVdocUrl('doc-abc', now));
-  expect(await verifyVdoc('doc-abc', exp, sig, now + 6 * 60_000)).toBe(false); // 6 min > 5 min TTL
+  expect(await verifyVdoc('doc-abc', exp, sig, now + 31 * 60_000)).toBe(false); // past the 30 min TTL
 });
 
 test('a tampered signature or doc id is rejected', async () => {

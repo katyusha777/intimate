@@ -2,11 +2,17 @@ import * as m from '@/paraglide/messages';
 import type { Availability } from '@/app/models/profile';
 import type {
   Amenity,
+  Appearance,
+  AvailableFor,
+  BodyType,
+  CupSize,
   Day,
   Gender,
+  HairColor,
   IncallLocation,
   Language,
   ListingCategorySlug,
+  MeetingType,
   PaymentMethod,
   RateDuration,
   Service,
@@ -88,6 +94,11 @@ export function listingCategoryLabel(slug: ListingCategorySlug): string {
   }
 }
 
+/** Visit / meeting type → localized label (shares the tab keys; virtual gets its own). */
+export function meetingTypeLabel(t: MeetingType): string {
+  return t === 'incall' ? m.cat_private() : t === 'outcall' ? m.cat_escort() : m.visit_virtual();
+}
+
 /** Rate-table duration (UX-PLAN 2.1) → localized label. */
 export function rateDurationLabel(d: RateDuration): string {
   return taxonomyLabel(`taxonomy_rate_durations_${d}`, d);
@@ -102,6 +113,25 @@ export function incallLocationLabel(l: IncallLocation): string {
 }
 export function amenityLabel(a: Amenity): string {
   return taxonomyLabel(`taxonomy_amenities_${a}`, a);
+}
+
+// Person-attribute labels (essentials tags) — taxonomy = law, i18n only.
+export function appearanceLabel(a: Appearance): string {
+  return taxonomyLabel(`taxonomy_appearances_${a}`, a);
+}
+export function bodyTypeLabel(b: BodyType): string {
+  return taxonomyLabel(`taxonomy_body_types_${b}`, b);
+}
+export function hairColorLabel(h: HairColor): string {
+  return taxonomyLabel(`taxonomy_hair_colors_${h}`, h);
+}
+/** "B cup" / "cup B" / "Körbchen B" — letter + localized "cup" word. */
+export function cupSizeLabel(c: CupSize): string {
+  const letter = taxonomyLabel(`taxonomy_cup_sizes_${c}`, c.toUpperCase());
+  return `${letter} ${m.attr_cup()}`;
+}
+export function availableForLabel(a: AvailableFor): string {
+  return taxonomyLabel(`taxonomy_available_for_${a}`, a);
 }
 export function paymentMethodLabel(pm: PaymentMethod): string {
   return taxonomyLabel(`taxonomy_payment_methods_${pm}`, pm);

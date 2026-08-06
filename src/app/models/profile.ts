@@ -127,6 +127,11 @@ export const ProfileSchema = z.object({
   rates: z.array(RateRowSchema).default([]),
   /** Public contact number — searchable via `q` (find-someone-specific). */
   phone: z.string().optional(),
+  /** Direct external contact handles — rendered as tap-to-contact buttons.
+   *  whatsapp = phone digits, telegram/instagram = handles. All optional. */
+  whatsapp: z.string().optional(),
+  telegram: z.string().optional(),
+  instagram: z.string().optional(),
   /** Optional deposit policy shown under the table + in good-to-know. */
   depositPolicy: z.string().optional(),
   /** Optional free note under the table ("extras discussed in person"). */

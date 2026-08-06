@@ -24,7 +24,9 @@ const deployId = (): string =>
  * already has its own canonical shelf at /{locale}/{city}/ (SEO.md §2).
  */
 /** Internal, non-localized routes the URL strategy must not redirect.
- *  `/admin` is locale-less by design (ADMIN.md §1) — English-only internal tool. */
+ *  `/admin` is locale-less by design (ADMIN.md §1); its language comes from the
+ *  PARAGLIDE_LOCALE cookie (strategy: url → cookie → baseLocale), so it still
+ *  renders inside paraglideMiddleware below. */
 const BYPASS = ['/kitchen-sink', '/_actions', '/admin', '/auth', '/media', '/api'];
 
 /**
@@ -51,7 +53,16 @@ export const onRequest = defineMiddleware(async (context, next) => {
   }
   const legacy = LEGACY_ARTICLES[context.url.pathname.replace(/^\/|\/$/g, '')];
   if (legacy) return context.redirect(`/nl/blog/${legacy}/`, 301);
-  if (BYPASS.some((p) => context.url.pathname.startsWith(p))) return next();
+  // /admin is locale-less — send /{locale}/admin/* to the real thing.
+  const adminPrefixed = context.url.pathname.match(/^\/(?:nl|en|de)(\/admin(?:\/.*)?)$/);
+  if (adminPrefixed) return context.redirect(adminPrefixed[1]!, 302);
+  if (BYPASS.some((p) => context.url.pathname.startsWith(p))) {
+    // Admin renders localized strings (cookie strategy) — needs the wrapper.
+    if (context.url.pathname.startsWith('/admin')) {
+      return paraglideMiddleware(context.request, () => next());
+    }
+    return next();
+  }
 
   // Public profile pages: serve the rendered HTML from the edge cache (24h),
   // busted on any profile edit. The live "online" badge is refreshed after

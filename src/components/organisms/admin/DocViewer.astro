@@ -6,6 +6,8 @@
  * EU bucket. Watermarked (ADMIN VIEW · {admin}) as a screenshot deterrent; the
  * bytes are never cached.
  */
+import * as m from '@/paraglide/messages';
+
 interface Props {
   /** Short-TTL signed URLs for this account's docs (id + selfie). */
   srcs: string[];
@@ -26,7 +28,7 @@ const gridCls = srcs.length > 1 ? 'grid-cols-2' : 'grid-cols-1';
     {
       srcs.length === 0 && (
         <div class="grid aspect-[3/2] place-items-center text-sm text-muted-foreground">
-          No documents submitted.
+          {m.adm_doc_none()}
         </div>
       )
     }
@@ -41,7 +43,7 @@ const gridCls = srcs.length > 1 ? 'grid-cols-2' : 'grid-cols-1';
           class="slab-cut flex items-center gap-2 border border-foreground/30 bg-background px-3 py-1.5 text-sm font-medium"
         >
           <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" /><circle cx="12" cy="12" r="3" /></svg>
-          Reveal documents (logged)
+          {m.adm_doc_reveal()}
         </button>
       </div>
     )

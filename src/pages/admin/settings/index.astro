@@ -1,13 +1,14 @@
 ---
 /**
- * Settings (docs/ADMIN.md §13, super-only): admin accounts + roles, feature
- * flags (PostHog in prod), taxonomy snapshot, retention/policy. Read surface in
- * the mock; mutations arrive with the real backend.
+ * Settings (docs/ADMIN.md §13, super-only): admin accounts + roles (live from
+ * the DB), feature flags (managed in PostHog, read-only here), taxonomy
+ * snapshot, cache controls, retention/policy.
  */
 import { getAdmin } from '@/actions/admin/lib';
 import { accountApi } from '@/app/api/account';
 import { ADMIN_ROLES, ALL_SERVICES, CITIES, GENDERS, REJECTION_REASONS, SERVICE_CATEGORIES } from '@/lib/taxonomy';
 import AdminShell from '@/components/organisms/admin/AdminShell.astro';
+import * as m from '@/paraglide/messages';
 
 const session = await getAdmin(Astro);
 const isSuper = session?.adminRole === 'super';
@@ -20,32 +21,32 @@ const admins = isSuper
       .sort((a, b) => a.email.localeCompare(b.email))
   : [];
 const flags = [
-  { key: 'messaging', label: 'Messaging', on: true },
-  { key: 'ai_search', label: 'AI search', on: true },
-  { key: 'calls', label: 'Video calls', on: false },
-  { key: 'imports', label: 'Self-service imports', on: false },
+  { key: 'messaging', label: m.adm_nav_messaging(), on: true },
+  { key: 'ai_search', label: m.wand_title(), on: true },
+  { key: 'calls', label: m.adm_settings_flag_calls(), on: false },
+  { key: 'imports', label: m.adm_settings_flag_imports(), on: false },
 ];
 const taxo = [
-  ['Account roles', ADMIN_ROLES.length],
-  ['Genders', GENDERS.length],
-  ['Cities', CITIES.length],
-  ['Service categories', SERVICE_CATEGORIES.length],
-  ['Services', ALL_SERVICES.length],
-  ['Rejection reasons', REJECTION_REASONS.length],
+  [m.adm_settings_tx_roles(), ADMIN_ROLES.length],
+  [m.adm_settings_tx_genders(), GENDERS.length],
+  [m.adm_settings_tx_cities(), CITIES.length],
+  [m.adm_settings_tx_service_categories(), SERVICE_CATEGORIES.length],
+  [m.filter_services(), ALL_SERVICES.length],
+  [m.adm_settings_tx_rejection_reasons(), REJECTION_REASONS.length],
 ] as const;
 ---
 
-<AdminShell title="Settings" section="settings">
+<AdminShell title={m.settings_title()} section="settings">
   {
     session && !isSuper ? (
-      <p class="text-sm text-muted-foreground">Settings are restricted to the <b>super</b> role.</p>
+      <p class="text-sm text-muted-foreground" set:html={m.adm_settings_super_only()} />
     ) : (
       session && (
         <div class="space-y-8">
-          <h1 class="display text-3xl">Settings</h1>
+          <h1 class="display text-3xl">{m.settings_title()}</h1>
 
           <section>
-            <h2 class="font-condensed text-sm font-bold uppercase tracking-wide text-muted-foreground">Admin accounts</h2>
+            <h2 class="font-condensed text-sm font-bold uppercase tracking-wide text-muted-foreground">{m.adm_settings_admins()}</h2>
             <div class="mt-3 max-w-lg divide-y divide-border border border-border">
               {admins.map((a) => (
                 <div class="flex items-center justify-between px-3 py-2.5 text-sm">
@@ -54,24 +55,24 @@ const taxo = [
                 </div>
               ))}
             </div>
-            <p class="mt-2 text-2xs text-muted-foreground">Live from Supabase Auth (promote via <code>scripts/make-admin.ts</code>). Invite/revoke UI + MFA enrolment + Cloudflare Access are the remaining hardening.</p>
+            <p class="mt-2 text-2xs text-muted-foreground" set:html={m.adm_settings_admins_note()} />
           </section>
 
           <section>
-            <h2 class="font-condensed text-sm font-bold uppercase tracking-wide text-muted-foreground">Feature flags</h2>
+            <h2 class="font-condensed text-sm font-bold uppercase tracking-wide text-muted-foreground">{m.adm_settings_flags()}</h2>
             <div class="mt-3 grid max-w-lg gap-2 sm:grid-cols-2">
               {flags.map((f) => (
                 <div class="flex items-center justify-between border border-border px-3 py-2 text-sm">
                   {f.label}
-                  <span class:list={['text-2xs font-bold uppercase', f.on ? 'text-online' : 'text-muted-foreground']}>{f.on ? 'On' : 'Off'}</span>
+                  <span class:list={['text-2xs font-bold uppercase', f.on ? 'text-online' : 'text-muted-foreground']}>{f.on ? m.adm_on() : m.adm_off()}</span>
                 </div>
               ))}
             </div>
-            <p class="mt-2 text-2xs text-muted-foreground">Flags are managed in PostHog in production; shown read-only here.</p>
+            <p class="mt-2 text-2xs text-muted-foreground">{m.adm_settings_flags_note()}</p>
           </section>
 
           <section>
-            <h2 class="font-condensed text-sm font-bold uppercase tracking-wide text-muted-foreground">Taxonomy snapshot</h2>
+            <h2 class="font-condensed text-sm font-bold uppercase tracking-wide text-muted-foreground">{m.adm_settings_taxonomy()}</h2>
             <div class="mt-3 grid max-w-2xl grid-cols-2 gap-px border border-border bg-border sm:grid-cols-3">
               {taxo.map(([k, v]) => (
                 <div class="bg-card px-3 py-2.5">
@@ -80,42 +81,38 @@ const taxo = [
                 </div>
               ))}
             </div>
-            <p class="mt-2 text-2xs text-muted-foreground">Taxonomy = law: edited in <code>src/lib/taxonomy.ts</code> + translations + migration, never here.</p>
+            <p class="mt-2 text-2xs text-muted-foreground" set:html={m.adm_settings_taxonomy_note()} />
           </section>
 
           <section>
-            <h2 class="font-condensed text-sm font-bold uppercase tracking-wide text-muted-foreground">Edge cache</h2>
-            <p class="mt-2 max-w-2xl text-sm text-muted-foreground">
-              Profile pages are cached at the edge (24h, busted on edit). <b>Purge</b> drops every cached
-              page; <b>Warm</b> re-fetches all live profiles so none load cold. A scheduled cron warms
-              automatically — these are for testing.
-            </p>
+            <h2 class="font-condensed text-sm font-bold uppercase tracking-wide text-muted-foreground">{m.adm_settings_cache()}</h2>
+            <p class="mt-2 max-w-2xl text-sm text-muted-foreground" set:html={m.adm_settings_cache_note()} />
             <div class="mt-3 flex flex-wrap items-center gap-3">
               <button
                 type="button"
                 data-cache-purge
                 class="slab-cut cursor-pointer border border-foreground/20 bg-card px-4 py-2 text-sm font-semibold transition-colors hover:bg-foreground hover:text-background disabled:opacity-50"
               >
-                Purge all cache
+                {m.adm_settings_cache_purge()}
               </button>
               <button
                 type="button"
                 data-cache-warm
                 class="slab-cut cursor-pointer border border-foreground/20 bg-card px-4 py-2 text-sm font-semibold transition-colors hover:bg-foreground hover:text-background disabled:opacity-50"
               >
-                Warm now
+                {m.adm_settings_cache_warm()}
               </button>
               <span data-cache-status class="text-sm text-muted-foreground" aria-live="polite"></span>
             </div>
           </section>
 
           <section>
-            <h2 class="font-condensed text-sm font-bold uppercase tracking-wide text-muted-foreground">Retention & policy</h2>
+            <h2 class="font-condensed text-sm font-bold uppercase tracking-wide text-muted-foreground">{m.adm_settings_retention()}</h2>
             <ul class="mt-3 max-w-2xl space-y-1.5 text-sm text-muted-foreground">
-              <li>· Verification docs: private R2, presigned ≤5min, purged on the retention schedule (never public, never in the product).</li>
-              <li>· Messages + chat media: auto-deleted after 90 days.</li>
-              <li>· Audit log: long retention — our defensibility (documented GDPR exception, legitimate interest).</li>
-              <li>· Age: 18 absolute DB floor; <b>21</b> policy minimum to advertise (NL) — enforced at the profiles CHECK + Zod.</li>
+              <li>· {m.adm_settings_ret_docs()}</li>
+              <li>· {m.adm_settings_ret_messages()}</li>
+              <li>· {m.adm_settings_ret_audit()}</li>
+              <li>· <Fragment set:html={m.adm_settings_ret_age()} /></li>
             </ul>
           </section>
         </div>
@@ -126,6 +123,7 @@ const taxo = [
 
 <script>
   import { actions } from 'astro:actions';
+  import * as m from '@/paraglide/messages';
 
   const status = document.querySelector<HTMLElement>('[data-cache-status]');
   const buttons = document.querySelectorAll<HTMLButtonElement>('[data-cache-purge], [data-cache-warm]');
@@ -133,18 +131,18 @@ const taxo = [
 
   document.querySelector('[data-cache-purge]')?.addEventListener('click', async () => {
     setBusy(true);
-    if (status) status.textContent = 'Purging…';
+    if (status) status.textContent = m.adm_cache_purging();
     const { error } = await actions.admin.cachePurge({});
-    if (status) status.textContent = error ? `Failed: ${error.message}` : 'Cache purged.';
+    if (status) status.textContent = error ? m.adm_cache_failed({ message: error.message }) : m.adm_cache_purged();
     setBusy(false);
   });
 
   document.querySelector('[data-cache-warm]')?.addEventListener('click', async () => {
     setBusy(true);
-    if (status) status.textContent = 'Warming…';
+    if (status) status.textContent = m.adm_cache_warming_start();
     const { data, error } = await actions.admin.cacheWarmUrls({});
     if (error) {
-      if (status) status.textContent = `Failed: ${error.message}`;
+      if (status) status.textContent = m.adm_cache_failed({ message: error.message });
       setBusy(false);
       return;
     }
@@ -154,7 +152,7 @@ const taxo = [
     let done = 0;
     let idx = 0;
     const tick = () => {
-      if (status) status.textContent = `Warming ${done}/${urls.length}…`;
+      if (status) status.textContent = m.adm_cache_warming({ done, total: urls.length });
     };
     const run = async () => {
       while (idx < urls.length) {
@@ -169,7 +167,7 @@ const taxo = [
       }
     };
     await Promise.all(Array.from({ length: Math.min(8, urls.length) }, run));
-    if (status) status.textContent = `Warmed ${done}/${urls.length} pages.`;
+    if (status) status.textContent = m.adm_cache_warmed({ done, total: urls.length });
     setBusy(false);
   });
 </script>

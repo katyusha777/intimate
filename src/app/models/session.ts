@@ -4,7 +4,7 @@
  * @supabase/ssr cookie sessions, JWTs verified locally via getClaims().
  */
 import { z } from 'zod';
-import { ACCOUNT_TYPES, ADMIN_ROLES } from '@/lib/taxonomy';
+import { ACCOUNT_TYPES, ADMIN_ROLES, PROFILE_STATES } from '@/lib/taxonomy';
 
 export const SessionSchema = z.object({
   /** accounts.id = auth.users.id — the identity every table keys on. */
@@ -16,6 +16,11 @@ export const SessionSchema = z.object({
   /** Linked public profile — advertisers only (absent until one exists). */
   profileId: z.string().optional(),
   profileSlug: z.string().optional(),
+  /** First approved public photo (served URL) — the avatar everywhere. */
+  avatarUrl: z.string().optional(),
+  /** Lifecycle state of the linked profile — gates "view public profile"
+   *  (only 'live' has a public page) and the pause control. Absent until one exists. */
+  profileState: z.enum(PROFILE_STATES).optional(),
   /** Admin sub-role (ADMIN.md §1). Present only when role === 'admin'. */
   adminRole: z.enum(ADMIN_ROLES).optional(),
 });

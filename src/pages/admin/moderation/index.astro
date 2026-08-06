@@ -11,6 +11,7 @@ import { REJECTION_REASONS } from '@/lib/taxonomy';
 import AdminShell from '@/components/organisms/admin/AdminShell.astro';
 import QueueList from '@/components/organisms/admin/QueueList.astro';
 import SafeImage from '@/components/atoms/SafeImage.astro';
+import * as m from '@/paraglide/messages';
 
 const session = await getAdmin(Astro);
 const items = session ? await moderationQueue() : [];
@@ -22,7 +23,8 @@ function ago(iso: string): string {
   return mins < 60 ? `${mins}m` : mins < 2880 ? `${Math.round(mins / 60)}h` : `${Math.round(mins / 1440)}d`;
 }
 const humanize = (s: string) => s.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
-const kindLabel = (k: string) => ({ new_profile: 'New profile', profile_edit: 'Profile edit', media: 'Flagged media' })[k] ?? k;
+const kindLabel = (k: string) =>
+  ({ new_profile: m.adm_mod_kind_new_profile(), profile_edit: m.adm_mod_kind_profile_edit(), media: m.adm_mod_kind_media() })[k] ?? k;
 
 const rows = items.map((m) => ({
   href: `/admin/moderation?item=${m.id}`,
@@ -34,19 +36,19 @@ const rows = items.map((m) => ({
 }));
 ---
 
-<AdminShell title="Moderation" section="moderation">
+<AdminShell title={m.adm_nav_moderation()} section="moderation">
   {
     session && (
       <div>
-        <h1 class="display text-3xl">Moderation</h1>
-        <p class="mt-1 text-sm text-muted-foreground">{items.length} awaiting review</p>
+        <h1 class="display text-3xl">{m.adm_nav_moderation()}</h1>
+        <p class="mt-1 text-sm text-muted-foreground">{m.adm_mod_meta({ count: items.length })}</p>
 
         <div class="mt-6 grid gap-6 lg:grid-cols-[20rem_1fr]">
-          <QueueList rows={rows} empty="Nothing to moderate." />
+          <QueueList rows={rows} empty={m.adm_mod_empty()} />
 
           {!selected ? (
             <div class="grid place-items-center border border-dashed border-border py-24 text-sm text-muted-foreground">
-              Select an item to review.
+              {m.adm_select_item()}
             </div>
           ) : (
             <div data-mod data-id={selected.id} class="min-w-0 space-y-5">
@@ -57,7 +59,7 @@ const rows = items.map((m) => ({
 
               {selected.diff.length > 0 && (
                 <div>
-                  <h2 class="font-condensed text-sm font-bold uppercase tracking-wide text-muted-foreground">Changes</h2>
+                  <h2 class="font-condensed text-sm font-bold uppercase tracking-wide text-muted-foreground">{m.adm_mod_changes()}</h2>
                   <div class="mt-2 divide-y divide-border border border-border">
                     {selected.diff.map((d) => (
                       <div class="px-3 py-2 text-sm">
@@ -72,13 +74,13 @@ const rows = items.map((m) => ({
 
               {selected.media.length > 0 && (
                 <div>
-                  <h2 class="font-condensed text-sm font-bold uppercase tracking-wide text-muted-foreground">Media · riskiest first</h2>
+                  <h2 class="font-condensed text-sm font-bold uppercase tracking-wide text-muted-foreground">{m.adm_mod_media_title()}</h2>
                   <div class="mt-2 flex flex-wrap gap-3">
                     {selected.media.map((mm) => (
                       <button type="button" data-reveal class="group relative block size-28 overflow-hidden border border-border">
                         <SafeImage imageKey={mm.imageKey} alt="media" class="size-full blur-lg transition group-[.shown]:blur-0" />
                         <span class:list={['absolute left-1 top-1 rounded px-1 text-2xs font-bold text-white', mm.nsfwScore > 0.6 ? 'bg-brand' : 'bg-black/60']}>{Math.round(mm.nsfwScore * 100)}%</span>
-                        <span class="absolute inset-x-0 bottom-0 bg-black/60 py-0.5 text-center text-2xs text-white group-[.shown]:hidden">tap to reveal</span>
+                        <span class="absolute inset-x-0 bottom-0 bg-black/60 py-0.5 text-center text-2xs text-white group-[.shown]:hidden">{m.adm_mod_tap_reveal()}</span>
                       </button>
                     ))}
                   </div>
@@ -86,15 +88,15 @@ const rows = items.map((m) => ({
               )}
 
               <div class="flex flex-wrap items-end gap-3 border-t border-border pt-5">
-                <button type="button" data-approve class="slab-cut bg-online px-4 py-2 text-sm font-semibold text-white">Approve</button>
+                <button type="button" data-approve class="slab-cut bg-online px-4 py-2 text-sm font-semibold text-white">{m.adm_approve()}</button>
                 <label class="text-sm">
-                  <span class="mb-1 block text-xs font-medium text-muted-foreground">Reject reason</span>
+                  <span class="mb-1 block text-xs font-medium text-muted-foreground">{m.adm_reject_reason()}</span>
                   <select data-reason class="slab-cut border border-foreground/20 bg-background px-3 py-2 text-sm">
-                    <option value="">Select reason…</option>
+                    <option value="">{m.adm_select_reason()}</option>
                     {REJECTION_REASONS.map((r) => <option value={r}>{humanize(r)}</option>)}
                   </select>
                 </label>
-                <button type="button" data-reject class="slab-cut border border-brand px-4 py-2 text-sm font-semibold text-brand">Reject</button>
+                <button type="button" data-reject class="slab-cut border border-brand px-4 py-2 text-sm font-semibold text-brand">{m.adm_reject()}</button>
               </div>
             </div>
           )}

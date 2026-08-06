@@ -4,6 +4,8 @@
  * queues). Rows link to their review; shows claim state ("X reviewing") and an
  * escalation flag. Variants are props, never forks.
  */
+import * as m from '@/paraglide/messages';
+
 export interface QueueRow {
   href: string;
   title: string;
@@ -35,14 +37,14 @@ const { rows, empty } = Astro.props;
               r.active && 'bg-muted',
             ]}
           >
-            {r.escalated && <span class="size-2 flex-none rounded-full bg-brand" title="Escalation" />}
+            {r.escalated && <span class="size-2 flex-none rounded-full bg-brand" title={m.adm_queue_escalation()} />}
             <span class="min-w-0 flex-1">
               <span class="block truncate font-medium">{r.title}</span>
               {r.subtitle && <span class="block truncate text-xs text-muted-foreground">{r.subtitle}</span>}
             </span>
             {r.claimedBy && (
               <span class="flex-none rounded-full bg-foreground/10 px-2 py-0.5 text-2xs font-medium text-muted-foreground">
-                {r.claimedBy.split('@')[0]} reviewing
+                {m.adm_queue_reviewing({ name: r.claimedBy.split('@')[0] })}
               </span>
             )}
             {r.age && <span class="flex-none tabular-nums text-2xs text-muted-foreground">{r.age}</span>}

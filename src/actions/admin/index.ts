@@ -15,10 +15,15 @@ import { listWarmUrls } from '@/lib/warm';
 import { claimItem, record, releaseItem, requireAdmin } from './lib';
 
 const sessionKv = () => (env as unknown as Record<string, unknown>).SESSION as CacheKv | undefined;
-import { decideModeration } from './queues';
+import { and, eq } from 'drizzle-orm';
+import { createDb } from '@/db/client';
+import { media } from '@/db/schema';
+import { approveWholeSubmission, decideModeration } from './queues';
 import { setProfileState } from './entities';
 import { retryImport } from './imports';
 import type { AdminAction, ProfileState } from '@/lib/taxonomy';
+
+const adb = () => createDb((env as unknown as { HYPERDRIVE: Hyperdrive }).HYPERDRIVE);
 
 export const admin = {
   // --- queue claims (broadcast "X is reviewing", §5) ---
@@ -55,6 +60,8 @@ export const admin = {
       if (decision === 'reject' && !reason) throw new ActionError({ code: 'BAD_REQUEST', message: 'reason required' });
       if (decision === 'approve') {
         await accountApi.saveByEmail(email, { idVerification: 'approved', verificationReason: undefined });
+        // Merge: approving the ID also publishes their submitted profile + photos.
+        await approveWholeSubmission({ email });
         await record(session, { action: 'approve_verification', entityType: 'account', entityId: email });
       } else {
         await accountApi.saveByEmail(email, { idVerification: 'rejected', verificationReason: reason });
@@ -134,8 +141,32 @@ export const admin = {
       };
       const m = map[action]!;
       await setProfileState(id, m.state, session.email, reason);
+      // Approving from the directory also clears ID verification + photos (merge).
+      if (action === 'approve') await approveWholeSubmission({ profileId: id });
       await bustProfiles(sessionKv()); // lifecycle change → drop the edge cache
       await record(session, { action: m.audit, entityType: 'profile', entityId: id, reason });
+      return { ok: true };
+    },
+  }),
+
+  // --- single-photo takedown (in-place moderation from the public page, §8) ---
+  mediaReject: defineAction({
+    input: z.object({
+      profileId: z.string().max(60),
+      /** Served photo URL (public projection has no media ids) — key derived server-side. */
+      url: z.string().max(500),
+    }),
+    handler: async ({ profileId, url }, context) => {
+      const session = await requireAdmin(context, ['moderator']);
+      const imageKey = url.replace(/^\/media\//, '');
+      const rows = await adb()
+        .update(media)
+        .set({ state: 'rejected' })
+        .where(and(eq(media.profileId, profileId), eq(media.imageKey, imageKey)))
+        .returning({ id: media.id });
+      if (!rows.length) throw new ActionError({ code: 'NOT_FOUND', message: 'photo not found' });
+      await bustProfiles(sessionKv());
+      await record(session, { action: 'reject_media', entityType: 'media', entityId: rows[0]!.id });
       return { ok: true };
     },
   }),

@@ -11,6 +11,8 @@ interface Props {
   type?: HTMLAttributes<'input'>['type'];
   value?: string | number;
   placeholder?: string;
+  /** Fixed affordance shown inside the field before the input (e.g. "€"). */
+  prefix?: string;
   required?: boolean;
   autocomplete?: string;
   inputmode?: 'text' | 'numeric' | 'tel' | 'email' | 'decimal';
@@ -23,6 +25,7 @@ const {
   type = 'text',
   value = '',
   placeholder,
+  prefix,
   required,
   autocomplete,
   inputmode,
@@ -35,6 +38,7 @@ const {
   <span class="text-sm font-medium">{label}</span>
   <span class="slab-field block">
     <span class="slab-field__face flex h-11 items-center">
+      {prefix && <span class="pl-4 text-base text-muted-foreground md:text-sm">{prefix}</span>}
       <input
         {type}
         {name}
@@ -43,7 +47,10 @@ const {
         {required}
         {autocomplete}
         {inputmode}
-        class="h-full w-full bg-transparent px-4 text-base caret-brand outline-none placeholder:text-muted-foreground md:text-sm"
+        class:list={[
+          'h-full w-full bg-transparent pr-4 text-base caret-brand outline-none placeholder:text-muted-foreground md:text-sm',
+          prefix ? 'pl-1.5' : 'pl-4',
+        ]}
         {...rest}
       />
     </span>

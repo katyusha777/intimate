@@ -67,7 +67,7 @@ function blankProfile(session: Session): Profile {
     name: session.name,
     birthDate: birthDateForAge(POLICY_MIN_AGE, now), // she corrects it; DB CHECKs it
     gender: 'female',
-    city: CITIES[0].slug,
+    city: CITIES[0]!.slug, // Amsterdam — she corrects it in the wizard
     verified: false,
     online: false,
     featured: false,
@@ -158,7 +158,8 @@ async function uniqueSlug(d: Db, name: string, city: string): Promise<string> {
 function profileUpdate(patch: Partial<ProfileEdit>) {
   const u: Record<string, unknown> = {};
   const copy = [
-    'name', 'gender', 'city', 'rates', 'depositPolicy', 'extrasNote', 'services',
+    'name', 'gender', 'city', 'phone', 'whatsapp', 'telegram', 'instagram',
+    'rates', 'depositPolicy', 'extrasNote', 'services',
     'meetingTypes', 'languages', 'incallLocations', 'amenities', 'paymentMethods',
     'availableFor', 'bodyType', 'hairColor', 'hairLength', 'eyeColor', 'cupSize',
     'breastType', 'pubicHair', 'appearance', 'nationality', 'heightCm', 'weightKg',
@@ -308,7 +309,11 @@ export const accountApi: AccountApi = {
       imageKey: key,
       isPrivate,
       position: agg?.next ?? 0,
-      state: 'pending_review', // images are the one human-moderated surface
+      // Advertisers are ID-verified + accountable, so their photos publish on
+      // upload (they were stuck invisible in pending_review with no approval
+      // path). Bad content is handled reactively via reports/takedown.
+      // ponytail: no pre-moderation queue — add NSFW auto-flag → pending if needed.
+      state: 'approved',
     });
   },
 

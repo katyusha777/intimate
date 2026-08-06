@@ -7,7 +7,9 @@
  */
 import { env } from 'cloudflare:workers';
 
-const TTL_MS = 5 * 60_000;
+// 30 min: long enough for a real review sitting (a 5-min URL generated at page
+// load expired mid-review → "forbidden"). Still time-boxed + admin-walled.
+const TTL_MS = 30 * 60_000;
 const secret = (): string =>
   (env as unknown as { VDOC_SIGNING_SECRET?: string }).VDOC_SIGNING_SECRET ?? 'dev-insecure-vdoc-secret';
 

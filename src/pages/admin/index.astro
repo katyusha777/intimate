@@ -8,8 +8,13 @@ import { getAdmin, listAudit } from '@/actions/admin/lib';
 import { overview } from '@/actions/admin/queues';
 import { commandStats } from '@/actions/admin/entities';
 import AdminShell from '@/components/organisms/admin/AdminShell.astro';
+import AdminLogin from '@/components/organisms/admin/AdminLogin.astro';
+import * as m from '@/paraglide/messages';
 
 const session = await getAdmin(Astro);
+// No admin session → sign in right here (not via the app). `?signedin` means
+// they authenticated but the account isn't an admin.
+const signedIn = Astro.url.searchParams.has('signedin');
 const ov = session ? await overview() : null;
 const stats = session ? await commandStats() : null;
 const activity = session ? (await listAudit()).slice(0, 12) : [];
@@ -36,27 +41,29 @@ function breach(iso: string | null): boolean {
 
 const queues = ov
   ? [
-      { key: 'verification', label: 'Verification', href: '/admin/verification', depth: ov.queues.verification, oldest: ov.oldest.verification },
-      { key: 'moderation', label: 'Moderation', href: '/admin/moderation', depth: ov.queues.moderation, oldest: ov.oldest.moderation },
-      { key: 'reports', label: 'Reports', href: '/admin/reports', depth: ov.queues.reports, oldest: ov.oldest.reports },
+      { key: 'verification', label: m.adm_nav_verification(), href: '/admin/verification', depth: ov.queues.verification, oldest: ov.oldest.verification },
+      { key: 'moderation', label: m.adm_nav_moderation(), href: '/admin/moderation', depth: ov.queues.moderation, oldest: ov.oldest.moderation },
+      { key: 'reports', label: m.adm_nav_reports(), href: '/admin/reports', depth: ov.queues.reports, oldest: ov.oldest.reports },
     ]
   : [];
 const counters = ov
   ? [
-      { label: 'Accounts', value: ov.today.registrations },
-      { label: 'Awaiting review', value: ov.today.submitted },
-      { label: 'Live profiles', value: ov.today.published },
-      { label: 'Online now', value: ov.onlineNow },
+      { label: m.adm_counter_accounts(), value: ov.today.registrations },
+      { label: m.adm_counter_awaiting_review(), value: ov.today.submitted },
+      { label: m.adm_counter_live_profiles(), value: ov.today.published },
+      { label: m.online_now(), value: ov.onlineNow },
     ]
   : [];
 ---
 
-<AdminShell title="Overview" section="overview">
+{!session && <AdminLogin notAdmin={signedIn} />}
+{session && (
+<AdminShell title={m.adm_nav_overview()} section="overview">
   {
     ov && (
       <>
-        <h1 class="display text-3xl">Overview</h1>
-        <p class="mt-1 text-sm text-muted-foreground">Live ops. SLA target: verification &lt; {SLA_H}h.</p>
+        <h1 class="display text-3xl">{m.adm_nav_overview()}</h1>
+        <p class="mt-1 text-sm text-muted-foreground">{m.adm_overview_sla({ hours: SLA_H })}</p>
 
         <section class="mt-6 grid gap-3 sm:grid-cols-3">
           {queues.map((q) => (
@@ -64,7 +71,7 @@ const counters = ov
               <p class="eyebrow text-2xs text-muted-foreground">{q.label}</p>
               <p class="mt-2 font-condensed text-4xl font-bold leading-none">{q.depth}</p>
               <p class:list={['mt-2 text-xs', breach(q.oldest) ? 'font-semibold text-brand' : 'text-muted-foreground']}>
-                oldest {ago(q.oldest)}{breach(q.oldest) ? ' · SLA breached' : ''}
+                {m.adm_overview_oldest({ age: ago(q.oldest) })}{breach(q.oldest) ? ` · ${m.adm_sla_breached()}` : ''}
               </p>
             </a>
           ))}
@@ -81,15 +88,15 @@ const counters = ov
 
         {stats && (
           <section class="mt-8">
-            <h2 class="font-condensed text-sm font-bold uppercase tracking-wide text-muted-foreground">Platform</h2>
+            <h2 class="font-condensed text-sm font-bold uppercase tracking-wide text-muted-foreground">{m.adm_overview_platform()}</h2>
             <div class="mt-3 grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
               {[
-                { label: 'Profiles', value: stats.advertisers },
-                { label: 'Clients', value: stats.clients },
-                { label: 'Verified', value: `${stats.verifiedPct}%` },
-                { label: 'Online now', value: stats.onlineNow },
-                { label: 'Avg complete', value: `${stats.avgCompleteness}%` },
-                { label: 'Photos', value: stats.totalPhotos },
+                { label: m.adm_nav_profiles(), value: stats.advertisers },
+                { label: m.adm_nav_clients(), value: stats.clients },
+                { label: m.verified(), value: `${stats.verifiedPct}%` },
+                { label: m.online_now(), value: stats.onlineNow },
+                { label: m.adm_stat_avg_complete(), value: `${stats.avgCompleteness}%` },
+                { label: m.nav_photos(), value: stats.totalPhotos },
               ].map((s) => (
                 <div class="border border-border p-3">
                   <p class="eyebrow text-2xs text-muted-foreground">{s.label}</p>
@@ -100,7 +107,7 @@ const counters = ov
 
             <div class="mt-4 grid gap-6 sm:grid-cols-2">
               <div>
-                <p class="text-2xs uppercase tracking-wide text-muted-foreground">Profiles by state</p>
+                <p class="text-2xs uppercase tracking-wide text-muted-foreground">{m.adm_overview_by_state()}</p>
                 <div class="mt-2 space-y-1.5">
                   {stats.profilesByState.map((s) => (
                     <div class="flex items-center gap-2 text-sm">
@@ -112,7 +119,7 @@ const counters = ov
                 </div>
               </div>
               <div>
-                <p class="text-2xs uppercase tracking-wide text-muted-foreground">By gender</p>
+                <p class="text-2xs uppercase tracking-wide text-muted-foreground">{m.adm_overview_by_gender()}</p>
                 <div class="mt-2 space-y-1.5">
                   {stats.byGender.map((s) => (
                     <div class="flex items-center gap-2 text-sm">
@@ -128,7 +135,7 @@ const counters = ov
         )}
 
         <section class="mt-8">
-          <h2 class="font-condensed text-sm font-bold uppercase tracking-wide text-muted-foreground">Supply by city</h2>
+          <h2 class="font-condensed text-sm font-bold uppercase tracking-wide text-muted-foreground">{m.adm_overview_supply()}</h2>
           <div class="mt-3 max-w-2xl space-y-2">
             {ov.supply.map((s) => (
               <div class="flex items-center gap-3 text-sm">
@@ -144,11 +151,11 @@ const counters = ov
 
         <section class="mt-8">
           <div class="flex items-center justify-between">
-            <h2 class="font-condensed text-sm font-bold uppercase tracking-wide text-muted-foreground">Recent activity</h2>
-            <a href="/admin/audit" class="text-2xs font-medium text-muted-foreground hover:text-foreground">Audit log →</a>
+            <h2 class="font-condensed text-sm font-bold uppercase tracking-wide text-muted-foreground">{m.adm_overview_activity()}</h2>
+            <a href="/admin/audit" class="text-2xs font-medium text-muted-foreground hover:text-foreground">{m.adm_nav_audit()} →</a>
           </div>
           {activity.length === 0 ? (
-            <p class="mt-3 text-sm text-muted-foreground">No admin activity yet.</p>
+            <p class="mt-3 text-sm text-muted-foreground">{m.adm_overview_no_activity()}</p>
           ) : (
             <ul class="mt-3 max-w-2xl divide-y divide-border border border-border">
               {activity.map((e) => (
@@ -169,3 +176,4 @@ const counters = ov
     )
   }
 </AdminShell>
+)}

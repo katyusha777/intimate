@@ -5,13 +5,19 @@
  * account.saveProfile. Receives the MERGED profile (base + her edits).
  */
 import * as m from '@/paraglide/messages';
-import { birthDateForAge, type Profile } from '@/app/models/profile';
+import type { Profile } from '@/app/models/profile';
 import {
   amenityLabel,
+  appearanceLabel,
+  availableForLabel,
+  bodyTypeLabel,
+  cupSizeLabel,
   dayLabel,
   genderLabel,
+  hairColorLabel,
   incallLocationLabel,
   languageLabel,
+  meetingTypeLabel,
   paymentMethodLabel,
   rateDurationLabel,
   serviceCategoryLabel,
@@ -19,13 +25,19 @@ import {
 } from '@/lib/labels';
 import {
   AMENITIES,
+  APPEARANCES,
+  AVAILABLE_FOR,
+  BODY_TYPES,
   CITIES,
+  CUP_SIZES,
   DAYS,
   GENDERS,
+  HAIR_COLORS,
   INCALL_LOCATIONS,
   LANGUAGES,
   MEETING_TYPES,
   PAYMENT_METHODS,
+  POLICY_MIN_AGE,
   RATE_DURATIONS,
   SERVICES,
   SERVICE_CATEGORIES,
@@ -33,6 +45,7 @@ import {
 import Button from '@/components/atoms/Button.astro';
 import Icon from '@/components/atoms/Icon.astro';
 import Select from '@/components/atoms/Select.astro';
+import BirthDateField from '@/components/molecules/BirthDateField.astro';
 import SlabField from '@/components/molecules/SlabField.astro';
 
 interface Props {
@@ -51,7 +64,6 @@ const show = (k: string) => !only || only.includes(k);
 
 const selectedServices = new Set(p.services as readonly string[]);
 // Latest DOB an 18-year-old could have (for the date input's max).
-const max18 = birthDateForAge(18);
 // Bigger, unmistakable section headers with a keyline; a muted one-liner under
 // each explains the section in plain words. Sub-groups get a smaller bold label.
 const heading = 'font-condensed text-xl font-bold uppercase tracking-wide';
@@ -70,6 +82,7 @@ const selLanguages = setOf(p.languages ?? []);
 const selIncall = setOf(p.incallLocations ?? []);
 const selAmenities = setOf(p.amenities ?? []);
 const selPayments = setOf(p.paymentMethods ?? []);
+const selAvailableFor = setOf(p.availableFor ?? []);
 ---
 
 <form data-profile-editor data-wizard={wizard ? '' : undefined} class="max-w-2xl space-y-12">
@@ -77,14 +90,7 @@ const selPayments = setOf(p.paymentMethods ?? []);
   <Fragment>
   <div class="grid gap-4 sm:grid-cols-2">
     <SlabField label={m.editor_name()} name="name" value={p.name} required />
-    <SlabField
-      label={m.editor_birthdate()}
-      name="birthDate"
-      type="date"
-      value={p.birthDate}
-      max={max18}
-      required
-    />
+    <BirthDateField label={m.editor_birthdate()} value={p.birthDate} minAge={POLICY_MIN_AGE} />
     <label class="block space-y-1.5">
       <span class="text-sm font-medium">{m.filter_gender()}</span>
       <Select name="gender">
@@ -97,6 +103,17 @@ const selPayments = setOf(p.paymentMethods ?? []);
         {CITIES.map((c) => <option value={c.slug} selected={p.city === c.slug}>{c.name}</option>)}
       </Select>
     </label>
+  </div>
+
+  <div class="space-y-2">
+    <h3 class={heading}>{m.editor_contact()}</h3>
+    <p class="text-xs text-muted-foreground">{m.editor_contact_hint()}</p>
+    <div class="grid gap-4 sm:grid-cols-2">
+      <SlabField label={m.editor_phone()} name="phone" type="tel" inputmode="tel" value={p.phone ?? ''} autocomplete="off" />
+      <SlabField label="WhatsApp" name="whatsapp" type="tel" inputmode="tel" value={p.whatsapp ?? ''} placeholder="+31 6 12345678" autocomplete="off" />
+      <SlabField label="Telegram" name="telegram" value={p.telegram ?? ''} placeholder="@handle" autocomplete="off" />
+      <SlabField label="Instagram" name="instagram" value={p.instagram ?? ''} placeholder="@handle" autocomplete="off" />
+    </div>
   </div>
 
   <div class="space-y-2">
@@ -113,7 +130,7 @@ const selPayments = setOf(p.paymentMethods ?? []);
               checked={(p.meetingTypes as readonly string[]).includes(t)}
               class="sr-only"
             />
-            {t === 'incall' ? m.cat_private() : m.cat_escort()}
+            {meetingTypeLabel(t)}
           </label>
         ))
       }
@@ -150,7 +167,7 @@ const selPayments = setOf(p.paymentMethods ?? []);
                 type="number"
                 inputmode="numeric"
                 min="0"
-                step="5"
+                step="1"
                 placeholder="€"
                 data-rate-incall
                 value={r?.incall ?? ''}
@@ -160,7 +177,7 @@ const selPayments = setOf(p.paymentMethods ?? []);
                 type="number"
                 inputmode="numeric"
                 min="0"
-                step="5"
+                step="1"
                 placeholder="€"
                 data-rate-outcall
                 value={r?.outcall ?? ''}
@@ -177,6 +194,7 @@ const selPayments = setOf(p.paymentMethods ?? []);
          display order on the public rates table). -->
     <div class="pt-4" data-custom-rates>
       <p class="eyebrow text-2xs text-muted-foreground">{m.editor_custom_items()}</p>
+      <p class="mt-1 text-xs text-muted-foreground">{m.editor_custom_hint()}</p>
       <div class="mt-2 space-y-2" data-custom-list>
         {
           customRows.map((r) => (
@@ -200,8 +218,8 @@ const selPayments = setOf(p.paymentMethods ?? []);
                   <Icon name="xmark" class="text-xs" />
                 </button>
               </div>
-              <input type="number" inputmode="numeric" min="0" step="5" placeholder="€" data-custom-incall value={r.incall ?? ''} class="w-full border border-foreground/20 bg-transparent px-2 py-1 text-right text-sm outline-none transition-colors focus:border-foreground" />
-              <input type="number" inputmode="numeric" min="0" step="5" placeholder="€" data-custom-outcall value={r.outcall ?? ''} class="w-full border border-foreground/20 bg-transparent px-2 py-1 text-right text-sm outline-none transition-colors focus:border-foreground" />
+              <input type="number" inputmode="numeric" min="0" step="1" placeholder="€" data-custom-incall value={r.incall ?? ''} class="w-full border border-foreground/20 bg-transparent px-2 py-1 text-right text-sm outline-none transition-colors focus:border-foreground" />
+              <input type="number" inputmode="numeric" min="0" step="1" placeholder="€" data-custom-outcall value={r.outcall ?? ''} class="w-full border border-foreground/20 bg-transparent px-2 py-1 text-right text-sm outline-none transition-colors focus:border-foreground" />
             </div>
           ))
         }
@@ -226,8 +244,8 @@ const selPayments = setOf(p.paymentMethods ?? []);
               <Icon name="xmark" class="text-xs" />
             </button>
           </div>
-          <input type="number" inputmode="numeric" min="0" step="5" placeholder="€" data-custom-incall class="w-full border border-foreground/20 bg-transparent px-2 py-1 text-right text-sm outline-none transition-colors focus:border-foreground" />
-          <input type="number" inputmode="numeric" min="0" step="5" placeholder="€" data-custom-outcall class="w-full border border-foreground/20 bg-transparent px-2 py-1 text-right text-sm outline-none transition-colors focus:border-foreground" />
+          <input type="number" inputmode="numeric" min="0" step="1" placeholder="€" data-custom-incall class="w-full border border-foreground/20 bg-transparent px-2 py-1 text-right text-sm outline-none transition-colors focus:border-foreground" />
+          <input type="number" inputmode="numeric" min="0" step="1" placeholder="€" data-custom-outcall class="w-full border border-foreground/20 bg-transparent px-2 py-1 text-right text-sm outline-none transition-colors focus:border-foreground" />
         </div>
       </template>
       <button
@@ -242,12 +260,21 @@ const selPayments = setOf(p.paymentMethods ?? []);
 
     <div class="grid gap-4 pt-2 sm:grid-cols-2">
       <div>
-        <SlabField label={m.gtk_deposit()} name="depositPolicy" value={p.depositPolicy ?? ''} maxlength="200" />
+        <SlabField label={m.gtk_deposit()} name="depositPolicy" value={p.depositPolicy ?? ''} maxlength="200" prefix="€" />
         <!-- You take payments yourself — an optional deposit rule you set here
              is shown (labelled as yours) on your rates card. -->
         <p class="mt-1.5 text-xs text-muted-foreground">{m.deposit_hint()}</p>
       </div>
-      <SlabField label={m.editor_extras()} name="extrasNote" value={p.extrasNote ?? ''} maxlength="200" />
+      <label class="block space-y-1.5">
+        <span class="text-sm font-medium">{m.editor_extras()}</span>
+        <textarea
+          name="extrasNote"
+          rows="3"
+          maxlength="200"
+          class="w-full border border-foreground/20 bg-transparent p-3 text-base caret-brand outline-none transition-colors focus:border-foreground md:text-sm"
+        >{p.extrasNote ?? ''}</textarea>
+        <p class="text-xs text-muted-foreground">{m.editor_extras_hint()}</p>
+      </label>
     </div>
   </div>
 
@@ -340,6 +367,58 @@ const selPayments = setOf(p.paymentMethods ?? []);
 
   )}
 
+  {show('appearance') && (
+  <div class="space-y-4">
+    <div class="space-y-1.5">
+      <h3 class={heading}>{m.editor_appearance()}</h3>
+      <p class={sectionSub}>{m.editor_appearance_hint()}</p>
+    </div>
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="block space-y-1.5">
+        <span class="text-sm font-medium">{m.attr_ethnicity()}</span>
+        <Select name="appearance">
+          <option value="">—</option>
+          {APPEARANCES.map((a) => <option value={a} selected={p.appearance === a}>{appearanceLabel(a)}</option>)}
+        </Select>
+      </label>
+      <label class="block space-y-1.5">
+        <span class="text-sm font-medium">{m.attr_body_type()}</span>
+        <Select name="bodyType">
+          <option value="">—</option>
+          {BODY_TYPES.map((b) => <option value={b} selected={p.bodyType === b}>{bodyTypeLabel(b)}</option>)}
+        </Select>
+      </label>
+      <label class="block space-y-1.5">
+        <span class="text-sm font-medium">{m.attr_hair_color()}</span>
+        <Select name="hairColor">
+          <option value="">—</option>
+          {HAIR_COLORS.map((h) => <option value={h} selected={p.hairColor === h}>{hairColorLabel(h)}</option>)}
+        </Select>
+      </label>
+      <label class="block space-y-1.5">
+        <span class="text-sm font-medium">{m.attr_cup_size()}</span>
+        <Select name="cupSize">
+          <option value="">—</option>
+          {CUP_SIZES.map((c) => <option value={c} selected={p.cupSize === c}>{cupSizeLabel(c)}</option>)}
+        </Select>
+      </label>
+      <SlabField label={m.attr_height()} name="heightCm" type="number" inputmode="numeric" value={p.heightCm ?? ''} placeholder="170" />
+    </div>
+    <div class="space-y-2.5">
+      <span class={subhead}>{m.attr_available_for()}</span>
+      <div class="flex flex-wrap gap-x-6 gap-y-2">
+        {AVAILABLE_FOR.map((a) => (
+          <label class={row}>
+            <input type="checkbox" name="availableFor" value={a} checked={selAvailableFor.has(a)} class="cbx-box" />
+            {availableForLabel(a)}
+          </label>
+        ))}
+      </div>
+    </div>
+  </div>
+
+  )}
+
   {show('services') && (
   <div class="space-y-2">
     <div class="space-y-1.5">
@@ -392,25 +471,16 @@ const selPayments = setOf(p.paymentMethods ?? []);
     <div class="space-y-1.5">
       <h3 class={heading}>{m.editor_hours()}</h3>
       <p class={sectionSub}>{m.editor_hours_hint()}</p>
+      <p class={sectionSub}>{m.avail_drives_visibility()}</p>
     </div>
     <div>
       {
         DAYS.map((day) => {
           const h = p.openingHours?.[day] ?? { closed: false, allDay: false, from: '10:00', to: '22:00' };
           return (
-            <div class="border-b border-border py-2.5" data-hours-row data-day={day}>
-              <div class="flex items-center gap-3">
-                <span class="flex-1 text-sm font-medium">{dayLabel(day)}</span>
-                <label class="flex w-24 flex-none cursor-pointer select-none items-center gap-2 text-sm">
-                  <input type="checkbox" checked={h.closed} class="cbx-box" data-hours-closed />
-                  {m.hours_closed()}
-                </label>
-                <label class="flex w-28 flex-none cursor-pointer select-none items-center gap-2 text-sm" data-hours-openonly>
-                  <input type="checkbox" checked={h.allDay} class="cbx-box" data-hours-allday />
-                  {m.hours_allday()}
-                </label>
-              </div>
-              <div class="mt-2 flex items-center gap-2" data-hours-times>
+            <div class="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border py-2.5" data-hours-row data-day={day}>
+              <span class="w-24 flex-none text-sm font-medium">{dayLabel(day)}</span>
+              <div class="flex items-center gap-2" data-hours-times>
                 <input
                   type="time"
                   data-hours-from
@@ -425,6 +495,14 @@ const selPayments = setOf(p.paymentMethods ?? []);
                   class="border border-foreground/20 bg-transparent px-2 py-1 text-sm outline-none transition-colors focus:border-foreground"
                 />
               </div>
+              <label class="flex flex-none cursor-pointer select-none items-center gap-2 text-sm">
+                <input type="checkbox" checked={h.closed} class="cbx-box" data-hours-closed />
+                {m.hours_closed()}
+              </label>
+              <label class="flex flex-none cursor-pointer select-none items-center gap-2 text-sm" data-hours-openonly>
+                <input type="checkbox" checked={h.allDay} class="cbx-box" data-hours-allday />
+                {m.hours_allday()}
+              </label>
             </div>
           );
         })
@@ -437,10 +515,12 @@ const selPayments = setOf(p.paymentMethods ?? []);
   {show('description') && (
   <label class="block space-y-1.5">
     <span class="text-sm font-medium">{m.editor_description()}</span>
+    <p class="text-xs text-muted-foreground">{m.editor_description_hint()}</p>
     <textarea
       name="description"
       rows="5"
       maxlength="1000"
+      placeholder={m.editor_description_ph()}
       class="w-full border border-foreground/20 bg-transparent p-3 text-base caret-brand outline-none transition-colors focus:border-foreground md:text-sm"
     >{p.description}</textarea>
   </label>

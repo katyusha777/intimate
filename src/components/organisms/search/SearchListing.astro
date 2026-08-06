@@ -7,7 +7,7 @@
  * button on mobile). One GET <form> + SSR = zero client state.
  */
 import * as m from '@/paraglide/messages';
-import { serviceLabel } from '@/lib/labels';
+import { meetingTypeLabel, serviceLabel } from '@/lib/labels';
 import { CITIES } from '@/lib/taxonomy';
 import { LISTING_CATEGORIES, type Locale } from '@/lib/taxonomy';
 import { getLocale } from '@/paraglide/runtime';
@@ -47,6 +47,9 @@ const incallSlug = LISTING_CATEGORIES.find(
 )!.slugs[locale];
 const outcallSlug = LISTING_CATEGORIES.find(
   (c) => 'meetingType' in c.filter && c.filter.meetingType === 'outcall',
+)!.slugs[locale];
+const virtualSlug = LISTING_CATEGORIES.find(
+  (c) => 'meetingType' in c.filter && c.filter.meetingType === 'virtual',
 )!.slugs[locale];
 
 /** City lives in the path: `${tabPath}${city}/`. */
@@ -103,7 +106,7 @@ for (const s of params.services ?? [])
   pills.push({ label: serviceLabel(s), href: hrefWithout((sp) => dropOne(sp, 'services', s)) });
 if (params.meetingType && currentUrl.searchParams.has('visit'))
   pills.push({
-    label: params.meetingType === 'incall' ? m.cat_private() : m.cat_escort(),
+    label: meetingTypeLabel(params.meetingType),
     href: hrefWithout((sp) => sp.delete('visit')),
   });
 if (params.priceMin !== undefined)
@@ -125,17 +128,10 @@ if (params.onlineOnly)
   data-visit-any-path={`/${locale}/search/`}
   data-visit-incall-path={`/${locale}/${incallSlug}/`}
   data-visit-outcall-path={`/${locale}/${outcallSlug}/`}
+  data-visit-virtual-path={`/${locale}/${virtualSlug}/`}
 >
-  <!-- Desktop: the header tabs own gender, so this hidden input carries the
-       non-default pick through filter submits. Mobile: the sheet's radio owns
-       it — the script disables this input there so the two never double. -->
-  {
-    params.genders?.includes('male') ? (
-      <input type="hidden" name="gender" value="men" data-gender-hidden />
-    ) : params.genders?.includes('trans_woman') ? (
-      <input type="hidden" name="gender" value="trans" data-gender-hidden />
-    ) : null
-  }
+  <!-- Gender rides the sidebar/sheet radios (FilterSidebar) — one per
+       viewport, per-viewport disabling below keeps them from doubling. -->
   <div class="mb-6">
     <h1 class="display text-3xl md:text-4xl">{title}</h1>
     <p class="mt-1.5 max-w-2xl text-sm text-muted-foreground">
@@ -338,7 +334,6 @@ if (params.onlineOnly)
           .forEach((i) => (i.disabled = off));
       dis('[data-filters-desktop] input', !lg); // mobile: whole sidebar copy off
       dis('[data-filters-mobile] input', lg); // desktop: whole sheet copy off
-      dis('[data-gender-hidden]', !lg); // mobile: the sheet's gender radio owns it
     };
     if (!(window as any).__filterSetsMq) {
       (window as any).__filterSetsMq = true;
@@ -375,7 +370,9 @@ if (params.onlineOnly)
               ? form.dataset.visitIncallPath!
               : visitNav.value === 'outcall'
                 ? form.dataset.visitOutcallPath!
-                : form.dataset.visitAnyPath!;
+                : visitNav.value === 'virtual'
+                  ? form.dataset.visitVirtualPath!
+                  : form.dataset.visitAnyPath!;
           form.action = tab + citySeg();
         }
 

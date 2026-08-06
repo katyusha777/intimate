@@ -15,6 +15,7 @@ import { cityName } from '@/lib/seo';
 import AdminShell from '@/components/organisms/admin/AdminShell.astro';
 import QueueList from '@/components/organisms/admin/QueueList.astro';
 import DocViewer from '@/components/organisms/admin/DocViewer.astro';
+import * as m from '@/paraglide/messages';
 
 const session = await getAdmin(Astro);
 const items = session ? await verificationQueue() : [];
@@ -26,8 +27,10 @@ const profile = selected?.profileSlug ? await profilesApi.bySlug(selected.profil
 const birthDate = profile?.birthDate ?? null;
 // Short-TTL signed URLs for this account's submitted docs (each read is audited
 // at the serve route, hard rule 3).
+// (id) => wrapper matters: bare .map(signVdocUrl) passes the array index as
+// its nowMs param → URLs signed for 1970 → always "forbidden".
 const docSrcs = selected
-  ? await Promise.all((await verificationDocIdsFor(selected.email)).map(signVdocUrl))
+  ? await Promise.all((await verificationDocIdsFor(selected.email)).map((id) => signVdocUrl(id)))
   : [];
 
 function ago(iso: string): string {
@@ -46,74 +49,74 @@ const rows = items.map((i) => ({
 }));
 ---
 
-<AdminShell title="Verification" section="verification">
+<AdminShell title={m.adm_nav_verification()} section="verification">
   {
     session && (
       <div>
         <div class="flex items-end justify-between gap-4">
           <div>
-            <h1 class="display text-3xl">Verification</h1>
-            <p class="mt-1 text-sm text-muted-foreground">{items.length} pending · oldest-first · SLA &lt; 24h</p>
+            <h1 class="display text-3xl">{m.adm_nav_verification()}</h1>
+            <p class="mt-1 text-sm text-muted-foreground">{m.adm_verification_meta({ count: items.length })}</p>
           </div>
         </div>
 
         <div class="mt-6 grid gap-6 lg:grid-cols-[20rem_1fr]">
-          <QueueList rows={rows} empty="Queue empty — nothing awaiting verification." />
+          <QueueList rows={rows} empty={m.adm_verification_empty()} />
 
           {!selected ? (
             <div class="grid place-items-center border border-dashed border-border py-24 text-sm text-muted-foreground">
-              Select an item to review.
+              {m.adm_select_item()}
             </div>
           ) : (
             <div data-review data-email={selected.email} class="min-w-0 space-y-5">
               <div class="grid gap-5 md:grid-cols-2">
                 <div>
-                  <h2 class="font-condensed text-sm font-bold uppercase tracking-wide text-muted-foreground">Submitted document</h2>
+                  <h2 class="font-condensed text-sm font-bold uppercase tracking-wide text-muted-foreground">{m.adm_verification_doc_title()}</h2>
                   <div class="mt-2">
                     <DocViewer srcs={docSrcs} admin={session.email} />
                   </div>
                   <p class="mt-2 text-2xs text-muted-foreground">
-                    Presigned ≤5min in prod (private R2). Every reveal is audit-logged.
+                    {m.adm_verification_doc_note()}
                   </p>
                 </div>
 
                 <div>
-                  <h2 class="font-condensed text-sm font-bold uppercase tracking-wide text-muted-foreground">Claim vs document</h2>
+                  <h2 class="font-condensed text-sm font-bold uppercase tracking-wide text-muted-foreground">{m.adm_verification_claim_title()}</h2>
                   <dl class="mt-2 divide-y divide-border border border-border text-sm">
-                    <div class="flex justify-between gap-4 px-3 py-2"><dt class="text-muted-foreground">Name</dt><dd class="font-medium">{selected.profileName}</dd></div>
-                    <div class="flex justify-between gap-4 px-3 py-2"><dt class="text-muted-foreground">Birth date</dt><dd class="font-medium">{birthDate ?? '—'}{birthDate ? ` (${profileAge(birthDate)})` : ''}</dd></div>
-                    <div class="flex justify-between gap-4 px-3 py-2"><dt class="text-muted-foreground">City</dt><dd class="font-medium">{profile ? cityName(profile.city) : '—'}</dd></div>
+                    <div class="flex justify-between gap-4 px-3 py-2"><dt class="text-muted-foreground">{m.contacts_name()}</dt><dd class="font-medium">{selected.profileName}</dd></div>
+                    <div class="flex justify-between gap-4 px-3 py-2"><dt class="text-muted-foreground">{m.adm_field_birth_date()}</dt><dd class="font-medium">{birthDate ?? '—'}{birthDate ? ` (${profileAge(birthDate)})` : ''}</dd></div>
+                    <div class="flex justify-between gap-4 px-3 py-2"><dt class="text-muted-foreground">{m.filter_city()}</dt><dd class="font-medium">{profile ? cityName(profile.city) : '—'}</dd></div>
                     <div class="flex justify-between gap-4 px-3 py-2">
-                      <dt class="text-muted-foreground">Phone (SMS)</dt>
+                      <dt class="text-muted-foreground">{m.account_sms()}</dt>
                       <dd class:list={['font-medium', selected.phoneVerified ? 'text-online' : 'text-brand']}>
-                        {selected.phoneVerified ? 'Verified' : 'NOT verified'}
+                        {selected.phoneVerified ? m.verified() : m.adm_not_verified()}
                       </dd>
                     </div>
-                    <div class="flex justify-between gap-4 px-3 py-2"><dt class="text-muted-foreground">Submitted</dt><dd class="font-medium">{selected.submittedAt ? `${ago(selected.submittedAt)} ago` : '—'}</dd></div>
+                    <div class="flex justify-between gap-4 px-3 py-2"><dt class="text-muted-foreground">{m.adm_field_submitted()}</dt><dd class="font-medium">{selected.submittedAt ? m.adm_ago({ age: ago(selected.submittedAt) }) : '—'}</dd></div>
                   </dl>
                   {!selected.phoneVerified && (
                     <p class="mt-2 border-l-2 border-brand pl-2 text-xs text-muted-foreground">
-                      Both gates must pass before publish — SMS not yet verified.
+                      {m.adm_verification_sms_gate()}
                     </p>
                   )}
                   {selected.claim && (
-                    <p class="mt-2 text-xs text-muted-foreground">Claimed by {selected.claim.by.split('@')[0]}.</p>
+                    <p class="mt-2 text-xs text-muted-foreground">{m.adm_claimed_by({ name: selected.claim.by.split('@')[0] })}</p>
                   )}
                 </div>
               </div>
 
               {/* Decision bar */}
               <div class="flex flex-wrap items-end gap-3 border-t border-border pt-5">
-                <button type="button" data-approve class="slab-cut bg-online px-4 py-2 text-sm font-semibold text-white">Approve (a)</button>
+                <button type="button" data-approve class="slab-cut bg-online px-4 py-2 text-sm font-semibold text-white">{m.adm_approve()}</button>
                 <label class="text-sm">
-                  <span class="mb-1 block text-xs font-medium text-muted-foreground">Reject reason</span>
+                  <span class="mb-1 block text-xs font-medium text-muted-foreground">{m.adm_reject_reason()}</span>
                   <select data-reason class="slab-cut border border-foreground/20 bg-background px-3 py-2 text-sm">
-                    <option value="">Select reason…</option>
+                    <option value="">{m.adm_select_reason()}</option>
                     {REJECTION_REASONS.map((r) => <option value={r}>{humanize(r)}</option>)}
                   </select>
                 </label>
-                <button type="button" data-reject class="slab-cut border border-brand px-4 py-2 text-sm font-semibold text-brand">Reject (r)</button>
-                <button type="button" data-escalate class="ml-auto text-sm font-medium text-muted-foreground hover:text-foreground">Escalate to super (e)</button>
+                <button type="button" data-reject class="slab-cut border border-brand px-4 py-2 text-sm font-semibold text-brand">{m.adm_reject()}</button>
+                <button type="button" data-escalate class="ml-auto text-sm font-medium text-muted-foreground hover:text-foreground">{m.adm_escalate()}</button>
               </div>
             </div>
           )}
@@ -125,6 +128,7 @@ const rows = items.map((i) => ({
 
 <script>
   import { actions } from 'astro:actions';
+  import * as m from '@/paraglide/messages';
   function initReview() {
     const panel = document.querySelector<HTMLElement>('[data-review]');
     if (!panel || panel.dataset.init) return;
@@ -146,7 +150,7 @@ const rows = items.map((i) => ({
     };
     const escalate = async () => {
       await actions.admin.escalate({ entityType: 'account', entityId: email });
-      alert('Escalated to super.');
+      alert(m.adm_escalated_alert());
     };
     panel.querySelector('[data-approve]')!.addEventListener('click', approve);
     panel.querySelector('[data-reject]')!.addEventListener('click', reject);

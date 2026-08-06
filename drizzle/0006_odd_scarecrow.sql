@@ -1,0 +1,1 @@
+ALTER TYPE "public"."city" ADD VALUE 'online' BEFORE 'amsterdam';

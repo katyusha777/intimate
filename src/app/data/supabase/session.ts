@@ -8,10 +8,11 @@
  * Drizzle query over accounts ⟕ profiles.
  */
 import { env } from 'cloudflare:workers';
-import { eq } from 'drizzle-orm';
+import { and, asc, eq } from 'drizzle-orm';
 import { supabaseServer } from '@/lib/supabase';
 import { createDb, type Db } from '@/db/client';
-import { accounts, profiles } from '@/db/schema';
+import { accounts, media, profiles } from '@/db/schema';
+import { mediaUrl } from '@/app/data/db/profiles';
 import type { Session, SessionApi } from '@/app/models/session';
 import { ACCOUNT_TYPES } from '@/lib/taxonomy';
 
@@ -29,6 +30,7 @@ async function identity(accountId: string, email: string | undefined): Promise<S
       displayName: accounts.displayName,
       profileId: profiles.id,
       profileSlug: profiles.slug,
+      profileState: profiles.state,
       profileName: profiles.name,
     })
     .from(accounts)
@@ -38,6 +40,18 @@ async function identity(accountId: string, email: string | undefined): Promise<S
   const row = rows[0];
   if (!row) return null; // auth user without an accounts row — treat as signed out
   const mail = row.email ?? email ?? 'unknown@invalid';
+  // Avatar = first approved public photo (position order) — her real photo,
+  // not a stand-in (SafeImage without src invents one).
+  let avatarUrl: string | undefined;
+  if (row.profileId) {
+    const [photo] = await db()
+      .select({ imageKey: media.imageKey })
+      .from(media)
+      .where(and(eq(media.profileId, row.profileId), eq(media.state, 'approved'), eq(media.isPrivate, false)))
+      .orderBy(asc(media.position))
+      .limit(1);
+    if (photo) avatarUrl = mediaUrl(photo.imageKey);
+  }
   return {
     accountId,
     email: mail,
@@ -45,6 +59,8 @@ async function identity(accountId: string, email: string | undefined): Promise<S
     name: row.profileName ?? row.displayName ?? mail.split('@')[0] ?? 'User',
     profileId: row.profileId ?? undefined,
     profileSlug: row.profileSlug ?? undefined,
+    profileState: row.profileState ?? undefined,
+    avatarUrl,
     adminRole: row.adminRole ?? undefined,
   };
 }

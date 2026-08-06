@@ -10,15 +10,14 @@
  */
 import * as m from '@/paraglide/messages';
 import type { Profile } from '@/app/models/profile';
-import { incallLocationLabel, languageLabel, paymentMethodLabel } from '@/lib/labels';
+import { amenityLabel, incallLocationLabel, languageLabel, paymentMethodLabel } from '@/lib/labels';
+import type { Amenity } from '@/lib/taxonomy';
 
 interface Props {
   profile: Profile;
   class?: string;
 }
 const { profile: p, class: className } = Astro.props;
-
-const has = (v: string) => (p.amenities as readonly string[]).includes(v);
 
 // Place: incall locations + "she visits" when outcall is offered.
 const placeParts: string[] = [
@@ -33,8 +32,9 @@ const push = (label: string, value: string | undefined) => {
 };
 push(m.gtk_languages(), p.languages.length ? p.languages.map(languageLabel).join(', ') : undefined);
 push(m.gtk_place(), placeParts.length ? placeParts.join(' · ') : undefined);
-push(m.gtk_parking(), has('parking_available') ? m.gtk_yes() : m.gtk_no());
-push(m.gtk_shower(), has('shower_available') ? m.gtk_yes() : m.gtk_no());
+// Amenities: only the ones she HAS, as one positive list — never "Parking: No"
+// (a negative reads as noise; an absent row is honest).
+push(m.gtk_amenities(), p.amenities.length ? (p.amenities as Amenity[]).map(amenityLabel).join(', ') : undefined);
 push(m.gtk_payment(), p.paymentMethods.length ? p.paymentMethods.map(paymentMethodLabel).join(', ') : undefined);
 push(m.gtk_deposit(), p.depositPolicy);
 ---

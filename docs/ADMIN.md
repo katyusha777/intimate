@@ -94,6 +94,7 @@ Server-rendered, realtime-layered (our SSR-first + broadcast pattern, reused):
 ## 8. Profiles, Users, Organizations (lookup surfaces)
 
 **Profiles:** filter by state/city/verification/completeness; list shows state chips + **completeness %** (SQL view scoring filled fields/photos/rates — also shown to the professional herself as "profile strength"; same view, two audiences) + quality flags (1 photo only, no rates, stale >90d). Detail: everything + full history (audit slice) + state-machine actions with reasons + "view public page" + admin-edit (logged, flagged `edited_by_admin`). State transitions honor lifecycle law (hard rule 6): blocked/deleted public pages → 410 + IndexNow removal.
+**In-place moderation:** an admin session viewing any public profile page gets the `ProfileAdminBar` strip (act where you look): set live / pause / block-with-reason / unblock + single-photo takedown (`mediaReject`), all through the guarded admin actions (audit-logged, cache-busted); admins also see non-live profiles at their public URL (god view, never edge-cached).
 **Users:** search by email/phone/name; detail = **relations panel** (one recursive query view): account → profiles ↔ org ↔ org-members, threads count, reports made/received, verification attempts, favorites count, sessions (last seen, app_mode). Status actions: warn (platform message), suspend, block, soft-delete — each with reason, each notifying the user (legibility again).
 **Organizations:** KvK + verification state, members/roles, roster with per-profile states, aggregate quality (ARCHITECTURE §12).
 

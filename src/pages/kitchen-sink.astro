@@ -14,7 +14,10 @@ import CitySheet from '@/components/molecules/CitySheet.astro';
 import ProfilePhotoMosaic from '@/components/organisms/profile/ProfilePhotoMosaic.astro';
 import RatesTable from '@/components/organisms/profile/RatesTable.astro';
 import GoodToKnow from '@/components/organisms/profile/GoodToKnow.astro';
+import EssentialsTags from '@/components/molecules/EssentialsTags.astro';
+import ContactButtons from '@/components/molecules/ContactButtons.astro';
 import ProfileFacts from '@/components/organisms/profile/ProfileFacts.astro';
+import ProfileAdminBar from '@/components/organisms/profile/ProfileAdminBar.astro';
 import RequestSheet from '@/components/organisms/profile/RequestSheet.astro';
 import RequestCard from '@/components/organisms/messaging/RequestCard.astro';
 import ReceiptSheet from '@/components/organisms/profile/ReceiptSheet.astro';
@@ -55,6 +58,7 @@ const onbReady: OnboardingProgress = {
 import Select from '@/components/atoms/Select.astro';
 import Input from '@/components/atoms/Input.astro';
 import SlabField from '@/components/molecules/SlabField.astro';
+import BirthDateField from '@/components/molecules/BirthDateField.astro';
 import FilterSidebar from '@/components/organisms/search/FilterSidebar.astro';
 import VerifiedBadge from '@/components/atoms/VerifiedBadge.astro';
 import Button from '@/components/atoms/Button.astro';
@@ -300,6 +304,7 @@ const swatches = [
         <div class="w-56"><Select><option>Select atom</option><option>Option B</option></Select></div>
         <div class="w-56"><Input placeholder="Input atom" /></div>
         <div class="w-56"><SlabField label="Slab field" name="demo" placeholder="Type here…" /></div>
+        <div class="w-80"><BirthDateField label="Birth date" value="1997-01-17" /></div>
         <Combobox
           options={CITIES.map((c) => ({ value: c.slug, label: c.name }))}
           placeholder="City"
@@ -465,6 +470,25 @@ const swatches = [
     </section>
 
     <section class="space-y-4">
+      <h2 class="text-xl font-semibold">EssentialsTags — key attributes as icon chips</h2>
+      <p class="text-sm text-muted-foreground">
+        Set attributes only (ethnicity, height, body, hair, cup, available-for, languages).
+      </p>
+      <EssentialsTags
+        profile={{ ...p, appearance: 'east_european', heightCm: 170, bodyType: 'curvy', hairColor: 'brunette', cupSize: 'c', availableFor: ['men', 'couples'] }}
+        class="max-w-2xl"
+      />
+    </section>
+
+    <section class="space-y-4">
+      <h2 class="text-xl font-semibold">ContactButtons — open tap-to-contact channels</h2>
+      <p class="text-sm text-muted-foreground">Handles pre-sanitized; renders nothing when none set. (Shown on the dark deal card.)</p>
+      <div class="facts-slab dark max-w-xs bg-neutral-950 p-6">
+        <ContactButtons profile={{ ...p, whatsapp: '+31 6 12345678', telegram: '@demo', instagram: 'demo_nl', phone: '020 555 0000' }} />
+      </div>
+    </section>
+
+    <section class="space-y-4">
       <h2 class="text-xl font-semibold">ProfileFacts — the deal card (2.4)</h2>
       <p class="text-sm text-muted-foreground">
         Compact rates + availability truth line + CTA + trust-receipt link; metadata demoted.
@@ -472,6 +496,14 @@ const swatches = [
       <div class="max-w-sm">
         <ProfileFacts profile={p} />
       </div>
+    </section>
+
+    <section class="space-y-4">
+      <h2 class="text-xl font-semibold">ProfileAdminBar — in-place moderation strip</h2>
+      <p class="text-sm text-muted-foreground">
+        Renders only for an admin session on the public profile page: state actions + single-photo takedown, all audit-logged.
+      </p>
+      <ProfileAdminBar profile={p} />
     </section>
 
     <section class="space-y-4">

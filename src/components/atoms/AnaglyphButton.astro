@@ -96,6 +96,9 @@ const Tag = as ?? (href ? 'a' : 'button');
   .ana-btn__face {
     position: relative;
     display: block;
+    /* Center the label — matters when the button is w-full (wizard CTAs), where
+       an inline-block label would otherwise sit left. */
+    text-align: center;
     background: var(--ana-fill);
     clip-path: var(--ana-clip);
     transition: transform 0.12s ease;

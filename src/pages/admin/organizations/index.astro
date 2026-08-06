@@ -7,6 +7,7 @@ import { getAdmin } from '@/actions/admin/lib';
 import { listOrgs, orgById } from '@/actions/admin/orgs';
 import { cityName } from '@/lib/seo';
 import AdminShell from '@/components/organisms/admin/AdminShell.astro';
+import * as m from '@/paraglide/messages';
 
 const session = await getAdmin(Astro);
 const orgs = session ? await listOrgs() : [];
@@ -16,12 +17,12 @@ const stateClass = (s: string) =>
   ({ live: 'text-online', pending_review: 'text-amber-500', paused: 'text-muted-foreground', blocked: 'text-brand' })[s] ?? 'text-muted-foreground';
 ---
 
-<AdminShell title="Organizations" section="organizations">
+<AdminShell title={m.adm_orgs_title()} section="organizations">
   {
     session && (
       <div>
-        <h1 class="display text-3xl">Organizations</h1>
-        <p class="mt-1 text-sm text-muted-foreground">{orgs.length} agencies</p>
+        <h1 class="display text-3xl">{m.adm_orgs_title()}</h1>
+        <p class="mt-1 text-sm text-muted-foreground">{m.adm_orgs_meta({ count: orgs.length })}</p>
 
         <div class="mt-6 grid gap-6 lg:grid-cols-[22rem_1fr]">
           <ul class="divide-y divide-border border border-border">
@@ -33,33 +34,33 @@ const stateClass = (s: string) =>
                       {o.name}
                       {o.verified && <svg class="size-3 flex-none text-online" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/><path d="M9 12l2 2 4-4"/></svg>}
                     </span>
-                    <span class="block text-2xs text-muted-foreground">{cityName(o.city)} · {o.members.length} members</span>
+                    <span class="block text-2xs text-muted-foreground">{cityName(o.city)} · {m.adm_orgs_members_count({ count: o.members.length })}</span>
                   </span>
-                  <span class="flex-none text-2xs text-muted-foreground">{o.liveCount} live</span>
+                  <span class="flex-none text-2xs text-muted-foreground">{m.adm_orgs_live_count({ count: o.liveCount })}</span>
                 </a>
               </li>
             ))}
           </ul>
 
           {!detail ? (
-            <div class="grid place-items-center border border-dashed border-border py-24 text-sm text-muted-foreground">Select an agency.</div>
+            <div class="grid place-items-center border border-dashed border-border py-24 text-sm text-muted-foreground">{m.adm_orgs_select()}</div>
           ) : (
             <div class="min-w-0 space-y-4">
               <div>
                 <p class="font-condensed text-xl font-bold">{detail.name}</p>
                 <p class="text-sm text-muted-foreground">
                   KvK {detail.kvk} · {cityName(detail.city)} ·{' '}
-                  <span class:list={detail.verified ? 'text-online' : 'text-brand'}>{detail.verified ? 'Verified' : 'Unverified'}</span>
+                  <span class:list={detail.verified ? 'text-online' : 'text-brand'}>{detail.verified ? m.verified() : m.adm_unverified()}</span>
                 </p>
               </div>
               <dl class="grid max-w-md grid-cols-3 gap-px overflow-hidden border border-border bg-border text-xs">
-                {[['Members', String(detail.members.length)], ['Live', String(detail.liveCount)], ['Avg complete', `${detail.avgCompleteness}%`]].map(([k, v]) => (
+                {[[m.adm_orgs_members(), String(detail.members.length)], [m.state_live(), String(detail.liveCount)], [m.adm_stat_avg_complete(), `${detail.avgCompleteness}%`]].map(([k, v]) => (
                   <div class="bg-card px-2.5 py-1.5"><dt class="text-2xs uppercase tracking-wide text-muted-foreground">{k}</dt><dd class="font-medium">{v}</dd></div>
                 ))}
               </dl>
 
               <div>
-                <p class="text-2xs uppercase tracking-wide text-muted-foreground">Roster</p>
+                <p class="text-2xs uppercase tracking-wide text-muted-foreground">{m.adm_orgs_roster()}</p>
                 <div class="mt-2 divide-y divide-border border border-border">
                   {detail.members.map((mmb) => (
                     <a href={`/admin/profiles?id=${mmb.id}`} class="flex items-center justify-between gap-3 px-3 py-2 text-sm hover:bg-muted">

@@ -1,0 +1,59 @@
+---
+/**
+ * Admin sign-in — shown by /admin when there's no admin session, so an admin
+ * logs in on the admin page itself (no detour through the app's account flow).
+ * On success it reloads /admin; getAdmin then admits admins and shows the
+ * cockpit, or this form returns with "not an admin".
+ */
+import SlabField from '@/components/molecules/SlabField.astro';
+import Button from '@/components/atoms/Button.astro';
+import * as m from '@/paraglide/messages';
+
+interface Props {
+  /** Signed in successfully, but the account isn't an admin. */
+  notAdmin?: boolean;
+}
+const { notAdmin = false } = Astro.props;
+---
+
+<main class="grid min-h-dvh place-items-center bg-background px-4">
+  <div class="w-full max-w-sm">
+    <p class="eyebrow text-2xs text-muted-foreground">Intimate</p>
+    <h1 class="display mt-1 text-2xl">{m.adm_title()}</h1>
+    {
+      notAdmin && (
+        <p class="mt-3 text-sm font-medium text-brand">{m.adm_login_not_admin()}</p>
+      )
+    }
+    <form data-admin-login class="mt-6 space-y-3">
+      <SlabField label={m.adm_login_email()} name="email" type="email" required autocomplete="username" />
+      <SlabField label={m.auth_password()} name="password" type="password" required autocomplete="current-password" />
+      <Button type="submit" class="w-full">{m.adm_login_submit()}</Button>
+      <p data-admin-login-error class="hidden text-sm font-medium text-brand">{m.adm_login_error()}</p>
+    </form>
+  </div>
+</main>
+
+<script>
+  import { actions } from 'astro:actions';
+  function initAdminLogin() {
+    const form = document.querySelector<HTMLFormElement>('[data-admin-login]');
+    if (!form || form.dataset.init) return;
+    form.dataset.init = '1';
+    const err = form.querySelector<HTMLElement>('[data-admin-login-error]');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      err?.classList.add('hidden');
+      const fd = new FormData(form);
+      const { error } = await actions.auth.login({
+        email: String(fd.get('email') ?? ''),
+        password: String(fd.get('password') ?? ''),
+        locale: 'en',
+      });
+      if (error) { err?.classList.remove('hidden'); return; }
+      location.href = '/admin?signedin=1'; // reload → getAdmin decides
+    });
+  }
+  initAdminLogin();
+  document.addEventListener('astro:page-load', initAdminLogin);
+</script>

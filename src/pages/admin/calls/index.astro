@@ -7,6 +7,7 @@
 import { getAdmin } from '@/actions/admin/lib';
 import { listCalls } from '@/actions/admin/calls';
 import AdminShell from '@/components/organisms/admin/AdminShell.astro';
+import * as m from '@/paraglide/messages';
 
 const session = await getAdmin(Astro);
 const mode = Astro.url.searchParams.get('mode') ?? '';
@@ -19,45 +20,45 @@ const stateClass = (s: string) =>
   ({ active: 'text-online', ended: 'text-muted-foreground', declined: 'text-brand', timeout: 'text-amber-500' })[s] ?? 'text-muted-foreground';
 ---
 
-<AdminShell title="Calls" section="calls">
+<AdminShell title={m.adm_nav_calls()} section="calls">
   {
     session && (
       <div>
-        <h1 class="display text-3xl">Calls</h1>
+        <h1 class="display text-3xl">{m.adm_nav_calls()}</h1>
         <p class="mt-1 border-l-2 border-online pl-2 text-sm text-muted-foreground">
-          Calls are peer-to-peer and never recorded; no content exists. Metadata only.
+          {m.adm_calls_note()}
         </p>
 
         <form method="get" class="mt-4 flex items-center gap-2 text-sm">
           <select name="mode" class="slab-cut border border-foreground/20 bg-background px-2 py-1.5">
-            <option value="">All modes</option>
-            <option value="voice" selected={mode === 'voice'}>Voice</option>
-            <option value="video" selected={mode === 'video'}>Video</option>
+            <option value="">{m.adm_calls_all_modes()}</option>
+            <option value="voice" selected={mode === 'voice'}>{m.adm_calls_voice()}</option>
+            <option value="video" selected={mode === 'video'}>{m.adm_calls_video()}</option>
           </select>
           <select name="state" class="slab-cut border border-foreground/20 bg-background px-2 py-1.5">
-            <option value="">All states</option>
+            <option value="">{m.adm_filter_all_states()}</option>
             {['active', 'ended', 'declined', 'timeout'].map((s) => <option value={s} selected={state === s}>{s}</option>)}
           </select>
-          <button type="submit" class="slab-cut border border-foreground/20 px-3 py-1.5 font-medium">Filter</button>
-          <a href="/admin/calls" class="px-2 py-1.5 text-muted-foreground hover:text-foreground">Reset</a>
+          <button type="submit" class="slab-cut border border-foreground/20 px-3 py-1.5 font-medium">{m.adm_filter()}</button>
+          <a href="/admin/calls" class="px-2 py-1.5 text-muted-foreground hover:text-foreground">{m.filter_reset()}</a>
         </form>
 
         <div class="mt-5 overflow-x-auto border border-border">
           <table class="w-full min-w-[720px] text-left text-sm">
             <thead class="border-b border-border bg-muted text-2xs uppercase tracking-wide text-muted-foreground">
               <tr>
-                <th class="px-3 py-2 font-semibold">Professional</th>
-                <th class="px-3 py-2 font-semibold">Client</th>
-                <th class="px-3 py-2 font-semibold">Initiated by</th>
-                <th class="px-3 py-2 font-semibold">Mode</th>
-                <th class="px-3 py-2 font-semibold">State</th>
-                <th class="px-3 py-2 font-semibold">Duration</th>
-                <th class="px-3 py-2 font-semibold">When</th>
+                <th class="px-3 py-2 font-semibold">{m.adm_th_professional()}</th>
+                <th class="px-3 py-2 font-semibold">{m.role_client()}</th>
+                <th class="px-3 py-2 font-semibold">{m.adm_calls_initiated_by()}</th>
+                <th class="px-3 py-2 font-semibold">{m.adm_calls_mode()}</th>
+                <th class="px-3 py-2 font-semibold">{m.adm_th_state()}</th>
+                <th class="px-3 py-2 font-semibold">{m.editor_rates_duration()}</th>
+                <th class="px-3 py-2 font-semibold">{m.adm_th_when()}</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-border">
               {calls.length === 0 ? (
-                <tr><td colspan="7" class="px-3 py-10 text-center text-muted-foreground">No calls.</td></tr>
+                <tr><td colspan="7" class="px-3 py-10 text-center text-muted-foreground">{m.adm_calls_empty()}</td></tr>
               ) : (
                 calls.map((c) => (
                   <tr class="hover:bg-muted">

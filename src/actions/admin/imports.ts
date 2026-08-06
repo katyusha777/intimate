@@ -1,9 +1,8 @@
 /**
  * Imports queue (docs/ADMIN.md §3): the self-service import job monitor —
- * failures, retries, throughput. Rides on the real import pipeline build
- * (Firecrawl + LLM extraction, ARCHITECTURE); the `import_jobs` table is the
- * durable home (the pipeline writes rows, this reads/retries them). Seeds a few
- * demo rows once so the surface is demoable until the pipeline lands.
+ * failures, retries, throughput. The `import_jobs` table is the durable home;
+ * the import pipeline (Firecrawl + LLM extraction, ARCHITECTURE) writes rows,
+ * this reads/retries them. Empty until the pipeline lands.
  */
 import { env } from 'cloudflare:workers';
 import { and, desc, eq } from 'drizzle-orm';
@@ -32,23 +31,7 @@ const toJob = (r: Row): ImportJob => ({
   error: r.error ?? undefined,
 });
 
-/** Seed demo rows once (guarded by row presence, not a KV flag). */
-async function seedImports(): Promise<void> {
-  const d = adb();
-  if ((await d.select({ id: importJobs.id }).from(importJobs).limit(1)).length) return;
-  const min = (n: number) => new Date(Date.now() - n * 60_000);
-  await d.insert(importJobs).values([
-    { sourceUrl: 'https://kinky.nl/profile/roos-023', state: 'scraping', createdAt: min(3) },
-    { sourceUrl: 'https://example-agency.nl/girls/mila', state: 'extracting', createdAt: min(8) },
-    { sourceUrl: 'https://escort-directory.nl/p/8841', state: 'ready_for_review', createdAt: min(24), profileName: 'Imported: Nadia' },
-    { sourceUrl: 'https://broken-source.nl/x', state: 'failed', createdAt: min(40), error: 'Scrape timeout (source blocked crawler)' },
-    { sourceUrl: 'https://old-listing.nl/anna', state: 'failed', createdAt: min(120), error: 'No photos found on page' },
-    { sourceUrl: 'https://partner-site.nl/lena', state: 'confirmed', createdAt: min(300), profileName: 'Imported: Lena' },
-  ]);
-}
-
 export async function listImports(): Promise<ImportJob[]> {
-  await seedImports();
   return (await adb().select().from(importJobs).orderBy(desc(importJobs.createdAt))).map(toJob);
 }
 

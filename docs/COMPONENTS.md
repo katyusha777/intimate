@@ -36,12 +36,18 @@ Pages = `src/pages/` (compose organisms; own no reusable markup).
     one file), SafeImage (safe-mode image contract), VerifiedBadge.
 - **Molecule** — a self-contained control from atoms + markup, reusable in any
   domain: Modal, ActionSheet, Lightbox, PhotoCarousel,
-  Combobox, SlabField, FavoritesController, UserMenu,
+  Combobox, SlabField, BirthDateField (day/month/year dropdowns → hidden
+  YYYY-MM-DD; year capped at the 21+ advertising floor), FavoritesController, UserMenu,
   ThemeToggle (sun/moon switch, dark is the site default),
   SafeModeToggle (three-state safe-mode control — labelled switch in the
   footer only; no floating bar, not in the header),
   Section (owns page rhythm + section headings),
   AvailabilityLine (dot + text availability, card/line variants),
+  ContactButtons (open tap-to-contact links — WhatsApp/Telegram/Instagram/phone,
+  handles pre-sanitized by contactLinks()),
+  AdminLogin (organisms/admin — sign-in shown by /admin when there's no admin session),
+  EssentialsTags (kinky-style icon chips of the key person attributes —
+  ethnicity/height/body/hair/cup/available-for/languages — set ones only),
   CitySheet (first-visit city picker), RegionSheet (mobile "CITY | EN" header
   trigger → language radio + city picker in one ActionSheet), SideDrawer
   (right-hand slide-over speaking the ActionSheet contract — desktop profile
@@ -80,7 +86,7 @@ Folders appear when their first organism lands:
 
 | Domain | Organisms |
 |---|---|
-| `profile/` | ✓ ProfileCard, ProfileDetail, ProfileHero, ProfileGallery, ProfilePhotoMosaic, ProfileSheet, ProfileFacts (the deal card), RatesTable, GoodToKnow, SimilarProfiles, ReceiptSheet (the trust receipt of dated verification facts opened by any verified mark), RequestSheet (the flagship three-tap pre-qualified request opened by the deal card's SEND MESSAGE), ReportControl — anticipated: ContactCard |
+| `profile/` | ✓ ProfileCard, ProfileDetail, ProfileHero, ProfileGallery, ProfilePhotoMosaic, ProfileSheet, ProfileFacts (the deal card), RatesTable, GoodToKnow, SimilarProfiles, ReceiptSheet (the trust receipt of dated verification facts opened by any verified mark), RequestSheet (the flagship three-tap pre-qualified request opened by the deal card's SEND MESSAGE), ReportControl, ProfileAdminBar (admin-session-only in-place moderation strip: state changes + single-photo takedown; every action audit-logged) — anticipated: ContactCard |
 | `search/` | ✓ SearchListing, FilterSidebar |
 | `auth/` | ✓ AuthModal — anticipated: PasswordReset, OtpForm |
 | `dashboard/` | ✓ AccountShell, SignInPrompt, ProfileEditorForm, MediaManager, VerificationFlow, OnboardingChecklist (the get-your-profile-live journey card per ONBOARDING.md §3), StatusBanner (the in-review and you're-live states) — anticipated: ImportWizard steps, StatsTiles |

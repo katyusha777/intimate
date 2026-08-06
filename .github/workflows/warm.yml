@@ -1,11 +1,11 @@
 name: Warm cache
 
 # Keeps the edge cache hot so no visitor ever pays a cold, uncached profile
-# render (docs/ARCHITECTURE §4). The endpoint self-fetches every live profile;
-# TTL is 24h, so warming every 6h keeps everything warm with margin.
+# render (docs/ARCHITECTURE §4). Manual-only now — the recurring 6-hourly warm
+# moved to a Cloudflare Cron Trigger (workers/warm/) on 2026-08-05 so it stops
+# emailing a "success" notification every 6h. This button stays for on-demand
+# warming after a deploy; the Cloudflare worker owns the schedule.
 on:
-  schedule:
-    - cron: '0 */6 * * *'
   workflow_dispatch: {} # manual "Run workflow" button
 
 jobs:

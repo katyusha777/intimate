@@ -66,16 +66,22 @@ const why = 'mt-2 leading-relaxed text-muted-foreground';
       step === 'welcome' && (
         <div>
           <h1 class={title}>{m.onb_welcome_title()}</h1>
-          <ul class="mt-6 space-y-4">
-            <li class="flex gap-3">
-              <span aria-hidden="true" class="text-xl">📝</span>
+          <ol class="mt-6 space-y-4">
+            <li class="flex items-start gap-3.5">
+              <span aria-hidden="true" class="grid size-6 flex-none place-items-center bg-foreground text-2xs font-bold text-background">1</span>
               <span>
                 {m.onb_welcome_p1()} — <em class="not-italic text-muted-foreground">{m.onb_welcome_p1_note()}</em>
               </span>
             </li>
-            <li class="flex gap-3"><span aria-hidden="true" class="text-xl">📷</span><span>{m.onb_welcome_p2()}</span></li>
-            <li class="flex gap-3"><span aria-hidden="true" class="text-xl">✅</span><span>{m.onb_welcome_p3()}</span></li>
-          </ul>
+            <li class="flex items-start gap-3.5">
+              <span aria-hidden="true" class="grid size-6 flex-none place-items-center bg-foreground text-2xs font-bold text-background">2</span>
+              <span>{m.onb_welcome_p2()}</span>
+            </li>
+            <li class="flex items-start gap-3.5">
+              <span aria-hidden="true" class="grid size-6 flex-none place-items-center bg-foreground text-2xs font-bold text-background">3</span>
+              <span>{m.onb_welcome_p3()}</span>
+            </li>
+          </ol>
           <p class="mt-6 text-sm text-muted-foreground">{m.onb_welcome_reassure()}</p>
           <Button as="a" href={`?step=basics`} size="lg" class={`${cont} mt-8`}>{m.onb_start()}</Button>
           <a href={`${localizePath('/account/')}?later=1`} class="mt-3 block text-center text-sm text-muted-foreground underline-offset-2 hover:underline">

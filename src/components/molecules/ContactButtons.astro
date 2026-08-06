@@ -1,0 +1,36 @@
+---
+/**
+ * Direct contact buttons (open, tap-to-contact) for a profile's external
+ * channels — WhatsApp / Telegram / Instagram / phone. Links are pre-sanitized
+ * by contactLinks(); rel=nofollow/noopener since they leave to third parties.
+ * Renders nothing when she's added no channels. Lives on the (dark) deal card.
+ */
+import type { Profile } from '@/app/models/profile';
+import { contactLinks } from '@/lib/contact-links';
+import Icon from '@/components/atoms/Icon.astro';
+
+interface Props {
+  profile: Profile;
+  class?: string;
+}
+const { profile: p, class: className } = Astro.props;
+const links = contactLinks(p);
+---
+
+{
+  links.length > 0 && (
+    <div class:list={['grid grid-cols-2 gap-2', className]}>
+      {links.map((l) => (
+        <a
+          href={l.href}
+          target="_blank"
+          rel="nofollow noopener noreferrer"
+          class="flex items-center justify-center gap-2 border border-white/20 py-2.5 text-sm font-medium text-white transition-colors hover:border-white/50"
+        >
+          <Icon name={l.icon} family={l.family} class="text-base" />
+          {l.display}
+        </a>
+      ))}
+    </div>
+  )
+}

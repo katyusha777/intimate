@@ -1,0 +1,72 @@
+---
+/**
+ * Birth-date entry as three localized dropdowns (day · month · year) instead of
+ * a native <input type=date> — whose calendar popup is browser chrome we can't
+ * restyle AND is poor for a DOB (year-by-year navigation). Selects are cleaner,
+ * fully themed, and the natural pattern for a birth date. A hidden input carries
+ * the YYYY-MM-DD value so the form (readProfilePatch → name="birthDate") is
+ * unchanged. Year range is capped at the advertising floor (minAge) so under-age
+ * years aren't even offered; the Zod refine still guards the exact boundary.
+ */
+import { getLocale } from '@/paraglide/runtime';
+import Select from '@/components/atoms/Select.astro';
+
+interface Props {
+  label: string;
+  name?: string;
+  /** YYYY-MM-DD (or empty for a new profile). */
+  value?: string;
+  minAge?: number;
+}
+const { label, name = 'birthDate', value = '', minAge = 21 } = Astro.props;
+const locale = getLocale();
+
+const [vy, vm, vd] = value ? value.split('-').map(Number) : [undefined, undefined, undefined];
+const thisYear = new Date().getFullYear();
+const maxYear = thisYear - minAge; // youngest year allowed to advertise
+const years = Array.from({ length: maxYear - (thisYear - 80) + 1 }, (_, i) => maxYear - i);
+const months = Array.from({ length: 12 }, (_, i) => ({
+  n: i + 1,
+  label: new Intl.DateTimeFormat(locale, { month: 'long' }).format(new Date(2000, i, 1)),
+}));
+const days = Array.from({ length: 31 }, (_, i) => i + 1);
+---
+
+<div class="space-y-1.5" data-birthdate>
+  <span class="text-sm font-medium">{label}</span>
+  <div class="grid grid-cols-3 gap-2">
+    <Select data-bd-day aria-label={`${label} — day`}>
+      <option value="">–</option>
+      {days.map((d) => <option value={d} selected={vd === d}>{d}</option>)}
+    </Select>
+    <Select data-bd-month aria-label={`${label} — month`}>
+      <option value="">–</option>
+      {months.map((mo) => <option value={mo.n} selected={vm === mo.n}>{mo.label}</option>)}
+    </Select>
+    <Select data-bd-year aria-label={`${label} — year`}>
+      <option value="">–</option>
+      {years.map((y) => <option value={y} selected={vy === y}>{y}</option>)}
+    </Select>
+  </div>
+  <input type="hidden" name={name} data-bd-value value={value} />
+</div>
+
+<script>
+  function initBirthdate() {
+    document.querySelectorAll<HTMLElement>('[data-birthdate]').forEach((root) => {
+      if (root.dataset.init) return;
+      root.dataset.init = '1';
+      const day = root.querySelector<HTMLSelectElement>('[data-bd-day]')!;
+      const month = root.querySelector<HTMLSelectElement>('[data-bd-month]')!;
+      const year = root.querySelector<HTMLSelectElement>('[data-bd-year]')!;
+      const hidden = root.querySelector<HTMLInputElement>('[data-bd-value]')!;
+      const sync = () => {
+        const d = day.value, mo = month.value, y = year.value;
+        hidden.value = d && mo && y ? `${y}-${mo.padStart(2, '0')}-${d.padStart(2, '0')}` : '';
+      };
+      [day, month, year].forEach((s) => s.addEventListener('change', sync));
+    });
+  }
+  initBirthdate();
+  document.addEventListener('astro:page-load', initBirthdate);
+</script>

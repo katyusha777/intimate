@@ -16,20 +16,20 @@ interface Props {
 }
 const { progress } = Astro.props;
 
-// Phase 1: rows deep-link to the existing tabs. Phase 2 repoints them into the
-// setup flow at that step. Full key set so the lookup is always defined.
-const META: Record<OnboardingStepKey, { label: () => string; href: string }> = {
-  basics: { label: m.onb_step_basics, href: '/account/profile/' },
-  rates: { label: m.onb_step_rates, href: '/account/profile/' },
-  services: { label: m.onb_step_services, href: '/account/profile/' },
-  photos: { label: m.onb_step_photos, href: '/account/photos/' },
-  hours: { label: m.onb_step_services, href: '/account/profile/' }, // optional — not listed here
-  phone: { label: m.onb_step_phone, href: '/account/verification/' },
-  id: { label: m.onb_step_id, href: '/account/verification/' },
+// Row labels only — the flow itself is driven by the single Continue button
+// (setup wizard), so rows no longer deep-link anywhere. Full key set so the
+// lookup is always defined.
+const LABEL: Record<OnboardingStepKey, () => string> = {
+  basics: m.onb_step_basics,
+  rates: m.onb_step_rates,
+  services: m.onb_step_services,
+  photos: m.onb_step_photos,
+  hours: m.onb_step_services, // optional — not listed here
+  phone: m.onb_step_phone,
+  id: m.onb_step_id,
 };
-// Required steps only (the "get live" list); precomputed so the template stays
-// free of type gymnastics.
-const rows = progress.steps.filter((s) => !s.optional).map((s) => ({ done: s.done, ...META[s.key] }));
+// Required steps only (the "get live" list).
+const rows = progress.steps.filter((s) => !s.optional).map((s) => ({ done: s.done, label: LABEL[s.key] }));
 const pct = Math.round((progress.requiredDone / progress.requiredTotal) * 100);
 ---
 
@@ -43,44 +43,49 @@ const pct = Math.round((progress.requiredDone / progress.requiredTotal) * 100);
     <div class="h-full rounded-full bg-online transition-[width] duration-500" style={`width:${pct}%`}></div>
   </div>
 
+  {/* Status only — the single button below drives the flow. Deep-linking each
+      row into the editor tabs saved but never advanced onboarding (confusing);
+      the setup wizard owns save-and-advance. */}
   <ul class="mt-5 space-y-1">
     {
       rows.map((row) => (
-        <li>
-          <a href={localizePath(row.href)} class="flex items-center gap-3 rounded py-2.5 transition-colors hover:bg-white/5">
-            <span
-              class:list={[
-                'grid size-6 flex-none place-items-center rounded-full border text-xs',
-                row.done ? 'border-online bg-online/15 text-online' : 'border-white/25 text-white/40',
-              ]}
-            >
-              {row.done && (
-                <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
-              )}
-            </span>
-            <span class:list={['flex-1 text-sm font-medium', row.done ? 'text-white/50 line-through' : 'text-white']}>
-              {row.label()}
-            </span>
-            {!row.done && (
-              <svg class="size-4 flex-none text-white/40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+        <li class="flex items-center gap-3 py-2.5">
+          <span
+            class:list={[
+              'grid size-6 flex-none place-items-center rounded-full border text-xs',
+              row.done ? 'border-online bg-online/15 text-online' : 'border-white/25 text-white/40',
+            ]}
+          >
+            {row.done && (
+              <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
             )}
-          </a>
+          </span>
+          <span class:list={['flex-1 text-sm font-medium', row.done ? 'text-white/50 line-through' : 'text-white']}>
+            {row.label()}
+          </span>
         </li>
       ))
     }
   </ul>
 
-  {
-    progress.readyToSubmit && (
-      <div class="mt-5 border-t border-white/10 pt-5">
-        <p class="mb-3 text-sm text-white/70">{m.onb_submit_hint()}</p>
-        <Button type="button" size="lg" class="w-full" data-onb-submit>
-          {m.onb_submit()}
+  <div class="mt-5 border-t border-white/10 pt-5">
+    {
+      progress.readyToSubmit ? (
+        <Fragment>
+          <p class="mb-3 text-sm text-white/70">{m.onb_submit_hint()}</p>
+          <Button type="button" size="lg" class="w-full" data-onb-submit>
+            {m.onb_submit()}
+          </Button>
+          <p data-onb-error class="mt-2 hidden text-sm font-medium text-brand">{m.auth_error()}</p>
+        </Fragment>
+      ) : (
+        // Resumes at the first incomplete step (setup/index derives it).
+        <Button as="a" href={localizePath('/account/setup/')} size="lg" class="w-full">
+          {m.onb_continue_setup()}
         </Button>
-        <p data-onb-error class="mt-2 hidden text-sm font-medium text-brand">{m.auth_error()}</p>
-      </div>
-    )
-  }
+      )
+    }
+  </div>
 </div>
 
 <script>

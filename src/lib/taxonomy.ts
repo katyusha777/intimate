@@ -198,29 +198,26 @@ export const POLICY_MIN_AGE = 21;
 // ---------------------------------------------------------------------------
 
 /**
- * THE THREE ORTHOGONAL DIMENSIONS of how clients meet professionals — the
+ * THE TWO ORTHOGONAL DIMENSIONS of how clients meet professionals — the
  * foundation the data model builds on. Never conflate them:
  *
- *  1. MEETING_TYPES — *in-person* meeting modes: incall ("private visit",
- *     client comes to her) / outcall ("escort", she comes to the client).
- *     A profile may offer both. Only meaningful for in-person delivery.
- *  2. DELIVERY_METHODS — in_person vs virtual. "Virtual sex" is a delivery
- *     method, not a meeting type and not a single service. A profile's
- *     virtual availability is DERIVED: it offers services from the `virtual`
- *     service category (single source of truth — no separate boolean).
- *  3. SERVICES / SERVICE_CATEGORIES — what is offered. BDSM is a service
+ *  1. MEETING_TYPES — how you meet: incall ("private visit", client comes to
+ *     her) / outcall ("escort", she comes to the client) / virtual (cam,
+ *     phone, sexting — no physical meeting). A profile may offer any mix.
+ *     (2026-08-06: virtual PROMOTED from a derived delivery method to a real
+ *     meeting type — one "visit type" picker everywhere; the old `online`
+ *     pseudo-city died with it.)
+ *  2. SERVICES / SERVICE_CATEGORIES — what is offered. BDSM is a service
  *     category with subcategories, massage likewise.
  *
  * Listing tabs (LISTING_CATEGORIES) are saved filter presets ACROSS these
  * dimensions over one profile pool — never partitions a profile "belongs" to.
  */
-export const MEETING_TYPES = ['incall', 'outcall'] as const; // profiles may offer both
+export const MEETING_TYPES = ['incall', 'outcall', 'virtual'] as const; // profiles may offer any mix
 
 /** Week days for opening hours (Mon-first, EU). */
 export const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
 export type Day = (typeof DAYS)[number];
-
-export const DELIVERY_METHODS = ['in_person', 'virtual'] as const;
 
 export const INCALL_LOCATIONS = ['private_apartment', 'private_house', 'hotel', 'club'] as const;
 
@@ -253,7 +250,7 @@ export const RATE_DURATIONS = [
 
 export const CURRENCIES = ['eur'] as const;
 
-export const PAYMENT_METHODS = ['cash', 'pin', 'bank_transfer', 'crypto'] as const;
+export const PAYMENT_METHODS = ['cash', 'pin', 'bank_transfer', 'tikkie', 'crypto'] as const;
 
 export const CONTACT_CHANNELS = ['phone', 'whatsapp', 'telegram', 'signal', 'sms'] as const;
 
@@ -400,6 +397,8 @@ export const SERVICE_SYNONYMS: Record<string, string> = {
 // ---------------------------------------------------------------------------
 
 export const CITIES = [
+  // NOTE: the 'online' pseudo-city was removed 2026-08-06 (virtual is a
+  // meeting type, not a place); the DB enum keeps the orphaned value.
   { slug: 'amsterdam', name: 'Amsterdam', province: 'Noord-Holland' },
   { slug: 'rotterdam', name: 'Rotterdam', province: 'Zuid-Holland' },
   { slug: 'den-haag', name: 'Den Haag', province: 'Zuid-Holland' },
@@ -471,9 +470,9 @@ export const LISTING_CATEGORIES = [
   },
   {
     slug: 'virtual-sex',
-    kind: 'delivery',
+    kind: 'meeting_type',
     icon: 'camera-web',
-    filter: { serviceCategory: 'virtual' },
+    filter: { meetingType: 'virtual' },
     slugs: { nl: 'virtuele-seks', en: 'virtual-sex', de: 'virtueller-sex' },
   },
   // BDSM tab removed 2026-08-02 — the fetish_bdsm SERVICE category stays
@@ -525,7 +524,6 @@ export type PubicHair = (typeof PUBIC_HAIR)[number];
 export type Appearance = (typeof APPEARANCES)[number];
 export type Language = (typeof LANGUAGES)[number];
 export type MeetingType = (typeof MEETING_TYPES)[number];
-export type DeliveryMethod = (typeof DELIVERY_METHODS)[number];
 export type IncallLocation = (typeof INCALL_LOCATIONS)[number];
 export type Amenity = (typeof AMENITIES)[number];
 export type RateDuration = (typeof RATE_DURATIONS)[number];

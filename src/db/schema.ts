@@ -105,7 +105,10 @@ export const tattoosEnum = pgEnum('tattoos', vals(TATTOOS));
 export const piercingsEnum = pgEnum('piercings', vals(PIERCINGS));
 export const languageEnum = pgEnum('language', vals(LANGUAGES));
 
-export const cityEnum = pgEnum('city', vals(CITIES.map((c) => c.slug) as CitySlug[]));
+// ponytail: 'online' stays in the DB enum (pseudo-city removed from taxonomy
+// 2026-08-06, rows migrated off it) — dropping a pg enum value needs a type
+// rebuild; the orphaned value is harmless.
+export const cityEnum = pgEnum('city', vals([...CITIES.map((c) => c.slug), 'online' as CitySlug]));
 export const serviceEnum = pgEnum('service', vals(ALL_SERVICES));
 export const meetingTypeEnum = pgEnum('meeting_type', vals(MEETING_TYPES));
 export const incallLocationEnum = pgEnum('incall_location', vals(INCALL_LOCATIONS));
@@ -217,6 +220,10 @@ export const profiles = pgTable(
     priceFrom: integer('price_from'),
     rates: jsonb('rates').$type<RateRow[]>().notNull().default([]),
     phone: text('phone'),
+    // Direct contact channels — open tap-to-contact buttons on the profile.
+    whatsapp: text('whatsapp'),
+    telegram: text('telegram'),
+    instagram: text('instagram'),
     depositPolicy: text('deposit_policy'),
     extrasNote: text('extras_note'),
 

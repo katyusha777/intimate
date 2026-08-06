@@ -1,0 +1,54 @@
+---
+/**
+ * Essentials — the most-scanned facts as clean icon chips (kinky-style), so a
+ * client reads the key specifics at a glance instead of hunting the deal card.
+ * Reuses the Badge atom (enlarged via class) + Icon. Renders only attributes she
+ * actually set; the whole block disappears when there's nothing to show.
+ */
+import type { Profile } from '@/app/models/profile';
+import {
+  appearanceLabel,
+  availableForLabel,
+  bodyTypeLabel,
+  cupSizeLabel,
+  hairColorLabel,
+  languageLabel,
+} from '@/lib/labels';
+import type { AvailableFor, Language } from '@/lib/taxonomy';
+import Badge from '@/components/atoms/Badge.astro';
+import Icon from '@/components/atoms/Icon.astro';
+import * as m from '@/paraglide/messages';
+
+interface Props {
+  profile: Profile;
+  class?: string;
+}
+const { profile: p, class: className } = Astro.props;
+
+type Chip = { icon?: string; label: string };
+const chips: Chip[] = [];
+if (p.appearance) chips.push({ icon: 'globe', label: appearanceLabel(p.appearance) });
+if (p.heightCm) chips.push({ icon: 'ruler', label: `${p.heightCm} cm` });
+if (p.bodyType) chips.push({ icon: 'person', label: bodyTypeLabel(p.bodyType) });
+if (p.hairColor) chips.push({ icon: 'scissors', label: hairColorLabel(p.hairColor) });
+if (p.cupSize) chips.push({ label: cupSizeLabel(p.cupSize) });
+if (p.availableFor.length)
+  chips.push({ icon: 'heart', label: (p.availableFor as AvailableFor[]).map(availableForLabel).join(' · ') });
+for (const l of p.languages as Language[]) chips.push({ icon: 'language', label: languageLabel(l) });
+---
+
+{
+  chips.length > 0 && (
+    <section class:list={className}>
+      <p class="eyebrow text-2xs text-muted-foreground">{m.essentials_title()}</p>
+      <div class="mt-3 flex flex-wrap gap-2">
+        {chips.map((c) => (
+          <Badge variant="secondary" class="h-8 gap-1.5 px-3 text-sm">
+            {c.icon && <Icon name={c.icon} class="text-base text-muted-foreground" />}
+            {c.label}
+          </Badge>
+        ))}
+      </div>
+    </section>
+  )
+}

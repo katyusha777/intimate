@@ -9,6 +9,7 @@
 import { getAdmin, record } from '@/actions/admin/lib';
 import { messagingApi } from '@/app/api/messaging';
 import AdminShell from '@/components/organisms/admin/AdminShell.astro';
+import * as m from '@/paraglide/messages';
 
 const session = await getAdmin(Astro);
 const metas = session ? await messagingApi.adminListThreads() : [];
@@ -30,28 +31,28 @@ const humanize = (s: string) => s.replace(/_/g, ' ').replace(/^./, (c) => c.toUp
 const time = (iso: string) => iso.replace('T', ' ').slice(5, 16);
 ---
 
-<AdminShell title="Messaging" section="messaging">
+<AdminShell title={m.adm_nav_messaging()} section="messaging">
   {
     session && (
       <div>
-        <h1 class="display text-3xl">Messaging</h1>
-        <p class="mt-1 text-sm text-muted-foreground">{metas.length} threads · metadata open · content governed</p>
+        <h1 class="display text-3xl">{m.adm_nav_messaging()}</h1>
+        <p class="mt-1 text-sm text-muted-foreground">{m.adm_msg_meta({ count: metas.length })}</p>
 
         <div class="mt-6 grid gap-6 lg:grid-cols-[1fr_24rem]">
           <div class="overflow-x-auto border border-border">
             <table class="w-full min-w-[640px] text-left text-sm">
               <thead class="border-b border-border bg-muted text-2xs uppercase tracking-wide text-muted-foreground">
                 <tr>
-                  <th class="px-3 py-2 font-semibold">Professional</th>
-                  <th class="px-3 py-2 font-semibold">Client</th>
-                  <th class="px-3 py-2 font-semibold">Msgs</th>
-                  <th class="px-3 py-2 font-semibold">Last</th>
+                  <th class="px-3 py-2 font-semibold">{m.adm_th_professional()}</th>
+                  <th class="px-3 py-2 font-semibold">{m.role_client()}</th>
+                  <th class="px-3 py-2 font-semibold">{m.adm_th_msgs()}</th>
+                  <th class="px-3 py-2 font-semibold">{m.adm_th_last()}</th>
                   <th class="px-3 py-2 font-semibold" />
                 </tr>
               </thead>
               <tbody class="divide-y divide-border">
                 {metas.length === 0 ? (
-                  <tr><td colspan="5" class="px-3 py-10 text-center text-muted-foreground">No threads.</td></tr>
+                  <tr><td colspan="5" class="px-3 py-10 text-center text-muted-foreground">{m.adm_msg_empty()}</td></tr>
                 ) : (
                   metas.map((m) => (
                     <tr class:list={['transition-colors hover:bg-muted', m.id === threadId && 'bg-muted']}>
@@ -62,7 +63,7 @@ const time = (iso: string) => iso.replace('T', ' ').slice(5, 16);
                       <td class="px-3 py-2 text-right">
                         {canContent ? (
                           <details class="inline-block text-left">
-                            <summary class="cursor-pointer text-2xs font-medium text-brand">Open ▾</summary>
+                            <summary class="cursor-pointer text-2xs font-medium text-brand">{m.adm_msg_open()} ▾</summary>
                             <div class="absolute z-10 mt-1 border border-border bg-background p-1 shadow-soft-lg">
                               {REASONS.map((r) => (
                                 <a href={`/admin/messaging?thread=${m.id}&reason=${r}`} class="block whitespace-nowrap px-2 py-1 text-2xs hover:bg-muted">{humanize(r)}</a>
@@ -70,7 +71,7 @@ const time = (iso: string) => iso.replace('T', ' ').slice(5, 16);
                             </div>
                           </details>
                         ) : (
-                          <span class="text-2xs text-muted-foreground">metadata only</span>
+                          <span class="text-2xs text-muted-foreground">{m.adm_msg_metadata_only()}</span>
                         )}
                       </td>
                     </tr>
@@ -83,23 +84,23 @@ const time = (iso: string) => iso.replace('T', ' ').slice(5, 16);
           {threadId && (
             <aside class="space-y-3 border border-border p-4">
               {!canContent ? (
-                <p class="text-sm text-muted-foreground">Full-thread content requires the <b>super</b> role. Moderators get report-scoped access (productionized path).</p>
+                <p class="text-sm text-muted-foreground" set:html={m.adm_msg_super_required()} />
               ) : !thread ? (
-                <p class="text-sm text-muted-foreground">Pick a reason to open this thread (logged).</p>
+                <p class="text-sm text-muted-foreground">{m.adm_msg_pick_reason()}</p>
               ) : (
                 <>
                   <div class="border-b border-border pb-2">
                     <p class="font-condensed text-lg font-bold">{thread.profileName} · {thread.clientName}</p>
-                    <p class="text-2xs text-brand">Read-only · access logged ({humanize(reason)})</p>
+                    <p class="text-2xs text-brand">{m.adm_msg_readonly({ reason: humanize(reason) })}</p>
                   </div>
                   <div class="max-h-[70vh] space-y-2 overflow-y-auto">
                     {thread.messages.map((msg) =>
                       msg.kind === 'system' ? (
-                        <p class="text-center text-2xs text-muted-foreground">— system —</p>
+                        <p class="text-center text-2xs text-muted-foreground">{m.adm_msg_system()}</p>
                       ) : (
                         <div class:list={['flex', msg.sender === 'professional' ? 'justify-start' : 'justify-end']}>
                           <div class:list={['max-w-[80%] rounded-lg px-2.5 py-1.5 text-xs', msg.sender === 'professional' ? 'bg-muted' : 'bg-foreground text-background']}>
-                            {msg.kind === 'photo' ? <span class="italic opacity-70">[photo]</span> : msg.body}
+                            {msg.kind === 'photo' ? <span class="italic opacity-70">{m.adm_msg_photo()}</span> : msg.body}
                           </div>
                         </div>
                       ),

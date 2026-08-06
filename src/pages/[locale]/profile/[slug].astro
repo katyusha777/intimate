@@ -4,19 +4,46 @@
  * swipeable hero → facts slab → about → services → gallery. Desktop: sticky
  * facts column beside the content.
  */
+import * as m from '@/paraglide/messages';
 import { profilesApi } from '@/app/api/profiles';
 import { messagingApi } from '@/app/api/messaging';
+import { accountApi } from '@/app/api/account';
+import { sessionApi } from '@/app/api/session';
 import { availabilityState, localizedDescription, profileAge } from '@/app/models/profile';
 import { isLocale, samePathAlternates } from '@/lib/i18n';
 import { breadcrumbJsonLd, cityName } from '@/lib/seo';
 import ProfileDetail from '@/components/organisms/profile/ProfileDetail.astro';
+import ProfileAdminBar from '@/components/organisms/profile/ProfileAdminBar.astro';
 import Layout from '@/layouts/Layout.astro';
 
 const { locale, slug } = Astro.params;
 if (!isLocale(locale) || !slug) return new Response(null, { status: 404 });
 
-const p = await profilesApi.bySlug(slug);
-if (!p) return new Response(null, { status: 404 });
+// Public reads only ever surface a LIVE profile. But the OWNER previewing her
+// own not-yet-live profile shouldn't hit a 404 — fetch it (all states) when the
+// signed-in owner asks for her own slug. Authenticated → never edge-cached
+// (middleware caches anonymous only), so a draft never leaks.
+const session = await sessionApi.current(Astro);
+const isAdmin = session?.role === 'admin';
+let p = await profilesApi.bySlug(slug);
+let preview = false;
+if (!p) {
+  if (session?.role === 'advertiser' && session.profileSlug === slug) {
+    const own = await accountApi.myProfile(session);
+    if (own && own.slug === slug) {
+      p = own;
+      preview = true;
+    }
+  }
+  // Admin god view: any lifecycle state renders (never edge-cached — authed).
+  if (!p && isAdmin) {
+    p = (await profilesApi.listAll()).find((x) => x.slug === slug) ?? null;
+    if (p) preview = true;
+  }
+  if (!p) return new Response(null, { status: 404 });
+}
+// The owner viewing her own profile shouldn't see a "Save" (favourite) control.
+const isOwner = session?.profileSlug === slug;
 
 // Everything below depends only on `p`, so fetch it in ONE parallel wave rather
 // than four sequential edge→Frankfurt round-trips (the cold-load cost). The
@@ -73,8 +100,17 @@ const jsonLd = [
   {title}
   description={metaDescription}
   {canonical}
-  alternates={samePathAlternates(Astro.url.origin, `/profile/${p.slug}/`)}
+  noindex={preview}
+  alternates={preview ? undefined : samePathAlternates(Astro.url.origin, `/profile/${p.slug}/`)}
   {jsonLd}
 >
-  <ProfileDetail profile={p} {similar} {replySpeed} {screeningQuestion} />
+  {isAdmin && <ProfileAdminBar profile={p} />}
+  {
+    preview && !isAdmin && (
+      <div class="border-b border-brand/40 bg-brand/10 px-4 py-2.5 text-center text-sm font-medium text-foreground">
+        {m.profile_preview_banner()}
+      </div>
+    )
+  }
+  <ProfileDetail profile={p} {similar} {replySpeed} {screeningQuestion} {isOwner} />
 </Layout>

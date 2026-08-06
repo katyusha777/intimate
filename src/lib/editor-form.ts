@@ -34,12 +34,16 @@ function readRates(form: HTMLFormElement): Array<Record<string, unknown>> {
     if (outcall !== undefined) base.outcall = outcall;
     rates.push(base);
   };
-  // Preset duration rows (ticked + at least one price).
+  // Preset duration rows: a typed price = intent to offer it, so a row counts
+  // when it has a price OR is ticked (priced() no-ops without a price). This is
+  // why "I filled a price but can't continue" happened — an unticked row was
+  // silently dropped even with a price in it.
   form.querySelectorAll<HTMLElement>('[data-rate-row]').forEach((r) => {
-    if (!r.querySelector<HTMLInputElement>('[data-rate-on]')!.checked) return;
-    priced(numOf(r.querySelector('[data-rate-incall]')), numOf(r.querySelector('[data-rate-outcall]')), {
-      duration: r.dataset.duration,
-    });
+    const incall = numOf(r.querySelector('[data-rate-incall]'));
+    const outcall = numOf(r.querySelector('[data-rate-outcall]'));
+    const on = r.querySelector<HTMLInputElement>('[data-rate-on]')!.checked;
+    if (!on && incall === undefined && outcall === undefined) return;
+    priced(incall, outcall, { duration: r.dataset.duration });
   });
   // Her custom line items, in DOM order (= her chosen order); need a label + a price.
   form.querySelectorAll<HTMLElement>('[data-custom-row]').forEach((r) => {
@@ -65,6 +69,23 @@ export function readProfilePatch(form: HTMLFormElement): Patch {
   if (has('birthDate')) patch.birthDate = str('birthDate');
   if (has('gender')) patch.gender = str('gender');
   if (has('city')) patch.city = str('city');
+  // Contact handles: send '' when cleared (not undefined) so removing one saves.
+  if (has('phone')) patch.phone = str('phone').trim();
+  if (has('whatsapp')) patch.whatsapp = str('whatsapp').trim();
+  if (has('telegram')) patch.telegram = str('telegram').trim();
+  if (has('instagram')) patch.instagram = str('instagram').trim();
+  // Appearance selects: empty option → undefined. ponytail: once set, re-picking
+  // "—" can't null the column (patch skips undefined) — nullable plumbing isn't
+  // worth it for optional vanity fields; switch value, don't clear.
+  if (has('appearance')) patch.appearance = optStr('appearance');
+  if (has('bodyType')) patch.bodyType = optStr('bodyType');
+  if (has('hairColor')) patch.hairColor = optStr('hairColor');
+  if (has('cupSize')) patch.cupSize = optStr('cupSize');
+  if (has('heightCm')) {
+    const v = str('heightCm').trim();
+    patch.heightCm = v ? Number(v) : undefined;
+  }
+  if (has('availableFor')) patch.availableFor = list('availableFor');
   if (has('services')) patch.services = list('services');
   if (has('languages')) patch.languages = list('languages');
   if (has('incallLocations')) patch.incallLocations = list('incallLocations');
@@ -95,6 +116,17 @@ export function initEditorInteractions(form: HTMLFormElement): void {
     syncHoursRow(r);
     r.querySelectorAll('[data-hours-closed],[data-hours-allday]').forEach((c) =>
       c.addEventListener('change', () => syncHoursRow(r)),
+    );
+  });
+
+  // Typing a preset-row price auto-ticks its row, so the visual state matches
+  // what will be saved (and the row is unmistakably "on").
+  form.querySelectorAll<HTMLElement>('[data-rate-row]').forEach((r) => {
+    const on = r.querySelector<HTMLInputElement>('[data-rate-on]');
+    r.querySelectorAll<HTMLInputElement>('[data-rate-incall],[data-rate-outcall]').forEach((inp) =>
+      inp.addEventListener('input', () => {
+        if (on && inp.value.trim()) on.checked = true;
+      }),
     );
   });
 

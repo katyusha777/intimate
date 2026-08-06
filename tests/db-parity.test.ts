@@ -7,8 +7,9 @@
  *
  * Ignored per item: `id` (json 'p01' vs db uuid) and `lastActiveAt` (mock
  * online flag becomes a fresh heartbeat at seed time) — everything else is
- * deep-equal. Skips when DATABASE_URL is unset or unmigrated. NOTE: reseeds
- * the mock catalog into the database it points at.
+ * deep-equal. Skips when DATABASE_URL is unset or unmigrated, OR when the
+ * database holds real (non-seed) profiles — parity needs a seed-exclusive
+ * catalog, and reseeding mocks into a live database is a go-live footgun.
  */
 import { afterAll, expect, test } from 'bun:test';
 import postgres from 'postgres';
@@ -27,12 +28,18 @@ const migrated =
     (r) => r.length > 0,
     () => false,
   ));
+const hasRealProfiles =
+  migrated &&
+  (await probe`select 1 from profiles p join accounts a on a.id = p.account_id
+    where a.email not like '%@seed.local' limit 1`.then((r) => r.length > 0));
 await probe.end();
 if (!migrated) console.warn('[db-parity] DATABASE_URL unset/unmigrated — parity skipped');
+if (hasRealProfiles) console.warn('[db-parity] real (non-seed) profiles present — parity skipped, not reseeding');
 
-const t = test.skipIf(!migrated);
+const runnable = migrated && !hasRealProfiles;
+const t = test.skipIf(!runnable);
 
-if (migrated) await seed(URL);
+if (runnable) await seed(URL);
 const db = createDb({ connectionString: URL || 'postgresql://unset@localhost/none' });
 const dbApi = makeProfilesApi(db);
 afterAll(async () => {

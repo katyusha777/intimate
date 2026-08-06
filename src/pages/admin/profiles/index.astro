@@ -13,6 +13,7 @@ import { CITIES, GENDERS, PROFILE_STATES } from '@/lib/taxonomy';
 import { cityName } from '@/lib/seo';
 import AdminShell from '@/components/organisms/admin/AdminShell.astro';
 import SafeImage from '@/components/atoms/SafeImage.astro';
+import * as m from '@/paraglide/messages';
 
 const session = await getAdmin(Astro);
 const sp = Astro.url.searchParams;
@@ -42,36 +43,36 @@ const stateClass = (s: string) =>
 const genderLabel = (g: string) => ({ female: 'F', male: 'M', trans_woman: 'TW', trans_man: 'TM' })[g] ?? g;
 ---
 
-<AdminShell title="Profiles" section="profiles">
+<AdminShell title={m.adm_nav_profiles()} section="profiles">
   {
     session && (
       <div>
         <div class="flex items-end justify-between gap-4">
           <div>
-            <h1 class="display text-3xl">Profiles</h1>
-            <p class="mt-1 text-sm text-muted-foreground">{rows.length} shown</p>
+            <h1 class="display text-3xl">{m.adm_nav_profiles()}</h1>
+            <p class="mt-1 text-sm text-muted-foreground">{m.adm_profiles_meta({ count: rows.length })}</p>
           </div>
         </div>
 
         {/* Filter bar */}
         <form method="get" class="mt-4 flex flex-wrap items-center gap-2 text-sm">
-          <input name="q" value={f.q} placeholder="Search name / city…" class="slab-cut border border-foreground/20 bg-background px-3 py-1.5 outline-none focus:border-foreground" />
+          <input name="q" value={f.q} placeholder={m.adm_profiles_search_ph()} class="slab-cut border border-foreground/20 bg-background px-3 py-1.5 outline-none focus:border-foreground" />
           <select name="state" class="slab-cut border border-foreground/20 bg-background px-2 py-1.5">
-            <option value="">All states</option>
+            <option value="">{m.adm_filter_all_states()}</option>
             {PROFILE_STATES.map((s) => <option value={s} selected={f.state === s}>{s}</option>)}
           </select>
           <select name="city" class="slab-cut border border-foreground/20 bg-background px-2 py-1.5">
-            <option value="">All cities</option>
+            <option value="">{m.adm_filter_all_cities()}</option>
             {CITIES.map((c) => <option value={c.slug} selected={f.city === c.slug}>{c.name}</option>)}
           </select>
           <select name="gender" class="slab-cut border border-foreground/20 bg-background px-2 py-1.5">
-            <option value="">All genders</option>
+            <option value="">{m.adm_filter_all_genders()}</option>
             {GENDERS.map((g) => <option value={g} selected={f.gender === g}>{g}</option>)}
           </select>
-          <label class="flex items-center gap-1.5"><input type="checkbox" name="online" checked={f.onlineOnly} class="cbx-box" /> Online</label>
-          <label class="flex items-center gap-1.5"><input type="checkbox" name="verified" checked={f.verifiedOnly} class="cbx-box" /> Verified</label>
-          <button type="submit" class="slab-cut border border-foreground/20 px-3 py-1.5 font-medium">Filter</button>
-          <a href="/admin/profiles" class="px-2 py-1.5 text-muted-foreground hover:text-foreground">Reset</a>
+          <label class="flex items-center gap-1.5"><input type="checkbox" name="online" checked={f.onlineOnly} class="cbx-box" /> {m.adm_filter_online()}</label>
+          <label class="flex items-center gap-1.5"><input type="checkbox" name="verified" checked={f.verifiedOnly} class="cbx-box" /> {m.verified()}</label>
+          <button type="submit" class="slab-cut border border-foreground/20 px-3 py-1.5 font-medium">{m.adm_filter()}</button>
+          <a href="/admin/profiles" class="px-2 py-1.5 text-muted-foreground hover:text-foreground">{m.filter_reset()}</a>
         </form>
 
         <div class="mt-5 grid gap-6 xl:grid-cols-[1fr_24rem]">
@@ -80,12 +81,12 @@ const genderLabel = (g: string) => ({ female: 'F', male: 'M', trans_woman: 'TW',
             <table class="w-full min-w-[760px] text-left text-sm">
               <thead class="border-b border-border bg-muted text-2xs uppercase tracking-wide text-muted-foreground">
                 <tr>
-                  <th class="px-3 py-2 font-semibold">Profile</th>
-                  <th class="px-3 py-2 font-semibold">City</th>
-                  <th class="px-3 py-2 font-semibold">State</th>
-                  <th class="px-3 py-2 font-semibold">Price</th>
-                  <th class="px-3 py-2 font-semibold">Complete</th>
-                  <th class="px-3 py-2 font-semibold">Flags</th>
+                  <th class="px-3 py-2 font-semibold">{m.adm_th_profile()}</th>
+                  <th class="px-3 py-2 font-semibold">{m.filter_city()}</th>
+                  <th class="px-3 py-2 font-semibold">{m.adm_th_state()}</th>
+                  <th class="px-3 py-2 font-semibold">{m.request_card_price()}</th>
+                  <th class="px-3 py-2 font-semibold">{m.adm_th_complete()}</th>
+                  <th class="px-3 py-2 font-semibold">{m.adm_th_flags()}</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-border">
@@ -98,9 +99,9 @@ const genderLabel = (g: string) => ({ female: 'F', male: 'M', trans_woman: 'TW',
                           <span class="flex items-center gap-1.5 font-medium">
                             {r.name}, {r.age}
                             {r.verified && <svg class="size-3 flex-none text-online" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9 12l2 2 4-4 1.5 1.5L11 17l-3.5-3.5z"/><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/></svg>}
-                            {r.online && <span class="size-1.5 rounded-full bg-online" title="online" />}
+                            {r.online && <span class="size-1.5 rounded-full bg-online" title={m.online_now()} />}
                           </span>
-                          <span class="block text-2xs text-muted-foreground">{genderLabel(r.gender)} · {r.servicesCount} services · {r.photos.length}📷</span>
+                          <span class="block text-2xs text-muted-foreground">{genderLabel(r.gender)} · {r.servicesCount} {m.account_services_count()} · {r.photos.length}📷</span>
                         </span>
                       </a>
                     </td>
@@ -131,25 +132,26 @@ const genderLabel = (g: string) => ({ female: 'F', male: 'M', trans_woman: 'TW',
                 </div>
               </div>
 
-              {/* Media strip — blurred, per-item reveal */}
+              {/* Media strip — admin always sees the real images (never blurred);
+                  click to open full. */}
               <div class="flex flex-wrap gap-2">
-                {detail.profile.photos.slice(0, 8).map((_, i) => (
-                  <button type="button" data-reveal class="group relative block size-16 overflow-hidden border border-border">
-                    <SafeImage imageKey={`${detail.admin.id}-${i}`} alt="photo" class="size-full blur-md transition group-[.shown]:blur-0" />
-                  </button>
+                {detail.profile.photos.slice(0, 8).map((url) => (
+                  <a href={url} target="_blank" rel="noreferrer" class="block size-16 overflow-hidden border border-border">
+                    <img src={url} alt="photo" loading="lazy" class="size-full object-cover" />
+                  </a>
                 ))}
               </div>
 
               <dl class="grid grid-cols-2 gap-px overflow-hidden border border-border bg-border text-xs">
                 {[
-                  ['City', cityName(detail.profile.city)],
-                  ['Gender', detail.profile.gender],
-                  ['Price', `€${detail.profile.priceFrom}`],
-                  ['Services', String(detail.profile.services.length)],
-                  ['Photos', String(detail.profile.photos.length)],
-                  ['Completeness', `${detail.admin.completeness}%`],
-                  ['Verified', detail.profile.verified ? 'Yes' : 'No'],
-                  ['Reports', String(reportsAgainst.length)],
+                  [m.filter_city(), cityName(detail.profile.city)],
+                  [m.filter_gender(), detail.profile.gender],
+                  [m.request_card_price(), `€${detail.profile.priceFrom}`],
+                  [m.filter_services(), String(detail.profile.services.length)],
+                  [m.nav_photos(), String(detail.profile.photos.length)],
+                  [m.adm_field_completeness(), `${detail.admin.completeness}%`],
+                  [m.verified(), detail.profile.verified ? m.adm_yes() : m.adm_no()],
+                  [m.adm_nav_reports(), String(reportsAgainst.length)],
                 ].map(([k, v]) => (
                   <div class="bg-card px-2.5 py-1.5"><dt class="text-2xs uppercase tracking-wide text-muted-foreground">{k}</dt><dd class="font-medium">{v}</dd></div>
                 ))}
@@ -158,12 +160,12 @@ const genderLabel = (g: string) => ({ female: 'F', male: 'M', trans_woman: 'TW',
               <p class="line-clamp-3 text-xs text-muted-foreground">{localizedDescription(detail.profile, 'en')}</p>
 
               <div class="flex flex-wrap gap-2">
-                <a href={`/en/profile/${detail.profile.slug}/`} target="_blank" class="text-xs font-medium underline underline-offset-4">Public page ↗</a>
+                <a href={`/en/profile/${detail.profile.slug}/`} target="_blank" class="text-xs font-medium underline underline-offset-4">{m.adm_profiles_public_page()} ↗</a>
               </div>
 
               {reportsAgainst.length > 0 && (
                 <div class="border-t border-border pt-3">
-                  <p class="text-2xs font-semibold uppercase tracking-wide text-brand">Reports against ({reportsAgainst.length})</p>
+                  <p class="text-2xs font-semibold uppercase tracking-wide text-brand">{m.adm_profiles_reports_against({ count: reportsAgainst.length })}</p>
                   <ul class="mt-1.5 space-y-1">
                     {reportsAgainst.slice(0, 5).map((r) => (
                       <li class="flex items-center justify-between gap-2 text-xs">
@@ -177,7 +179,7 @@ const genderLabel = (g: string) => ({ female: 'F', male: 'M', trans_woman: 'TW',
 
               {history.length > 0 && (
                 <div class="border-t border-border pt-3">
-                  <p class="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">History</p>
+                  <p class="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">{m.adm_profiles_history()}</p>
                   <ul class="mt-1.5 space-y-1">
                     {history.map((e) => (
                       <li class="flex items-center justify-between gap-2 text-xs text-muted-foreground">
@@ -191,16 +193,16 @@ const genderLabel = (g: string) => ({ female: 'F', male: 'M', trans_woman: 'TW',
 
               {/* Lifecycle actions */}
               <div class="space-y-2 border-t border-border pt-3">
-                <input data-reason placeholder="Reason (for block/delete)" class="w-full slab-cut border border-foreground/20 bg-background px-2.5 py-1.5 text-xs outline-none focus:border-foreground" />
+                <input data-reason placeholder={m.adm_profiles_reason_ph()} class="w-full slab-cut border border-foreground/20 bg-background px-2.5 py-1.5 text-xs outline-none focus:border-foreground" />
                 <div class="flex flex-wrap gap-1.5">
-                  <button type="button" data-act="approve" class="slab-cut bg-online px-2.5 py-1 text-2xs font-bold uppercase text-white">Approve</button>
-                  <button type="button" data-act="pause" class="slab-cut border border-foreground/20 px-2.5 py-1 text-2xs font-bold uppercase">Pause</button>
+                  <button type="button" data-act="approve" class="slab-cut bg-online px-2.5 py-1 text-2xs font-bold uppercase text-white">{m.adm_approve()}</button>
+                  <button type="button" data-act="pause" class="slab-cut border border-foreground/20 px-2.5 py-1 text-2xs font-bold uppercase">{m.adm_pause()}</button>
                   {detail.admin.state === 'blocked' ? (
-                    <button type="button" data-act="unblock" class="slab-cut border border-foreground/20 px-2.5 py-1 text-2xs font-bold uppercase">Unblock</button>
+                    <button type="button" data-act="unblock" class="slab-cut border border-foreground/20 px-2.5 py-1 text-2xs font-bold uppercase">{m.msg_unblock()}</button>
                   ) : (
-                    <button type="button" data-act="block" class="slab-cut border border-brand px-2.5 py-1 text-2xs font-bold uppercase text-brand">Block</button>
+                    <button type="button" data-act="block" class="slab-cut border border-brand px-2.5 py-1 text-2xs font-bold uppercase text-brand">{m.msg_block()}</button>
                   )}
-                  <button type="button" data-act="delete" class="slab-cut border border-brand px-2.5 py-1 text-2xs font-bold uppercase text-brand">Delete</button>
+                  <button type="button" data-act="delete" class="slab-cut border border-brand px-2.5 py-1 text-2xs font-bold uppercase text-brand">{m.adm_delete()}</button>
                 </div>
               </div>
             </aside>

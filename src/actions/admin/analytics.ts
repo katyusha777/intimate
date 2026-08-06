@@ -1,6 +1,6 @@
 /**
- * Ops analytics (docs/ADMIN.md §12): first-party numbers from Postgres in prod
- * (materialized views), computed here from the mock seams. Accuracy law
+ * Ops analytics (docs/ADMIN.md §12): first-party numbers computed from the
+ * shared DB seams (materialized views when volume demands it). Accuracy law
  * (ANALYTICS.md) — ops numbers come from our own data, never client capture.
  */
 import { accountApi } from '@/app/api/account';
@@ -18,7 +18,7 @@ export interface Analytics {
   completenessBuckets: { label: string; count: number }[];
   byServiceCategory: { category: string; count: number }[];
   adminThroughput: { admin: string; actions: number }[];
-  totals: { profiles: number; clients: number; accounts: number; auditEntries: number };
+  totals: { profiles: number; accounts: number; auditEntries: number };
 }
 
 export async function analytics(): Promise<Analytics> {
@@ -68,6 +68,6 @@ export async function analytics(): Promise<Analytics> {
     completenessBuckets: Object.entries(buckets).map(([label, count]) => ({ label, count })),
     byServiceCategory: SERVICE_CATEGORIES.map((category) => ({ category, count: cat.get(category) ?? 0 })).sort((a, b) => b.count - a.count),
     adminThroughput: [...throughput.entries()].map(([admin, actions]) => ({ admin: admin.split('@')[0]!, actions })).sort((a, b) => b.actions - a.actions),
-    totals: { profiles: rows.length, clients: 0, accounts: accounts.length, auditEntries: audit.length },
+    totals: { profiles: rows.length, accounts: accounts.length, auditEntries: audit.length },
   };
 }

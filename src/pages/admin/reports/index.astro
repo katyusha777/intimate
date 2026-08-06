@@ -9,6 +9,7 @@ import { reportsQueue } from '@/actions/admin/queues';
 import { REPORT_RESOLUTIONS } from '@/lib/taxonomy';
 import AdminShell from '@/components/organisms/admin/AdminShell.astro';
 import QueueList from '@/components/organisms/admin/QueueList.astro';
+import * as m from '@/paraglide/messages';
 
 const session = await getAdmin(Astro);
 const items = session ? await reportsQueue() : [];
@@ -23,7 +24,7 @@ const humanize = (s: string) => s.replace(/_/g, ' ').replace(/^./, (c) => c.toUp
 
 const rows = items.map((r) => ({
   href: `/admin/reports?item=${r.id}`,
-  title: `${humanize(r.reason)}${r.escalated ? ' · ESCALATION' : ''}`,
+  title: `${humanize(r.reason)}${r.escalated ? ` · ${m.adm_reports_escalation_tag()}` : ''}`,
   subtitle: `${r.targetKind}: ${r.targetLabel || r.targetId}`,
   age: ago(r.createdAt),
   claimedBy: r.claim?.by ?? null,
@@ -32,46 +33,46 @@ const rows = items.map((r) => ({
 }));
 ---
 
-<AdminShell title="Reports" section="reports">
+<AdminShell title={m.adm_nav_reports()} section="reports">
   {
     session && (
       <div>
-        <h1 class="display text-3xl">Reports</h1>
-        <p class="mt-1 text-sm text-muted-foreground">{items.length} open · escalations pinned</p>
+        <h1 class="display text-3xl">{m.adm_nav_reports()}</h1>
+        <p class="mt-1 text-sm text-muted-foreground">{m.adm_reports_meta({ count: items.length })}</p>
 
         <div class="mt-6 grid gap-6 lg:grid-cols-[22rem_1fr]">
-          <QueueList rows={rows} empty="No open reports." />
+          <QueueList rows={rows} empty={m.adm_reports_empty()} />
 
           {!selected ? (
             <div class="grid place-items-center border border-dashed border-border py-24 text-sm text-muted-foreground">
-              Select a report to review.
+              {m.adm_reports_select()}
             </div>
           ) : (
             <div data-report data-id={selected.id} class="min-w-0 space-y-5">
               {selected.escalated && (
-                <div class="bg-brand px-3 py-2 text-sm font-semibold text-white">Escalation — underage / coercion. Prioritise.</div>
+                <div class="bg-brand px-3 py-2 text-sm font-semibold text-white">{m.adm_reports_escalation_banner()}</div>
               )}
               <dl class="divide-y divide-border border border-border text-sm">
-                <div class="flex justify-between gap-4 px-3 py-2"><dt class="text-muted-foreground">Reason</dt><dd class="font-medium">{humanize(selected.reason)}</dd></div>
-                <div class="flex justify-between gap-4 px-3 py-2"><dt class="text-muted-foreground">Target</dt><dd class="font-medium">{selected.targetKind}: {selected.targetLabel || selected.targetId}</dd></div>
-                <div class="flex justify-between gap-4 px-3 py-2"><dt class="text-muted-foreground">Reporter</dt><dd class="font-medium">{selected.reporterEmail.split('@')[0]}</dd></div>
-                <div class="flex justify-between gap-4 px-3 py-2"><dt class="text-muted-foreground">Filed</dt><dd class="font-medium">{ago(selected.createdAt)} ago</dd></div>
+                <div class="flex justify-between gap-4 px-3 py-2"><dt class="text-muted-foreground">{m.verify_reason_label()}</dt><dd class="font-medium">{humanize(selected.reason)}</dd></div>
+                <div class="flex justify-between gap-4 px-3 py-2"><dt class="text-muted-foreground">{m.adm_reports_target()}</dt><dd class="font-medium">{selected.targetKind}: {selected.targetLabel || selected.targetId}</dd></div>
+                <div class="flex justify-between gap-4 px-3 py-2"><dt class="text-muted-foreground">{m.adm_reports_reporter()}</dt><dd class="font-medium">{selected.reporterEmail.split('@')[0]}</dd></div>
+                <div class="flex justify-between gap-4 px-3 py-2"><dt class="text-muted-foreground">{m.adm_reports_filed()}</dt><dd class="font-medium">{m.adm_ago({ age: ago(selected.createdAt) })}</dd></div>
               </dl>
               {selected.note && <p class="border border-border bg-muted/40 px-3 py-2 text-sm">“{selected.note}”</p>}
               {selected.profileSlug && (
-                <a href={`/en/profile/${selected.profileSlug}/`} target="_blank" class="inline-block text-sm font-medium underline underline-offset-4">Open reported profile ↗</a>
+                <a href={`/en/profile/${selected.profileSlug}/`} target="_blank" class="inline-block text-sm font-medium underline underline-offset-4">{m.adm_reports_open_profile()} ↗</a>
               )}
 
               <div class="flex flex-wrap items-end gap-3 border-t border-border pt-5">
                 <label class="text-sm">
-                  <span class="mb-1 block text-xs font-medium text-muted-foreground">Action taken</span>
+                  <span class="mb-1 block text-xs font-medium text-muted-foreground">{m.adm_reports_action_taken()}</span>
                   <select data-resolution class="slab-cut border border-foreground/20 bg-background px-3 py-2 text-sm">
-                    <option value="">Select…</option>
+                    <option value="">{m.adm_select()}</option>
                     {REPORT_RESOLUTIONS.map((r) => <option value={r}>{humanize(r)}</option>)}
                   </select>
                 </label>
-                <button type="button" data-resolve class="slab-cut bg-foreground px-4 py-2 text-sm font-semibold text-background">Resolve</button>
-                <button type="button" data-dismiss class="slab-cut border border-foreground/20 px-4 py-2 text-sm font-medium">Dismiss</button>
+                <button type="button" data-resolve class="slab-cut bg-foreground px-4 py-2 text-sm font-semibold text-background">{m.adm_reports_resolve()}</button>
+                <button type="button" data-dismiss class="slab-cut border border-foreground/20 px-4 py-2 text-sm font-medium">{m.adm_reports_dismiss()}</button>
               </div>
             </div>
           )}

@@ -2,6 +2,7 @@
 import * as m from '@/paraglide/messages';
 import type { Session } from '@/app/models/session';
 import { localizePath } from '@/lib/i18n';
+import SafeImage from '@/components/atoms/SafeImage.astro';
 
 interface Props {
   session?: Session | null;
@@ -32,7 +33,12 @@ const tab = (href: string, label: string, icon: string, exact = false, sheet = f
    - Visitor: Search · Favorites · Support · Account */
 const search = tab('/search/', m.nav_search(), '<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>');
 const favorites = tab('/favorites/', m.nav_favorites(), '<path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7Z"/>', false, true);
-const account = tab('/account/', m.nav_account(), '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/>');
+/* Logged in: her avatar replaces the generic person icon (placeholder icon
+   until a photo is approved). */
+const account = {
+  ...tab('/account/', m.nav_account(), '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/>'),
+  avatar: session?.avatarUrl,
+};
 const messages = {
   ...tab('/messages/', m.msg_title(), '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/>', false, true),
   dot: unread > 0,
@@ -82,17 +88,29 @@ const tabs =
         >
           {t.dot && <span class="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-brand" />}
           <!-- Icons only — the label lives in aria-label (a11y). -->
-          <svg
-            class="size-6"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-            set:html={t.icon}
-          />
+          {
+            'avatar' in t && t.avatar ? (
+              <SafeImage
+                imageKey={session?.profileId ?? session?.accountId ?? 'me'}
+                src={t.avatar}
+                alt=""
+                loading="eager"
+                class="size-7 rounded-full border border-foreground/20"
+              />
+            ) : (
+              <svg
+                class="size-6"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+                set:html={t.icon}
+              />
+            )
+          }
         </a>
       ))
     }
