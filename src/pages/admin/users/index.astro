@@ -57,7 +57,10 @@ const humanize = (s: string) => s.replace(/_/g, ' ').replace(/^./, (c) => c.toUp
                     </span>
                   </span>
                   <span class="flex flex-none gap-2">
-                    {a.dataRequestedAt && (
+                    {/* Export stays available for any listed account (data OR
+                        deletion request) until the account is deleted (#2) —
+                        re-downloadable, e.g. to grab data before a deletion. */}
+                    {(a.dataRequestedAt || a.deletionRequestedAt) && (
                       <button type="button" data-gdpr-export={a.id} data-email={a.email} class="cursor-pointer border border-foreground/20 px-3 py-1.5 text-sm font-medium transition-colors hover:border-foreground/60">
                         {m.adm_gdpr_export_btn()}
                       </button>
@@ -172,7 +175,7 @@ const humanize = (s: string) => s.replace(/_/g, ' ').replace(/^./, (c) => c.toUp
         a.download = `intimate-data-${(btn.dataset.email || 'account').replace(/[^a-z0-9.@-]/gi, '_')}.json`;
         a.click();
         URL.revokeObjectURL(a.href);
-        settleGdpr(btn);
+        // Keep the button (re-downloadable until the account is deleted, #2).
       });
     });
     document.querySelectorAll<HTMLElement>('[data-gdpr-delete]').forEach((btn) => {

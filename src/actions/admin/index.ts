@@ -20,7 +20,7 @@ import { requestDb } from '@/db/client';
 import { media, profiles } from '@/db/schema';
 import { approveWholeSubmission, decideModeration } from './queues';
 import { setProfileState } from './entities';
-import { approveDeletion, clearDataRequest, exportAccountData } from './gdpr';
+import { approveDeletion, exportAccountData } from './gdpr';
 import { retryImport } from './imports';
 import { INDEXNOW_KEY, submitIndexNow } from '@/lib/indexnow';
 import { isR2Key, mediaBucket } from '@/lib/media-keys';
@@ -245,7 +245,9 @@ export const admin = {
     handler: async ({ accountId }, context) => {
       const session = await requireAdmin(context, ['super']);
       const data = await exportAccountData(accountId);
-      await clearDataRequest(accountId); // fulfilment clears the flag (banner drops)
+      // Do NOT clear the request flag here: the export button must stay
+      // available (re-downloadable) until the account is permanently deleted
+      // (#2). approveDeletion clears both flags when the account is removed.
       await record(session, { action: 'gdpr_export', entityType: 'account', entityId: accountId });
       return { data };
     },

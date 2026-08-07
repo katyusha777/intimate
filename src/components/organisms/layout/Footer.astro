@@ -15,16 +15,16 @@ import SafeModeToggle from '@/components/molecules/SafeModeToggle.astro';
       <div>
         <span class="inline-flex items-center gap-2 border border-brand/40 px-3.5 py-1.5 eyebrow text-2xs font-semibold text-white/80">
           <span class="size-1.5 rounded-full bg-brand"></span>
-          Early access
+          {m.foot_early_access()}
         </span>
-        <p class="display mt-5 text-3xl md:text-5xl">Where connections begin</p>
+        <p class="display mt-5 text-3xl md:text-5xl">{m.foot_tagline()}</p>
       </div>
       <div class="space-y-3 lg:text-right">
         <a href={localizePath('/')} class="inline-block lg:ml-auto" aria-label={m.app_name()}>
           <img src="/img/logo-light.svg" alt={m.app_name()} class="h-10 w-auto md:h-14" />
         </a>
         <p class="max-w-xs text-sm text-white/50 lg:ml-auto">
-          A new platform, in active development. We're building Intimate together with you.
+          {m.foot_building()}
         </p>
       </div>
     </div>
@@ -34,31 +34,31 @@ import SafeModeToggle from '@/components/molecules/SafeModeToggle.astro';
       {
         [
           {
-            title: 'Information',
+            title: m.foot_col_information(),
             links: [
               // START ADVERTISING lives here + in the menu (UX-PLAN 1.1) —
               // professionals find it deliberately; clients never trip over it.
               [m.cta_start_advertising(), '/account/'],
-              ['About Intimate', '/about/'],
-              ['Articles', '/blog/'],
-              ['Forum', '/forum/'],
-              ['Documentation', '/docs/'],
+              [m.foot_about(), '/about/'],
+              [m.foot_articles(), '/blog/'],
+              [m.foot_forum(), '/forum/'],
+              [m.foot_docs(), '/docs/'],
             ],
           },
           {
-            title: 'Help',
+            title: m.foot_col_help(),
             links: [
-              ['Profile rules', '/profile-rules/'],
-              ['Safety & awareness', '/safety/'],
-              ['Support', '/support/'],
-              ['Contact', '/support/'],
+              [m.foot_profile_rules(), '/profile-rules/'],
+              [m.foot_safety(), '/safety/'],
+              [m.nav_support(), '/support/'],
+              [m.foot_contact(), '/support/'],
             ],
           },
           {
-            title: 'Legal',
+            title: m.foot_col_legal(),
             links: [
-              ['Terms & conditions', '/terms/'],
-              ['Privacy & Cookies', '/privacy/'],
+              [m.foot_terms(), '/terms/'],
+              [m.foot_privacy(), '/privacy/'],
             ],
           },
         ].map((col) => (
@@ -83,7 +83,7 @@ import SafeModeToggle from '@/components/molecules/SafeModeToggle.astro';
       <div class="col-span-2 border border-white/15 p-5 lg:col-span-1">
         <p class="eyebrow flex items-center gap-3 text-white/50">
           <span class="h-px w-5 bg-white/30" aria-hidden="true"></span>
-          Questions?
+          {m.foot_questions()}
         </p>
         <a href={SUPPORT_CONTACT.phone.href} class="mt-3 flex items-center gap-2.5">
           <Icon name="phone" family="thin" class="text-xl text-white/80" />
@@ -100,11 +100,10 @@ import SafeModeToggle from '@/components/molecules/SafeModeToggle.astro';
         <p class="mt-2 text-xs text-white/50">{SUPPORT_CONTACT.hours}</p>
         <div class="mt-4 border-l-2 border-amber-400/60 pl-3">
           <p class="eyebrow text-2xs font-bold text-amber-200">
-            Not an escort agency
+            {m.foot_not_agency()}
           </p>
           <p class="mt-1 text-xs leading-relaxed text-white/50">
-            We are an advertising platform — appointments are made directly with advertisers.
-            We do not mediate or schedule bookings.
+            {m.foot_disclaimer()}
           </p>
         </div>
       </div>
@@ -121,14 +120,14 @@ import SafeModeToggle from '@/components/molecules/SafeModeToggle.astro';
     <div class="flex flex-col gap-5 border-t border-white/10 py-6 pb-24 sm:flex-row sm:items-center sm:justify-between sm:pb-6">
       <p class="flex items-center gap-3">
         <span class="flex-none border border-white/25 px-2.5 py-1 text-xs font-bold">18+</span>
-        <span class="text-sm text-white/50">© 2026 Intimate.nl. All rights reserved.</span>
+        <span class="text-sm text-white/50">{m.foot_rights()}</span>
       </p>
       <button
         type="button"
         data-scroll-top
         class="flex cursor-pointer items-center justify-center gap-2 border border-white/20 px-4 py-2.5 eyebrow font-semibold text-foreground transition-colors hover:bg-white/10 active:scale-[0.98] sm:justify-start"
       >
-        Back to top
+        {m.foot_back_top()}
         <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m18 15-6-6-6 6" /></svg>
       </button>
     </div>

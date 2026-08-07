@@ -3,6 +3,10 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
+  /* Native controls (the <select> option popup, date pickers, scrollbars)
+     follow the theme — without this the dark-mode option list rendered as a
+     light popup with near-white inherited text = invisible (items.md #7). */
+  color-scheme: light;
   --background: oklch(0.975 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -66,6 +70,7 @@
 }
 
 .dark {
+  color-scheme: dark;
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   /* Cards/popovers step VISIBLY off the canvas (items.md #14 — "pure black on
@@ -675,6 +680,14 @@
       [class*='overflow-auto']
     ):not(html):not(body) {
     overscroll-behavior: contain;
+  }
+
+  /* Belt-and-suspenders for the native <select> dropdown (items.md #7): some
+     browsers don't apply color-scheme to the option list, so pin explicit
+     theme colors — never a white-on-white (or dark-on-dark) invisible list. */
+  option {
+    background-color: var(--background);
+    color: var(--foreground);
   }
 }
 

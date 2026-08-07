@@ -47,7 +47,7 @@ const moreArticles = articles.filter((a) => a !== featuredArticle).slice(0, 3);
 ---
 
 <Layout
-  description="Verified directory for legal adult services in the Netherlands — private visits, escorts, massage. Every profile verified."
+  description={m.home_meta_desc()}
   canonical={new URL(`/${locale}/`, Astro.url.origin).href}
   {alternates}
   {jsonLd}
@@ -79,7 +79,7 @@ const moreArticles = articles.filter((a) => a !== featuredArticle).slice(0, 3);
           <Button as="a" href={localizePath('/account/')} class="block w-full">
             {m.cta_start_advertising()} →
           </Button>
-          <p class="mt-2.5 text-2xs text-muted-foreground">Verified-only · free in early access</p>
+          <p class="mt-2.5 text-2xs text-muted-foreground">{m.home_verified_free()}</p>
         </div>
       )
     }
@@ -90,7 +90,10 @@ const moreArticles = articles.filter((a) => a !== featuredArticle).slice(0, 3);
        only; the fold above owns mobile. No account CTA — START ADVERTISING
        lives in the menu + footer (1.1). -->
   <section class="dark relative hidden overflow-hidden bg-neutral-950 text-white lg:block">
-    <div class="absolute -inset-px" data-safe-video-wrap>
+    {/* Media starts at the horizontal middle and stretches to the right edge;
+        the ink panel's jagged edge overlaps its left start so there's no seam
+        (items.md #10 — was full-bleed behind the panel = a zoomed crop). */}
+    <div class="absolute inset-y-0 right-0 w-1/2" data-safe-video-wrap>
       <video
         class="hidden h-full w-full object-cover"
         data-safe-video
@@ -118,7 +121,7 @@ const moreArticles = articles.filter((a) => a !== featuredArticle).slice(0, 3);
           </span>
         </p>
         <h1 class="mt-4 text-5xl font-bold tracking-tight xl:text-6xl">
-          Your intimate connection<span class="text-brand">.</span>
+          {m.home_hero_title()}<span class="text-brand">.</span>
         </h1>
         <p class="mt-4 max-w-md leading-relaxed text-white/70">{m.fold_pitch()}</p>
         {
@@ -127,7 +130,7 @@ const moreArticles = articles.filter((a) => a !== featuredArticle).slice(0, 3);
               <Button as="a" href={localizePath('/account/')} size="lg">
                 {m.cta_start_advertising()}
               </Button>
-              <span class="text-sm text-white/70">Verified-only · free in early access</span>
+              <span class="text-sm text-white/70">{m.home_verified_free()}</span>
             </div>
           )
         }
@@ -247,7 +250,7 @@ const moreArticles = articles.filter((a) => a !== featuredArticle).slice(0, 3);
             class="h-full w-full lg:absolute lg:inset-0"
           />
           <span class="article-slab absolute left-2 top-2 bg-neutral-950 px-3.5 py-1.5 eyebrow text-2xs font-semibold text-white">
-            Free in early access
+            {m.home_ad_free()}
           </span>
         </div>
         <div
@@ -255,14 +258,13 @@ const moreArticles = articles.filter((a) => a !== featuredArticle).slice(0, 3);
         >
           <p class="eyebrow flex items-center gap-3 text-white/70">
             <span class="h-px w-6 bg-white/50" aria-hidden="true"></span>
-            For advertisers
+            {m.home_ad_eyebrow()}
           </p>
           <h2 class="display mt-4 text-3xl md:text-5xl">
-            Place your ad
+            {m.home_ad_title()}
           </h2>
           <p class="mt-4 max-w-md leading-relaxed text-white/85">
-            And get found easily by the right people — verified, discreet and visible
-            in your region.
+            {m.home_ad_body()}
           </p>
           <div class="mt-7 flex flex-wrap gap-3">
             <Button as="a" href={localizePath("/account/")} size="lg">
@@ -273,7 +275,7 @@ const moreArticles = articles.filter((a) => a !== featuredArticle).slice(0, 3);
               href={localizePath("/blog/starten-als-escort-in-nederland/")}
               size="lg"
             >
-              More info →
+              {m.home_more_info()} →
             </Button>
           </div>
         </div>
