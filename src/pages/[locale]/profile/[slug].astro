@@ -38,12 +38,24 @@ if (!p) {
       preview = true;
     }
   }
-  // Admin god view: any lifecycle state renders (never edge-cached — authed).
-  if (!p && isAdmin) {
-    p = (await profilesApi.listAll()).find((x) => x.slug === slug) ?? null;
-    if (p) preview = true;
+  // listAll() covers EVERY lifecycle state (read-only). One fetch serves both
+  // the admin god-view and the 404-vs-410 decision below.
+  if (!p) {
+    const dead = (await profilesApi.listAll()).find((x) => x.slug === slug) ?? null;
+    // Admin god view: any lifecycle state renders (never edge-cached — authed).
+    if (isAdmin && dead) {
+      p = dead;
+      preview = true;
+    }
+    // Hard rule 8 / SEO §1.6: a slug that EXISTS but is blocked/deleted is Gone
+    // (410 + IndexNow removal ping), not a soft-404. A slug that never existed
+    // stays 404.
+    if (!p) {
+      return new Response(null, {
+        status: dead && (dead.state === 'blocked' || dead.state === 'deleted') ? 410 : 404,
+      });
+    }
   }
-  if (!p) return new Response(null, { status: 404 });
 }
 // The owner viewing her own profile shouldn't see a "Save" (favourite) control.
 const isOwner = session?.profileSlug === slug;
@@ -107,6 +119,7 @@ const jsonLd = [
   alternates={preview ? undefined : samePathAlternates(Astro.url.origin, `/profile/${p.slug}/`)}
   {jsonLd}
   preloadImage={realImageFor(`${p.id}-0`, p.photos[0])}
+  image={realImageFor(`${p.id}-0`, p.photos[0])}
 >
   {isAdmin && <ProfileAdminBar profile={p} />}
   {

@@ -72,7 +72,7 @@ const SECURITY_HEADERS: Record<string, string> = {
     "img-src 'self' data: blob: https:",
     "media-src 'self' blob:",
     "font-src 'self'",
-    "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://eu.i.posthog.com https://plausible.io",
+    "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://challenges.cloudflare.com https://eu.i.posthog.com https://plausible.io",
     'frame-src https://challenges.cloudflare.com',
     "frame-ancestors 'self'",
     "base-uri 'self'",

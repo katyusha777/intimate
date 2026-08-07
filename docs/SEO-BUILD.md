@@ -30,9 +30,17 @@ built. Update statuses as phases land.
 - [ ] Profile pages `/{l}/profile/{slug}/` → then: profiles sitemaps per locale,
       ProfilePage/Person JSON-LD, answer-first profile summary line, OG image =
       SFW cover (tiered photo policy).
-- [ ] HTTP 410 for blocked/deleted profiles + IndexNow removal ping (§1.6).
-- [ ] IndexNow wired into the publish/update/delete pipeline (§1.5) — a
-      `services/indexnow.ts` called from server actions; `INDEXNOW_KEY` env exists.
+- [x] HTTP 410 for blocked/deleted profiles (§1.6) — `[locale]/profile/[slug].astro`
+      distinguishes never-existed (404) from exists-but-blocked/deleted (410) via
+      `profilesApi.listAll()`. IndexNow removal ping: helper ready (below), the
+      pipeline call is the remaining wiring.
+- [ ] IndexNow wired into the publish/update/delete pipeline (§1.5) — helper
+      `src/lib/indexnow.ts` (`submitIndexNow(urls, host, keyLocation)`, fire-and-
+      forget) + root key file `public/7ded564a30734bf689eff437b6b416ab.txt` are
+      built; **remaining:** call `submitIndexNow` from `src/actions/admin/**` on
+      profile publish (submit the profile URL) and on takedown (submit it so
+      engines re-crawl and hit the 410). Key: `7ded564a30734bf689eff437b6b416ab`
+      (self-hosted, no env var needed).
 - [ ] FAQPage JSON-LD on city/category templates (needs written Q&As ×3 locales, §4).
 - [ ] llms.txt regeneration weekly (Cloudflare Cron) from live hubs (§1.7).
 - [ ] Stats page daily regeneration/cache + Dataset markup consideration (§5).

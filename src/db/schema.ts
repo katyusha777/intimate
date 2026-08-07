@@ -330,8 +330,15 @@ export const verificationDocs = pgTable(
     reviewedBy: uuid('reviewed_by'), // admin account id — no FK (defensibility, GDPR §10)
     reviewedAt: timestamp('reviewed_at', { withTimezone: true }),
     purgeAfter: date('purge_after'),
+    // Set by the purge cron once the R2 object is deleted (hard rule 3): the
+    // skeletal row (state/hash/reviewer/date) is retained forever; this marks
+    // the bytes as gone so the cron never re-processes it.
+    purgedAt: timestamp('purged_at', { withTimezone: true }),
   },
-  (t) => [index('verification_docs_account_idx').on(t.accountId)],
+  (t) => [
+    index('verification_docs_account_idx').on(t.accountId),
+    index('verification_docs_purge_idx').on(t.purgeAfter),
+  ],
 );
 
 // ---------------------------------------------------------------------------
@@ -388,8 +395,16 @@ export const messages = pgTable(
     callId: uuid('call_id').references(() => callSessions.id), // call kind: outcome card
     createdAt: createdAt(),
     readAt: timestamp('read_at', { withTimezone: true }),
+    // 90-day retention (SECURITY.md §8) — the purge cron deletes rows past this;
+    // inline photo bytes live in the row, so the row delete removes them too.
+    expiresAt: timestamp('expires_at', { withTimezone: true })
+      .notNull()
+      .default(sql`now() + interval '90 days'`),
   },
-  (t) => [index('messages_thread_idx').on(t.threadId, t.createdAt)],
+  (t) => [
+    index('messages_thread_idx').on(t.threadId, t.createdAt),
+    index('messages_expires_idx').on(t.expiresAt),
+  ],
 );
 
 // Single-use contact invite links (VIDEO-CALLING.md §5): she shares the token

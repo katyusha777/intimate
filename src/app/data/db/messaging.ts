@@ -40,6 +40,7 @@ import {
   type ThreadSummary,
 } from '@/app/models/messaging';
 import type { Session } from '@/app/models/session';
+import { ratesMinPrice, type RateRow } from '@/app/models/profile';
 
 const iso = (v: Date | string): string => (v instanceof Date ? v : new Date(v)).toISOString();
 
@@ -188,10 +189,37 @@ function toSummary(t: Thread, party: Party): ThreadSummary {
 // ── helpers ─────────────────────────────────────────────────────────────────
 
 /** A live profile's id from a slug — you message from a live page. */
-async function liveProfileId(d: Db, slug: string): Promise<{ id: string } | undefined> {
+async function liveProfileId(d: Db, slug: string): Promise<{ id: string; rates: RateRow[] } | undefined> {
   return (
-    await d.select({ id: profiles.id }).from(profiles).where(and(eq(profiles.slug, slug), eq(profiles.state, 'live'))).limit(1)
+    await d
+      .select({ id: profiles.id, rates: profiles.rates })
+      .from(profiles)
+      .where(and(eq(profiles.slug, slug), eq(profiles.state, 'live')))
+      .limit(1)
   )[0];
+}
+
+/** Is this client account phone-verified? (gates 'verified_only' inbox mode.) */
+async function clientPhoneVerified(d: Db, accountId: string): Promise<boolean> {
+  const [a] = await d
+    .select({ v: accounts.phoneVerifiedAt })
+    .from(accounts)
+    .where(eq(accounts.id, accountId))
+    .limit(1);
+  return !!a?.v;
+}
+
+/** Her inbox mode gate for a CLIENT reaching her: 'off' closed; 'verified_only'
+ *  needs a phone-verified client; 'everyone' open. Only queries verification
+ *  when the mode actually requires it. */
+async function clientPassesMode(
+  d: Db,
+  accountId: string,
+  mode: ConversationSettings['mode'],
+): Promise<boolean> {
+  if (mode === 'off') return false;
+  if (mode === 'verified_only') return clientPhoneVerified(d, accountId);
+  return true;
 }
 
 type InviteRow = typeof contactInvites.$inferSelect;
@@ -321,7 +349,8 @@ export function makeMessagingApi(db: () => Db): MessagingApi {
     const d = db();
     const profile = await liveProfileId(d, profileSlug);
     if (!profile) return null;
-    if ((await this.settings(profile.id)).mode === 'off') return null; // her inbox, her rules
+    // Her inbox, her rules: 'off' closed, 'verified_only' needs a verified client.
+    if (!(await clientPassesMode(d, session.accountId, (await this.settings(profile.id)).mode))) return null;
     const existing = await findThread(d, profile.id, session.accountId);
     if (existing) return existing;
     return createThread(d, profile.id, session.accountId, 'open');
@@ -332,10 +361,18 @@ export function makeMessagingApi(db: () => Db): MessagingApi {
     const d = db();
     const profile = await liveProfileId(d, profileSlug);
     if (!profile) return null;
-    if ((await this.settings(profile.id)).mode === 'off') return null;
+    if (!(await clientPassesMode(d, session.accountId, (await this.settings(profile.id)).mode))) return null;
     // UGC is data — re-validate at the wall even though the action parsed it.
     const parsed = RequestPayloadSchema.safeParse(request);
     if (!parsed.success) return null;
+
+    // Price is authoritative from HER rates for the chosen duration — never the
+    // client-supplied number (a client could otherwise claim €0). Unknown
+    // duration (no matching rate row) → reject the request entirely.
+    const rateRow = profile.rates.find((r) => r.duration === parsed.data.duration);
+    const price = rateRow ? ratesMinPrice([rateRow]) : undefined;
+    if (price === undefined) return null;
+    const requestData = { ...parsed.data, priceAtRequest: price };
 
     let thread = await findThread(d, profile.id, session.accountId);
     if (thread?.state === 'blocked') return null; // blocked pair → no request path
@@ -346,7 +383,7 @@ export function makeMessagingApi(db: () => Db): MessagingApi {
       threadId: thread.id,
       sender: 'client',
       kind: 'request',
-      request: parsed.data,
+      request: requestData,
     });
     return (await loadThreads(d, eq(threads.id, thread.id)))[0]!;
   },
@@ -383,7 +420,7 @@ export function makeMessagingApi(db: () => Db): MessagingApi {
     if (t.state !== 'open') return null;
 
     if (party === 'client') {
-      if ((await this.settings(t.profileId)).mode === 'off') return null;
+      if (!(await clientPassesMode(d, session.accountId, (await this.settings(t.profileId)).mode))) return null;
       if (kind === 'photo' && !t.clientMediaAllowed) return null; // her grant gates his media
     }
     const clean = body.trim().slice(0, 4000);
@@ -466,6 +503,10 @@ export function makeMessagingApi(db: () => Db): MessagingApi {
     if (!t) return;
     const party = partyOf(session, t);
     if (!party) return;
+    // The blocked party must not be able to overwrite the block: if the thread
+    // is already blocked by the OTHER side, refuse to re-block (which would flip
+    // blockedBy and let them then unblock and resume). Only the blocker owns it.
+    if (t.state === 'blocked' && t.blockedBy && t.blockedBy !== party) return;
     if (blocked) {
       // Plain block keeps the thread listed with a badge; "block & delete"
       // also hides it from the blocker's lists (items.md #1).
@@ -712,6 +753,10 @@ export function makeMessagingApi(db: () => Db): MessagingApi {
   },
 
   async seedDemo(session) {
+    // Hard DEV-only wall: this inserts fake client accounts and force-sets her
+    // conversation mode to 'everyone' — it must NEVER run against the real DB,
+    // regardless of caller.
+    if (!import.meta.env.DEV) return;
     if (!session.profileId) return;
     const d = db();
     // Once per profile: skip if she already has any thread (real or seeded).

@@ -14,6 +14,7 @@ import { env } from "cloudflare:workers";
 import { startPhoneVerify, checkPhoneVerify } from "@/lib/twilio";
 import { bustProfiles, type CacheKv } from "@/lib/page-cache";
 import { rateLimit } from "@/lib/rate-limit";
+import { verifyTurnstile } from "@/lib/turnstile";
 import { mintIceServers } from "@/lib/turn";
 import { CONVERSATION_MODES, REPORT_REASONS, REPORT_TARGETS } from "@/lib/taxonomy";
 // The one sanctioned cross-fence import: the action registry wires in admin.
@@ -31,6 +32,30 @@ const cacheKv = (): CacheKv | undefined =>
 
 const turnSecret = (): string | undefined =>
   (env as unknown as Record<string, string | undefined>).TURN_SECRET;
+
+const turnstileSecret = (): string | undefined =>
+  (env as unknown as Record<string, string | undefined>).TURNSTILE_SECRET_KEY;
+
+/** Best-effort client IP for rate-limit keys (Cloudflare always sets this). */
+const clientIp = (context: { request: Request }): string =>
+  context.request.headers.get("cf-connecting-ip") ?? "unknown";
+
+/** Turnstile bot wall — enforced only when the secret is configured, so local
+ *  dev without keys still lets you sign up. Throws on a missing/invalid token. */
+async function requireTurnstile(context: { request: Request }, token: string | undefined) {
+  const secret = turnstileSecret();
+  if (!secret) return; // not configured (dev) → skip
+  if (!token || !(await verifyTurnstile(token, secret, clientIp(context)))) {
+    throw new ActionError({ code: "BAD_REQUEST", message: "captcha_failed" });
+  }
+}
+
+/** Shared spam wall for authenticated actions — throws TOO_MANY_REQUESTS. */
+async function requireUnderLimit(name: string, key: string, max: number, windowS = 3600) {
+  if (!(await rateLimit(cacheKv(), name, key, max, windowS))) {
+    throw new ActionError({ code: "TOO_MANY_REQUESTS", message: "try again later" });
+  }
+}
 
 /** Decode a `data:...;base64,` URL to bytes (photos + verification docs). */
 function dataUrlToBytes(dataUrl: string): ArrayBuffer {
@@ -55,8 +80,12 @@ export const server = {
         password: z.string().min(8), // dashboard minimum mirrors this
         role: z.enum(["advertiser", "client"]),
         locale: z.enum(LOCALES),
+        turnstileToken: z.string().max(2048).optional(),
       }),
-      handler: async ({ email, password, role, locale }, context) => {
+      handler: async ({ email, password, role, locale, turnstileToken }, context) => {
+        // Bot + spam walls BEFORE any account creation (SECURITY.md §5).
+        await requireUnderLimit("register-ip", clientIp(context), 10);
+        await requireTurnstile(context, turnstileToken);
         try {
           const { needsConfirmation } = await sessionApi.register(context, { email, password, role });
           if (needsConfirmation) return { href: null, needsConfirmation: true };
@@ -292,15 +321,6 @@ export const server = {
       },
     }),
 
-    demoApproveId: defineAction({
-      input: z.object({}),
-      handler: async (_input, context) => {
-        const session = await requireSession(context);
-        // Demo-only shortcut for the moderation queue that doesn't exist yet.
-        await accountApi.save(session, { idVerification: "approved" });
-        return { ok: true };
-      },
-    }),
   },
 
   // Messaging (docs/MESSAGING.md). Participation + the client photo-grant rule
@@ -312,6 +332,7 @@ export const server = {
       input: z.object({ profileSlug: z.string().max(120), locale: z.enum(LOCALES) }),
       handler: async ({ profileSlug, locale }, context) => {
         const session = await requireSession(context);
+        await requireUnderLimit("msg-start", session.accountId, 30);
         const thread = await messagingApi.startThread(session, { profileSlug });
         if (!thread) return { href: null as string | null };
         return { href: `/${locale}/messages/${thread.id}/` };
@@ -336,6 +357,7 @@ export const server = {
       }),
       handler: async ({ profileSlug, locale, ...request }, context) => {
         const session = await requireSession(context);
+        await requireUnderLimit("msg-request", session.accountId, 20);
         const thread = await messagingApi.startRequest(session, {
           profileSlug,
           request: request as Parameters<typeof messagingApi.startRequest>[1]["request"],
@@ -389,6 +411,7 @@ export const server = {
       }),
       handler: async (input, context) => {
         const session = await requireSession(context);
+        await requireUnderLimit("msg-send", session.accountId, 60);
         const message = await messagingApi.send(session, input);
         if (!message) throw new ActionError({ code: "BAD_REQUEST" });
         return { message };
@@ -472,6 +495,9 @@ export const server = {
       }),
       handler: async (input, context) => {
         const session = await requireSession(context);
+        // Per-account throttle: addContact by email is an account-existence
+        // oracle (b71aa8af) — cap probing to a human rate.
+        await requireUnderLimit("contact-add", session.accountId, 30);
         await messagingApi.addContact(session, input);
         return { ok: true };
       },
@@ -506,6 +532,7 @@ export const server = {
       input: z.object({ name: z.string().trim().max(60).optional(), locale: z.enum(LOCALES) }),
       handler: async ({ name, locale }, context) => {
         const session = await requireSession(context);
+        await requireUnderLimit("invite-mint", session.accountId, 20);
         const invite = await messagingApi.mintInvite(session, { name });
         if (!invite) throw new ActionError({ code: "BAD_REQUEST" });
         return { invite, url: `${context.url.origin}/${locale}/c/${invite.token}` };
@@ -530,6 +557,8 @@ export const server = {
       input: z.object({ threadId: z.string().max(200), mode: z.enum(CALL_MODES) }),
       handler: async ({ threadId, mode }, context) => {
         const session = await requireSession(context);
+        // Ring-bomb wall (VIDEO-CALLING.md §9): cap call starts per professional.
+        await requireUnderLimit("call-start", session.accountId, 30);
         const call = await callsApi.start(session, { threadId, mode });
         if (call === 'busy') throw new ActionError({ code: "CONFLICT", message: "busy" });
         if (!call) throw new ActionError({ code: "BAD_REQUEST" });
@@ -607,6 +636,7 @@ export const server = {
       }),
       handler: async (input, context) => {
         const session = await requireSession(context);
+        await requireUnderLimit("report-file", session.accountId, 20);
         await reportsApi.file(session, input);
         return { ok: true };
       },

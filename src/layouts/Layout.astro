@@ -42,10 +42,23 @@ interface Props {
    *  can't see SafeImage's data-real; without it the hero/first-card photo is
    *  only discovered when the safe-mode swap script runs at end of body. */
   preloadImage?: string;
+  /** OG/Twitter card image (profile cover etc.). Made absolute below; falls
+   *  back to the site's maskable icon. Must be SFW per the tiered photo policy. */
+  image?: string;
+  /** og:type — 'website' (default) or 'article' for blog/content pages. */
+  ogType?: 'website' | 'article';
 }
 
-const { title = m.app_name(), description, canonical, alternates, jsonLd = [], noindex, bare, preloadImage } = Astro.props;
+const { title = m.app_name(), description, canonical, alternates, jsonLd = [], noindex, bare, preloadImage, image, ogType = 'website' } = Astro.props;
 const locale = getLocale();
+
+// OG/Twitter card (#15). Absolute URLs required by crawlers; canonical is the
+// share URL, image falls back to the maskable app icon. Locale maps to the
+// OG territory code; the other two locales become og:locale:alternate.
+const OG_LOCALES = { nl: 'nl_NL', en: 'en_US', de: 'de_DE' } as const satisfies Record<Locale, string>;
+const ogUrl = canonical ?? Astro.url.href;
+const ogImage = new URL(image ?? '/icons/maskable-512.png', Astro.url.origin).href;
+const ogAltLocales = (Object.keys(OG_LOCALES) as Locale[]).filter((l) => l !== locale);
 
 /* Session-aware chrome: layouts may read the seam (docs/API.md). */
 const session = await sessionApi.current(Astro);
@@ -92,6 +105,20 @@ const unread =
     {jsonLd.map((obj) => (
       <script type="application/ld+json" set:html={JSON.stringify(obj)} />
     ))}
+    <!-- OG / Twitter cards (#15). Absolute URLs; image is the SFW cover on
+         profiles, the app icon elsewhere. -->
+    <meta property="og:site_name" content="Intimate" />
+    <meta property="og:type" content={ogType} />
+    <meta property="og:title" content={title} />
+    {description && <meta property="og:description" content={description} />}
+    <meta property="og:url" content={ogUrl} />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:locale" content={OG_LOCALES[locale]} />
+    {ogAltLocales.map((l) => <meta property="og:locale:alternate" content={OG_LOCALES[l]} />)}
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    {description && <meta name="twitter:description" content={description} />}
+    <meta name="twitter:image" content={ogImage} />
     <link rel="manifest" href="/manifest.webmanifest" />
     <!-- Font Awesome 8 Pro (kit: thin + brands), self-hosted from public/fa/.
          Loaded ASYNC (print→all swap): 41KB of icon CSS was the biggest

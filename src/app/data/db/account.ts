@@ -22,10 +22,10 @@ import {
 import { ProfileSchema, birthDateForAge, priceFromRates, type Profile } from '@/app/models/profile';
 import { mediaUrl, toProfile } from '@/app/data/db/profiles';
 import { CITIES, POLICY_MIN_AGE } from '@/lib/taxonomy';
+import { isR2Key, mediaBucket as bucket } from '@/lib/media-keys';
 import type { Session } from '@/app/models/session';
 
 const db = (): Db => requestDb((env as unknown as { HYPERDRIVE: Hyperdrive }).HYPERDRIVE);
-const bucket = (): R2Bucket => (env as unknown as { MEDIA: R2Bucket }).MEDIA;
 // Toxic-waste ID docs (hard rule 3): a SEPARATE private EU bucket — never the
 // public MEDIA one, never public-served, never logged.
 const verificationBucket = (): R2Bucket => (env as unknown as { VERIFICATION: R2Bucket }).VERIFICATION;
@@ -34,9 +34,6 @@ const sha256Hex = async (bytes: ArrayBuffer): Promise<string> =>
   [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))]
     .map((b) => b.toString(16).padStart(2, '0'))
     .join('');
-
-/** A stored key we manage in R2 (vs a seed/static path that passes through). */
-const isR2Key = (key: string) => !key.startsWith('/') && !key.startsWith('http');
 
 type AccountRow = typeof accounts.$inferSelect;
 

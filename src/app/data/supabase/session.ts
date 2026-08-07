@@ -85,6 +85,8 @@ export const sessionApi: SessionApi = {
       const type = (claims.app_metadata as Record<string, unknown> | undefined)?.account_type;
       if (typeof type === 'string' && (ACCOUNT_TYPES as readonly string[]).includes(type)) {
         session = await identity(claims.sub, typeof claims.email === 'string' ? claims.email : undefined);
+        // Surface the assurance level so the admin gate can require aal2 (MFA).
+        if (session && typeof claims.aal === 'string') session.aal = claims.aal;
       }
     }
     if (sessionCache.size >= SESSION_CACHE_MAX) {

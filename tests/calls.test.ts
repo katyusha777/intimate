@@ -47,6 +47,11 @@ describe('call state machine', () => {
     expect(canTransition('active', 'ended')).toBe(true);
     expect(canTransition('active', 'failed')).toBe(true);
     expect(canTransition('active', 'ringing')).toBe(false);
+    // A 'timeout' is a MISSED (never-answered) call — it can't apply to an
+    // answered one. calls.end() enforces this by restricting the timeout reason
+    // to the ringing source state, so a stale caller-side ring timer can't post
+    // a bogus 0s "ended" card for a call that actually connected.
+    expect(canTransition('active', 'timeout')).toBe(false);
     for (const from of ['ended', 'declined', 'timeout', 'failed'] as const) {
       for (const to of CALL_STATES) expect(canTransition(from, to)).toBe(false);
     }
