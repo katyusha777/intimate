@@ -492,14 +492,52 @@ const { session } = Astro.props;
     }
 
     /**
+     * The caller's accept path: drop the ring timer, arm the connect timeout,
+     * send the pre-gathered offer, start the clock + heartbeat. Driven by the
+     * ephemeral `accept` broadcast AND — as a backstop — the reliable DB-trigger
+     * `active` event, so a dropped accept broadcast still connects instead of
+     * ringing out into a bogus "missed"/0s card. Idempotent via `me.accepted`.
+     */
+    async function onAccepted(me: NonNullable<typeof call>) {
+      if (!call || call !== me || me.accepted || me.done) return;
+      me.accepted = true;
+      dbg('accepted');
+      clearT(me.ringTimer);
+      me.ringTimer = null;
+      setChip('connecting');
+      armConnectTimeout();
+      try {
+        await me.prep;
+      } catch {
+        return; // prep's catch already tore down
+      }
+      if (call !== me || me.done || !me.pc) return;
+      // The offer carries every candidate gathered during the ring; trickle
+      // takes over for stragglers only.
+      me.outIce = [];
+      me.trickle = true;
+      me.channel!.send('offer', { sdp: me.pc.localDescription });
+      dbg('offer sent (pre-gathered)');
+      startTimer();
+      beginBeat();
+    }
+
+    /**
      * Server-truth state changes (DB trigger 0013 on the call topic): how the
-     * ringing caller learns of a decline, and how either side learns the
-     * session was swept/terminated elsewhere. Never carries SDP.
+     * ringing caller learns of a decline, how it learns of an accept when the
+     * ephemeral broadcast is lost, and how either side learns the session was
+     * swept/terminated elsewhere. Never carries SDP.
      */
     function onCallStateEvent(p: unknown) {
       const { id, state } = p as { id: string; state: string };
       if (!call || call.view.id !== id || call.done) return;
-      if (state === 'ringing' || state === 'active') return;
+      if (state === 'active') {
+        // Reliable accept backstop for the caller (the callee learns of accept
+        // locally). No-op once already accepted.
+        if (call.view.party === 'professional') void onAccepted(call);
+        return;
+      }
+      if (state === 'ringing') return;
       dbg('server state:', state);
       if (state === 'declined') alertToast(root.dataset.i18nDeclined);
       void teardown(true);
@@ -647,29 +685,7 @@ const { session } = Astro.props;
       me.channel = openChannel(
         `call:${view.id}`,
         {
-          accept: async () => {
-            if (!call || call !== me || me.accepted || me.done) return;
-            me.accepted = true;
-            dbg('accept received');
-            clearT(me.ringTimer);
-            me.ringTimer = null;
-            setChip('connecting');
-            armConnectTimeout();
-            try {
-              await me.prep;
-            } catch {
-              return; // prep's catch already tore down
-            }
-            if (call !== me || me.done || !me.pc) return;
-            // The offer carries every candidate gathered during the ring;
-            // trickle takes over for stragglers only.
-            me.outIce = [];
-            me.trickle = true;
-            me.channel!.send('offer', { sdp: me.pc.localDescription });
-            dbg('offer sent (pre-gathered)');
-            startTimer();
-            beginBeat();
-          },
+          accept: () => void onAccepted(me),
           answer: async (p) => {
             const { sdp } = p as { sdp: RTCSessionDescriptionInit };
             if (call !== me || !me.pc) return;

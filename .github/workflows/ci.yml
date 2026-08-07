@@ -12,7 +12,31 @@ jobs:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
+
+      # Boundary greps (no DB) — CLAUDE.md "Admin boundary" + hard rules.
+      # FOUND a violation = non-zero exit = fail. See scripts/ci-greps.sh.
+      - name: Boundary greps (service-role / posthog / set:html / admin fence)
+        run: bash scripts/ci-greps.sh
+
+      # Full suite. tests/rls.test.ts self-skips without DATABASE_URL, so it is
+      # a no-op here; the dedicated RLS step below is the launch gate for it.
       - run: bun test
+
+      # RLS deny tests (SECURITY.md §3). DATABASE_URL is provisioned as a repo
+      # secret by the owner — must be the Supabase *Session pooler* connstring
+      # (the direct host is IPv6-only and unreachable from GitHub runners).
+      # Secret set  -> run and MUST pass. Secret empty -> pass but warn LOUDLY,
+      # so the vacuous-gate condition is visible, never silent.
+      - name: RLS deny tests
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::warning title=RLS deny tests skipped::DATABASE_URL secret is not set — tests/rls.test.ts did NOT run. Set the Session-pooler connection string as the DATABASE_URL repo secret to arm the launch gate."
+            exit 0
+          fi
+          bun test tests/rls.test.ts
+
       - run: bun run build
 
   deploy-staging:

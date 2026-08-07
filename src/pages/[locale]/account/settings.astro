@@ -11,6 +11,7 @@ import SignInPrompt from '@/components/organisms/dashboard/SignInPrompt.astro';
 import ThemeToggle from '@/components/molecules/ThemeToggle.astro';
 import SafeModeToggle from '@/components/molecules/SafeModeToggle.astro';
 import Select from '@/components/atoms/Select.astro';
+import Modal from '@/components/molecules/Modal.astro';
 import Layout from '@/layouts/Layout.astro';
 
 const locale = Astro.params.locale;
@@ -129,7 +130,10 @@ const heading = 'font-condensed text-sm font-bold uppercase tracking-wide text-m
             </section>
           )}
 
-          {/* GDPR self-service (items.md #6/#7) — both fulfilled by a human. */}
+          {/* GDPR self-service (items.md #6/#7) — both fulfilled by a human.
+              Hidden for admin accounts: they manage GDPR through /admin, and the
+              super admin must not self-request data/deletion (#3). */}
+          {!session.adminRole && (
           <section class="py-5">
             <h2 class={heading}>{m.settings_privacy()}</h2>
             <div class="mt-3 space-y-3">
@@ -148,7 +152,7 @@ const heading = 'font-condensed text-sm font-bold uppercase tracking-wide text-m
                 {account?.deletionRequestedAt ? (
                   <p class="text-sm font-medium text-brand">{m.settings_gdpr_pending()}</p>
                 ) : (
-                  <button type="button" data-gdpr="deletion" data-confirm={m.settings_delete_confirm()} class="cursor-pointer border border-brand/40 px-3 py-1.5 text-sm font-medium text-brand transition-colors hover:border-brand">
+                  <button type="button" data-modal-open="confirm-delete" class="cursor-pointer border border-brand/40 px-3 py-1.5 text-sm font-medium text-brand transition-colors hover:border-brand">
                     {m.settings_delete_request_btn()}
                   </button>
                 )}
@@ -156,6 +160,24 @@ const heading = 'font-condensed text-sm font-bold uppercase tracking-wide text-m
               <p class="text-xs text-muted-foreground">{m.settings_gdpr_note()}</p>
             </div>
           </section>
+          )}
+
+          {/* Site-styled confirm for account deletion — replaces the browser
+              confirm() popup (#1). */}
+          <Modal id="confirm-delete" class="max-w-sm">
+            <div class="p-6">
+              <h2 class="font-condensed text-xl font-bold">{m.settings_delete_title()}</h2>
+              <p class="mt-2 text-sm leading-relaxed text-muted-foreground">{m.settings_delete_confirm()}</p>
+              <div class="mt-5 flex justify-end gap-2.5">
+                <button type="button" data-modal-close class="cursor-pointer border border-foreground/20 px-4 py-2 text-sm font-medium transition-colors hover:border-foreground/60">
+                  {m.action_cancel()}
+                </button>
+                <button type="button" data-gdpr-confirm class="slab-cut cursor-pointer bg-brand px-4 py-2 text-sm font-bold uppercase tracking-wide text-white transition-colors hover:bg-brand/90">
+                  {m.settings_delete_request_btn()}
+                </button>
+              </div>
+            </div>
+          </Modal>
 
           <section class="py-5">
             <h2 class={heading}>{m.settings_blocked()}</h2>
@@ -213,16 +235,24 @@ const heading = 'font-condensed text-sm font-bold uppercase tracking-wide text-m
     });
 
     // GDPR requests (items.md #6/#7): flag → reload shows the pending state.
+    // Data request is one tap; deletion is confirmed through the styled modal
+    // (#1) whose confirm button carries data-gdpr-confirm.
     document.querySelectorAll<HTMLElement>('[data-gdpr]').forEach((btn) => {
       if (btn.dataset.init) return;
       btn.dataset.init = '1';
       btn.addEventListener('click', async () => {
-        const kind = btn.dataset.gdpr as 'deletion' | 'data';
-        if (kind === 'deletion' && !confirm(btn.dataset.confirm || 'Delete account?')) return;
-        await actions.account.requestGdpr({ kind });
+        await actions.account.requestGdpr({ kind: btn.dataset.gdpr as 'deletion' | 'data' });
         location.reload();
       });
     });
+    const confirmDelete = document.querySelector<HTMLElement>('[data-gdpr-confirm]');
+    if (confirmDelete && !confirmDelete.dataset.init) {
+      confirmDelete.dataset.init = '1';
+      confirmDelete.addEventListener('click', async () => {
+        await actions.account.requestGdpr({ kind: 'deletion' });
+        location.reload();
+      });
+    }
 
     // Pause / resume the live profile, with immediate status feedback.
     const pause = document.querySelector('[data-pause]') as HTMLInputElement | null;

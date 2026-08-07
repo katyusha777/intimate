@@ -271,7 +271,13 @@ export function makeCallsApi(db: () => Db): CallsApi {
     },
 
     async end(session, { callId, reason }) {
-      return (await terminate(db(), callId, reason, { by: session.accountId })) !== null;
+      // A 'timeout' is a genuinely MISSED call — it may only terminate a still-
+      // ringing session. If accept already won the race (state 'active',
+      // answeredAt set), a stale caller-side ring timer calling end('timeout')
+      // must NOT end it: otherwise it posts a bogus 0s "ended" card for a call
+      // that actually connected. Restrict timeout to the ringing source state.
+      const froms: CallState[] | undefined = reason === 'timeout' ? ['ringing'] : undefined;
+      return (await terminate(db(), callId, reason, { by: session.accountId, froms })) !== null;
     },
 
     async beat(session, callId) {

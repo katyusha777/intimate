@@ -118,17 +118,6 @@ const stepDone = 'grid size-8 flex-none place-items-center bg-online font-conden
       idState === 'pending' && (
         <div class="space-y-4 border-l border-border pl-7">
           <p class="max-w-md text-sm leading-relaxed text-muted-foreground">{m.verify_privacy()}</p>
-          {/* Dev-only shortcut for the not-yet-wired moderation queue. Never on
-              staging/prod — real approval runs through /admin (verify queue). */}
-          {import.meta.env.DEV && (
-            <button
-              type="button"
-              data-id-approve
-              class="cursor-pointer border border-foreground/20 px-3.5 py-2 text-xs font-medium text-muted-foreground transition-colors hover:border-foreground/60 hover:text-foreground"
-            >
-              {m.verify_demo_approve()}
-            </button>
-          )}
         </div>
       )
     }
@@ -288,11 +277,6 @@ const stepDone = 'grid size-8 flex-none place-items-center bg-online font-conden
             idErr.classList.remove('hidden');
           }
         }
-      });
-
-      root.querySelector<HTMLElement>('[data-id-approve]')?.addEventListener('click', async () => {
-        await actions.account.demoApproveId({});
-        location.reload();
       });
     });
   }

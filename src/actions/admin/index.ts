@@ -17,14 +17,24 @@ import { claimItem, record, releaseItem, requireAdmin } from './lib';
 const sessionKv = () => (env as unknown as Record<string, unknown>).SESSION as CacheKv | undefined;
 import { and, eq } from 'drizzle-orm';
 import { requestDb } from '@/db/client';
-import { media } from '@/db/schema';
+import { media, profiles } from '@/db/schema';
 import { approveWholeSubmission, decideModeration } from './queues';
 import { setProfileState } from './entities';
-import { approveDeletion, clearDataRequest, exportAccountData } from './gdpr';
+import { approveDeletion, exportAccountData } from './gdpr';
 import { retryImport } from './imports';
-import type { AdminAction, ProfileState } from '@/lib/taxonomy';
+import { INDEXNOW_KEY, submitIndexNow } from '@/lib/indexnow';
+import { isR2Key, mediaBucket } from '@/lib/media-keys';
+import { LOCALES, type AdminAction, type ProfileState } from '@/lib/taxonomy';
 
 const adb = () => requestDb((env as unknown as { HYPERDRIVE: Hyperdrive }).HYPERDRIVE);
+
+/** IndexNow ping for a profile's locale URLs — new live page, or its takedown
+ *  410 (SEO.md §1.6). Best-effort, never throws; awaited so workerd doesn't
+ *  cancel the fetch after the response. */
+async function pingIndexNow(origin: string, slug: string): Promise<void> {
+  const urls = LOCALES.map((l) => `${origin}/${l}/profile/${slug}/`);
+  await submitIndexNow(urls, new URL(origin).host, `${origin}/${INDEXNOW_KEY}.txt`);
+}
 
 export const admin = {
   // --- queue claims (broadcast "X is reviewing", §5) ---
@@ -145,6 +155,11 @@ export const admin = {
       // Approving from the directory also clears ID verification + photos (merge).
       if (action === 'approve') await approveWholeSubmission({ profileId: id });
       await bustProfiles(sessionKv()); // lifecycle change → drop the edge cache
+      // Tell engines to re-crawl: a new live page, or the takedown's 410.
+      if (action === 'approve' || action === 'block' || action === 'delete') {
+        const [p] = await adb().select({ slug: profiles.slug }).from(profiles).where(eq(profiles.id, id)).limit(1);
+        if (p?.slug) await pingIndexNow(new URL(context.request.url).origin, p.slug);
+      }
       await record(session, { action: m.audit, entityType: 'profile', entityId: id, reason });
       return { ok: true };
     },
@@ -164,8 +179,11 @@ export const admin = {
         .update(media)
         .set({ state: 'rejected' })
         .where(and(eq(media.profileId, profileId), eq(media.imageKey, imageKey)))
-        .returning({ id: media.id });
+        .returning({ id: media.id, key: media.imageKey });
       if (!rows.length) throw new ActionError({ code: 'NOT_FOUND', message: 'photo not found' });
+      // Delete the bytes too — a rejected photo must not keep serving from its
+      // (already-known, edge-cached) pub URL. State-flag alone isn't enough.
+      if (isR2Key(rows[0]!.key)) await mediaBucket().delete(rows[0]!.key);
       await bustProfiles(sessionKv());
       await record(session, { action: 'reject_media', entityType: 'media', entityId: rows[0]!.id });
       return { ok: true };
@@ -227,7 +245,9 @@ export const admin = {
     handler: async ({ accountId }, context) => {
       const session = await requireAdmin(context, ['super']);
       const data = await exportAccountData(accountId);
-      await clearDataRequest(accountId); // fulfilment clears the flag (banner drops)
+      // Do NOT clear the request flag here: the export button must stay
+      // available (re-downloadable) until the account is permanently deleted
+      // (#2). approveDeletion clears both flags when the account is removed.
       await record(session, { action: 'gdpr_export', entityType: 'account', entityId: accountId });
       return { data };
     },

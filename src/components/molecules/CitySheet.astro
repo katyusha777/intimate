@@ -93,7 +93,11 @@ const TOP_CITIES = CITIES.slice(0, 6);
           localStorage.setItem('city_asked', '1');
           setTimeout(() => dlg.openSheet(), 350);
         };
-        if (/(?:^|;\s*)age_ok=1/.test(document.cookie)) open();
+        // Gate on the ACTUAL gate element being gone, not the cookie: the sheet
+        // is a native <dialog> in the browser top layer, so it renders ABOVE the
+        // age-gate overlay — it must never open while the gate is still in the
+        // DOM (the Layout gate script runs first, so this reflects the truth).
+        if (!document.querySelector('[data-age-gate]')) open();
         else document.addEventListener('age-ok', open, { once: true });
       }
     }

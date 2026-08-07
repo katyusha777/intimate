@@ -21,14 +21,17 @@ const up =
   ));
 if (!up) console.warn('[rls.test] DATABASE_URL unset/unreachable — deny tests skipped');
 
-// Applied-migration probe: tests are meaningless against a bare schema.
+// Applied-migration probe: tests are meaningless against a bare schema. Also
+// checks the latest migration's column (0014 retention) so the suite skips
+// cleanly rather than erroring on a SELECT of a not-yet-added column.
 const migrated =
   up &&
-  (await sql`select 1 from pg_roles where rolname = 'app_server'`.then(
+  (await sql`select 1 from pg_roles where rolname = 'app_server'`.then((r) => r.length > 0, () => false)) &&
+  (await sql`select 1 from information_schema.columns where table_name = 'messages' and column_name = 'expires_at'`.then(
     (r) => r.length > 0,
     () => false,
   ));
-if (up && !migrated) console.warn('[rls.test] 0001_security not applied — run bun run db:migrate');
+if (up && !migrated) console.warn('[rls.test] schema behind — run bun run db:migrate');
 
 const t = test.skipIf(!migrated);
 

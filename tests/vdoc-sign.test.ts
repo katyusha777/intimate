@@ -34,3 +34,13 @@ test('a tampered signature or doc id is rejected', async () => {
   expect(await verifyVdoc('doc-OTHER', exp, sig, now)).toBe(false); // sig was for a different id
   expect(await verifyVdoc('doc-abc', 'notanumber', sig, now)).toBe(false); // junk exp
 });
+
+test('a same-length wrong signature is rejected (constant-time compare)', async () => {
+  const now = 1_000_000;
+  const { exp, sig } = parse(await signVdocUrl('doc-abc', now));
+  // Flip the first hex char → equal length, different content: the constant-time
+  // path must still return false (no early length short-circuit hiding a bug).
+  const wrong = (sig[0] === '0' ? '1' : '0') + sig.slice(1);
+  expect(wrong.length).toBe(sig.length);
+  expect(await verifyVdoc('doc-abc', exp, wrong, now)).toBe(false);
+});

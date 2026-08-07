@@ -50,6 +50,18 @@ async function canViewPrivate(ctx: Parameters<APIRoute>[0], profileId: string): 
   return grant.length > 0;
 }
 
+/** Is this profile in the `live` state? Anything else (draft/pending/paused/blocked/deleted) → don't serve pub photos. */
+async function isProfileLive(profileId: string): Promise<boolean> {
+  if (!profileId) return false;
+  const d = requestDb((env as unknown as { HYPERDRIVE: Hyperdrive }).HYPERDRIVE);
+  const row = await d
+    .select({ state: profiles.state })
+    .from(profiles)
+    .where(eq(profiles.id, profileId))
+    .limit(1);
+  return row[0]?.state === 'live';
+}
+
 export const GET: APIRoute = async (ctx) => {
   const key = ctx.params.key;
   if (!key || (!key.startsWith('pub/') && !key.startsWith('priv/'))) {
@@ -57,9 +69,18 @@ export const GET: APIRoute = async (ctx) => {
   }
 
   const isPrivate = key.startsWith('priv/');
+  const profileId = key.split('/')[1] ?? '';
   if (isPrivate) {
-    const profileId = key.split('/')[1] ?? '';
     if (!(await canViewPrivate(ctx, profileId))) return new Response(null, { status: 403 });
+  } else if (!(await isProfileLive(profileId))) {
+    // Blocked/deleted/paused profile → don't keep serving its photos at known
+    // pub URLs. no-store so the 410 itself never sticks in the edge cache.
+    // ponytail: per-request profile lookup on the hot image path partly defeats
+    // the edge cache; the real cache-eviction on takedown is byte-deletion from
+    // R2 (handled in admin), this state-gate is belt-and-suspenders for the
+    // window before the immutable cache expires. Gates on profile.state only —
+    // per-photo media.state (rejected) not joined; see report.
+    return new Response(null, { status: 410, headers: { 'Cache-Control': 'no-store' } });
   }
 
   const obj = await bucket().get(key);

@@ -37,7 +37,7 @@ const favorites = tab('/favorites/', m.nav_favorites(), '<path d="M19 14c1.5-1.5
 /* Logged in: her avatar replaces the generic person icon (placeholder icon
    until a photo is approved). */
 const account = {
-  ...tab('/account/', m.nav_account(), '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/>'),
+  ...tab('/account/', m.nav_you(), '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/>'),
   avatar: session?.avatarUrl,
 };
 const messages = {
@@ -93,8 +93,10 @@ const tabs =
           ) : (
             t.dot && <span class="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-brand" />
           )}
-          {
-            'avatar' in t && t.avatar ? (
+          {/* Fixed-height glyph box so the label baseline is identical whether
+              the slot holds a 24px avatar or a 20px icon (items.md #8). */}
+          <span class="flex h-6 items-center justify-center">
+            {'avatar' in t && t.avatar ? (
               <SafeImage
                 imageKey={session?.profileId ?? session?.accountId ?? 'me'}
                 src={t.avatar}
@@ -114,8 +116,8 @@ const tabs =
                 aria-hidden="true"
                 set:html={t.icon}
               />
-            )
-          }
+            )}
+          </span>
           <!-- Small label (items.md #13) — the icon alone made tabs guessable. -->
           <span class="max-w-full truncate px-0.5 text-2xs font-medium leading-none">{t.label}</span>
         </a>

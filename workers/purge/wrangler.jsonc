@@ -1,0 +1,22 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  // Standalone retention-purge cron for staging — NOT the app worker. See
+  // purge-worker.ts. Deploy: bunx wrangler deploy --config workers/purge/wrangler.jsonc
+  // Owner steps: set PURGE_SECRET on BOTH this worker and the app worker
+  //   (bunx wrangler secret put PURGE_SECRET --config workers/purge/wrangler.jsonc
+  //    and bunx wrangler secret put PURGE_SECRET --env staging).
+  "name": "intimate-purge-staging",
+  "main": "purge-worker.ts",
+  "compatibility_date": "2026-07-01",
+  // Daily at 03:17 (off the hour to avoid contention with the warm sweeps).
+  "triggers": {
+    "crons": ["17 3 * * *"]
+  },
+  // In-process call into the main worker — no DNS, no self-fetch, no 522.
+  "services": [
+    { "binding": "SITE", "service": "intimate-staging" }
+  ],
+  "observability": {
+    "enabled": true
+  }
+}

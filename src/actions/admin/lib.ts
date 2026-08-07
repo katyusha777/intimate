@@ -1,8 +1,9 @@
 /**
  * Admin server core (docs/ADMIN.md §1, §0.3): the role guard, the audit log
  * (Postgres, trigger-guarded append-only), and queue claims (ephemeral KV soft
- * locks). Lives inside the admin fence. Remaining hardening: Cloudflare Access
- * + Supabase aal2 (MFA) assertions in the guard (§1).
+ * locks). Lives inside the admin fence. aal2 (MFA) assertion is implemented but
+ * STAGED OFF (ADMIN_REQUIRE_AAL2) so it can't lock out an un-enrolled admin;
+ * Cloudflare Access is the edge wall in front (§1).
  */
 import { env } from 'cloudflare:workers';
 import { ActionError } from 'astro:actions';
@@ -24,6 +25,14 @@ function kv(): Kv | undefined {
 const adb = () => requestDb((env as unknown as { HYPERDRIVE: Hyperdrive }).HYPERDRIVE);
 const now = () => new Date().toISOString();
 
+// aal2/MFA enforcement is STAGED OFF by default so it can't lock out an admin
+// who hasn't enrolled MFA yet. Enable AFTER enrolling MFA on the admin
+// account(s): set ADMIN_REQUIRE_AAL2=true (Worker var/secret). Cloudflare Access
+// remains the edge wall in front of this (ADMIN.md §1).
+const requireAal2 = (): boolean =>
+  (env as unknown as Record<string, string | undefined>).ADMIN_REQUIRE_AAL2 === 'true';
+const hasAal2 = (session: Session): boolean => session.aal === 'aal2';
+
 /** Context shape shared by Astro pages (Astro.*) and action handlers. */
 export type AdminCtx = Parameters<typeof sessionApi.current>[0];
 
@@ -36,6 +45,9 @@ export async function requireAdmin(context: AdminCtx, allowed?: AdminRole[]): Pr
   if (!session || session.role !== 'admin' || !session.adminRole) {
     throw new ActionError({ code: 'UNAUTHORIZED', message: 'admin only' });
   }
+  if (requireAal2() && !hasAal2(session)) {
+    throw new ActionError({ code: 'FORBIDDEN', message: 'mfa required' });
+  }
   if (allowed && session.adminRole !== 'super' && !allowed.includes(session.adminRole)) {
     throw new ActionError({ code: 'FORBIDDEN', message: 'insufficient admin role' });
   }
@@ -45,7 +57,9 @@ export async function requireAdmin(context: AdminCtx, allowed?: AdminRole[]): Pr
 /** Non-throwing check for pages that render their own "not authorized" state. */
 export async function getAdmin(context: AdminCtx): Promise<Session | null> {
   const session = await sessionApi.current(context);
-  return session && session.role === 'admin' && session.adminRole ? session : null;
+  if (!session || session.role !== 'admin' || !session.adminRole) return null;
+  if (requireAal2() && !hasAal2(session)) return null;
+  return session;
 }
 
 // --- Audit log (append-only; every admin action + sensitive read) ---------

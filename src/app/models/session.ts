@@ -23,6 +23,9 @@ export const SessionSchema = z.object({
   profileState: z.enum(PROFILE_STATES).optional(),
   /** Admin sub-role (ADMIN.md §1). Present only when role === 'admin'. */
   adminRole: z.enum(ADMIN_ROLES).optional(),
+  /** JWT assurance level ('aal1' | 'aal2') — 'aal2' means MFA was completed.
+   *  Gates /admin when ADMIN_REQUIRE_AAL2 is enabled (ADMIN.md §1). */
+  aal: z.string().optional(),
 });
 export type Session = z.infer<typeof SessionSchema>;
 

@@ -40,7 +40,10 @@
   "vars": {
     // prod values — replace when the prod Supabase project exists (INFRASTRUCTURE §7)
     "PUBLIC_SUPABASE_URL": "https://jqrfzqbuvekhcptqcpda.supabase.co",
-    "PUBLIC_SUPABASE_KEY": "sb_publishable_jzpgxggUIg8-uodVAaT1SA_KZxO34fe"
+    "PUBLIC_SUPABASE_KEY": "sb_publishable_jzpgxggUIg8-uodVAaT1SA_KZxO34fe",
+    // Turnstile site key is public (rendered into the register widget). The
+    // secret is a Worker secret (TURNSTILE_SECRET_KEY), never here.
+    "PUBLIC_TURNSTILE_SITE_KEY": "0x4AAAAAAEJIcyxD4PkRnlyn"
   },
   "env": {
     "staging": {
@@ -60,7 +63,8 @@
       "version_metadata": { "binding": "CF_VERSION" },
       "vars": {
         "PUBLIC_SUPABASE_URL": "https://jqrfzqbuvekhcptqcpda.supabase.co",
-        "PUBLIC_SUPABASE_KEY": "sb_publishable_jzpgxggUIg8-uodVAaT1SA_KZxO34fe"
+        "PUBLIC_SUPABASE_KEY": "sb_publishable_jzpgxggUIg8-uodVAaT1SA_KZxO34fe",
+        "PUBLIC_TURNSTILE_SITE_KEY": "0x4AAAAAAEJIcyxD4PkRnlyn"
       }
     }
   }

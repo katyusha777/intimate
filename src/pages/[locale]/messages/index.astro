@@ -28,9 +28,9 @@ if (session && !session.profileId) {
 }
 
 const viewer: 'professional' | 'client' = session?.profileId ? 'professional' : 'client';
-// Demo convenience: a professional's first inbox visit seeds sample threads
-// (once per profile). Mock-only; the Supabase backend has no such hook.
-if (session?.profileId) await messagingApi.seedDemo(session);
+// Demo seeding is DEV-only (it inserts fake client accounts + flips her
+// conversation mode to 'everyone' — never against the real DB). See seedDemo.
+if (import.meta.env.DEV && session?.profileId) await messagingApi.seedDemo(session);
 const threads = session ? await messagingApi.listThreads(session) : [];
 ---
 

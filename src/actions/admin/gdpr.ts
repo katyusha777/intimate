@@ -15,6 +15,7 @@ import { env } from 'cloudflare:workers';
 import { createClient } from '@supabase/supabase-js';
 import { eq, inArray, or } from 'drizzle-orm';
 import { requestDb, type Db } from '@/db/client';
+import { isR2Key, mediaBucket } from '@/lib/media-keys';
 import {
   accounts,
   callSessions,
@@ -84,6 +85,19 @@ export async function approveDeletion(accountId: string): Promise<{ authDeleted:
   const d = adb();
   // Soft-delete her profiles (lifecycle law — the 410/IndexNow flow reads state).
   await d.update(profiles).set({ state: 'deleted' }).where(eq(profiles.accountId, accountId));
+  // Purge her photo BYTES from R2 — a GPS/identity leak must not survive a
+  // takedown at previously-known URLs (scrapers hold them). Verification docs
+  // are toxic-waste with a legal retention window → left to the purge cron,
+  // NOT deleted here (hard rule 3).
+  const owned = await d.select({ id: profiles.id }).from(profiles).where(eq(profiles.accountId, accountId));
+  if (owned.length) {
+    const removed = await d
+      .delete(media)
+      .where(inArray(media.profileId, owned.map((p) => p.id)))
+      .returning({ key: media.imageKey });
+    const b = mediaBucket();
+    await Promise.allSettled(removed.filter((r) => isR2Key(r.key)).map((r) => b.delete(r.key)));
+  }
   // Scrub PII; the skeletal row survives for audit (deliberately NOT deleted).
   // Clear both request flags in the same scrub so the account leaves the banner.
   await d

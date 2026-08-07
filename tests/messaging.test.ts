@@ -17,12 +17,15 @@ const URL = process.env.DATABASE_URL ?? '';
 const probe = postgres(URL || 'postgresql://unset@localhost/none', { max: 1, connect_timeout: 5, prepare: false });
 const migrated =
   !!URL &&
-  (await probe`select 1 from pg_roles where rolname = 'app_server'`.then(
+  (await probe`select 1 from pg_roles where rolname = 'app_server'`.then((r) => r.length > 0, () => false)) &&
+  // Latest-migration probe (0014 retention): skip cleanly rather than error on
+  // a SELECT of the not-yet-added expires_at column.
+  (await probe`select 1 from information_schema.columns where table_name = 'messages' and column_name = 'expires_at'`.then(
     (r) => r.length > 0,
     () => false,
   ));
 await probe.end();
-if (!migrated) console.warn('[messaging] DATABASE_URL unset/unmigrated — skipped');
+if (!migrated) console.warn('[messaging] DATABASE_URL unset/unmigrated — run bun run db:migrate');
 const t = test.skipIf(!migrated);
 
 const sql = postgres(URL || 'postgresql://unset@localhost/none', { max: 1, prepare: false });
@@ -70,8 +73,9 @@ if (migrated) {
     (${PRO_ACCT}, 'advertiser', ${professional.email}, 'Pro'),
     (${CLIENT_ACCT}, 'client', ${client.email}, 'Client'),
     (${OTHER_ACCT}, 'client', ${otherClient.email}, 'Other')`;
-  await sql`insert into profiles (id, account_id, slug, state, name, birth_date, gender, city) values
-    (${PROFILE}, ${PRO_ACCT}, ${SLUG}, 'live', 'Pro', '1995-06-15', 'female', 'amsterdam')`;
+  await sql`insert into profiles (id, account_id, slug, state, name, birth_date, gender, city, rates) values
+    (${PROFILE}, ${PRO_ACCT}, ${SLUG}, 'live', 'Pro', '1995-06-15', 'female', 'amsterdam',
+     ${JSON.stringify([{ duration: 'hour_1', incall: 150, outcall: 150 }])}::jsonb)`;
 }
 
 beforeEach(async () => {
@@ -109,6 +113,17 @@ t('DENY: request blocked when her mode is off (the default)', async () => {
   expect(await api.startRequest(client, { profileSlug: SLUG, request: REQUEST })).toBeNull();
 });
 
+t('verified_only mode blocks an unverified client, allows a phone-verified one', async () => {
+  await api.setMode(professional, 'verified_only');
+  expect(await api.startThread(client, { profileSlug: SLUG })).toBeNull(); // unverified → closed
+  await sql`update accounts set phone_verified_at = now() where id = ${CLIENT_ACCT}`;
+  try {
+    expect(await api.startThread(client, { profileSlug: SLUG })).not.toBeNull();
+  } finally {
+    await sql`update accounts set phone_verified_at = null where id = ${CLIENT_ACCT}`;
+  }
+});
+
 t('DENY: request blocked when the pair is blocked', async () => {
   await api.setMode(professional, 'everyone');
   const thread = await api.startRequest(client, { profileSlug: SLUG, request: REQUEST });
@@ -116,12 +131,23 @@ t('DENY: request blocked when the pair is blocked', async () => {
   expect(await api.startRequest(client, { profileSlug: SLUG, request: REQUEST })).toBeNull();
 });
 
-t('the price snapshot is immutable across accept + re-read', async () => {
+t('the price is snapshotted from HER rates, not the client (forged price ignored)', async () => {
   await api.setMode(professional, 'everyone');
-  const thread = await api.startRequest(client, { profileSlug: SLUG, request: { ...REQUEST, priceAtRequest: 150 } });
+  // Client forges a €1 price; the server must overwrite it with her real rate.
+  const thread = await api.startRequest(client, { profileSlug: SLUG, request: { ...REQUEST, priceAtRequest: 1 } });
+  expect(thread!.messages.find((m) => m.kind === 'request')?.request?.priceAtRequest).toBe(150);
   await api.respondRequest(professional, { threadId: thread!.id, accept: true });
   const after = await api.getThread(client, thread!.id);
   expect(after!.messages.find((m) => m.kind === 'request')?.request?.priceAtRequest).toBe(150);
+});
+
+t('DENY: request for a duration she has no rate for is rejected', async () => {
+  await api.setMode(professional, 'everyone');
+  const noRate = await api.startRequest(client, {
+    profileSlug: SLUG,
+    request: { ...REQUEST, duration: 'hour_2' as const },
+  });
+  expect(noRate).toBeNull();
 });
 
 t('accept opens the thread, posts a system card, unlocks the private set', async () => {
