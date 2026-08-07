@@ -91,13 +91,13 @@ const selAvailableFor = setOf(p.availableFor ?? []);
   <div class="grid gap-4 sm:grid-cols-2">
     <SlabField label={m.editor_name()} name="name" value={p.name} required />
     <BirthDateField label={m.editor_birthdate()} value={p.birthDate} minAge={POLICY_MIN_AGE} />
-    <label class="block space-y-1.5">
+    <label class="block space-y-2.5">
       <span class="text-sm font-medium">{m.filter_gender()}</span>
       <Select name="gender">
         {GENDERS.map((g) => <option value={g} selected={p.gender === g}>{genderLabel(g)}</option>)}
       </Select>
     </label>
-    <label class="block space-y-1.5">
+    <label class="block space-y-2.5">
       <span class="text-sm font-medium">{m.filter_city()}</span>
       <Select name="city">
         {CITIES.map((c) => <option value={c.slug} selected={p.city === c.slug}>{c.name}</option>)}
@@ -265,14 +265,18 @@ const selAvailableFor = setOf(p.availableFor ?? []);
              is shown (labelled as yours) on your rates card. -->
         <p class="mt-1.5 text-xs text-muted-foreground">{m.deposit_hint()}</p>
       </div>
-      <label class="block space-y-1.5">
+      <label class="block space-y-2.5">
         <span class="text-sm font-medium">{m.editor_extras()}</span>
-        <textarea
-          name="extrasNote"
-          rows="3"
-          maxlength="200"
-          class="w-full border border-foreground/20 bg-transparent p-3 text-base caret-brand outline-none transition-colors focus:border-foreground md:text-sm"
-        >{p.extrasNote ?? ''}</textarea>
+        <span class="slab-field block">
+          <span class="slab-field__face block">
+            <textarea
+              name="extrasNote"
+              rows="3"
+              maxlength="200"
+              class="w-full resize-none bg-transparent p-3 text-base caret-brand outline-none placeholder:text-muted-foreground md:text-sm"
+            >{p.extrasNote ?? ''}</textarea>
+          </span>
+        </span>
         <p class="text-xs text-muted-foreground">{m.editor_extras_hint()}</p>
       </label>
     </div>
@@ -374,28 +378,28 @@ const selAvailableFor = setOf(p.availableFor ?? []);
       <p class={sectionSub}>{m.editor_appearance_hint()}</p>
     </div>
     <div class="grid gap-4 sm:grid-cols-2">
-      <label class="block space-y-1.5">
+      <label class="block space-y-2.5">
         <span class="text-sm font-medium">{m.attr_ethnicity()}</span>
         <Select name="appearance">
           <option value="">—</option>
           {APPEARANCES.map((a) => <option value={a} selected={p.appearance === a}>{appearanceLabel(a)}</option>)}
         </Select>
       </label>
-      <label class="block space-y-1.5">
+      <label class="block space-y-2.5">
         <span class="text-sm font-medium">{m.attr_body_type()}</span>
         <Select name="bodyType">
           <option value="">—</option>
           {BODY_TYPES.map((b) => <option value={b} selected={p.bodyType === b}>{bodyTypeLabel(b)}</option>)}
         </Select>
       </label>
-      <label class="block space-y-1.5">
+      <label class="block space-y-2.5">
         <span class="text-sm font-medium">{m.attr_hair_color()}</span>
         <Select name="hairColor">
           <option value="">—</option>
           {HAIR_COLORS.map((h) => <option value={h} selected={p.hairColor === h}>{hairColorLabel(h)}</option>)}
         </Select>
       </label>
-      <label class="block space-y-1.5">
+      <label class="block space-y-2.5">
         <span class="text-sm font-medium">{m.attr_cup_size()}</span>
         <Select name="cupSize">
           <option value="">—</option>
@@ -513,16 +517,20 @@ const selAvailableFor = setOf(p.availableFor ?? []);
   )}
 
   {show('description') && (
-  <label class="block space-y-1.5">
+  <label class="block space-y-2.5">
     <span class="text-sm font-medium">{m.editor_description()}</span>
     <p class="text-xs text-muted-foreground">{m.editor_description_hint()}</p>
-    <textarea
-      name="description"
-      rows="5"
-      maxlength="1000"
-      placeholder={m.editor_description_ph()}
-      class="w-full border border-foreground/20 bg-transparent p-3 text-base caret-brand outline-none transition-colors focus:border-foreground md:text-sm"
-    >{p.description}</textarea>
+    <span class="slab-field block">
+      <span class="slab-field__face block">
+        <textarea
+          name="description"
+          rows="5"
+          maxlength="1000"
+          placeholder={m.editor_description_ph()}
+          class="w-full resize-none bg-transparent p-3 text-base caret-brand outline-none placeholder:text-muted-foreground md:text-sm"
+        >{p.description}</textarea>
+      </span>
+    </span>
   </label>
   )}
 

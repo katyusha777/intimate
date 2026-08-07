@@ -227,7 +227,7 @@
     --slab-clip: polygon(0.4% 5%, 100% 0, 99.6% 95%, 0 100%);
     clip-path: var(--slab-clip);
     background: var(--foreground);
-    padding: 4px;
+    padding: 3px;
     transition: filter 0.15s ease;
   }
   .slab-field__face {
