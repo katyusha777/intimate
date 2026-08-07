@@ -50,16 +50,31 @@ async function canViewPrivate(ctx: Parameters<APIRoute>[0], profileId: string): 
   return grant.length > 0;
 }
 
-/** Is this profile in the `live` state? Anything else (draft/pending/paused/blocked/deleted) → don't serve pub photos. */
-async function isProfileLive(profileId: string): Promise<boolean> {
-  if (!profileId) return false;
+/** This profile's lifecycle state (null = no such profile). */
+async function profileStateOf(profileId: string): Promise<string | null> {
+  if (!profileId) return null;
   const d = requestDb((env as unknown as { HYPERDRIVE: Hyperdrive }).HYPERDRIVE);
   const row = await d
     .select({ state: profiles.state })
     .from(profiles)
     .where(eq(profiles.id, profileId))
     .limit(1);
-  return row[0]?.state === 'live';
+  return row[0]?.state ?? null;
+}
+
+/** The owner of this profile, or any admin — may preview pub photos of a NOT-yet-live
+ *  profile (her own draft/pending photos in the editor; admin in review). */
+async function isOwnerOrAdmin(ctx: Parameters<APIRoute>[0], profileId: string): Promise<boolean> {
+  const session = await sessionApi.current(ctx);
+  if (!session) return false;
+  if (session.adminRole) return true;
+  const d = requestDb((env as unknown as { HYPERDRIVE: Hyperdrive }).HYPERDRIVE);
+  const owner = await d
+    .select({ id: profiles.id })
+    .from(profiles)
+    .where(and(eq(profiles.id, profileId), eq(profiles.accountId, session.accountId)))
+    .limit(1);
+  return owner.length > 0;
 }
 
 export const GET: APIRoute = async (ctx) => {
@@ -70,25 +85,37 @@ export const GET: APIRoute = async (ctx) => {
 
   const isPrivate = key.startsWith('priv/');
   const profileId = key.split('/')[1] ?? '';
+  // Owner-preview: her own not-yet-live photos serve to her (and admins) but are
+  // never edge-cached (they change during editing and aren't public yet).
+  let ownerPreview = false;
   if (isPrivate) {
     if (!(await canViewPrivate(ctx, profileId))) return new Response(null, { status: 403 });
-  } else if (!(await isProfileLive(profileId))) {
-    // Blocked/deleted/paused profile → don't keep serving its photos at known
-    // pub URLs. no-store so the 410 itself never sticks in the edge cache.
-    // ponytail: per-request profile lookup on the hot image path partly defeats
-    // the edge cache; the real cache-eviction on takedown is byte-deletion from
-    // R2 (handled in admin), this state-gate is belt-and-suspenders for the
-    // window before the immutable cache expires. Gates on profile.state only —
-    // per-photo media.state (rejected) not joined; see report.
-    return new Response(null, { status: 410, headers: { 'Cache-Control': 'no-store' } });
+  } else {
+    const state = await profileStateOf(profileId);
+    if (state !== 'live') {
+      // Not live. The OWNER (editing her photos) and admins may PREVIEW the
+      // in-progress states — draft/pending_review/paused — so her own uploads
+      // don't render broken before approval. TAKEDOWN states (blocked/deleted)
+      // stay dark for EVERYONE incl. the owner, and the public always gets 410.
+      // ponytail: per-request profile lookup on the hot image path partly
+      // defeats the edge cache; the real cache-eviction on takedown is
+      // byte-deletion from R2 (handled in admin). Per-photo media.state
+      // (rejected) not joined; see report.
+      const previewable = state === 'draft' || state === 'pending_review' || state === 'paused';
+      if (!(previewable && (await isOwnerOrAdmin(ctx, profileId)))) {
+        return new Response(null, { status: 410, headers: { 'Cache-Control': 'no-store' } });
+      }
+      ownerPreview = true;
+    }
   }
 
   const obj = await bucket().get(key);
   if (!obj) return new Response(null, { status: 404 });
 
-  const cacheControl = isPrivate
-    ? 'private, no-store'
-    : 'public, max-age=31536000, immutable';
+  const cacheControl =
+    isPrivate || ownerPreview
+      ? 'private, no-store'
+      : 'public, max-age=31536000, immutable';
   const contentType = obj.httpMetadata?.contentType ?? 'image/jpeg';
   const buf = await obj.arrayBuffer();
 

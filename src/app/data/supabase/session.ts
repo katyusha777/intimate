@@ -110,9 +110,48 @@ export const sessionApi: SessionApi = {
       },
     });
     if (error) throw new Error(error.message);
+    // Supabase obfuscates a signup on an EXISTING email (anti-enumeration) by
+    // returning a user with an empty `identities` array and no session. The
+    // owner wants a clear "account already exists" message (#13), so surface it.
+    if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+      return { session: null, needsConfirmation: false, emailExists: true };
+    }
     // Confirmation ON → user exists but no session until the email link.
     if (!data.session || !data.user) return { session: null, needsConfirmation: true };
     return { session: await identity(data.user.id, data.user.email), needsConfirmation: false };
+  },
+
+  async changeEmail(ctx, { email }) {
+    const supabase = supabaseServer(ctx);
+    const origin = new URL(ctx.request.url).origin;
+    // Supabase emails the NEW address a confirmation; the change lands only once
+    // that link is followed → /auth/confirm exchanges it into the session.
+    const { error } = await supabase.auth.updateUser(
+      { email },
+      { emailRedirectTo: `${origin}/auth/confirm?next=/account/settings/` },
+    );
+    if (error) {
+      console.error('[session] changeEmail:', error.code, error.message);
+      return { ok: false, error: error.message };
+    }
+    return { ok: true };
+  },
+
+  async changePassword(ctx, { currentPassword, newPassword }) {
+    const supabase = supabaseServer(ctx);
+    // Re-verify the current password before allowing the change (Supabase has no
+    // "reauthenticate with password" primitive — a sign-in check is the guard).
+    const { data: who } = await supabase.auth.getUser();
+    const emailAddr = who.user?.email;
+    if (!emailAddr) return { ok: false, error: 'not signed in' };
+    const { error: reauth } = await supabase.auth.signInWithPassword({ email: emailAddr, password: currentPassword });
+    if (reauth) return { ok: false, error: 'wrong_current_password' };
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) {
+      console.error('[session] changePassword:', error.code, error.message);
+      return { ok: false, error: error.message };
+    }
+    return { ok: true };
   },
 
   async signIn(ctx, { email, password }) {

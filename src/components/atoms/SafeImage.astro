@@ -1,10 +1,12 @@
 ---
 /**
  * The ONLY way sensitive imagery renders — profiles, articles, promo stills (DESIGN.md §6, §11).
- * Fail-closed: server always emits the NEUTRAL placeholder as `src` (the discreet
- * default — Phase 5). The inline safe-mode script in Layout swaps to `data-dev`
- * (the anime build-in-public skin) or `data-real` (photos off) per the cookie.
- * No-JS keeps the neutral set — the correct fail-closed posture.
+ * Safe mode is a VISUAL privacy screen, not security: the REAL photo is the `src`
+ * and the inline safe-mode script in Layout toggles `html.safe-on`, which blurs
+ * every `img[data-safe]` heavily via CSS (works on edge-cached / no-JS HTML).
+ * `data-dev` still lets the operator's build-in-public anime skin swap in when
+ * the cookie says `dev`. `data-safe` (the neutral SVG) survives only as the
+ * no-image poster fallback for the safe-mode toggle plumbing.
  */
 import { neutralImageFor, realImageFor, safeImageFor } from '@/lib/safe-images';
 
@@ -21,23 +23,39 @@ interface Props {
   /** Size variant for /media-served photos (media route ?v=): thumb 200px,
    *  card 600px, full 1200px WebP. Omit → original bytes. */
   variant?: 'thumb' | 'card' | 'full';
+  /** UI chrome (the signed-in user's OWN avatar in the bar/header): always the
+   *  real image, NEVER blurred or dev-swapped by safe mode — safe mode screens
+   *  the profiles she's browsing, not her own tiny avatar (which would just
+   *  smear into a blob). */
+  chrome?: boolean;
 }
 
-const { imageKey, src, alt, class: className, loading = 'lazy', fetchpriority, variant } = Astro.props;
+const { imageKey, src, alt, class: className, loading = 'lazy', fetchpriority, variant, chrome = false } = Astro.props;
 const neutral = neutralImageFor(imageKey);
 const dev = safeImageFor(imageKey);
 let real = realImageFor(imageKey, src);
 if (variant && real?.startsWith('/media/')) real += `?v=${variant}`;
 ---
 
-<img
-  src={neutral}
-  data-safe={neutral}
-  data-dev={dev}
-  data-real={real}
-  alt={alt}
-  loading={loading}
-  fetchpriority={fetchpriority}
-  decoding="async"
-  class:list={['object-cover', className]}
-/>
+{chrome ? (
+  <img
+    src={real}
+    alt={alt}
+    loading={loading}
+    fetchpriority={fetchpriority}
+    decoding="async"
+    class:list={['object-cover', className]}
+  />
+) : (
+  <img
+    src={real}
+    data-safe={neutral}
+    data-dev={dev}
+    data-real={real}
+    alt={alt}
+    loading={loading}
+    fetchpriority={fetchpriority}
+    decoding="async"
+    class:list={['safe-img object-cover', className]}
+  />
+)}

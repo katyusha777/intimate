@@ -72,7 +72,23 @@ const tabBtn =
       <SlabField label={m.auth_email()} name="email" type="email" autocomplete="email" required />
       <SlabField label={m.auth_password()} name="password" type="password" autocomplete="new-password" required />
 
+      {/* Live password-strength checklist (#3) — shown once she starts typing. */}
+      <ul data-pw-checks hidden class="grid grid-cols-1 gap-1 text-xs text-muted-foreground sm:grid-cols-2">
+        <li data-pw="len" class="flex items-center gap-1.5"><span data-dot class="size-1.5 flex-none rounded-full bg-foreground/30"></span>{m.pw_req_len()}</li>
+        <li data-pw="upper" class="flex items-center gap-1.5"><span data-dot class="size-1.5 flex-none rounded-full bg-foreground/30"></span>{m.pw_req_upper()}</li>
+        <li data-pw="lower" class="flex items-center gap-1.5"><span data-dot class="size-1.5 flex-none rounded-full bg-foreground/30"></span>{m.pw_req_lower()}</li>
+        <li data-pw="number" class="flex items-center gap-1.5"><span data-dot class="size-1.5 flex-none rounded-full bg-foreground/30"></span>{m.pw_req_number()}</li>
+        <li data-pw="special" class="flex items-center gap-1.5"><span data-dot class="size-1.5 flex-none rounded-full bg-foreground/30"></span>{m.pw_req_special()}</li>
+      </ul>
+
       <p data-auth-error class="hidden text-sm font-medium text-brand">{m.auth_error()}</p>
+      {/* Existing-email message (#13) with reset + support links. */}
+      <p data-auth-exists class="hidden border border-brand/40 bg-brand/5 p-3 text-sm leading-relaxed">
+        {m.auth_email_exists()}{' '}
+        <button type="button" data-go-reset class="cursor-pointer font-medium text-brand underline underline-offset-2">{m.auth_reset_link()}</button>{' '}
+        <span>{m.auth_or_support()}</span>{' '}
+        <a href={localizePath('/support/')} class="font-medium underline underline-offset-2">{m.nav_support()}</a>
+      </p>
       <p data-auth-confirm class="hidden border border-foreground/20 bg-muted p-3 text-sm leading-relaxed">
         {m.auth_confirm_sent()}
       </p>
@@ -103,11 +119,31 @@ const tabBtn =
         </button>
       </p>
     </form>
+
+    <!-- Reset-password request (#3): a DEDICATED email box, reached from the
+         "forgot password" link — no longer reads the login field. -->
+    <form data-tab-panel="reset" data-auth-form="reset" class="mt-6 hidden space-y-4">
+      <div>
+        <p class="font-condensed text-lg font-semibold">{m.reset_request_title()}</p>
+        <p class="mt-1 text-sm text-muted-foreground">{m.reset_request_sub()}</p>
+      </div>
+      <SlabField label={m.auth_email()} name="email" type="email" autocomplete="email" required />
+      <p data-reset-sent class="hidden border border-foreground/20 bg-muted p-3 text-sm leading-relaxed">
+        {m.auth_reset_sent()}
+      </p>
+      <Button type="submit" size="lg" class="w-full">{m.reset_send()}</Button>
+      <p class="text-center text-xs">
+        <button type="button" data-back-login class="cursor-pointer text-muted-foreground underline-offset-2 hover:underline">
+          {m.nav_login()}
+        </button>
+      </p>
+    </form>
   </div>
 </Modal>
 
 <script>
   import { actions } from 'astro:actions';
+  import { passwordChecks } from '@/lib/password';
 
   // Turnstile's ~60KB script must NOT load on zero-JS public pages — inject it
   // lazily the first time the auth modal opens (the .cf-turnstile div, present
@@ -149,7 +185,14 @@ const tabBtn =
         if (!(opener instanceof HTMLElement)) return;
         loadTurnstile(); // first auth-modal open → fetch the bot-wall script
         const current = document.querySelector<HTMLElement>('dialog#auth');
-        if (opener.dataset.authTab && current) selectTab(current, opener.dataset.authTab);
+        if (!current) return;
+        if (opener.dataset.authTab) selectTab(current, opener.dataset.authTab);
+        // Openers can preselect a role tile (invite links → customer, #9).
+        if (opener.dataset.authRole) {
+          current.querySelectorAll<HTMLElement>('[data-role-btn]').forEach((b) => {
+            b.dataset.active = String(b.dataset.roleBtn === opener.dataset.authRole);
+          });
+        }
       });
     }
 
@@ -162,22 +205,33 @@ const tabBtn =
       });
     });
 
-    // Forgot password: email the reset link to whatever's in the login field.
-    modal.querySelector<HTMLElement>('[data-forgot]')?.addEventListener('click', async () => {
-      const loginForm = modal.querySelector<HTMLFormElement>('[data-auth-form="login"]')!;
-      const email = String(new FormData(loginForm).get('email') ?? '').trim();
-      const err = loginForm.querySelector<HTMLElement>('[data-auth-error]')!;
-      const sent = loginForm.querySelector<HTMLElement>('[data-forgot-sent]')!;
-      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
-        err.classList.remove('hidden');
-        loginForm.querySelector<HTMLInputElement>('input[name="email"]')?.focus();
-        return;
+    // Live password-strength checklist on the register password (#3).
+    const pwInput = modal.querySelector<HTMLInputElement>('[data-auth-form="register"] input[name="password"]');
+    const pwList = modal.querySelector<HTMLElement>('[data-pw-checks]');
+    pwInput?.addEventListener('input', () => {
+      if (!pwList) return;
+      pwList.hidden = pwInput.value.length === 0;
+      for (const { id, ok } of passwordChecks(pwInput.value)) {
+        const li = pwList.querySelector<HTMLElement>(`[data-pw="${id}"]`);
+        const dot = li?.querySelector<HTMLElement>('[data-dot]');
+        li?.classList.toggle('text-foreground', ok);
+        dot?.classList.toggle('bg-online', ok);
+        dot?.classList.toggle('bg-foreground/30', !ok);
       }
-      err.classList.add('hidden');
-      // Always shows "sent" (the action never reveals whether the email exists).
-      await actions.auth.requestReset({ email });
-      sent.classList.remove('hidden');
     });
+
+    // Forgot password → switch to the DEDICATED reset panel (#3), carrying over
+    // whatever email was typed in the login field.
+    const goReset = () => {
+      const loginEmail = String(new FormData(modal.querySelector<HTMLFormElement>('[data-auth-form="login"]')!).get('email') ?? '').trim();
+      const registerEmail = String(new FormData(modal.querySelector<HTMLFormElement>('[data-auth-form="register"]')!).get('email') ?? '').trim();
+      selectTab(modal, 'reset');
+      const box = modal.querySelector<HTMLInputElement>('[data-auth-form="reset"] input[name="email"]');
+      if (box) { box.value = loginEmail || registerEmail; box.focus(); }
+    };
+    modal.querySelector<HTMLElement>('[data-forgot]')?.addEventListener('click', goReset);
+    modal.querySelector<HTMLElement>('[data-go-reset]')?.addEventListener('click', goReset);
+    modal.querySelector<HTMLElement>('[data-back-login]')?.addEventListener('click', () => selectTab(modal, 'login'));
 
     // Submit via actions; hard navigation so role-aware chrome re-renders.
     modal.querySelectorAll<HTMLFormElement>('[data-auth-form]').forEach((form) => {
@@ -185,14 +239,33 @@ const tabBtn =
         e.preventDefault();
         if (form.dataset.loading) return;
         form.dataset.loading = '1';
-        const err = form.querySelector<HTMLElement>('[data-auth-error]')!;
-        err.classList.add('hidden');
+        const err = form.querySelector<HTMLElement>('[data-auth-error]');
+        err?.classList.add('hidden');
+        form.querySelector<HTMLElement>('[data-auth-exists]')?.classList.add('hidden');
         const fd = new FormData(form);
         const locale = (document.documentElement.lang || 'en') as 'nl' | 'en' | 'de';
         const email = String(fd.get('email') ?? '');
         const password = String(fd.get('password') ?? '');
         const role = (modal.querySelector<HTMLElement>('[data-role-btn][data-active="true"]')
           ?.dataset.roleBtn ?? 'client') as 'advertiser' | 'client';
+
+        // Reset-request panel (#3): send the link, always show "sent", stop.
+        if (form.dataset.authForm === 'reset') {
+          await actions.auth.requestReset({ email });
+          form.querySelector<HTMLElement>('[data-reset-sent]')?.classList.remove('hidden');
+          delete form.dataset.loading;
+          return;
+        }
+
+        // Client-side password gate on register (#3): don't submit a weak one —
+        // reveal the checklist so she sees exactly what's missing.
+        if (form.dataset.authForm === 'register' && !passwordChecks(password).every((c) => c.ok)) {
+          if (pwList) pwList.hidden = false;
+          pwInput?.focus();
+          delete form.dataset.loading;
+          return;
+        }
+
         // Turnstile drops a hidden cf-turnstile-response into the form on solve.
         const turnstileToken = String(fd.get('cf-turnstile-response') ?? '') || undefined;
         const call = () =>
@@ -202,6 +275,13 @@ const tabBtn =
         try {
           const result = await call();
           if (result.error) throw result.error;
+          // Existing email (#13): show the "account already exists" message.
+          if ((result.data as { emailExists?: boolean } | undefined)?.emailExists) {
+            form.querySelector<HTMLElement>('[data-auth-exists]')?.classList.remove('hidden');
+            (window as any).turnstile?.reset?.();
+            delete form.dataset.loading;
+            return;
+          }
           // Email confirmation pending: no session yet — tell them to check mail.
           if (!result.data?.href) {
             const note = form.querySelector<HTMLElement>('[data-auth-confirm]');
@@ -224,7 +304,7 @@ const tabBtn =
           location.href = result.data.href;
         } catch (e) {
           console.error('[auth] failed', e);
-          err.classList.remove('hidden');
+          err?.classList.remove('hidden');
           // Turnstile tokens are single-use — reset so a retry mints a fresh one.
           (window as any).turnstile?.reset?.();
           delete form.dataset.loading;

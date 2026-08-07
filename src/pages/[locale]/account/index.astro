@@ -2,6 +2,7 @@
 /** Account dashboard — role-aware. */
 import * as m from '@/paraglide/messages';
 import { accountApi } from '@/app/api/account';
+import { messagingApi } from '@/app/api/messaging';
 import { profileAge } from '@/app/models/profile';
 import { sessionApi } from '@/app/api/session';
 import { onboardingProgress } from '@/lib/onboarding';
@@ -16,6 +17,20 @@ const locale = Astro.params.locale;
 if (!isLocale(locale)) return new Response(null, { status: 404 });
 
 const session = await sessionApi.current(Astro);
+
+// Claim a pending invite (from /c/<token>) now that she's signed in (#9): this
+// is the landing after signup + email confirmation. claimInvite adds her to the
+// advertiser's contacts and posts the "joined via your invite link" auto-chat;
+// then we drop her straight into that thread.
+if (session && session.role === 'client') {
+  const inviteToken = Astro.cookies.get('invite_token')?.value;
+  if (inviteToken) {
+    Astro.cookies.delete('invite_token', { path: '/' });
+    const claimed = await messagingApi.claimInvite(session, { token: inviteToken });
+    if (claimed && claimed !== 'own') return Astro.redirect(`/${locale}/messages/${claimed.id}/`);
+  }
+}
+
 const account = session ? await accountApi.get(session) : null;
 const profile = session ? await accountApi.myProfile(session) : null;
 

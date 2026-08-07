@@ -65,7 +65,15 @@ export interface SessionApi {
   register(
     ctx: AuthCtx,
     input: { email: string; password: string; role: 'advertiser' | 'client' },
-  ): Promise<{ session: Session | null; needsConfirmation: boolean }>;
+  ): Promise<{ session: Session | null; needsConfirmation: boolean; emailExists?: boolean }>;
+  /** Change the signed-in user's email — sends a confirmation to the NEW address;
+   *  the change only takes effect once that link is clicked. */
+  changeEmail(ctx: AuthCtx, input: { email: string }): Promise<{ ok: boolean; error?: string }>;
+  /** Change the signed-in user's password after re-verifying the current one. */
+  changePassword(
+    ctx: AuthCtx,
+    input: { currentPassword: string; newPassword: string },
+  ): Promise<{ ok: boolean; error?: string }>;
   /** Password sign-in; null = bad credentials (or unconfirmed email). */
   signIn(ctx: AuthCtx, input: { email: string; password: string }): Promise<Session | null>;
   /**

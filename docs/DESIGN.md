@@ -373,23 +373,24 @@ with a subtle top highlight. Rules:
 ## 6. Safe mode (privacy feature)
 
 **What:** a control so anyone can browse/work in public without explicit
-imagery on screen. **Three-valued** (Phase 5 — the discretion kit):
-- **`neutral`** — muted, abstract gallery-wall placeholders. **The default for
-  visitors**; a wall of these draws no glance. Generated deterministically as
-  inline SVG data-URIs in `safe-images.ts` (`neutralImageFor`) — no files, no
-  test drift.
+imagery on screen. It is a **visual privacy screen, not security** — the real
+photo renders, heavily blurred. **Three-valued** (Phase 5 — the discretion kit):
+- **`neutral`** — the real photo, **heavily blurred** (CSS `blur` + slight
+  scale, driven by `html.safe-on`). **The visitor screen**; recognisable shapes,
+  no explicit detail. (Superseded the muted-SVG gray placeholder — a gray wall
+  told the visitor nothing about what they were browsing.)
 - **`dev`** — the anime set from `public/safeimg/` (`safeImageFor`): the
-  operator's build-in-public skin (local dev defaults here).
-- **`off`** — real photos (deliberate opt-in).
+  operator's build-in-public skin (local dev defaults here), shown sharp.
+- **`off`** — real photos, sharp (deliberate opt-in).
 
 Text is unaffected. Cookie `safe_mode` = `off | neutral | dev` (legacy `on` →
 `neutral`). The toggle **cycles** off → neutral → dev; the boss key (Esc·Esc,
 desktop) flips off↔neutral instantly.
 
-**Reach (Phase 5.2):** the primary control is the floating glass **SafeModeBar**
-(`molecules/SafeModeBar`) — a mobile pill above the tab dock, a desktop corner
-button — so the panic switch is one thumb away on every screen. The footer +
-Account settings keep a mirror `SafeModeToggle`.
+**Reach (Phase 5.2):** the header/footer **SafeModeToggle** is the primary
+control; while safe mode is on a floating glass **SafeModeBubble**
+(`molecules/SafeModeBubble`) rides above the mobile tab dock with a one-tap
+turn-off, so the exit is one thumb away on every screen.
 
 **Neutral tab chrome (Phase 5.3):** while safe mode is on (neutral or dev) the
 tab `<title>` goes generic and the favicon goes monochrome; both restore when
@@ -402,14 +403,18 @@ off. Part of the glance test.
   layout shift, and looks intentional rather than glitchy. (The requirement said
   "random"; deterministic-per-profile *is* the shuffled-looking result without
   the cache/CLS cost. Flag if you want true per-load randomness instead.)
-- **Cache-safe & no-JS-safe.** Public HTML is edge-cached and identical for
-  everyone, so safe mode can't be baked per-request into the cached page.
-  Approach: `SafeImage` renders the **neutral placeholder as the default
-  `src`**, carrying `data-dev` (anime) and `data-real` (photo) alongside. A
-  tiny inline script (runs before paint, like the theme script) reads the
-  `safe_mode` cookie and swaps to the requested skin. Result: default state,
-  uncached responses, and no-JS all show the neutral set — **fail-closed**,
-  which is the correct posture for this feature.
+- **Cache-safe & CSS-driven.** Public HTML is edge-cached and identical for
+  everyone, so safe mode can't be baked per-request. Approach: `SafeImage`
+  renders the **real photo as `src`** (class `safe-img`); a tiny inline `<head>`
+  script (runs before paint, like the theme script) reads the `safe_mode` cookie
+  and stamps `html.safe-on`, which **blurs every `safe-img` via CSS**. Because
+  the blur is a class + stylesheet, it applies on edge-cached and no-JS HTML the
+  moment the class is present — and the default (`off`) is a sharp photo, so the
+  majority never pays a blur-then-unblur flash. The end-of-body script owns the
+  full apply (the `dev` anime src swap, the toggles, the neutral tab chrome).
+  (Safe mode is a visual screen, not a security wall, so shipping the real bytes
+  and blurring them is the intended trade — the earlier fail-closed
+  neutral-placeholder posture was dropped with the gray placeholder.)
 - **One image component owns it.** A single `SafeImage` (Astro atom) enforces
   the swap, the aspect ratio, the blur placeholder, and the Cloudflare Images
   variant. Nothing renders a profile photo except through it — same discipline
@@ -417,8 +422,9 @@ off. Part of the glance test.
 - The controls set the cookie (1yr) + flip images live (optimistic, no reload),
   and respect a first-visit default of `neutral`.
 
-`ponytail:` fail-closed default + deterministic pick; revisit only if the
-operator explicitly wants per-load shuffling.
+`ponytail:` CSS-blur screen keyed off `html.safe-on`; the neutral SVG set is now
+just the no-image poster fallback. Revisit only if a true opaque cover (not a
+blur) is ever required.
 
 ---
 

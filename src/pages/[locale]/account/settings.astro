@@ -69,6 +69,45 @@ const heading = 'font-condensed text-sm font-bold uppercase tracking-wide text-m
             </div>
           </section>
 
+          {/* Account credentials (#6): change email (confirm link) + password. */}
+          <section class="py-5" data-account-sec
+            data-saved={m.settings_saved()} data-sent={m.settings_change_email_sent()}
+            data-wrong={m.settings_pw_wrong()} data-weak={m.pw_weak()} data-err={m.auth_error()}>
+            <h2 class={heading}>{m.settings_account()}</h2>
+            <div class="mt-3">
+              <label class="text-sm font-medium" for="acct-email">{m.settings_change_email()}</label>
+              <div class="mt-1.5 flex flex-wrap items-stretch gap-2">
+                <span class="slab-field grow basis-56">
+                  <span class="slab-field__face block">
+                    <input id="acct-email" data-acct-email type="email" value={session.email} autocomplete="email"
+                      class="w-full bg-transparent p-2.5 text-sm caret-brand outline-none" />
+                  </span>
+                </span>
+                <button type="button" data-acct-email-btn class="cursor-pointer border border-foreground/20 px-3 text-sm font-medium transition-colors hover:border-foreground/60">
+                  {m.settings_change_email_btn()}
+                </button>
+              </div>
+              <p data-acct-email-msg class="mt-2 hidden text-sm font-medium text-online"></p>
+            </div>
+            <div class="mt-5">
+              <p class="text-sm font-medium">{m.settings_change_password()}</p>
+              <div class="mt-1.5 space-y-2">
+                <span class="slab-field block"><span class="slab-field__face block">
+                  <input data-acct-cur type="password" placeholder={m.settings_current_password()} autocomplete="current-password"
+                    class="w-full bg-transparent p-2.5 text-sm caret-brand outline-none placeholder:text-muted-foreground" />
+                </span></span>
+                <span class="slab-field block"><span class="slab-field__face block">
+                  <input data-acct-new type="password" placeholder={m.settings_new_password()} autocomplete="new-password"
+                    class="w-full bg-transparent p-2.5 text-sm caret-brand outline-none placeholder:text-muted-foreground" />
+                </span></span>
+              </div>
+              <button type="button" data-acct-pw-btn class="mt-2 cursor-pointer border border-foreground/20 px-3 py-2 text-sm font-medium transition-colors hover:border-foreground/60">
+                {m.settings_change_password_btn()}
+              </button>
+              <p data-acct-pw-msg class="mt-2 hidden text-sm font-medium"></p>
+            </div>
+          </section>
+
           {convo && (
             <section class="py-5">
               <div class="flex flex-wrap items-center justify-between gap-4">
@@ -276,6 +315,35 @@ const heading = 'font-condensed text-sm font-bold uppercase tracking-wide text-m
       });
     }
   }
+  // Change email + password (#6).
+  function initAccount() {
+    const sec = document.querySelector<HTMLElement>('[data-account-sec]');
+    if (!sec || sec.dataset.init) return;
+    sec.dataset.init = '1';
+    const d = sec.dataset;
+    sec.querySelector<HTMLElement>('[data-acct-email-btn]')?.addEventListener('click', async () => {
+      const email = sec.querySelector<HTMLInputElement>('[data-acct-email]')!.value.trim();
+      const msg = sec.querySelector<HTMLElement>('[data-acct-email-msg]')!;
+      const { error } = await actions.auth.changeEmail({ email });
+      msg.textContent = error ? d.err! : d.sent!;
+      msg.classList.remove('hidden', 'text-online', 'text-brand');
+      msg.classList.add(error ? 'text-brand' : 'text-online');
+    });
+    sec.querySelector<HTMLElement>('[data-acct-pw-btn]')?.addEventListener('click', async () => {
+      const currentPassword = sec.querySelector<HTMLInputElement>('[data-acct-cur]')!.value;
+      const newPassword = sec.querySelector<HTMLInputElement>('[data-acct-new]')!.value;
+      const msg = sec.querySelector<HTMLElement>('[data-acct-pw-msg]')!;
+      const { error } = await actions.auth.changePassword({ currentPassword, newPassword });
+      const text = !error ? d.saved! : error.message === 'settings_pw_wrong' ? d.wrong! : error.message === 'pw_weak' ? d.weak! : d.err!;
+      msg.textContent = text;
+      msg.classList.remove('hidden', 'text-online', 'text-brand');
+      msg.classList.add(error ? 'text-brand' : 'text-online');
+      if (!error) { sec.querySelectorAll<HTMLInputElement>('[data-acct-cur],[data-acct-new]').forEach((i) => (i.value = '')); }
+    });
+  }
+  initAccount();
+  document.addEventListener('astro:page-load', initAccount);
+
   initMsgSettings();
   document.addEventListener('astro:page-load', initMsgSettings);
 </script>

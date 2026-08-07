@@ -41,12 +41,12 @@ const account = {
   avatar: session?.avatarUrl,
 };
 const messages = {
-  ...tab('/messages/', m.msg_title(), '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/>', false, true),
+  ...tab('/messages/', m.nav_inbox(), '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/>', false, true),
   dot: unread > 0,
 };
 const contacts = tab('/contacts/', m.contacts_title(), '<circle cx="9" cy="8" r="3.2"/><path d="M3.5 20c0-3.3 2.5-5.4 5.5-5.4s5.5 2.1 5.5 5.4"/><path d="M16 5.2a3 3 0 0 1 0 5.6"/><path d="M18.5 20c0-2.6-1-4.4-2.6-5.2"/>', false, true);
-/* “?” in a circle — support. */
-const support = tab('/support/', m.nav_support(), '<circle cx="12" cy="12" r="9"/><path d="M9.3 9a2.7 2.7 0 0 1 5.4.3c0 1.8-2.7 2.2-2.7 3.7"/><path d="M12 17h.01"/>', false, true);
+/* “?” in a circle — support. Bottom-bar label only: nav_help (nav_support stays the full-nav copy). */
+const support = tab('/support/', m.nav_help(), '<circle cx="12" cy="12" r="9"/><path d="M9.3 9a2.7 2.7 0 0 1 5.4.3c0 1.8-2.7 2.2-2.7 3.7"/><path d="M12 17h.01"/>', false, true);
 
 const tabs =
   session?.role === 'advertiser'
@@ -102,6 +102,7 @@ const tabs =
                 src={t.avatar}
                 alt=""
                 loading="eager"
+                chrome
                 class="size-6 rounded-full border border-foreground/20"
               />
             ) : (

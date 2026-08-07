@@ -5,6 +5,7 @@
  * hard rule 3: they are toxic waste; only the state transition is recorded).
  */
 import * as m from '@/paraglide/messages';
+import { localizePath } from '@/lib/i18n';
 import type { Account } from '@/app/models/account';
 import type { Session } from '@/app/models/session';
 import Button from '@/components/atoms/Button.astro';
@@ -75,6 +76,11 @@ const stepDone = 'grid size-8 flex-none place-items-center bg-online font-conden
             </div>
           </div>
           <p data-sms-error class="hidden text-sm font-medium text-brand">{m.auth_error()}</p>
+          {/* Phone already on another account (#12) — clear message + support. */}
+          <p data-sms-phone-exists class="hidden text-sm font-medium text-brand">
+            {m.auth_phone_exists()}{' '}
+            <a href={localizePath('/support/')} class="underline underline-offset-2">{m.nav_support()}</a>
+          </p>
         </div>
       )
     }
@@ -166,6 +172,7 @@ const stepDone = 'grid size-8 flex-none place-items-center bg-online font-conden
       if (root.dataset.init) return;
       root.dataset.init = '1';
       const err = root.querySelector<HTMLElement>('[data-sms-error]');
+      const phoneExists = root.querySelector<HTMLElement>('[data-sms-phone-exists]');
 
       const sendBtn = root.querySelector<HTMLButtonElement>('[data-sms-send]');
       sendBtn?.addEventListener('click', async () => {
@@ -173,6 +180,7 @@ const stepDone = 'grid size-8 flex-none place-items-center bg-online font-conden
         // the click IS handled, but with no busy state it read as a no-op.
         if (sendBtn.dataset.loading) return;
         err?.classList.add('hidden');
+        phoneExists?.classList.add('hidden');
         const phoneInput = root.querySelector<HTMLInputElement>('[data-sms-start] input[name="phone"]')!;
         const phone = toE164(phoneInput.value);
         sendBtn.dataset.loading = '1';
@@ -183,7 +191,9 @@ const stepDone = 'grid size-8 flex-none place-items-center bg-online font-conden
         try {
           const { error } = await actions.account.startSms({ phone });
           if (error) {
-            err?.classList.remove('hidden');
+            // A CONFLICT means the number is already verified on another account.
+            if ((error as { code?: string }).code === 'CONFLICT') phoneExists?.classList.remove('hidden');
+            else err?.classList.remove('hidden');
             return;
           }
           // Reveal the code input BELOW the phone (phone stays visible, locked).

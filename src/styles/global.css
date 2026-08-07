@@ -482,10 +482,22 @@
     @apply font-sans;
   }
 
-  /* Safe-mode placeholder sets glare against the dark canvas (items.md #9) —
-     dim ONLY when a placeholder is showing (data-showing set by the safe-mode
-     script); real photos stay untouched. */
-  .dark img[data-showing='safe'],
+  /* Safe mode = a VISUAL privacy screen: heavily blur every real photo. TWO
+     triggers, so there's never an unblurred frame:
+       1. `html.safe-on` (stamped from the cookie in <head> before first paint)
+          — covers the initial/no-JS load.
+       2. `img[data-showing='blur']` — stamped by apply() on the INCOMING images
+          BEFORE swap, so the class travels WITH the image on navigation. iOS
+          Safari lagged the <html>-class propagation behind the image paint on a
+          view transition → a brief sharp flash; the element-level trigger closes
+          that window. Pure CSS, so it works on edge-cached / no-JS HTML too. */
+  html.safe-on img.safe-img:not([data-showing='dev']),
+  img.safe-img[data-showing='blur'] {
+    filter: blur(1.75rem) saturate(0.8);
+    transform: scale(1.12);
+  }
+  /* The operator's anime `dev` skin still glares against the dark canvas
+     (items.md #9) — dim it; real (blurred or sharp) photos stay untouched. */
   .dark img[data-showing='dev'] {
     filter: brightness(0.62) saturate(0.85);
   }

@@ -10,6 +10,7 @@ import { sessionApi } from '@/app/api/session';
 import Header from '@/components/organisms/layout/Header.astro';
 import Footer from '@/components/organisms/layout/Footer.astro';
 import BottomTabBar from '@/components/organisms/layout/BottomTabBar.astro';
+import SafeModeBubble from '@/components/molecules/SafeModeBubble.astro';
 import AuthModal from '@/components/organisms/auth/AuthModal.astro';
 import PageSheet from '@/components/molecules/PageSheet.astro';
 import ProfileSheet from '@/components/organisms/profile/ProfileSheet.astro';
@@ -162,9 +163,18 @@ const unread =
           if (t === 'light' || t === 'dark') return t === 'dark';
           return matchMedia('(prefers-color-scheme: dark)').matches;
         };
+        // No-flash safe mode: stamp html.safe-on in <head>, before any photo
+        // paints, so safe mode never flashes a sharp image. The end-of-body
+        // safe-mode script owns the full apply (src swap, toggles, tab chrome).
+        const safeOn = () => {
+          const m = document.cookie.match(/safe_mode=(\w+)/);
+          return m && (m[1] === 'neutral' || m[1] === 'dev' || m[1] === 'on');
+        };
         document.documentElement.classList.toggle('dark', dark());
+        document.documentElement.classList.toggle('safe-on', safeOn());
         document.addEventListener('astro:before-swap', (e) => {
           e.newDocument.documentElement.classList.toggle('dark', dark());
+          e.newDocument.documentElement.classList.toggle('safe-on', safeOn());
         });
       })();
     </script>
@@ -249,6 +259,7 @@ const unread =
       {!bare && <Footer />}
     </div>
     {!bare && <BottomTabBar {session} {idVerified} {unread} />}
+    {!bare && <SafeModeBubble />}
     <AuthModal />
     <PageSheet />
     <ProfileSheet />
@@ -292,21 +303,24 @@ const unread =
         };
 
         // `root` lets astro:before-swap run this against the INCOMING document
-        // — images get their real src BEFORE first paint, so navigation never
-        // flashes the neutral placeholder (the "images flicker" bug).
+        // so the blur class is set BEFORE first paint — navigation never
+        // flashes the sharp photo before safe mode re-applies.
         const apply = (root) => {
           root = root || document;
           const s = state();
           const off = s === 'off';
-          const pick = s === 'dev' ? 'dev' : 'safe'; // safe = neutral data-attr
+          // Safe mode is a VISUAL screen: html.safe-on drives a heavy CSS blur
+          // over every real photo (works on edge-cached / no-JS HTML). Only the
+          // operator's `dev` anime skin still swaps the actual src.
+          root.documentElement.classList.toggle('safe-on', !off);
           root.querySelectorAll('img[data-safe]').forEach((el) => {
-            const want = off
-              ? el.dataset.real || el.dataset.safe
-              : el.dataset[pick] || el.dataset.safe;
-            if (el.getAttribute('src') !== want) el.setAttribute('src', want);
-            // Which set is showing — dark mode dims the placeholder sets
-            // (items.md #9: they glared against the dark canvas).
-            el.dataset.showing = off ? 'real' : pick;
+            // neutral + off keep the real photo (neutral = real, blurred by CSS);
+            // dev swaps in the anime build-in-public skin.
+            const want = s === 'dev' ? el.dataset.dev || el.dataset.real : el.dataset.real || el.dataset.safe;
+            if (want && el.getAttribute('src') !== want) el.setAttribute('src', want);
+            // Which set is showing — dark mode dims the anime skin (items.md #9);
+            // 'blur' marks a real-but-blurred photo, 'real' a sharp one.
+            el.dataset.showing = s === 'dev' ? 'dev' : off ? 'real' : 'blur';
           });
           root.querySelectorAll('[data-safe-video-wrap]').forEach((wrap) => {
             const video = wrap.querySelector('video');
@@ -356,6 +370,12 @@ const unread =
           if (!e.target.closest) return;
           if (e.target.closest('[data-scroll-top]')) {
             window.scrollTo({ top: 0, behavior: 'smooth' });
+            return;
+          }
+          // Force OFF (the bubble's "turn off"); the toggles instead cycle.
+          if (e.target.closest('[data-safe-off]')) {
+            setState('off');
+            apply();
             return;
           }
           if (e.target.closest('[data-safe-toggle]')) cycle();

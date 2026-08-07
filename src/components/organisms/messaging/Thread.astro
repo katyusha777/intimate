@@ -54,7 +54,9 @@ const systemText = (key: string): string =>
     ? m.msg_system_media_on()
     : key === 'msg_system_request_accepted'
       ? m.msg_system_request_accepted()
-      : key;
+      : key === 'msg_system_invite_joined'
+        ? m.msg_system_invite_joined()
+        : key;
 
 /** UTC fallback; the client script localizes to the user's timezone on load. */
 const utcTime = (iso: string): string =>
@@ -70,6 +72,7 @@ const utcTime = (iso: string): string =>
   data-state={thread.state}
   data-sys-media-on={m.msg_system_media_on()}
   data-sys-request-accepted={m.msg_system_request_accepted()}
+  data-sys-invite-joined={m.msg_system_invite_joined()}
   data-cc-missed={m.call_card_missed()}
   data-cc-declined={m.call_card_declined()}
   data-cc-failed={m.call_card_failed()}
@@ -386,6 +389,7 @@ const utcTime = (iso: string): string =>
     const viewer = root.dataset.viewer as 'professional' | 'client';
     const sysMediaOn = root.dataset.sysMediaOn || '';
     const sysRequestAccepted = root.dataset.sysRequestAccepted || '';
+    const sysInviteJoined = root.dataset.sysInviteJoined || '';
     const initialState = root.dataset.state || 'open';
     const scroll = root.querySelector<HTMLElement>('[data-msg-scroll]')!;
 
@@ -420,7 +424,9 @@ const utcTime = (iso: string): string =>
             ? sysMediaOn
             : msg.body === 'msg_system_request_accepted'
               ? sysRequestAccepted
-              : msg.body;
+              : msg.body === 'msg_system_invite_joined'
+                ? sysInviteJoined
+                : msg.body;
         row.appendChild(chip);
         return row;
       }

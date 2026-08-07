@@ -23,6 +23,10 @@ if (session) {
   if (result === 'own') return Astro.redirect(localizePath('/contacts/'));
   if (result) return Astro.redirect(`/${locale}/messages/${result.id}/`);
   dead = true;
+} else {
+  // Remember the token so the claim survives signup + email confirmation (#9):
+  // after she registers-as-customer and lands on /account/, it's claimed there.
+  Astro.cookies.set('invite_token', token, { path: '/', maxAge: 3600, sameSite: 'lax' });
 }
 ---
 
@@ -44,9 +48,16 @@ if (session) {
           </span>
           <h1 class="mt-5 font-condensed text-3xl font-bold">{m.invite_title()}</h1>
           <p class="mt-2 text-sm text-muted-foreground">{m.invite_body()}</p>
-          <Button data-modal-open="auth" data-auth-tab="login" class="mt-6">
-            {m.invite_signin()}
+          {/* New users go straight to register-as-CUSTOMER (#9); existing users
+              can sign in below. The token cookie is claimed after they land. */}
+          <Button data-modal-open="auth" data-auth-tab="register" data-auth-role="client" class="mt-6">
+            {m.invite_signup()}
           </Button>
+          <p class="mt-3 text-sm">
+            <button type="button" data-modal-open="auth" data-auth-tab="login" data-auth-role="client" class="cursor-pointer text-muted-foreground underline underline-offset-2 hover:text-foreground">
+              {m.invite_signin()}
+            </button>
+          </p>
         </>
       )
     }

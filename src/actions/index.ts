@@ -15,6 +15,7 @@ import { startPhoneVerify, checkPhoneVerify } from "@/lib/twilio";
 import { bustProfiles, type CacheKv } from "@/lib/page-cache";
 import { rateLimit } from "@/lib/rate-limit";
 import { verifyTurnstile } from "@/lib/turnstile";
+import { passwordOk } from "@/lib/password";
 import { mintIceServers } from "@/lib/turn";
 import { CONVERSATION_MODES, REPORT_REASONS, REPORT_TARGETS } from "@/lib/taxonomy";
 // The one sanctioned cross-fence import: the action registry wires in admin.
@@ -86,10 +87,14 @@ export const server = {
         // Bot + spam walls BEFORE any account creation (SECURITY.md §5).
         await requireUnderLimit("register-ip", clientIp(context), 10);
         await requireTurnstile(context, turnstileToken);
+        if (!passwordOk(password)) throw new ActionError({ code: "BAD_REQUEST", message: "pw_weak" });
         try {
-          const { needsConfirmation } = await sessionApi.register(context, { email, password, role });
-          if (needsConfirmation) return { href: null, needsConfirmation: true };
-          return { href: `/${locale}/account/`, needsConfirmation: false };
+          const { needsConfirmation, emailExists } = await sessionApi.register(context, { email, password, role });
+          // Existing email (#13): a distinct signal so the modal can show the
+          // "account already exists → reset / support" message.
+          if (emailExists) return { href: null, needsConfirmation: false, emailExists: true };
+          if (needsConfirmation) return { href: null, needsConfirmation: true, emailExists: false };
+          return { href: `/${locale}/account/`, needsConfirmation: false, emailExists: false };
         } catch (e) {
           throw new ActionError({ code: "BAD_REQUEST", message: (e as Error).message });
         }
@@ -123,9 +128,38 @@ export const server = {
     setPassword: defineAction({
       input: z.object({ password: z.string().min(8), locale: z.enum(LOCALES) }),
       handler: async ({ password, locale }, context) => {
+        if (!passwordOk(password)) throw new ActionError({ code: "BAD_REQUEST", message: "pw_weak" });
         const ok = await sessionApi.setPassword(context, { password });
         if (!ok) throw new ActionError({ code: "UNAUTHORIZED" });
         return { href: `/${locale}/account/` };
+      },
+    }),
+
+    // Change email (confirmation link to the NEW address) — settings (#6).
+    changeEmail: defineAction({
+      input: z.object({ email: z.string().email() }),
+      handler: async ({ email }, context) => {
+        await requireSession(context);
+        const { ok, error } = await sessionApi.changeEmail(context, { email });
+        if (!ok) throw new ActionError({ code: "BAD_REQUEST", message: error ?? "failed" });
+        return { ok: true };
+      },
+    }),
+
+    // Change password after re-verifying the current one — settings (#6).
+    changePassword: defineAction({
+      input: z.object({ currentPassword: z.string().min(1), newPassword: z.string().min(8) }),
+      handler: async ({ currentPassword, newPassword }, context) => {
+        await requireSession(context);
+        if (!passwordOk(newPassword)) throw new ActionError({ code: "BAD_REQUEST", message: "pw_weak" });
+        const { ok, error } = await sessionApi.changePassword(context, { currentPassword, newPassword });
+        if (!ok) {
+          throw new ActionError({
+            code: "BAD_REQUEST",
+            message: error === "wrong_current_password" ? "settings_pw_wrong" : (error ?? "failed"),
+          });
+        }
+        return { ok: true };
       },
     }),
 

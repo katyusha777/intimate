@@ -23,11 +23,25 @@ const session = await sessionApi.current(Astro);
     <h1 class="display text-3xl">{m.reset_title()}</h1>
     {
       session ? (
-        <form data-reset-form class="mt-6 space-y-4">
+        <form data-reset-form data-weak={m.pw_weak()} data-mismatch={m.pw_mismatch()} data-err={m.auth_error()} class="mt-6 space-y-4">
           <p class="text-sm text-muted-foreground">{m.reset_sub()}</p>
           <SlabField
             label={m.reset_new_password()}
             name="password"
+            type="password"
+            autocomplete="new-password"
+            required
+          />
+          <ul data-pw-checks hidden class="grid grid-cols-1 gap-1 text-xs text-muted-foreground sm:grid-cols-2">
+            <li data-pw="len" class="flex items-center gap-1.5"><span data-dot class="size-1.5 flex-none rounded-full bg-foreground/30"></span>{m.pw_req_len()}</li>
+            <li data-pw="upper" class="flex items-center gap-1.5"><span data-dot class="size-1.5 flex-none rounded-full bg-foreground/30"></span>{m.pw_req_upper()}</li>
+            <li data-pw="lower" class="flex items-center gap-1.5"><span data-dot class="size-1.5 flex-none rounded-full bg-foreground/30"></span>{m.pw_req_lower()}</li>
+            <li data-pw="number" class="flex items-center gap-1.5"><span data-dot class="size-1.5 flex-none rounded-full bg-foreground/30"></span>{m.pw_req_number()}</li>
+            <li data-pw="special" class="flex items-center gap-1.5"><span data-dot class="size-1.5 flex-none rounded-full bg-foreground/30"></span>{m.pw_req_special()}</li>
+          </ul>
+          <SlabField
+            label={m.reset_confirm()}
+            name="confirm"
             type="password"
             autocomplete="new-password"
             required
@@ -51,25 +65,45 @@ const session = await sessionApi.current(Astro);
 
 <script>
   import { actions } from 'astro:actions';
+  import { passwordChecks } from '@/lib/password';
 
   function initReset() {
     const form = document.querySelector<HTMLFormElement>('[data-reset-form]');
     if (!form || form.dataset.init) return;
     form.dataset.init = '1';
     const err = form.querySelector<HTMLElement>('[data-reset-error]')!;
+    const pwInput = form.querySelector<HTMLInputElement>('input[name="password"]');
+    const pwList = form.querySelector<HTMLElement>('[data-pw-checks]');
+    pwInput?.addEventListener('input', () => {
+      if (!pwList) return;
+      pwList.hidden = pwInput.value.length === 0;
+      for (const { id, ok } of passwordChecks(pwInput.value)) {
+        const li = pwList.querySelector<HTMLElement>(`[data-pw="${id}"]`);
+        li?.classList.toggle('text-foreground', ok);
+        const dot = li?.querySelector<HTMLElement>('[data-dot]');
+        dot?.classList.toggle('bg-online', ok);
+        dot?.classList.toggle('bg-foreground/30', !ok);
+      }
+    });
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       if (form.dataset.loading) return;
-      form.dataset.loading = '1';
+      const fd = new FormData(form);
+      const password = String(fd.get('password') ?? '');
+      const confirm = String(fd.get('confirm') ?? '');
+      // Client-side gate: strength + match, with a specific message.
+      const showErr = (msg: string) => { err.textContent = msg; err.classList.remove('hidden'); };
       err.classList.add('hidden');
-      const password = String(new FormData(form).get('password') ?? '');
+      if (!passwordChecks(password).every((c) => c.ok)) { if (pwList) pwList.hidden = false; showErr(form.dataset.weak!); return; }
+      if (password !== confirm) { showErr(form.dataset.mismatch!); return; }
+      form.dataset.loading = '1';
       const locale = (document.documentElement.lang || 'en') as 'nl' | 'en' | 'de';
       try {
         const { data, error } = await actions.auth.setPassword({ password, locale });
         if (error) throw error;
         location.href = data!.href;
       } catch {
-        err.classList.remove('hidden');
+        showErr(form.dataset.err!);
         delete form.dataset.loading;
       }
     });

@@ -694,6 +694,14 @@ export function makeMessagingApi(db: () => Db): MessagingApi {
         .update(contactInvites)
         .set({ claimedBy: session.accountId, claimedAt: new Date() })
         .where(and(eq(contactInvites.id, inv.id), isNull(contactInvites.claimedBy)));
+      // Auto-chat so she SEES the arrival in the thread (#9) — a system card
+      // "joined via your invite link", not a silent contact-row appearance.
+      await d.insert(messages).values({
+        threadId: thread.id,
+        sender: 'system',
+        kind: 'system',
+        body: 'msg_system_invite_joined',
+      });
       // Her label for the link ("Mark — regular") lands in her private note so
       // she recognizes who arrived; never visible to him.
       if (inv.name) {

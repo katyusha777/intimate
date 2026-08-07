@@ -12,13 +12,23 @@ import { articlesForLocale } from '@/lib/articles';
 import { realImageFor } from '@/lib/safe-images';
 import { profilesApi } from '@/app/api/profiles';
 import { sessionApi } from '@/app/api/session';
+import { accountApi } from '@/app/api/account';
+import { onboardingProgress } from '@/lib/onboarding';
 
 const locale = Astro.params.locale;
 if (!isLocale(locale)) return new Response(null, { status: 404 });
 
 /* Supply is the constraint: the signed-out home leads with a professional
  * recruitment CTA (browsing needs no account and continues below). */
-const loggedOut = !(await sessionApi.current(Astro));
+const session = await sessionApi.current(Astro);
+const loggedOut = !session;
+
+/* Nudge an advertiser whose setup is unfinished back into the flow — a tasteful
+ * top banner, resume from where she left off (setup derives its own step). */
+const setupProfile = session?.role === 'advertiser' ? await accountApi.myProfile(session) : null;
+const setupAccount = setupProfile ? await accountApi.get(session!) : null;
+const showSetupBanner =
+  setupProfile && setupAccount ? !onboardingProgress(setupProfile, setupAccount).submitted : false;
 
 const alternates = samePathAlternates(Astro.url.origin, '/');
 const jsonLd = [websiteJsonLd(Astro.url.origin, locale), organizationJsonLd(Astro.url.origin)];
@@ -53,6 +63,19 @@ const moreArticles = articles.filter((a) => a !== featuredArticle).slice(0, 3);
   {jsonLd}
   preloadImage={lcpImage}
 >
+  {
+    showSetupBanner && (
+      <div class="border-b border-brand/20 bg-brand/10">
+        <div class="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3 md:px-6">
+          <p class="text-sm font-medium">{m.home_setup_banner()}</p>
+          <Button as="a" href={localizePath('/account/setup/')} size="sm">
+            {m.home_setup_cta()}
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
   <!-- ===================================================================
        MOBILE FOLD (UX-PLAN 1.1) — the every-visit question, "who's here now?"
        Live local header line + compact search + link-chips, then the first
