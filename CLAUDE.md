@@ -86,8 +86,7 @@ bun install · bun run dev · bun test · bun run build
 bun run db:generate · bun run db:migrate      # migrations → THE hosted db (DATABASE_URL in .env)
 bun run db:seed                               # mock catalog → the hosted db (dev/parity)
 bun run deploy:staging                       # = CLOUDFLARE_ENV=staging astro build && wrangler deploy --env staging
-bun run deploy:prod                          # = astro build && scripts/deploy-prod.sh (versions two-step — plain
-                                             # `wrangler deploy` silently fails to promote on prod; INFRASTRUCTURE.md §2)
+bun run deploy:prod                          # = astro build && wrangler deploy (env baked at BUILD time via CLOUDFLARE_ENV)
 ```
 
 **Branch → environment:** push `staging` → staging.intimate.nl · push `main` →

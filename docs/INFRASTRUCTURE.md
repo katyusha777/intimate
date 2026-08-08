@@ -43,20 +43,15 @@ old model in three ways:
 
 ```bash
 bun run deploy:staging   # = CLOUDFLARE_ENV=staging astro build && wrangler deploy --env staging
-bun run deploy:prod      # = astro build && scripts/deploy-prod.sh (versions two-step — see below)
+bun run deploy:prod      # = astro build && wrangler deploy
 ```
 
-**Production serves via ZONE ROUTES, not custom domains** (`intimate.nl/*` +
-`www.intimate.nl/*` in `wrangler.jsonc`; middleware 301s www → apex). The zone
-still carries legacy externally-managed DNS A-records pointing at a prohibited
-IP — they make Cloudflare 403 origin fetches (which routes never do, so the
-site works) but 409 the custom-domain/origin API. Consequence: **plain
-`wrangler deploy` on prod uploads a version, fails trigger sync, and NEVER
-promotes** — code silently doesn't go live. `scripts/deploy-prod.sh` does the
-`versions upload` → `versions deploy` two-step instead. **Owner fix that
-retires all of this:** dashboard → intimate.nl → DNS → delete the legacy
-A/AAAA records for apex + www, then immediately `bunx wrangler deploy` (it
-recreates proper Workers origin records; the gap is downtime).
+**Production serves intimate.nl + www via zone routes** (`wrangler.jsonc`;
+wrangler auto-provisions the origin DNS records — the legacy externally-managed
+A-records that used to 409 this were deleted 2026-08-09). Middleware 301s
+www → apex (one canonical host). If a prod deploy ever reports "Some triggers
+failed" again, treat it as CODE NOT LIVE — wrangler skips promotion when
+trigger sync fails; check DNS for records it doesn't own.
 
 On deploy the adapter auto-provisions a `SESSION` KV namespace and an `IMAGES`
 binding. One Hyperdrive (id `542bb0bee7fa44148f4e6ae3e0129ae7`) is bound in both
@@ -74,8 +69,8 @@ worker and its purge worker. Deploy all four after changing either worker:
 
 `.github/workflows/ci.yml`: PRs run `bun install → bun test → build`. **Branch
 → environment (since 2026-08-09):** push to `staging` deploys
-staging.intimate.nl; push to `main` deploys intimate.nl (production, via
-`scripts/deploy-prod.sh` — §2). Repo secrets (set): `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`
+staging.intimate.nl; push to `main` deploys intimate.nl (production). Repo
+secrets (set): `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`
 (account `ac521dc0e1abd98133a8f565daa46294` — Contact@optiweb.dev, migrated
 2026-08-02; the API token secret must be reissued FROM that account or CI
 deploys keep failing/targeting the old one).

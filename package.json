@@ -10,7 +10,7 @@
     "test": "bun test",
     "check": "astro check",
     "deploy:staging": "CLOUDFLARE_ENV=staging astro build && wrangler deploy --env staging",
-    "deploy:prod": "astro build && bash scripts/deploy-prod.sh",
+    "deploy:prod": "astro build && wrangler deploy",
     "db:generate": "drizzle-kit generate",
     "cf-typegen": "wrangler types",
     "db:migrate": "drizzle-kit migrate",
