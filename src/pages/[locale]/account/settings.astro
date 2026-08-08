@@ -160,6 +160,9 @@ const heading = 'font-condensed text-sm font-bold uppercase tracking-wide text-m
                 </label>
               </div>
               <p data-push-denied hidden class="text-sm font-medium text-brand">{m.push_denied()}</p>
+              <p data-push-error hidden class="text-sm text-brand">
+                {m.push_error()} <span data-push-error-detail class="font-mono text-xs"></span>
+              </p>
               {isAdvertiser && (
                 <div class="flex items-center justify-between gap-4">
                   <span class="flex flex-col">

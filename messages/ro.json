@@ -946,5 +946,6 @@
   "push_ask_title": "Nu rata nimic",
   "push_ask_body": "Primește notificări pentru cereri și mesaje noi — chiar și cu site-ul închis.",
   "push_ask_cta": "Activează",
-  "push_ask_later": "Nu acum"
+  "push_ask_later": "Nu acum",
+  "push_error": "Notificările nu au putut fi activate:"
 }

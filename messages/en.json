@@ -946,5 +946,6 @@
   "push_ask_title": "Don't miss a thing",
   "push_ask_body": "Get notified about new requests and messages — even when the site is closed.",
   "push_ask_cta": "Turn on",
-  "push_ask_later": "Not now"
+  "push_ask_later": "Not now",
+  "push_error": "Couldn't turn on notifications:"
 }

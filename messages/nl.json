@@ -946,5 +946,6 @@
   "push_ask_title": "Mis niets",
   "push_ask_body": "Krijg meldingen bij nieuwe verzoeken en berichten — ook als de site dicht is.",
   "push_ask_cta": "Zet aan",
-  "push_ask_later": "Niet nu"
+  "push_ask_later": "Niet nu",
+  "push_error": "Meldingen aanzetten is niet gelukt:"
 }

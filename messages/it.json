@@ -946,5 +946,6 @@
   "push_ask_title": "Non perderti nulla",
   "push_ask_body": "Ricevi notifiche per nuove richieste e messaggi — anche a sito chiuso.",
   "push_ask_cta": "Attiva",
-  "push_ask_later": "Non ora"
+  "push_ask_later": "Non ora",
+  "push_error": "Impossibile attivare le notifiche:"
 }

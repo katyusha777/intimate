@@ -946,5 +946,6 @@
   "push_ask_title": "Verpasse nichts",
   "push_ask_body": "Erhalte Benachrichtigungen bei neuen Anfragen und Nachrichten — auch bei geschlossener Seite.",
   "push_ask_cta": "Aktivieren",
-  "push_ask_later": "Nicht jetzt"
+  "push_ask_later": "Nicht jetzt",
+  "push_error": "Benachrichtigungen konnten nicht aktiviert werden:"
 }

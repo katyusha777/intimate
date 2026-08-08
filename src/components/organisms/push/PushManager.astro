@@ -109,11 +109,32 @@ const appId = import.meta.env.PUBLIC_ONESIGNAL_APP_ID;
     };
 
     // Permission MUST be requested inside the click's gesture window (iOS law) —
-    // native API first, SDK subscription after.
+    // native API first, SDK subscription after. Failures are SHOWN (the
+    // [data-push-error] line in settings): a silent dead toggle is undebuggable
+    // on exactly the devices (iOS PWA) where no console exists.
+    const showError = (msg: string) => {
+      const el = document.querySelector<HTMLElement>('[data-push-error]');
+      if (!el) return;
+      el.querySelector('[data-push-error-detail]')!.textContent = msg;
+      el.hidden = false;
+    };
     const enablePush = async () => {
       const perm = await Notification.requestPermission();
       w.OneSignalDeferred.push(async (OneSignal: OS) => {
-        if (perm === 'granted') await OneSignal.User.PushSubscription.optIn();
+        try {
+          if (perm === 'granted') {
+            await OneSignal.User.PushSubscription.optIn();
+            // Verify the subscription actually materialized (iOS fails silently).
+            await new Promise((r) => setTimeout(r, 3000));
+            const s = OneSignal.User.PushSubscription;
+            if (!s.id || !s.token) {
+              const sw = (await navigator.serviceWorker.getRegistrations()).map((r) => r.active?.scriptURL.split('/').pop()).join(',');
+              showError(`no token (perm:${Notification.permission} id:${s.id ? 'y' : 'n'} sw:${sw || 'none'})`);
+            }
+          }
+        } catch (e) {
+          showError(String((e as Error)?.message || e));
+        }
         reflect(OneSignal);
       });
     };
