@@ -368,11 +368,17 @@ export function makeMessagingApi(db: () => Db): MessagingApi {
 
     // Price is authoritative from HER rates for the chosen duration — never the
     // client-supplied number (a client could otherwise claim €0). Unknown
-    // duration (no matching rate row) → reject the request entirely.
-    const rateRow = profile.rates.find((r) => r.duration === parsed.data.duration);
-    const price = rateRow ? ratesMinPrice([rateRow]) : undefined;
-    if (price === undefined) return null;
-    const requestData = { ...parsed.data, priceAtRequest: price };
+    // duration (no matching rate row) → reject the request entirely. No
+    // duration at all (profile has no preset rates — the sheet skipped the
+    // step) → no price on the card.
+    const requestData = { ...parsed.data };
+    delete requestData.priceAtRequest;
+    if (parsed.data.duration !== undefined) {
+      const rateRow = profile.rates.find((r) => r.duration === parsed.data.duration);
+      const price = rateRow ? ratesMinPrice([rateRow]) : undefined;
+      if (price === undefined) return null;
+      requestData.priceAtRequest = price;
+    }
 
     let thread = await findThread(d, profile.id, session.accountId);
     if (thread?.state === 'blocked') return null; // blocked pair → no request path

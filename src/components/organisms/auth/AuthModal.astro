@@ -243,7 +243,7 @@ const tabBtn =
         err?.classList.add('hidden');
         form.querySelector<HTMLElement>('[data-auth-exists]')?.classList.add('hidden');
         const fd = new FormData(form);
-        const locale = (document.documentElement.lang || 'en') as 'nl' | 'en' | 'de';
+        const locale = (document.documentElement.lang || 'en') as import('@/lib/taxonomy').Locale;
         const email = String(fd.get('email') ?? '');
         const password = String(fd.get('password') ?? '');
         const role = (modal.querySelector<HTMLElement>('[data-role-btn][data-active="true"]')

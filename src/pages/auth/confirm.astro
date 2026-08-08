@@ -34,5 +34,8 @@ if (code) {
   const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type });
   if (!error) return Astro.redirect(`/${locale}${next}`, 302);
 }
-return Astro.redirect(`/${locale}/`, 302);
+// Token invalid/expired/already-used — send somewhere that explains, never the
+// bare homepage. Recovery → /auth/reset (shows the form if a session survives a
+// double-open, else its expired message); anything else → the generic expired page.
+return Astro.redirect(`/${locale}${type === 'recovery' ? '/auth/reset' : '/auth/expired'}`, 302);
 ---

@@ -387,10 +387,10 @@ Text is unaffected. Cookie `safe_mode` = `off | neutral | dev` (legacy `on` →
 `neutral`). The toggle **cycles** off → neutral → dev; the boss key (Esc·Esc,
 desktop) flips off↔neutral instantly.
 
-**Reach (Phase 5.2):** the header/footer **SafeModeToggle** is the primary
-control; while safe mode is on a floating glass **SafeModeBubble**
-(`molecules/SafeModeBubble`) rides above the mobile tab dock with a one-tap
-turn-off, so the exit is one thumb away on every screen.
+**Reach (Phase 5.2):** the header/footer **SafeModeToggle** is the only
+control (the floating mobile bubble was removed 2026-08-08 — it collided with
+the tab dock); while photos are blurred, tapping into the Lightbox opens a
+safe-mode dialog with a one-tap turn-off instead of the viewer.
 
 **Neutral tab chrome (Phase 5.3):** while safe mode is on (neutral or dev) the
 tab `<title>` goes generic and the favicon goes monochrome; both restore when

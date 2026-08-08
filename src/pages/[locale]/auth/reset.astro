@@ -97,7 +97,7 @@ const session = await sessionApi.current(Astro);
       if (!passwordChecks(password).every((c) => c.ok)) { if (pwList) pwList.hidden = false; showErr(form.dataset.weak!); return; }
       if (password !== confirm) { showErr(form.dataset.mismatch!); return; }
       form.dataset.loading = '1';
-      const locale = (document.documentElement.lang || 'en') as 'nl' | 'en' | 'de';
+      const locale = (document.documentElement.lang || 'en') as import('@/lib/taxonomy').Locale;
       try {
         const { data, error } = await actions.auth.setPassword({ password, locale });
         if (error) throw error;

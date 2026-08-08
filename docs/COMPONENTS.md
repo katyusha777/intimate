@@ -41,8 +41,6 @@ Pages = `src/pages/` (compose organisms; own no reusable markup).
   ThemeToggle (sun/moon switch, dark is the site default),
   SafeModeToggle (three-state safe-mode control — labelled switch in the
   footer + header/compact; cycles off→neutral→dev),
-  SafeModeBubble (glass pill above the mobile tab dock while safe mode is on —
-  reassurance text + one-tap turn-off; CSS-driven off html.safe-on),
   Section (owns page rhythm + section headings),
   AvailabilityLine (dot + text availability, card/line variants),
   ContactButtons (open tap-to-contact links — WhatsApp/Telegram/Instagram/phone,

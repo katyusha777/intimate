@@ -22,7 +22,10 @@ export interface PageContent {
   body: Block[];
 }
 
-type Locale = 'nl' | 'en' | 'de';
+// Long-form content is authored in en/nl/de only; ro/it fall back to English
+// via sitePage() below (translating legal pages is a legal-review task, not a
+// string-file task).
+type Locale = 'nl' | 'en' | 'de' | 'ro' | 'it';
 export type PageSlug =
   | 'about'
   | 'safety'
@@ -457,7 +460,7 @@ const de: Record<PageSlug, PageContent> = {
   },
 };
 
-const BY_LOCALE: Record<Locale, Record<PageSlug, PageContent>> = { en, nl, de };
+const BY_LOCALE: Partial<Record<Locale, Record<PageSlug, PageContent>>> = { en, nl, de };
 
 export const PAGE_SLUGS = Object.keys(en) as PageSlug[];
 

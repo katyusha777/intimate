@@ -22,7 +22,7 @@ const articles = defineCollection({
   schema: ({ image }) =>
     z.object({
       /** Locale of this file — also the first segment of the entry id. */
-      locale: z.enum(['nl', 'en', 'de']),
+      locale: z.enum(['nl', 'en', 'de', 'ro', 'it']),
       /** Shared across locales; the URL is /{locale}/blog/{slug}/. */
       slug: z.string(),
       title: z.string(),

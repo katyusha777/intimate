@@ -19,7 +19,7 @@ This document is the base architecture: stack, how we use each piece to its abso
 | Runtime/edge | **Cloudflare Workers** | global compute + static assets, cache, KV, R2, Queues, Cron, Images, Hyperdrive, Turnstile |
 | Data | **Supabase** | Postgres (Frankfurt), Auth, **Realtime**, Storage, RLS |
 | UI | **Fulldev UI** + Tailwind | Astro-native components/blocks (shadcn registry), + shadcn/ui React islands where truly interactive |
-| Glue | Drizzle · Zod · Paraglide (nl/en/de) · OpenRouter · Firecrawl · PostHog (analytics + errors, ANALYTICS.md) | typed DB, validation, i18n strings, import extraction, errors |
+| Glue | Drizzle · Zod · Paraglide (nl/en/de/ro/it) · OpenRouter · Firecrawl · PostHog (analytics + errors, ANALYTICS.md) | typed DB, validation, i18n strings, import extraction, errors |
 | Video calls | **WebRTC P2P** + self-hosted coturn (EU VPS) | 1-on-1 calls, signaling via Supabase Realtime — media never touches our infra (§10) |
 
 **One critical clarification: Bun is the toolchain, workerd is the runtime.** Production code runs on Cloudflare's workerd (V8 isolates) — that's where the sub-100ms global edge speed comes from. Bun gives us the fastest local loop: `bun install`, `bun run dev`, `bun test`, `bunx wrangler deploy`, and Bun-native scripts for seeding/tooling. App code must stay Workers-compatible: **no Bun-specific APIs (`Bun.serve`, `bun:sqlite`, `Bun.file`) inside `src/`** — Bun APIs are allowed only in `scripts/`.
@@ -74,7 +74,7 @@ This document is the base architecture: stack, how we use each piece to its abso
 
 ## 6. SEO / AI-search (priority 2)
 
-Per page: templated title + meta description per locale · canonical (filter variants → clean URL) · hreflang (nl/en/de + x-default) · OG/Twitter cards · dead profiles → HTTP 410.
+Per page: templated title + meta description per locale · canonical (filter variants → clean URL) · hreflang (nl/en/de/ro/it + x-default) · OG/Twitter cards · dead profiles → HTTP 410.
 JSON-LD: ProfilePage/Person, ItemList (city/search), BreadcrumbList, FAQPage, WebSite+SearchAction.
 Site-level: segmented XML sitemaps (real lastmod) · robots.txt allowing GPTBot/OAI-SearchBot/ClaudeBot/PerplexityBot/Googlebot/Bingbot + Cloudflare AI-blocking OFF for them · **IndexNow ping on every publish/update** (ChatGPT search rides on Bing) · Bing Webmaster + Search Console day one · `llms.txt` · URLs `/{locale}/{city}/`, `/{locale}/profile/{slug}/` · **301 map from all WordPress URLs** · internal linking (profile↔city, similar profiles) · every data point as server-rendered HTML text — never only in images or client JS. (Astro's zero-JS SSR already makes us the most crawlable site in the market; this section finishes the job.)
 

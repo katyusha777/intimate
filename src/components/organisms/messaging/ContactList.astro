@@ -282,7 +282,7 @@ const callBtn =
         const nameEl = inviteRoot.querySelector<HTMLInputElement>('[data-invite-form] [name="name"]');
         const { data } = await actions.messaging.mintInvite({
           name: nameEl?.value.trim() || undefined,
-          locale: locale as 'nl' | 'en' | 'de',
+          locale: locale as import('@/lib/taxonomy').Locale,
         });
         if (data?.url) {
           await shareLink(data.url);

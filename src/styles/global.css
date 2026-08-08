@@ -495,6 +495,10 @@
   img.safe-img[data-showing='blur'] {
     filter: blur(1.75rem) saturate(0.8);
     transform: scale(1.12);
+    /* Clip BEFORE the 1.12 scale: inset((1 − 1/1.12)/2) scales back up to
+       exactly the original box — the blur halo never bleeds past the image
+       edges, wrapper or not, and the faded blur border is cut away too. */
+    clip-path: inset(5.357%);
   }
   /* The operator's anime `dev` skin still glares against the dark canvas
      (items.md #9) — dim it; real (blurred or sharp) photos stay untouched. */

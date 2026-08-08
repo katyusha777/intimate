@@ -22,7 +22,7 @@
 
 ## 2. URL & language architecture
 
-- Locales `/{nl|en|de}/`, full hreflang + x-default everywhere. **EN and DE ship at launch** — DE demand is already arriving with zero DE content; tourist EN/DE queries are the underserved wedge.
+- Locales `/{nl|en|de|ro|it}/`, full hreflang + x-default everywhere. **EN and DE ship at launch** — DE demand is already arriving with zero DE content; tourist EN/DE queries are the underserved wedge.
 - Programmatic pages (the demand surface):
   - `/{locale}/{city}/` — city hub
   - `/{locale}/{category-slug}/{city}/` — category × city, localized slugs (nl: prive-ontvangst, en: private-visit, de: privatempfang, etc.)

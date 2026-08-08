@@ -122,7 +122,7 @@ const item =
       });
 
       menu.querySelector('[data-usermenu-signout]')?.addEventListener('click', async () => {
-        const locale = (document.documentElement.lang || 'en') as 'nl' | 'en' | 'de';
+        const locale = (document.documentElement.lang || 'en') as import('@/lib/taxonomy').Locale;
         const { data } = await actions.auth.logout({ locale });
         location.href = data?.href ?? '/';
       });

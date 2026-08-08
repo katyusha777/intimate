@@ -1,7 +1,8 @@
 ---
 /**
  * The waiting/arrival banner (docs/ONBOARDING.md §"After"). Calm "we're checking
- * it" while pending; a one-time "you're live" celebration after approval. Thin,
+ * it" while pending; a one-time "you're live" celebration after approval; a
+ * persistent "you're paused" with a one-tap resume (feedback v6 #10). Thin,
  * on every account page (AccountShell renders it), never on public pages. Human
  * words only — no "pending_review", no jargon.
  */
@@ -12,7 +13,7 @@ interface Props {
   state: ProfileState;
 }
 const { state } = Astro.props;
-const show = state === 'pending_review' || state === 'live';
+const show = state === 'pending_review' || state === 'live' || state === 'paused';
 ---
 
 {
@@ -22,15 +23,30 @@ const show = state === 'pending_review' || state === 'live';
       data-live={state === 'live' ? '1' : undefined}
       class:list={[
         'mb-5 flex items-start gap-3 border-l-2 p-4',
-        state === 'live' ? 'border-online bg-online/10' : 'border-amber-400/60 bg-amber-400/5',
+        state === 'live'
+          ? 'border-online bg-online/10'
+          : state === 'paused'
+            ? 'border-foreground/40 bg-foreground/5'
+            : 'border-amber-400/60 bg-amber-400/5',
       ]}
     >
-      <span aria-hidden="true" class="text-lg leading-none">{state === 'live' ? '🎉' : '⏳'}</span>
+      <span aria-hidden="true" class="text-lg leading-none">{state === 'live' ? '🎉' : state === 'paused' ? '⏸️' : '⏳'}</span>
       <div class="min-w-0 flex-1">
-        <p class="text-sm font-semibold">{state === 'live' ? m.onb_live_title() : m.onb_review_title()}</p>
-        <p class="mt-0.5 text-sm text-muted-foreground">
-          {state === 'live' ? m.onb_live_note() : m.onb_review_note()}
+        <p class="text-sm font-semibold">
+          {state === 'live' ? m.onb_live_title() : state === 'paused' ? m.banner_paused_title() : m.onb_review_title()}
         </p>
+        <p class="mt-0.5 text-sm text-muted-foreground">
+          {state === 'live' ? m.onb_live_note() : state === 'paused' ? m.banner_paused_body() : m.onb_review_note()}
+        </p>
+        {state === 'paused' && (
+          <button
+            type="button"
+            data-status-resume
+            class="slab-cut mt-3 cursor-pointer bg-foreground px-3.5 py-2 text-sm font-bold text-background transition-colors hover:bg-brand hover:text-white disabled:opacity-50"
+          >
+            {m.banner_paused_resume()}
+          </button>
+        )}
       </div>
       {state === 'live' && (
         <button type="button" data-status-dismiss aria-label="Dismiss" class="flex-none text-muted-foreground hover:text-foreground">
@@ -42,19 +58,39 @@ const show = state === 'pending_review' || state === 'live';
 }
 
 <script>
+  import { actions } from 'astro:actions';
+
   // "You're live" is a one-time celebration — remember the dismissal so it
   // doesn't nag on every visit. The pending banner has no dismiss (it's status).
   function initStatusBanner() {
     const banner = document.querySelector<HTMLElement>('[data-status-banner][data-live]');
-    if (!banner) return;
-    if (localStorage.getItem('onb_live_seen')) {
-      banner.remove();
-      return;
+    if (banner) {
+      if (localStorage.getItem('onb_live_seen')) {
+        banner.remove();
+      } else {
+        banner.querySelector('[data-status-dismiss]')?.addEventListener('click', () => {
+          localStorage.setItem('onb_live_seen', '1');
+          banner.remove();
+        });
+      }
     }
-    banner.querySelector('[data-status-dismiss]')?.addEventListener('click', () => {
-      localStorage.setItem('onb_live_seen', '1');
-      banner.remove();
-    });
+    // Paused → one-tap resume. Optimistic: remove the banner on success — a
+    // reload would re-read through the lagging Hyperdrive cache and show
+    // "paused" again for minutes.
+    const resume = document.querySelector<HTMLButtonElement>('[data-status-resume]');
+    if (resume && !resume.dataset.init) {
+      resume.dataset.init = '1';
+      resume.addEventListener('click', async () => {
+        resume.disabled = true;
+        try {
+          const { error } = await actions.account.setPaused({ paused: false });
+          if (error) throw error;
+          document.querySelector('[data-status-banner]')?.remove();
+        } catch {
+          resume.disabled = false;
+        }
+      });
+    }
   }
   initStatusBanner();
   document.addEventListener('astro:page-load', initStatusBanner);

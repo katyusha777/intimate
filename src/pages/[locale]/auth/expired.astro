@@ -1,0 +1,25 @@
+---
+/**
+ * Dead-end for auth links (email confirm / email change) whose token is
+ * invalid, expired, or already used. /auth/confirm redirects here on failure;
+ * recovery links get /auth/reset instead, which has its own expired state.
+ */
+import * as m from '@/paraglide/messages';
+import { isLocale, localizePath } from '@/lib/i18n';
+import Layout from '@/layouts/Layout.astro';
+
+const locale = Astro.params.locale;
+if (!isLocale(locale)) return new Response(null, { status: 404 });
+---
+
+<Layout noindex title={`${m.link_expired_title()} | Intimate`}>
+  <div class="mx-auto max-w-md px-4 py-12 md:px-6">
+    <h1 class="display text-3xl">{m.link_expired_title()}</h1>
+    <div class="mt-6 space-y-3">
+      <p class="text-muted-foreground">{m.link_expired_body()}</p>
+      <a href={localizePath('/account/')} class="inline-block font-semibold underline-offset-4 hover:underline">
+        {m.nav_login()} →
+      </a>
+    </div>
+  </div>
+</Layout>

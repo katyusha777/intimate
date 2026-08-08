@@ -10,7 +10,6 @@ import { sessionApi } from '@/app/api/session';
 import Header from '@/components/organisms/layout/Header.astro';
 import Footer from '@/components/organisms/layout/Footer.astro';
 import BottomTabBar from '@/components/organisms/layout/BottomTabBar.astro';
-import SafeModeBubble from '@/components/molecules/SafeModeBubble.astro';
 import AuthModal from '@/components/organisms/auth/AuthModal.astro';
 import PageSheet from '@/components/molecules/PageSheet.astro';
 import ProfileSheet from '@/components/organisms/profile/ProfileSheet.astro';
@@ -57,7 +56,7 @@ const locale = getLocale();
 // OG/Twitter card (#15). Absolute URLs required by crawlers; canonical is the
 // share URL, image falls back to the maskable app icon. Locale maps to the
 // OG territory code; the other two locales become og:locale:alternate.
-const OG_LOCALES = { nl: 'nl_NL', en: 'en_US', de: 'de_DE' } as const satisfies Record<Locale, string>;
+const OG_LOCALES = { nl: 'nl_NL', en: 'en_US', de: 'de_DE', ro: 'ro_RO', it: 'it_IT' } as const satisfies Record<Locale, string>;
 const ogUrl = canonical ?? Astro.url.href;
 const ogImage = new URL(image ?? '/icons/maskable-512.png', Astro.url.origin).href;
 
@@ -259,7 +258,6 @@ const unread =
       {!bare && <Footer />}
     </div>
     {!bare && <BottomTabBar {session} {idVerified} {unread} />}
-    {!bare && <SafeModeBubble />}
     <AuthModal />
     <PageSheet />
     <ProfileSheet />

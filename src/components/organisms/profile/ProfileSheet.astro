@@ -96,14 +96,20 @@ import SideDrawer from '@/components/molecules/SideDrawer.astro';
           <div class="skeleton h-4 w-full"></div>
         </div>
       </div>`;
-    const seedImg = (photo?: string) =>
-      photo ? `<img src="${photo.replace(/"/g, '&quot;')}" alt="" class="h-full w-full object-cover" />` : '';
+    // `showing` mirrors the tapped card img's data-showing so the seed frame is
+    // blurred from its FIRST paint under safe mode (safe-img + data-showing
+    // drive the pure-CSS blur) — without it the seed rendered sharp for the
+    // ~0.5s the profile fetch takes.
+    const seedImg = (photo?: string, showing?: string) =>
+      photo
+        ? `<img src="${photo.replace(/"/g, '&quot;')}" alt="" ${showing ? `data-showing="${showing}"` : ''} class="safe-img h-full w-full object-cover" />`
+        : '';
 
-    const skeleton = (photo?: string, mobile = true) =>
+    const skeleton = (photo?: string, mobile = true, showing?: string) =>
       mobile
         ? `
       <div>
-        <div class="${photo ? 'h-[72dvh]' : 'skeleton h-[72dvh]'}">${seedImg(photo)}</div>
+        <div class="${photo ? 'h-[72dvh] overflow-hidden' : 'skeleton h-[72dvh]'}">${seedImg(photo, showing)}</div>
         <div class="mt-0.5 grid grid-cols-3 gap-0.5">
           <div class="skeleton aspect-square"></div>
           <div class="skeleton aspect-square"></div>
@@ -128,7 +134,7 @@ import SideDrawer from '@/components/molecules/SideDrawer.astro';
           <div class="skeleton h-5 w-24"></div>
         </div>
         <div class="grid h-[26rem] grid-cols-3 gap-2 lg:h-[30rem]">
-          <div class="${photo ? '' : 'skeleton'} overflow-hidden rounded-xl">${seedImg(photo)}</div>
+          <div class="${photo ? '' : 'skeleton'} overflow-hidden rounded-xl">${seedImg(photo, showing)}</div>
           <div class="skeleton rounded-xl"></div>
           <div class="skeleton rounded-xl"></div>
         </div>
@@ -145,7 +151,7 @@ import SideDrawer from '@/components/molecules/SideDrawer.astro';
         </div>
       </div>`;
 
-    async function openProfile(url: string, seedPhoto?: string) {
+    async function openProfile(url: string, seedPhoto?: string, seedShowing?: string) {
       const b = body();
       const s = sheet();
       if (!b || !s) {
@@ -166,7 +172,7 @@ import SideDrawer from '@/components/molecules/SideDrawer.astro';
         history.pushState(null, '', url);
       }
       open = true;
-      b.innerHTML = skeleton(seedPhoto, mobile.matches);
+      b.innerHTML = skeleton(seedPhoto, mobile.matches, seedShowing);
       b.scrollTop = 0;
       s.openSheet();
       try {
@@ -267,7 +273,11 @@ import SideDrawer from '@/components/molecules/SideDrawer.astro';
         e.preventDefault();
         e.stopImmediatePropagation();
         // Hand over the card's already-decoded photo for the first frame.
-        openProfile(a.href, a.querySelector('img')?.currentSrc || undefined);
+        // `showing` is whitelisted here because it ends up in an innerHTML
+        // template — never interpolate a free-form dataset value into markup.
+        const cardImg = a.querySelector('img');
+        const showing = ['dev', 'real', 'blur'].find((s) => s === cardImg?.dataset.showing);
+        openProfile(a.href, cardImg?.currentSrc || undefined, showing);
       },
       { capture: true },
     );

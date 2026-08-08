@@ -38,18 +38,30 @@ const label = 'eyebrow text-2xs text-muted-foreground';
     <p class="eyebrow text-2xs text-brand">{m.request_card_title()}</p>
   </div>
   <div class="px-4 py-1">
-    <div class={row}>
-      <span class={label}>{m.request_step_service()}</span>
-      <span class="font-medium">{serviceLabel(r.service)}</span>
-    </div>
-    <div class={row}>
-      <span class={label}>{m.request_step_duration()}</span>
-      <span class="font-medium">{rateDurationLabel(r.duration)}</span>
-    </div>
-    <div class={row}>
-      <span class={label}>{m.request_card_price()}</span>
-      <span class="font-condensed text-base font-bold">€{r.priceAtRequest}</span>
-    </div>
+    {
+      r.service && (
+        <div class={row}>
+          <span class={label}>{m.request_step_service()}</span>
+          <span class="font-medium">{serviceLabel(r.service)}</span>
+        </div>
+      )
+    }
+    {
+      r.duration && (
+        <div class={row}>
+          <span class={label}>{m.request_step_duration()}</span>
+          <span class="font-medium">{rateDurationLabel(r.duration)}</span>
+        </div>
+      )
+    }
+    {
+      r.priceAtRequest !== undefined && (
+        <div class={row}>
+          <span class={label}>{m.request_card_price()}</span>
+          <span class="font-condensed text-base font-bold">€{r.priceAtRequest}</span>
+        </div>
+      )
+    }
     <div class={row}>
       <span class={label}>{m.request_step_when()}</span>
       <span class="font-medium">{whenLabel}</span>

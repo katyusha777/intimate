@@ -34,9 +34,12 @@ const cutR = `cut-${(hash + 2) % 4}`;
   <div
     class:list={[
       'pc-track flex h-full',
+      // overflow-y explicitly hidden on BOTH variants: one hidden/auto axis
+      // computes the other to auto, and safe-mode's scale(1.12) then makes the
+      // blurred image vertically scrollable inside the card.
       swipe
-        ? 'snap-x snap-mandatory overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
-        : 'overflow-x-hidden',
+        ? 'snap-x snap-mandatory overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
+        : 'overflow-hidden',
     ]}
   >
     {

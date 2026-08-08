@@ -63,6 +63,13 @@ for (let i = 0; i < 7 && slotOptions.length < 4; i++) {
 const chip =
   'cursor-pointer border border-foreground/20 px-3 py-1.5 text-sm font-medium transition-colors hover:border-foreground/60 data-[sel]:border-foreground data-[sel]:bg-foreground data-[sel]:text-background';
 const stepTitle = 'font-condensed text-lg font-bold';
+
+// Empty steps are SKIPPED, not dead-ended (feedback v6 #12): a profile without
+// services (or preset rates) must still be reachable — the sheet starts at the
+// first step that has options and the payload fields stay optional.
+const hasServices = serviceGroups.length > 0;
+const hasRates = durationOptions.length > 0;
+const firstStep = hasServices ? 'service' : hasRates ? 'duration' : 'when';
 ---
 
 <ActionSheet id={`request-${p.id}`} label={m.request_title()} class="max-w-lg">
@@ -74,15 +81,13 @@ const stepTitle = 'font-condensed text-lg font-bold';
   >
     <p class="eyebrow text-2xs text-muted-foreground">{m.request_eyebrow()}</p>
 
-    <!-- Step 1: service -->
-    <div data-step="service" class="mt-3">
-      <h3 class={stepTitle}>{m.request_step_service()}</h3>
-      <div class="mt-3 space-y-3">
-        {
-          serviceGroups.length === 0 ? (
-            <p class="text-sm text-muted-foreground">{m.request_no_services()}</p>
-          ) : (
-            serviceGroups.map((g) => (
+    <!-- Step 1: service (rendered only when she has service chips) -->
+    {
+      hasServices && (
+        <div data-step="service" hidden={firstStep !== 'service'} class="mt-3">
+          <h3 class={stepTitle}>{m.request_step_service()}</h3>
+          <div class="mt-3 space-y-3">
+            {serviceGroups.map((g) => (
               <div class="flex flex-wrap gap-1.5">
                 {g.items.map((s) => (
                   <button type="button" class={chip} data-pick-service={s}>
@@ -90,21 +95,19 @@ const stepTitle = 'font-condensed text-lg font-bold';
                   </button>
                 ))}
               </div>
-            ))
-          )
-        }
-      </div>
-    </div>
+            ))}
+          </div>
+        </div>
+      )
+    }
 
-    <!-- Step 2: duration + price -->
-    <div data-step="duration" hidden class="mt-3">
-      <h3 class={stepTitle}>{m.request_step_duration()}</h3>
-      <div class="mt-3 flex flex-col gap-2">
-        {
-          durationOptions.length === 0 ? (
-            <p class="text-sm text-muted-foreground">{m.request_no_rates()}</p>
-          ) : (
-            durationOptions.map((d) => (
+    <!-- Step 2: duration + price (rendered only when she has preset rates) -->
+    {
+      hasRates && (
+        <div data-step="duration" hidden={firstStep !== 'duration'} class="mt-3">
+          <h3 class={stepTitle}>{m.request_step_duration()}</h3>
+          <div class="mt-3 flex flex-col gap-2">
+            {durationOptions.map((d) => (
               <button
                 type="button"
                 data-pick-duration={d.duration}
@@ -114,14 +117,14 @@ const stepTitle = 'font-condensed text-lg font-bold';
                 <span class="font-medium">{rateDurationLabel(d.duration)}</span>
                 <span class="font-condensed text-lg font-bold">€{d.price}</span>
               </button>
-            ))
-          )
-        }
-      </div>
-    </div>
+            ))}
+          </div>
+        </div>
+      )
+    }
 
     <!-- Step 3: when + note + screening -->
-    <div data-step="when" hidden class="mt-3">
+    <div data-step="when" hidden={firstStep !== 'when'} class="mt-3">
       <h3 class={stepTitle}>{m.request_step_when()}</h3>
       <div class="mt-3 flex flex-wrap gap-1.5">
         <button type="button" class={chip} data-pick-when="now">{m.request_when_now()}</button>
@@ -184,7 +187,7 @@ const stepTitle = 'font-condensed text-lg font-bold';
 
 <script>
   import { actions } from 'astro:actions';
-  import type { RateDuration, Service } from '@/lib/taxonomy';
+  import type { Locale, RateDuration, Service } from '@/lib/taxonomy';
 
   type When = 'now' | 'tonight' | 'slot';
 
@@ -194,10 +197,11 @@ const stepTitle = 'font-condensed text-lg font-bold';
       root.dataset.init = '1';
 
       const profileSlug = root.dataset.profileSlug!;
-      const locale = root.dataset.locale as 'nl' | 'en' | 'de';
+      const locale = root.dataset.locale as Locale;
+      // Empty steps aren't rendered at all — null entries are simply skipped.
       const steps = {
-        service: root.querySelector<HTMLElement>('[data-step="service"]')!,
-        duration: root.querySelector<HTMLElement>('[data-step="duration"]')!,
+        service: root.querySelector<HTMLElement>('[data-step="service"]'),
+        duration: root.querySelector<HTMLElement>('[data-step="duration"]'),
         when: root.querySelector<HTMLElement>('[data-step="when"]')!,
       };
 
@@ -213,7 +217,7 @@ const stepTitle = 'font-condensed text-lg font-bold';
       const errEl = root.querySelector<HTMLElement>('[data-request-error]')!;
 
       const show = (name: keyof typeof steps) => {
-        for (const [key, el] of Object.entries(steps)) el.hidden = key !== name;
+        for (const [key, el] of Object.entries(steps)) if (el) el.hidden = key !== name;
       };
 
       // Single-select within a group of buttons sharing a data attribute.
@@ -226,7 +230,7 @@ const stepTitle = 'font-condensed text-lg font-bold';
           state.service = btn.dataset.pickService as Service;
           clearSel('[data-pick-service]');
           btn.setAttribute('data-sel', '');
-          show('duration');
+          show(steps.duration ? 'duration' : 'when');
         });
       });
 
@@ -253,7 +257,8 @@ const stepTitle = 'font-condensed text-lg font-bold';
       });
 
       submitBtn.addEventListener('click', async () => {
-        if (!state.service || !state.duration || !state.when) return;
+        // service/duration are required only when their step exists.
+        if (!state.when || (steps.service && !state.service) || (steps.duration && !state.duration)) return;
         submitBtn.disabled = true;
         errEl.hidden = true;
         const note = root.querySelector<HTMLInputElement>('[data-note]')?.value.trim() || undefined;

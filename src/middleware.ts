@@ -83,7 +83,8 @@ const SECURITY_HEADERS: Record<string, string> = {
 
 export const onRequest = defineMiddleware(async (context, next) => {
   // HTTPS is the only front door — the zone accepted plain HTTP with a 200.
-  if (context.url.protocol === 'http:') {
+  // Local dev is exempt: `astro dev` serves plain http on localhost.
+  if (context.url.protocol === 'http:' && !['localhost', '127.0.0.1'].includes(context.url.hostname)) {
     return context.redirect(context.url.href.replace(/^http:/, 'https:'), 301);
   }
   const res = await handle(context, next);

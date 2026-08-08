@@ -33,10 +33,14 @@ export type Party = 'professional' | 'client';
  * (the rate table changing later must not rewrite a sent card).
  */
 export const RequestPayloadSchema = z.object({
-  service: z.enum(ALL_SERVICES as unknown as [Service, ...Service[]]),
-  duration: z.enum(RATE_DURATIONS),
-  /** Snapshotted price (EUR) for that service/duration, frozen at send. */
-  priceAtRequest: z.number().int().nonnegative(),
+  /** Optional: a profile with no services listed still accepts requests —
+   *  the sheet skips the step (feedback v6 #12). */
+  service: z.enum(ALL_SERVICES as unknown as [Service, ...Service[]]).optional(),
+  /** Optional for the same reason: no preset rates → no duration step. */
+  duration: z.enum(RATE_DURATIONS).optional(),
+  /** Snapshotted price (EUR) for that duration, frozen at send. Absent when
+   *  there was no duration to price. */
+  priceAtRequest: z.number().int().nonnegative().optional(),
   when: z.enum(REQUEST_WHEN),
   /** slot label ("Fri 21:00") when `when === 'slot'`. */
   slot: z.string().max(40).optional(),

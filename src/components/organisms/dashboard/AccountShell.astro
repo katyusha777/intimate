@@ -110,7 +110,7 @@ const nav =
       if (btn.dataset.init) return;
       btn.dataset.init = '1';
       btn.addEventListener('click', async () => {
-        const locale = (document.documentElement.lang || 'en') as 'nl' | 'en' | 'de';
+        const locale = (document.documentElement.lang || 'en') as import('@/lib/taxonomy').Locale;
         const { data } = await actions.auth.logout({ locale });
         location.href = data?.href ?? '/';
       });

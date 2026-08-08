@@ -8,7 +8,11 @@
  * Opened by delegation: any [data-lightbox] trigger inside a
  * [data-lightbox-group] opens the group's [data-lightbox-photos] images at the
  * trigger's data-lightbox-index. Reads live <img> src so safe-mode is honored.
+ * Safe mode (blurred photos) blocks opening entirely: a small dialog offers
+ * the one-tap turn-off instead — no fullscreen peek at blurred originals.
  */
+import * as m from '@/paraglide/messages';
+
 interface Props {
   id?: string;
 }
@@ -60,6 +64,39 @@ const { id = 'lightbox' } = Astro.props;
       >
       </div>
     </div>
+  </div>
+</dialog>
+
+<!-- Safe mode gate: shown instead of the viewer while photos are blurred. -->
+<dialog
+  data-safe-popup
+  aria-label={m.safe_popup_title()}
+  class="m-auto w-[calc(100vw-2.5rem)] max-w-sm border border-foreground/20 bg-background p-6 text-center text-foreground shadow-soft-lg backdrop:bg-black/50"
+>
+  <svg class="mx-auto size-7 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M2 2 22 22" />
+    <path d="M6.7 6.7A10.4 10.4 0 0 0 1 12s4 7 11 7a10 10 0 0 0 4.4-1" />
+    <path d="M9.9 4.2A10.8 10.8 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.3 3.3" />
+    <path d="M9.6 9.6a3 3 0 0 0 4.2 4.2" />
+  </svg>
+  <h2 class="mt-3 font-condensed text-xl font-bold">{m.safe_popup_title()}</h2>
+  <p class="mt-2 text-sm text-muted-foreground">{m.safe_popup_body()}</p>
+  <div class="mt-5 flex flex-col gap-2.5">
+    <button
+      type="button"
+      data-safe-off
+      data-safe-popup-close
+      class="slab-cut cursor-pointer bg-foreground px-4 py-3 text-sm font-bold uppercase tracking-wide text-background transition-colors hover:bg-brand hover:text-white"
+    >
+      {m.safemode_turn_off()}
+    </button>
+    <button
+      type="button"
+      data-safe-popup-close
+      class="cursor-pointer py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+    >
+      {m.action_cancel()}
+    </button>
   </div>
 </dialog>
 
@@ -336,6 +373,15 @@ const { id = 'lightbox' } = Astro.props;
       if (!group) return;
       e.preventDefault();
       const imgs = [...group.querySelectorAll<HTMLImageElement>('[data-lightbox-photos] img')];
+      // Safe mode gate: photos are blurred → never open the fullscreen viewer
+      // (it would show sharp originals); offer the turn-off dialog instead.
+      // The operator's `dev` anime skin (data-showing='dev') stays viewable.
+      const probe = trigger.querySelector<HTMLImageElement>('img') || imgs[0];
+      if (document.documentElement.classList.contains('safe-on') && probe?.dataset.showing !== 'dev') {
+        const popup = document.querySelector<HTMLDialogElement>('[data-safe-popup]');
+        if (popup && !popup.open) popup.showModal();
+        return;
+      }
       const photos = imgs.map((im) => ({ src: im.currentSrc || im.src, alt: im.alt || '' }));
       if (!photos.length) return;
       // The tapped image (hero / strip cell / grid cell) is the FLIP source;
@@ -347,6 +393,20 @@ const { id = 'lightbox' } = Astro.props;
       );
     });
   }
+  function initSafePopup() {
+    const popup = document.querySelector<HTMLDialogElement>('[data-safe-popup]');
+    if (!popup || popup.dataset.init) return;
+    popup.dataset.init = '1';
+    popup.addEventListener('click', (e) => {
+      // Buttons close it (the turn-off button ALSO carries data-safe-off, which
+      // the Layout safe-mode handler acts on); a backdrop click closes too.
+      if (e.target === popup || (e.target as HTMLElement).closest?.('[data-safe-popup-close]')) popup.close();
+    });
+  }
   initLightbox();
-  document.addEventListener('astro:page-load', initLightbox);
+  initSafePopup();
+  document.addEventListener('astro:page-load', () => {
+    initLightbox();
+    initSafePopup();
+  });
 </script>

@@ -381,9 +381,9 @@ export const server = {
       input: z.object({
         profileSlug: z.string().max(120),
         locale: z.enum(LOCALES),
-        service: z.enum(ALL_SERVICES as unknown as [string, ...string[]]),
-        duration: z.enum(RATE_DURATIONS),
-        priceAtRequest: z.number().int().nonnegative(),
+        service: z.enum(ALL_SERVICES as unknown as [string, ...string[]]).optional(),
+        duration: z.enum(RATE_DURATIONS).optional(),
+        priceAtRequest: z.number().int().nonnegative().optional(),
         when: z.enum(REQUEST_WHEN),
         slot: z.string().max(40).optional(),
         note: z.string().max(140).optional(),
