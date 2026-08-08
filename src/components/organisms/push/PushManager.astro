@@ -83,7 +83,9 @@ const appId = import.meta.env.PUBLIC_ONESIGNAL_APP_ID;
       // Soft-ask: supported, undecided, not subscribed, not snoozed.
       const ask = document.querySelector<HTMLElement>('[data-push-ask]');
       if (ask) {
-        ask.hidden = !(
+        // HIDDEN 2026-08-09: soft-ask card disabled for now (push delivery still
+        // flaky) — card + logic kept intact. Re-enable by removing `true ||`.
+        ask.hidden = true || !(
           supported &&
           Notification.permission === 'default' &&
           OneSignal.User.PushSubscription.optedIn !== true &&

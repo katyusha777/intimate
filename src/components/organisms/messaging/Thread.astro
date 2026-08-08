@@ -118,7 +118,9 @@ const utcTime = (iso: string): string =>
     }
 
     {
-      canCall && (
+      /* HIDDEN 2026-08-09: calling doesn't work well yet — feature kept intact,
+         entry buttons hidden on purpose. Re-enable by removing `false &&`. */
+      false && canCall && (
         <>
           {/* The two most important buttons on this surface (VIDEO-CALLING.md §0):
               she calls the client who paid her — two taps, zero menus. */}

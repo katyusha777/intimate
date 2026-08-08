@@ -1,5 +1,5 @@
 /**
- * Retention-purge cron worker (staging) — NOT the app worker.
+ * Retention-purge cron worker — NOT the app worker.
  *
  * A daily Cron Trigger fires this worker, which POSTs the main Astro worker's
  * bearer-gated /api/purge endpoint through a Service Binding (`SITE`) — an
@@ -14,22 +14,22 @@
  */
 
 interface Env {
-  // Service binding to the main staging worker (intimate-staging).
+  // Service binding to the main app worker of the same tier (wrangler.jsonc).
   SITE: { fetch(input: string | Request, init?: RequestInit): Promise<Response> };
   // Shared secret the /api/purge endpoint checks (same value on both workers).
   PURGE_SECRET: string;
+  // Per-tier site origin (wrangler.jsonc vars).
+  ORIGIN: string;
 }
 
-const ORIGIN = 'https://staging.intimate.nl';
-
 async function run(env: Env): Promise<string> {
-  const res = await env.SITE.fetch(`${ORIGIN}/api/purge`, {
+  const res = await env.SITE.fetch(`${env.ORIGIN}/api/purge`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${env.PURGE_SECRET}`,
       // Astro's CSRF guard rejects state-changing requests whose Origin doesn't
       // match the host — a service-binding fetch sends none, so set it.
-      Origin: ORIGIN,
+      Origin: env.ORIGIN,
     },
   });
   const body = await res.text();

@@ -90,6 +90,10 @@ export const onRequest = defineMiddleware(async (context, next) => {
   if (context.url.protocol === 'http:' && !['localhost', '127.0.0.1'].includes(context.url.hostname)) {
     return context.redirect(context.url.href.replace(/^http:/, 'https:'), 301);
   }
+  // One canonical host: www → apex (SEO.md §2 — no duplicate-content hosts).
+  if (context.url.hostname === 'www.intimate.nl') {
+    return context.redirect(context.url.href.replace('//www.', '//'), 301);
+  }
   const res = await handle(context, next);
   try {
     for (const [k, v] of Object.entries(SECURITY_HEADERS)) res.headers.set(k, v);

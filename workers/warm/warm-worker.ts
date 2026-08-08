@@ -1,5 +1,5 @@
 /**
- * Cache-warm cron worker (staging).
+ * Cache-warm cron worker.
  *
  * Replaces the GitHub Actions warm schedule (its every-6h "success" mail was
  * noise). Runs entirely on Cloudflare: a Cron Trigger fires this worker, which
@@ -19,24 +19,25 @@
  */
 
 interface Env {
-  // Service binding to the main staging worker (intimate-staging).
+  // Service binding to the main app worker of the same tier (wrangler.jsonc).
   SITE: { fetch(input: string | Request, init?: RequestInit): Promise<Response> };
+  // Per-tier site origin (wrangler.jsonc vars).
+  ORIGIN: string;
 }
 
-const ORIGIN = 'https://staging.intimate.nl';
 const LOCALES = ['nl', 'en', 'de'] as const;
 const CONCURRENCY = 8;
 
 // Homepages cache with a short TTL (page-cache HOME_TTL_S — live "online now"
 // count), so they get their own frequent cron; X-Warm forces a re-store there.
-const HOME_URLS = LOCALES.map((l) => `${ORIGIN}/${l}`);
+const homeUrls = (env: Env) => LOCALES.map((l) => `${env.ORIGIN}/${l}`);
 const HOME_CRON = '*/4 * * * *';
 
 /** Pull every live profile URL from the public per-locale sitemaps. */
 async function profileUrls(env: Env): Promise<string[]> {
   const urls = new Set<string>();
   for (const locale of LOCALES) {
-    const res = await env.SITE.fetch(`${ORIGIN}/sitemap-listings-${locale}.xml`);
+    const res = await env.SITE.fetch(`${env.ORIGIN}/sitemap-listings-${locale}.xml`);
     if (!res.ok) continue;
     const xml = await res.text();
     for (const m of xml.matchAll(/<loc>\s*([^<\s]+\/profile\/[^<\s]+)\s*<\/loc>/g)) {
@@ -75,13 +76,13 @@ async function warm(env: Env, urls: string[]): Promise<WarmResult> {
 export default {
   async scheduled(event: { cron?: string }, env: Env): Promise<void> {
     const homesOnly = event.cron === HOME_CRON;
-    const urls = homesOnly ? HOME_URLS : [...HOME_URLS, ...(await profileUrls(env))];
+    const urls = homesOnly ? homeUrls(env) : [...homeUrls(env), ...(await profileUrls(env))];
     const r = await warm(env, urls);
     if (!homesOnly) console.log(`[warm] ${r.ok}/${r.total} pages warmed (miss ${r.miss}, hit ${r.hit})`);
   },
 
   async fetch(_req: Request, env: Env): Promise<Response> {
-    const r = await warm(env, [...HOME_URLS, ...(await profileUrls(env))]);
+    const r = await warm(env, [...homeUrls(env), ...(await profileUrls(env))]);
     return new Response(
       `warmed ${r.ok}/${r.total} profiles — freshly cached (MISS): ${r.miss}, already warm (HIT): ${r.hit}\n`,
       { headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' } },
