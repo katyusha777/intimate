@@ -67,7 +67,9 @@ const SECURITY_HEADERS: Record<string, string> = {
     "default-src 'self'",
     // Turnstile + (future) PostHog + Plausible + OneSignal (push SDK, signed-in
     // pages only); Astro's hydration/theme scripts are inline.
-    "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com https://eu-assets.i.posthog.com https://plausible.io https://cdn.onesignal.com",
+    // api.onesignal.com in script-src: the SDK loads its app config via JSONP
+    // (a <script> to /sync/<appId>/web) — connect-src alone times init out.
+    "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com https://eu-assets.i.posthog.com https://plausible.io https://cdn.onesignal.com https://api.onesignal.com",
     "style-src 'self' 'unsafe-inline'",
     // Own photos ride /media; seed/demo imagery is external https for now.
     "img-src 'self' data: blob: https:",
