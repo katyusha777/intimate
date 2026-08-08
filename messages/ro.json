@@ -930,5 +930,17 @@
   "settings_pw_wrong": "Parola ta actuală e greșită.",
   "settings_saved": "Salvat.",
   "msg_system_invite_joined": "S-a alăturat prin linkul tău de invitație",
-  "invite_signup": "Înregistrează-te ca să vă conectați"
+  "invite_signup": "Înregistrează-te ca să vă conectați",
+  "push_settings_title": "Notificări",
+  "push_master": "Notificări push",
+  "push_master_desc": "Primește notificări pe acest dispozitiv, chiar și cu site-ul închis.",
+  "push_denied": "Notificările sunt blocate în setările browserului.",
+  "push_cat_requests": "Cereri noi",
+  "push_cat_requests_desc": "Când un client îți trimite o cerere.",
+  "push_cat_messages": "Mesaje",
+  "push_cat_messages_desc": "Mesaje noi și răspunsuri.",
+  "push_new_request_title": "Cerere nouă",
+  "push_new_request_body": "Ai primit o cerere nouă.",
+  "push_new_message_title": "Mesaj nou",
+  "push_new_message_body": "Ai un mesaj nou."
 }

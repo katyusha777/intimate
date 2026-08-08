@@ -65,14 +65,15 @@ const SECURITY_HEADERS: Record<string, string> = {
   'Permissions-Policy': 'camera=(self), microphone=(self), geolocation=(), payment=(), usb=()',
   'Content-Security-Policy': [
     "default-src 'self'",
-    // Turnstile + (future) PostHog + Plausible; Astro's hydration/theme scripts are inline.
-    "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com https://eu-assets.i.posthog.com https://plausible.io",
+    // Turnstile + (future) PostHog + Plausible + OneSignal (push SDK, signed-in
+    // pages only); Astro's hydration/theme scripts are inline.
+    "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com https://eu-assets.i.posthog.com https://plausible.io https://cdn.onesignal.com",
     "style-src 'self' 'unsafe-inline'",
     // Own photos ride /media; seed/demo imagery is external https for now.
     "img-src 'self' data: blob: https:",
     "media-src 'self' blob:",
     "font-src 'self'",
-    "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://challenges.cloudflare.com https://eu.i.posthog.com https://plausible.io",
+    "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://challenges.cloudflare.com https://eu.i.posthog.com https://plausible.io https://api.onesignal.com https://cdn.onesignal.com",
     'frame-src https://challenges.cloudflare.com',
     "frame-ancestors 'self'",
     "base-uri 'self'",
@@ -110,7 +111,7 @@ const handle = (context: APIContext, next: MiddlewareNext) =>
   const legacy = LEGACY_ARTICLES[context.url.pathname.replace(/^\/|\/$/g, '')];
   if (legacy) return context.redirect(`/nl/blog/${legacy}/`, 301);
   // /admin is locale-less — send /{locale}/admin/* to the real thing.
-  const adminPrefixed = context.url.pathname.match(/^\/(?:nl|en|de)(\/admin(?:\/.*)?)$/);
+  const adminPrefixed = context.url.pathname.match(/^\/(?:nl|en|de|ro|it)(\/admin(?:\/.*)?)$/);
   if (adminPrefixed) return context.redirect(adminPrefixed[1]!, 302);
   if (BYPASS.some((p) => context.url.pathname.startsWith(p))) {
     // Admin renders localized strings (cookie strategy) — needs the wrapper.

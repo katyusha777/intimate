@@ -1,0 +1,104 @@
+---
+/**
+ * OneSignal push glue — mounted by Layout for SIGNED-IN sessions only (like
+ * CallDock), so public pages ship zero push JS. Owns ALL client-side OneSignal
+ * work in one place:
+ *   · SDK bootstrap against the EXISTING /sw.js (which importScripts the
+ *     OneSignal SW — one worker, one scope, no fight with the app shell)
+ *   · login(accountId) + the `account` tag that lib/push.ts targets
+ *   · the settings controls ([data-push-master]/[data-push-pref]) via
+ *     delegation — settings.astro stays markup-only
+ * Prompt law: the browser permission prompt fires ONLY from the master toggle
+ * (an explicit user gesture), never on page load.
+ * Prefs = OneSignal tags (`pref_<cat>` = off) — see lib/push.ts targeting.
+ */
+interface Props {
+  accountId: string;
+}
+const { accountId } = Astro.props;
+const appId = import.meta.env.PUBLIC_ONESIGNAL_APP_ID;
+---
+
+{appId && <div data-push-manager data-app-id={appId} data-account-id={accountId} hidden></div>}
+
+<script>
+  type OS = any;
+
+  function initPushManager() {
+    const el = document.querySelector<HTMLElement>('[data-push-manager]');
+    if (!el) return;
+    const w = window as any;
+    w.OneSignalDeferred = w.OneSignalDeferred || [];
+
+    // Sync the settings-page controls (if present) with live SDK state.
+    const reflect = async (OneSignal: OS) => {
+      const section = document.querySelector<HTMLElement>('[data-push-section]');
+      if (!section) return;
+      const supported = OneSignal.Notifications.isPushSupported();
+      section.hidden = !supported;
+      if (!supported) return;
+      const master = section.querySelector<HTMLInputElement>('[data-push-master]');
+      if (master) master.checked = OneSignal.User.PushSubscription.optedIn === true;
+      const denied = section.querySelector<HTMLElement>('[data-push-denied]');
+      if (denied) denied.hidden = Notification.permission !== 'denied';
+      try {
+        const tags = (await OneSignal.User.getTags()) ?? {};
+        section.querySelectorAll<HTMLInputElement>('[data-push-pref]').forEach((i) => {
+          i.checked = tags[`pref_${i.dataset.pushPref}`] !== 'off';
+        });
+      } catch {
+        /* tags unavailable pre-subscription — leave defaults (on) */
+      }
+    };
+
+    if (!w.__pushInit) {
+      w.__pushInit = true;
+      const s = document.createElement('script');
+      s.src = 'https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js';
+      s.defer = true;
+      document.head.appendChild(s);
+
+      w.OneSignalDeferred.push(async (OneSignal: OS) => {
+        await OneSignal.init({
+          appId: el.dataset.appId,
+          // Piggyback on the app-shell worker — it importScripts the OneSignal SW.
+          serviceWorkerPath: 'sw.js',
+          serviceWorkerParam: { scope: '/' },
+        });
+        await OneSignal.login(el.dataset.accountId);
+        // The send-side filter key (lib/push.ts): account == <id>.
+        OneSignal.User.addTag('account', el.dataset.accountId!);
+        OneSignal.User.PushSubscription.addEventListener('change', () => reflect(OneSignal));
+        reflect(OneSignal);
+      });
+
+      // Settings controls, delegated (they live on a different page).
+      document.addEventListener('change', (e) => {
+        const t = e.target as HTMLInputElement;
+        if (t.matches?.('[data-push-master]')) {
+          w.OneSignalDeferred.push(async (OneSignal: OS) => {
+            if (t.checked) {
+              await OneSignal.Notifications.requestPermission();
+              if (Notification.permission === 'granted') {
+                await OneSignal.User.PushSubscription.optIn();
+              }
+            } else {
+              await OneSignal.User.PushSubscription.optOut();
+            }
+            reflect(OneSignal);
+          });
+        } else if (t.matches?.('[data-push-pref]')) {
+          w.OneSignalDeferred.push((OneSignal: OS) => {
+            OneSignal.User.addTag(`pref_${t.dataset.pushPref}`, t.checked ? 'on' : 'off');
+          });
+        }
+      });
+    }
+
+    // View transitions land on the settings page after init — re-sync controls.
+    w.OneSignalDeferred.push((OneSignal: OS) => reflect(OneSignal));
+  }
+
+  initPushManager();
+  document.addEventListener('astro:page-load', initPushManager);
+</script>

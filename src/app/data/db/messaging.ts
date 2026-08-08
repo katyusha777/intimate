@@ -23,6 +23,7 @@ import {
   profiles,
   threads,
 } from '@/db/schema';
+import { sendPush } from '@/lib/push';
 import {
   ConversationSettingsSchema,
   RequestPayloadSchema,
@@ -189,14 +190,27 @@ function toSummary(t: Thread, party: Party): ThreadSummary {
 // ── helpers ─────────────────────────────────────────────────────────────────
 
 /** A live profile's id from a slug — you message from a live page. */
-async function liveProfileId(d: Db, slug: string): Promise<{ id: string; rates: RateRow[] } | undefined> {
+async function liveProfileId(
+  d: Db,
+  slug: string,
+): Promise<{ id: string; accountId: string; rates: RateRow[] } | undefined> {
   return (
     await d
-      .select({ id: profiles.id, rates: profiles.rates })
+      .select({ id: profiles.id, accountId: profiles.accountId, rates: profiles.rates })
       .from(profiles)
       .where(and(eq(profiles.slug, slug), eq(profiles.state, 'live')))
       .limit(1)
   )[0];
+}
+
+/** Push recipients (the Thread model carries emails, not account ids). */
+async function profileOwnerAccount(d: Db, profileId: string): Promise<string | undefined> {
+  const [p] = await d.select({ accountId: profiles.accountId }).from(profiles).where(eq(profiles.id, profileId)).limit(1);
+  return p?.accountId;
+}
+async function threadClientAccount(d: Db, threadId: string): Promise<string | undefined> {
+  const [t] = await d.select({ clientAccountId: threads.clientAccountId }).from(threads).where(eq(threads.id, threadId)).limit(1);
+  return t?.clientAccountId;
 }
 
 /** Is this client account phone-verified? (gates 'verified_only' inbox mode.) */
@@ -391,6 +405,7 @@ export function makeMessagingApi(db: () => Db): MessagingApi {
       kind: 'request',
       request: requestData,
     });
+    sendPush({ accountId: profile.accountId, category: 'requests', path: `/messages/${thread.id}/` });
     return (await loadThreads(d, eq(threads.id, thread.id)))[0]!;
   },
 
@@ -405,6 +420,8 @@ export function makeMessagingApi(db: () => Db): MessagingApi {
       // Accept unlocks her private set for THIS client (UX-PLAN 4.4) + system card.
       await d.update(contacts).set({ privateSetUnlocked: true }).where(eq(contacts.threadId, threadId));
       await d.insert(messages).values({ threadId, sender: 'system', kind: 'system', body: 'msg_system_request_accepted' });
+      const clientAccount = await threadClientAccount(d, threadId);
+      if (clientAccount) sendPush({ accountId: clientAccount, category: 'messages', path: `/messages/${threadId}/`, collapseId: threadId });
     } else {
       // Decline closes SILENTLY (frozen, invisible in listThreads); the optional
       // quick reply is the ONLY thing the client sees.
@@ -443,6 +460,9 @@ export function makeMessagingApi(db: () => Db): MessagingApi {
         imageKey: kind === 'photo' ? photo : null,
       })
       .returning();
+    // Notify the OTHER side; collapse per thread so a burst is one banner.
+    const to = party === 'client' ? await profileOwnerAccount(d, t.profileId) : await threadClientAccount(d, threadId);
+    if (row && to) sendPush({ accountId: to, category: 'messages', path: `/messages/${threadId}/`, collapseId: threadId });
     return row ? toMessage(row) : null;
   },
 

@@ -32,6 +32,8 @@ const LANGS: Record<(typeof LOCALES)[number], string> = {
   nl: 'Nederlands',
   en: 'English',
   de: 'Deutsch',
+  ro: 'Română',
+  it: 'Italiano',
 };
 const heading = 'font-condensed text-sm font-bold uppercase tracking-wide text-muted-foreground';
 ---
@@ -141,6 +143,47 @@ const heading = 'font-condensed text-sm font-bold uppercase tracking-wide text-m
               </div>
             </section>
           )}
+
+          {/* Push notifications (both roles) — hidden until PushManager confirms
+              support; all behavior lives in organisms/push/PushManager.astro. */}
+          <section class="py-5" data-push-section hidden>
+            <h2 class={heading}>{m.push_settings_title()}</h2>
+            <div class="mt-4 space-y-4">
+              <div class="flex items-center justify-between gap-4">
+                <span class="flex flex-col">
+                  <span class="text-sm font-medium">{m.push_master()}</span>
+                  <span class="text-xs text-muted-foreground">{m.push_master_desc()}</span>
+                </span>
+                <label class="flex cursor-pointer items-center">
+                  <input type="checkbox" data-push-master class="sr-only" />
+                  <span class="switch-track" aria-hidden="true" />
+                </label>
+              </div>
+              <p data-push-denied hidden class="text-sm font-medium text-brand">{m.push_denied()}</p>
+              {isAdvertiser && (
+                <div class="flex items-center justify-between gap-4">
+                  <span class="flex flex-col">
+                    <span class="text-sm font-medium">{m.push_cat_requests()}</span>
+                    <span class="text-xs text-muted-foreground">{m.push_cat_requests_desc()}</span>
+                  </span>
+                  <label class="flex cursor-pointer items-center">
+                    <input type="checkbox" data-push-pref="requests" checked class="sr-only" />
+                    <span class="switch-track" aria-hidden="true" />
+                  </label>
+                </div>
+              )}
+              <div class="flex items-center justify-between gap-4">
+                <span class="flex flex-col">
+                  <span class="text-sm font-medium">{m.push_cat_messages()}</span>
+                  <span class="text-xs text-muted-foreground">{m.push_cat_messages_desc()}</span>
+                </span>
+                <label class="flex cursor-pointer items-center">
+                  <input type="checkbox" data-push-pref="messages" checked class="sr-only" />
+                  <span class="switch-track" aria-hidden="true" />
+                </label>
+              </div>
+            </div>
+          </section>
 
           {session.role === 'advertiser' && (
             <section class="py-5">

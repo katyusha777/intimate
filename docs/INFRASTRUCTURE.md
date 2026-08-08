@@ -82,6 +82,15 @@ deploys keep failing/targeting the old one).
   ffmpeg (`-an`, h264 crf 24 / vp9 crf 36) from a source file on the desktop.
 - **Fulldev UI** — `@fulldev` registry configured in `components.json`; served
   through the shadcn CLI/MCP into `src/components/ui/` (vendor; wrap in atoms).
+- **OneSignal (web push)** — app id `33308041-…` is public (wrangler vars +
+  `.env` `PUBLIC_ONESIGNAL_APP_ID`); REST key = Worker secret
+  `ONESIGNAL_API_KEY` (set on prod + staging 2026-08-08). Send seam
+  `src/lib/push.ts`; deep links use per-env `PUBLIC_SITE_ORIGIN`. **Owner
+  step:** OneSignal dashboard → Settings → Web → Site URL must match the
+  serving origin — set `https://staging.intimate.nl` for the test phase, flip
+  to `https://intimate.nl` at launch (single origin per app; make a second app
+  for staging then). US processor: payloads are content-free by design
+  (MESSAGING §8).
 
 ## 5. Local dev quirks
 

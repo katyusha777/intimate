@@ -43,7 +43,12 @@
     "PUBLIC_SUPABASE_KEY": "sb_publishable_jzpgxggUIg8-uodVAaT1SA_KZxO34fe",
     // Turnstile site key is public (rendered into the register widget). The
     // secret is a Worker secret (TURNSTILE_SECRET_KEY), never here.
-    "PUBLIC_TURNSTILE_SITE_KEY": "0x4AAAAAAEJIcyxD4PkRnlyn"
+    "PUBLIC_TURNSTILE_SITE_KEY": "0x4AAAAAAEJIcyxD4PkRnlyn",
+    // OneSignal app id is public (baked into the SDK init); the REST key is a
+    // Worker secret (ONESIGNAL_API_KEY), never here.
+    "PUBLIC_ONESIGNAL_APP_ID": "33308041-5873-497c-8a28-d20f2d29181d",
+    // Absolute origin for outbound links (push deep links) — per-env.
+    "PUBLIC_SITE_ORIGIN": "https://intimate.nl"
   },
   "env": {
     "staging": {
@@ -64,7 +69,9 @@
       "vars": {
         "PUBLIC_SUPABASE_URL": "https://jqrfzqbuvekhcptqcpda.supabase.co",
         "PUBLIC_SUPABASE_KEY": "sb_publishable_jzpgxggUIg8-uodVAaT1SA_KZxO34fe",
-        "PUBLIC_TURNSTILE_SITE_KEY": "0x4AAAAAAEJIcyxD4PkRnlyn"
+        "PUBLIC_TURNSTILE_SITE_KEY": "0x4AAAAAAEJIcyxD4PkRnlyn",
+        "PUBLIC_ONESIGNAL_APP_ID": "33308041-5873-497c-8a28-d20f2d29181d",
+        "PUBLIC_SITE_ORIGIN": "https://staging.intimate.nl"
       }
     }
   }

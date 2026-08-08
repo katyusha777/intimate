@@ -1,5 +1,9 @@
 // App-shell service worker: cache-first for hashed/static assets only.
 // SSR pages stay network-served (edge cache does the heavy lifting).
+// OneSignal push rides THIS worker (one worker, one scope) — the import wires
+// its push/notificationclick handlers; PushManager.astro points the SDK here.
+importScripts('https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js');
+
 const STATIC_CACHE = 'static-v2';
 
 self.addEventListener('install', () => self.skipWaiting());

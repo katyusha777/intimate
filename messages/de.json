@@ -930,5 +930,17 @@
   "settings_pw_wrong": "Dein aktuelles Passwort ist falsch.",
   "settings_saved": "Gespeichert.",
   "msg_system_invite_joined": "Über deinen Einladungslink beigetreten",
-  "invite_signup": "Registrieren zum Verbinden"
+  "invite_signup": "Registrieren zum Verbinden",
+  "push_settings_title": "Benachrichtigungen",
+  "push_master": "Push-Benachrichtigungen",
+  "push_master_desc": "Erhalte Benachrichtigungen auf diesem Gerät, auch bei geschlossener Seite.",
+  "push_denied": "Benachrichtigungen sind in deinen Browsereinstellungen blockiert.",
+  "push_cat_requests": "Neue Anfragen",
+  "push_cat_requests_desc": "Wenn ein Kunde dir eine Anfrage sendet.",
+  "push_cat_messages": "Nachrichten",
+  "push_cat_messages_desc": "Neue Nachrichten und Antworten.",
+  "push_new_request_title": "Neue Anfrage",
+  "push_new_request_body": "Du hast eine neue Anfrage erhalten.",
+  "push_new_message_title": "Neue Nachricht",
+  "push_new_message_body": "Du hast eine neue Nachricht."
 }

@@ -317,9 +317,14 @@ Blocking from any surface lands here.
   message" — no content, just the fact + a deep link; throttled (≤1 per thread
   per hour). The reliable channel until push exists. (Needs the email provider
   from `INFRASTRUCTURE.md` §7 — adult-policy check first.)
-- **Web push (when the push feature ships):** a new message is the flagship push
-  for professionals; the dashboard `InstallCoach` copy already sells exactly
-  this.
+- **Web push (SHIPPED 2026-08-08, OneSignal):** signed-in only (SDK mounted by
+  `organisms/push/PushManager.astro`, piggybacked on `/sw.js`). Send seam =
+  `src/lib/push.ts` (the only provider-touching file; content-free localized
+  payloads, `waitUntil` fire-and-forget). Triggers in `db/messaging.ts`: new
+  request → professional (`requests`), accept + every chat message → the other
+  party (`messages`, collapsed per thread). Prefs = OneSignal tags
+  (`account`, `pref_<cat>`), toggles in account settings; prompt only from the
+  master toggle. iOS = installed PWA only. Owner steps: INFRASTRUCTURE §7.
 
 ---
 

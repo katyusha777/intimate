@@ -16,6 +16,7 @@ import ProfileSheet from '@/components/organisms/profile/ProfileSheet.astro';
 import Lightbox from '@/components/molecules/Lightbox.astro';
 import FavoritesController from '@/components/molecules/FavoritesController.astro';
 import CallDock from '@/components/organisms/call/CallDock.astro';
+import PushManager from '@/components/organisms/push/PushManager.astro';
 import '@fontsource/barlow/400.css';
 import '@fontsource/barlow/500.css';
 import '@fontsource/barlow/600.css';
@@ -267,6 +268,8 @@ const unread =
         Mounted globally so a ring reaches the client on ANY page; anonymous
         pages never ship its script (zero-JS budget untouched). */}
     {session && <CallDock {session} />}
+    {/* Push glue (OneSignal) — same signed-in-only rule as CallDock. */}
+    {session && <PushManager accountId={session.accountId} />}
 
     <script is:inline data-neutral-title={m.safe_neutral_title()}>
       // Safe mode (DESIGN.md §6, Phase 5): THREE-valued.

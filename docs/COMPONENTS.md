@@ -97,6 +97,7 @@ Folders appear when their first organism lands:
 | `admin/` | ✓ AdminShell, QueueList, DocViewer — ModerationQueue, ReportQueue, AuditLogTable (ADMIN.md §2) |
 | `contacts/` | — ContactDetail (MESSAGING.md) |
 | `call/` | ✓ CallDock (the one global call surface mounted in Layout for signed-in users: account-channel subscription → live unread dots + the client's incoming-call ring + the full-screen call screen for both parties; vanilla script over WebRTC P2P per VIDEO-CALLING.md) |
+| `push/` | ✓ PushManager (invisible OneSignal glue mounted in Layout for signed-in users: SDK bootstrap on /sw.js + account login/tag + the delegated settings toggles; MESSAGING.md §8) |
 | `marketing/` | — Hero, CTABanner, CityTicker, ArticleRail |
 | realtime (molecules) | — OnlineBadge, LiveCounter, NewProfilesToast |
 | feedback (molecules) | — Toast, EmptyState, ConfirmDialog, Pagination |

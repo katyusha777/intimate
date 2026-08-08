@@ -930,5 +930,17 @@
   "settings_pw_wrong": "Your current password is incorrect.",
   "settings_saved": "Saved.",
   "msg_system_invite_joined": "Joined via your invite link",
-  "invite_signup": "Sign up to connect"
+  "invite_signup": "Sign up to connect",
+  "push_settings_title": "Notifications",
+  "push_master": "Push notifications",
+  "push_master_desc": "Get notified on this device, even with the site closed.",
+  "push_denied": "Notifications are blocked in your browser settings.",
+  "push_cat_requests": "New requests",
+  "push_cat_requests_desc": "When a client sends you a request.",
+  "push_cat_messages": "Messages",
+  "push_cat_messages_desc": "New messages and replies.",
+  "push_new_request_title": "New request",
+  "push_new_request_body": "You received a new request.",
+  "push_new_message_title": "New message",
+  "push_new_message_body": "You have a new message."
 }

@@ -930,5 +930,17 @@
   "settings_pw_wrong": "La tua password attuale non è corretta.",
   "settings_saved": "Salvato.",
   "msg_system_invite_joined": "Si è unito tramite il tuo link di invito",
-  "invite_signup": "Registrati per connetterti"
+  "invite_signup": "Registrati per connetterti",
+  "push_settings_title": "Notifiche",
+  "push_master": "Notifiche push",
+  "push_master_desc": "Ricevi notifiche su questo dispositivo, anche a sito chiuso.",
+  "push_denied": "Le notifiche sono bloccate nelle impostazioni del browser.",
+  "push_cat_requests": "Nuove richieste",
+  "push_cat_requests_desc": "Quando un cliente ti invia una richiesta.",
+  "push_cat_messages": "Messaggi",
+  "push_cat_messages_desc": "Nuovi messaggi e risposte.",
+  "push_new_request_title": "Nuova richiesta",
+  "push_new_request_body": "Hai ricevuto una nuova richiesta.",
+  "push_new_message_title": "Nuovo messaggio",
+  "push_new_message_body": "Hai un nuovo messaggio."
 }

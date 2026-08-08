@@ -930,5 +930,17 @@
   "settings_pw_wrong": "Je huidige wachtwoord is onjuist.",
   "settings_saved": "Opgeslagen.",
   "msg_system_invite_joined": "Aangemeld via je uitnodigingslink",
-  "invite_signup": "Meld je aan om te verbinden"
+  "invite_signup": "Meld je aan om te verbinden",
+  "push_settings_title": "Meldingen",
+  "push_master": "Pushmeldingen",
+  "push_master_desc": "Ontvang meldingen op dit apparaat, ook als de site dicht is.",
+  "push_denied": "Meldingen zijn geblokkeerd in je browserinstellingen.",
+  "push_cat_requests": "Nieuwe verzoeken",
+  "push_cat_requests_desc": "Wanneer een klant je een verzoek stuurt.",
+  "push_cat_messages": "Berichten",
+  "push_cat_messages_desc": "Nieuwe berichten en reacties.",
+  "push_new_request_title": "Nieuw verzoek",
+  "push_new_request_body": "Je hebt een nieuw verzoek ontvangen.",
+  "push_new_message_title": "Nieuw bericht",
+  "push_new_message_body": "Je hebt een nieuw bericht."
 }
