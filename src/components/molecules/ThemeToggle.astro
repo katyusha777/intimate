@@ -37,7 +37,10 @@ import * as m from '@/paraglide/messages';
   .theme-switch .thumb {
     transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
   }
-  .dark .theme-switch .thumb {
+  /* html.dark, NOT .dark: the footer is force-scoped `dark` (always dark
+     surface), so a bare .dark ancestor selector would pin the footer toggle
+     to the moon state forever. The switch reflects the GLOBAL theme. */
+  html.dark .theme-switch .thumb {
     transform: translateX(1.5rem);
   }
   .theme-switch .track-icon {
@@ -51,13 +54,13 @@ import * as m from '@/paraglide/messages';
   /* The thumb shows the ACTIVE mode's icon — sun spins out, moon spins in. */
   .theme-switch .sun { opacity: 1; transform: rotate(0deg); }
   .theme-switch .moon { opacity: 0; transform: rotate(-90deg); }
-  .dark .theme-switch .sun { opacity: 0; transform: rotate(90deg); }
-  .dark .theme-switch .moon { opacity: 1; transform: rotate(0deg); }
+  html.dark .theme-switch .sun { opacity: 0; transform: rotate(90deg); }
+  html.dark .theme-switch .moon { opacity: 1; transform: rotate(0deg); }
   /* A wink of the anaglyph on press — motion-only accent (DESIGN §1.1). */
   .theme-switch:active .thumb {
     transform: scale(0.9);
   }
-  .dark .theme-switch:active .thumb {
+  html.dark .theme-switch:active .thumb {
     transform: translateX(1.5rem) scale(0.9);
   }
   @media (prefers-reduced-motion: reduce) {
