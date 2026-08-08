@@ -14,6 +14,7 @@ import { profilesApi } from '@/app/api/profiles';
 import { sessionApi } from '@/app/api/session';
 import { accountApi } from '@/app/api/account';
 import { onboardingProgress } from '@/lib/onboarding';
+import { phantomOnlineBase } from '@/lib/online-base';
 
 const locale = Astro.params.locale;
 if (!isLocale(locale)) return new Response(null, { status: 404 });
@@ -37,7 +38,7 @@ const jsonLd = [websiteJsonLd(Astro.url.origin, locale), organizationJsonLd(Astr
  * own canonical URL (/{locale}/{city}/); the saved preference surfaces only as
  * the labelled "back to your city" chip below, so coming Home always feels
  * like leaving the city. */
-const [{ items: online, total: onlineCount }, { items: fresh }, { items: featured }, articles] =
+const [{ items: online, total: onlineReal }, { items: fresh }, { items: featured }, articles] =
   await Promise.all([
     // Default shelf (1.4): ONLINE NOW — online-first, the every-visit question.
     profilesApi.list({ onlineOnly: true, sort: 'recently_online', limit: 18 }),
@@ -47,6 +48,9 @@ const [{ items: online, total: onlineCount }, { items: fresh }, { items: feature
     profilesApi.list({ featuredOnly: true, limit: 8 }),
     articlesForLocale(locale),
   ]);
+
+// Live national count = phantom base (~72+, drifts) + real online profiles.
+const onlineCount = phantomOnlineBase() + onlineReal;
 
 const rail = featured.slice(0, 8);
 // First rail card = the mobile LCP; key mirrors PhotoCarousel's `${keyBase}-0`.

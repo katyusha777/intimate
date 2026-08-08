@@ -18,9 +18,11 @@ interface Props {
 }
 const { photos, keyBase, alt, class: className } = Astro.props;
 const n = photos.length;
-/* 1–3 photos: equal columns filling the container width (no ragged right
-   edge). 4+: the 3:4 snap strip, side-scrollable. */
+/* 1–3 photos: a fixed 3-column grid — a lone portrait stretched full-width read
+   awful, so empty slots become skeleton-toned filler cells (never a wide crop).
+   4+: the 3:4 snap strip, side-scrollable. */
 const fills = n <= 3;
+const placeholders = fills ? 3 - n : 0;
 ---
 
 <div class:list={['relative', className]}>
@@ -28,7 +30,7 @@ const fills = n <= 3;
     class:list={[
       'h-[26rem] gap-2 rounded-xl lg:h-[30rem]',
       fills
-        ? ['grid', n === 1 ? 'grid-cols-1' : n === 2 ? 'grid-cols-2' : 'grid-cols-3']
+        ? 'grid grid-cols-3'
         : 'flex snap-x snap-mandatory overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
     ]}
   >
@@ -52,6 +54,11 @@ const fills = n <= 3;
             loading={i === 0 ? 'eager' : 'lazy'}
           />
         </button>
+      ))
+    }
+    {
+      Array.from({ length: placeholders }).map(() => (
+        <div class="h-full w-full rounded-xl bg-foreground/10" aria-hidden="true" />
       ))
     }
   </div>

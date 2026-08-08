@@ -45,9 +45,10 @@ test('category slugs never collide with city slugs (route ambiguity)', async () 
   }
 });
 
-test('locale negotiation: match order, fallback en', () => {
+test('locale negotiation: match order, fallback nl (Dutch market default)', () => {
   expect(negotiateLocale('nl-NL,nl;q=0.9,en;q=0.8')).toBe('nl');
   expect(negotiateLocale('de-DE,de;q=0.9')).toBe('de');
-  expect(negotiateLocale('fr-FR,fr;q=0.9')).toBe('en');
-  expect(negotiateLocale(null)).toBe('en');
+  expect(negotiateLocale('en-US,en;q=0.9')).toBe('en'); // explicit English wins
+  expect(negotiateLocale('fr-FR,fr;q=0.9')).toBe('nl'); // unsupported → nl, not en
+  expect(negotiateLocale(null)).toBe('nl');
 });

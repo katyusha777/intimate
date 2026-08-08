@@ -15,7 +15,8 @@ export function localizePath(path: string, locale: Locale = getLocale() as Local
   return `/${locale}${path.startsWith('/') ? path : `/${path}`}`;
 }
 
-/** Naive Accept-Language negotiation over our three locales; fallback en. */
+/** Accept-Language negotiation; NL is the default (Dutch market), so `/` lands
+ *  on /nl/ unless the browser explicitly prefers another supported locale. */
 export function negotiateLocale(acceptLanguage: string | null, cookie?: string | null): Locale {
   // A remembered pick (language switchers write PARAGLIDE_LOCALE) beats the
   // browser's Accept-Language (items.md #5).
@@ -24,7 +25,7 @@ export function negotiateLocale(acceptLanguage: string | null, cookie?: string |
     const tag = part.trim().slice(0, 2);
     if (isLocale(tag)) return tag;
   }
-  return 'en';
+  return 'nl';
 }
 
 /**
