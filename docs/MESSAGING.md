@@ -323,8 +323,10 @@ Blocking from any surface lands here.
   payloads, `waitUntil` fire-and-forget). Triggers in `db/messaging.ts`: new
   request → professional (`requests`), accept + every chat message → the other
   party (`messages`, collapsed per thread). Prefs = OneSignal tags
-  (`account`, `pref_<cat>`), toggles in account settings; prompt only from the
-  master toggle. iOS = installed PWA only. Owner steps: INFRASTRUCTURE §7.
+  (`account`, `pref_<cat>`), toggles in account settings; the native permission
+  popup fires only from an explicit tap — the settings master toggle or the
+  proactive soft-ask card (shown while permission is undecided, 7-day snooze).
+  iOS = installed PWA only. Owner steps: INFRASTRUCTURE §4.
 
 ---
 
