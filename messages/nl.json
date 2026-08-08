@@ -942,5 +942,9 @@
   "push_new_request_title": "Nieuw verzoek",
   "push_new_request_body": "Je hebt een nieuw verzoek ontvangen.",
   "push_new_message_title": "Nieuw bericht",
-  "push_new_message_body": "Je hebt een nieuw bericht."
+  "push_new_message_body": "Je hebt een nieuw bericht.",
+  "push_ask_title": "Mis niets",
+  "push_ask_body": "Krijg meldingen bij nieuwe verzoeken en berichten — ook als de site dicht is.",
+  "push_ask_cta": "Zet aan",
+  "push_ask_later": "Niet nu"
 }

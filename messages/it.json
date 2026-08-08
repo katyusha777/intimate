@@ -942,5 +942,9 @@
   "push_new_request_title": "Nuova richiesta",
   "push_new_request_body": "Hai ricevuto una nuova richiesta.",
   "push_new_message_title": "Nuovo messaggio",
-  "push_new_message_body": "Hai un nuovo messaggio."
+  "push_new_message_body": "Hai un nuovo messaggio.",
+  "push_ask_title": "Non perderti nulla",
+  "push_ask_body": "Ricevi notifiche per nuove richieste e messaggi — anche a sito chiuso.",
+  "push_ask_cta": "Attiva",
+  "push_ask_later": "Non ora"
 }

@@ -12,6 +12,8 @@
  * (an explicit user gesture), never on page load.
  * Prefs = OneSignal tags (`pref_<cat>` = off) — see lib/push.ts targeting.
  */
+import * as m from '@/paraglide/messages';
+
 interface Props {
   accountId: string;
 }
@@ -20,6 +22,48 @@ const appId = import.meta.env.PUBLIC_ONESIGNAL_APP_ID;
 ---
 
 {appId && <div data-push-manager data-app-id={appId} data-account-id={accountId} hidden></div>}
+
+{/* Soft-ask card: OUR prompt, shown proactively once push is supported and
+    permission is still undecided — the CTA tap (a real user gesture, as iOS
+    requires) fires the native popup. "Not now" snoozes it for 7 days. */}
+{appId && (
+  <div
+    data-push-ask
+    hidden
+    class="push-ask fixed inset-x-4 z-40 mx-auto max-w-sm border border-foreground/20 bg-background p-4 shadow-soft-lg md:inset-x-auto md:right-6"
+  >
+    <p class="text-sm font-semibold">{m.push_ask_title()}</p>
+    <p class="mt-1 text-sm text-muted-foreground">{m.push_ask_body()}</p>
+    <div class="mt-3 flex items-center gap-2.5">
+      <button
+        type="button"
+        data-push-ask-enable
+        class="slab-cut flex-1 cursor-pointer bg-foreground px-4 py-2.5 text-sm font-bold text-background transition-colors hover:bg-brand hover:text-white"
+      >
+        {m.push_ask_cta()}
+      </button>
+      <button
+        type="button"
+        data-push-ask-later
+        class="cursor-pointer px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+      >
+        {m.push_ask_later()}
+      </button>
+    </div>
+  </div>
+)}
+
+<style>
+  /* Above the mobile tab dock; a normal corner card on desktop. */
+  .push-ask {
+    bottom: calc(var(--sab) + 0.875rem + 4.25rem);
+  }
+  @media (min-width: 768px) {
+    .push-ask {
+      bottom: 1.5rem;
+    }
+  }
+</style>
 
 <script>
   type OS = any;
@@ -30,11 +74,24 @@ const appId = import.meta.env.PUBLIC_ONESIGNAL_APP_ID;
     const w = window as any;
     w.OneSignalDeferred = w.OneSignalDeferred || [];
 
-    // Sync the settings-page controls (if present) with live SDK state.
+    const SNOOZE_KEY = 'push_ask_snooze';
+    const snoozed = () => Number(localStorage.getItem(SNOOZE_KEY) || 0) > Date.now();
+
+    // Sync the settings controls + the soft-ask card with live SDK state.
     const reflect = async (OneSignal: OS) => {
+      const supported = OneSignal.Notifications.isPushSupported();
+      // Soft-ask: supported, undecided, not subscribed, not snoozed.
+      const ask = document.querySelector<HTMLElement>('[data-push-ask]');
+      if (ask) {
+        ask.hidden = !(
+          supported &&
+          Notification.permission === 'default' &&
+          OneSignal.User.PushSubscription.optedIn !== true &&
+          !snoozed()
+        );
+      }
       const section = document.querySelector<HTMLElement>('[data-push-section]');
       if (!section) return;
-      const supported = OneSignal.Notifications.isPushSupported();
       section.hidden = !supported;
       if (!supported) return;
       const master = section.querySelector<HTMLInputElement>('[data-push-master]');
@@ -49,6 +106,16 @@ const appId = import.meta.env.PUBLIC_ONESIGNAL_APP_ID;
       } catch {
         /* tags unavailable pre-subscription — leave defaults (on) */
       }
+    };
+
+    // Permission MUST be requested inside the click's gesture window (iOS law) —
+    // native API first, SDK subscription after.
+    const enablePush = async () => {
+      const perm = await Notification.requestPermission();
+      w.OneSignalDeferred.push(async (OneSignal: OS) => {
+        if (perm === 'granted') await OneSignal.User.PushSubscription.optIn();
+        reflect(OneSignal);
+      });
     };
 
     if (!w.__pushInit) {
@@ -76,21 +143,30 @@ const appId = import.meta.env.PUBLIC_ONESIGNAL_APP_ID;
       document.addEventListener('change', (e) => {
         const t = e.target as HTMLInputElement;
         if (t.matches?.('[data-push-master]')) {
-          w.OneSignalDeferred.push(async (OneSignal: OS) => {
-            if (t.checked) {
-              await OneSignal.Notifications.requestPermission();
-              if (Notification.permission === 'granted') {
-                await OneSignal.User.PushSubscription.optIn();
-              }
-            } else {
+          if (t.checked) {
+            enablePush();
+          } else {
+            w.OneSignalDeferred.push(async (OneSignal: OS) => {
               await OneSignal.User.PushSubscription.optOut();
-            }
-            reflect(OneSignal);
-          });
+              reflect(OneSignal);
+            });
+          }
         } else if (t.matches?.('[data-push-pref]')) {
           w.OneSignalDeferred.push((OneSignal: OS) => {
             OneSignal.User.addTag(`pref_${t.dataset.pushPref}`, t.checked ? 'on' : 'off');
           });
+        }
+      });
+
+      // Soft-ask card buttons.
+      document.addEventListener('click', (e) => {
+        const el = e.target as HTMLElement;
+        if (el.closest?.('[data-push-ask-enable]')) {
+          document.querySelector<HTMLElement>('[data-push-ask]')?.setAttribute('hidden', '');
+          enablePush();
+        } else if (el.closest?.('[data-push-ask-later]')) {
+          localStorage.setItem(SNOOZE_KEY, String(Date.now() + 7 * 86400_000));
+          document.querySelector<HTMLElement>('[data-push-ask]')?.setAttribute('hidden', '');
         }
       });
     }
