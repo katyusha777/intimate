@@ -5,6 +5,8 @@
   "nav_favorites": "Preferiti",
   "nav_account": "Account",
   "theme_toggle": "Cambia tema",
+  "theme_label": "Tema",
+  "theme_desc": "Passa da scuro a chiaro",
   "safe_mode": "Safe mode",
   "safe_mode_desc": "Sfoca tutte le foto durante la navigazione",
   "safe_neutral_title": "Cerca",

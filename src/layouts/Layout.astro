@@ -255,7 +255,7 @@ const unread =
         <slot />
       </main>
 
-      {!bare && <Footer />}
+      {!bare && <Footer {session} />}
     </div>
     {!bare && <BottomTabBar {session} {idVerified} {unread} />}
     <AuthModal />

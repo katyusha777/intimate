@@ -5,6 +5,8 @@
   "nav_favorites": "Favorieten",
   "nav_account": "Account",
   "theme_toggle": "Thema wisselen",
+  "theme_label": "Thema",
+  "theme_desc": "Wissel tussen donker en licht",
   "safe_mode": "Safe mode",
   "safe_mode_desc": "Vervaag alle foto's tijdens het browsen",
   "safe_neutral_title": "Zoeken",

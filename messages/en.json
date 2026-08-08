@@ -5,6 +5,8 @@
   "nav_favorites": "Favorites",
   "nav_account": "Account",
   "theme_toggle": "Toggle theme",
+  "theme_label": "Theme",
+  "theme_desc": "Switch between dark and light",
   "safe_mode": "Safe mode",
   "safe_mode_desc": "Blur all photos while browsing",
   "safe_neutral_title": "Search",

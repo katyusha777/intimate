@@ -5,6 +5,8 @@
   "nav_favorites": "Favorite",
   "nav_account": "Cont",
   "theme_toggle": "Schimbă tema",
+  "theme_label": "Temă",
+  "theme_desc": "Comută între întunecat și luminos",
   "safe_mode": "Safe mode",
   "safe_mode_desc": "Estompează toate pozele în timp ce navighezi",
   "safe_neutral_title": "Căutare",

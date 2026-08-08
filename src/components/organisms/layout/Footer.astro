@@ -1,9 +1,16 @@
 ---
 import * as m from '@/paraglide/messages';
+import type { Session } from '@/app/models/session';
 import { localizePath } from '@/lib/i18n';
 import { SUPPORT_CONTACT } from '@/lib/contact';
 import Icon from '@/components/atoms/Icon.astro';
 import SafeModeToggle from '@/components/molecules/SafeModeToggle.astro';
+import ThemeToggle from '@/components/molecules/ThemeToggle.astro';
+
+interface Props {
+  session?: Session | null;
+}
+const { session = null } = Astro.props;
 ---
 
 <!-- Footer — always dark (intimate.nl style); `dark` class scopes tokens so
@@ -109,10 +116,22 @@ import SafeModeToggle from '@/components/molecules/SafeModeToggle.astro';
       </div>
     </div>
 
-    <!-- Safe mode — promoted to a labelled full-width row. Theme toggle now
-         lives in the header (left of the avatar), not here. -->
-    <div class="border-t border-white/10 py-5">
+    <!-- Safe mode — promoted to a labelled full-width row. Signed in, the
+         theme toggle lives in the header (left of the avatar); signed OUT the
+         mobile header hides it, so it gets a labelled row here instead. -->
+    <div class="space-y-4 border-t border-white/10 py-5">
       <SafeModeToggle detailed />
+      {
+        !session && (
+          <div class="flex w-full items-center justify-between gap-4 py-1">
+            <span class="flex flex-col">
+              <span class="text-sm font-medium text-foreground">{m.theme_label()}</span>
+              <span class="text-xs text-muted-foreground">{m.theme_desc()}</span>
+            </span>
+            <ThemeToggle />
+          </div>
+        )
+      }
     </div>
 
     <!-- Bottom bar: 18+ · legal line (left), back-to-top (right). pb-24 clears

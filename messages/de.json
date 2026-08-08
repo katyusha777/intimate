@@ -5,6 +5,8 @@
   "nav_favorites": "Favoriten",
   "nav_account": "Konto",
   "theme_toggle": "Design wechseln",
+  "theme_label": "Design",
+  "theme_desc": "Wechsle zwischen Dunkel und Hell",
   "safe_mode": "Safe mode",
   "safe_mode_desc": "Alle Fotos beim Stöbern weichzeichnen",
   "safe_neutral_title": "Suchen",
