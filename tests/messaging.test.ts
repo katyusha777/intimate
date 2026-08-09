@@ -243,4 +243,5 @@ t('unreadCount matches the listThreads sum for both parties, incl. block/hide', 
   await api.setBlocked(professional, { threadId: t2!.id, blocked: true, del: true });
   expect(await api.unreadCount(professional)).toBe(await sumFor(professional));
   expect(await api.unreadCount(otherClient)).toBe(await sumFor(otherClient));
-});
+  // ~20 serial API calls × Frankfurt round trip — 5s default is too tight.
+}, 30_000);
