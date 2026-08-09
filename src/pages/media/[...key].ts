@@ -10,11 +10,13 @@
  * Transformations not enabled on the zone) it falls back to the original
  * bytes — serving never breaks on a transform miss.
  *
- * The profile-state gate runs BEFORE the cache lookup on purpose: takedown
- * (paused/blocked/deleted) goes dark on the next request, no purge needed —
- * one indexed SELECT per view buys exact takedown semantics.
- * ponytail: that per-view SELECT is the known ceiling; drop it and purge by
- * URL (zone API token) if media QPS ever makes it matter.
+ * Takedown vs cache: the profile-state gate runs BEFORE the cache lookup on
+ * purpose — profile takedown (paused/blocked/deleted) goes dark on the next
+ * request, no purge needed. Per-PHOTO takedown (removePhoto / mediaReject) is
+ * R2 delete + evictMediaCache (media-keys.ts), bounded worst-case by the
+ * cached copy's s-maxage hour.
+ * ponytail: the per-view state SELECT is the known ceiling; drop it and purge
+ * by URL (zone API token) if media QPS ever makes it matter.
  */
 import type { APIRoute } from 'astro';
 import { env, waitUntil } from 'cloudflare:workers';
@@ -129,7 +131,12 @@ export const GET: APIRoute = async (ctx) => {
   const obj = await bucket().get(key);
   if (!obj) return new Response(null, { status: 404 });
 
-  const cacheControl = cacheable ? 'public, max-age=31536000, immutable' : 'private, no-store';
+  // s-maxage bounds the EDGE copy at an hour (browsers ignore it and keep the
+  // immutable year): photo takedown = R2 delete + best-effort evictMediaCache,
+  // and this TTL caps the window where neither reached a colo's cached copy.
+  const cacheControl = cacheable
+    ? 'public, max-age=31536000, s-maxage=3600, immutable'
+    : 'private, no-store';
   const contentType = obj.httpMetadata?.contentType ?? 'image/jpeg';
   // Buffered, not streamed: the transform-failure fallback below re-serves the
   // same bytes, which a consumed stream can't.

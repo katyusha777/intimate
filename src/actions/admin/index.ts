@@ -23,7 +23,7 @@ import { setProfileState } from './entities';
 import { approveDeletion, exportAccountData } from './gdpr';
 import { retryImport } from './imports';
 import { INDEXNOW_KEY, submitIndexNow } from '@/lib/indexnow';
-import { isR2Key, mediaBucket } from '@/lib/media-keys';
+import { evictMediaCache, isR2Key, mediaBucket } from '@/lib/media-keys';
 import { LOCALES, type AdminAction, type ProfileState } from '@/lib/taxonomy';
 
 const adb = () => requestDb((env as unknown as { HYPERDRIVE: Hyperdrive }).HYPERDRIVE);
@@ -181,9 +181,14 @@ export const admin = {
         .where(and(eq(media.profileId, profileId), eq(media.imageKey, imageKey)))
         .returning({ id: media.id, key: media.imageKey });
       if (!rows.length) throw new ActionError({ code: 'NOT_FOUND', message: 'photo not found' });
-      // Delete the bytes too — a rejected photo must not keep serving from its
-      // (already-known, edge-cached) pub URL. State-flag alone isn't enough.
-      if (isR2Key(rows[0]!.key)) await mediaBucket().delete(rows[0]!.key);
+      // Delete the bytes AND evict the edge copy — a rejected photo must not
+      // keep serving from its (already-known) pub URL. State-flag alone isn't
+      // enough, and since /media caches transformed bytes, R2 deletion alone
+      // isn't either (worst case past the evict: s-maxage, one hour).
+      if (isR2Key(rows[0]!.key)) {
+        await mediaBucket().delete(rows[0]!.key);
+        await evictMediaCache([rows[0]!.key]);
+      }
       await bustProfiles(sessionKv());
       await record(session, { action: 'reject_media', entityType: 'media', entityId: rows[0]!.id });
       return { ok: true };

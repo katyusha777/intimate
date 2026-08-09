@@ -97,6 +97,8 @@ export async function approveDeletion(accountId: string): Promise<{ authDeleted:
       .returning({ key: media.imageKey });
     const b = mediaBucket();
     await Promise.allSettled(removed.filter((r) => isR2Key(r.key)).map((r) => b.delete(r.key)));
+    // No evictMediaCache needed: state='deleted' above makes /media 410 before
+    // its edge-cache lookup, so cached copies are unreachable immediately.
   }
   // Scrub PII; the skeletal row survives for audit (deliberately NOT deleted).
   // Clear both request flags in the same scrub so the account leaves the banner.
