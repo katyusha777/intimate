@@ -1,0 +1,95 @@
+---
+/**
+ * Danger zone — OWNER-ONLY raw-data tools (ADMIN.md §1). Gated by isOwner
+ * (email, not role): destructive operations the rest of the admin team must
+ * not reach. Everything here audit-logs like any admin action.
+ *
+ * English on purpose: single-viewer internal surface, no i18n keys.
+ */
+import { getAdmin, isOwner } from '@/actions/admin/lib';
+import { accountApi } from '@/app/api/account';
+import AdminShell from '@/components/organisms/admin/AdminShell.astro';
+
+const session = await getAdmin(Astro);
+if (!isOwner(session)) return Astro.redirect('/admin');
+
+const all = (await accountApi.all()).sort((a, b) => (a.email ?? '').localeCompare(b.email ?? ''));
+---
+
+<AdminShell title="Danger zone" section="danger">
+  <h1 class="display text-3xl">Danger zone</h1>
+  <p class="mt-1 text-sm font-medium text-brand">
+    Owner-only. These act on raw account data and are audit-logged.
+  </p>
+
+  <section class="mt-6">
+    <h2 class="font-condensed text-sm font-bold uppercase tracking-wide text-muted-foreground">
+      Accounts ({all.length})
+    </h2>
+    <div class="mt-3 overflow-x-auto border border-border">
+      <table class="w-full min-w-[44rem] text-sm">
+        <thead>
+          <tr class="border-b border-border text-left text-2xs uppercase tracking-wide text-muted-foreground">
+            <th class="px-3 py-2 font-semibold">Email</th>
+            <th class="px-3 py-2 font-semibold">Type</th>
+            <th class="px-3 py-2 font-semibold">Phone</th>
+            <th class="px-3 py-2 font-semibold">Verified</th>
+            <th class="px-3 py-2 font-semibold">Role</th>
+            <th class="px-3 py-2 text-right font-semibold">Actions</th>
+          </tr>
+        </thead>
+        <tbody data-danger-accounts>
+          {all.map((a) => (
+            <tr class="border-b border-border last:border-0">
+              <td class="px-3 py-2 font-medium">{a.email ?? '—'}</td>
+              <td class="px-3 py-2 text-muted-foreground">{a.accountType}</td>
+              <td class="px-3 py-2 tabular-nums">{a.phone ?? '—'}</td>
+              <td class="px-3 py-2">{a.phoneVerifiedAt ? '✓' : '—'}</td>
+              <td class="px-3 py-2 text-muted-foreground">{a.adminRole ?? '—'}</td>
+              <td class="px-3 py-2 text-right">
+                {a.phone && (
+                  <button
+                    type="button"
+                    data-clear-phone={a.id}
+                    data-email={a.email}
+                    class="cursor-pointer border border-brand/40 px-2.5 py-1 text-2xs font-bold uppercase tracking-wide text-brand transition-colors hover:border-brand hover:bg-brand/10"
+                  >
+                    Clear phone
+                  </button>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+    <p class="mt-2 text-xs text-muted-foreground">
+      "Clear phone" removes the number + its verification from the account so it can be
+      re-verified elsewhere (testing). Full user deletion stays CLI-only:
+      <code class="text-foreground">bun scripts/delete-user.ts &lt;email&gt;</code>
+    </p>
+  </section>
+</AdminShell>
+
+<script>
+  import { actions } from 'astro:actions';
+  function init() {
+    document.querySelectorAll<HTMLButtonElement>('[data-clear-phone]').forEach((btn) => {
+      if (btn.dataset.init) return;
+      btn.dataset.init = '1';
+      btn.addEventListener('click', async () => {
+        if (!confirm(`Clear the verified phone from ${btn.dataset.email}?`)) return;
+        btn.disabled = true;
+        const { error } = await actions.admin.ownerClearPhone({ accountId: btn.dataset.clearPhone! });
+        if (error) {
+          btn.disabled = false;
+          alert(error.message);
+          return;
+        }
+        location.reload();
+      });
+    });
+  }
+  init();
+  document.addEventListener('astro:page-load', init);
+</script>

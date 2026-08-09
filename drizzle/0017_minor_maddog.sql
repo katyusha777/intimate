@@ -1,0 +1,1 @@
+ALTER TYPE "public"."admin_action" ADD VALUE 'owner_clear_phone';

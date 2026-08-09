@@ -120,6 +120,8 @@ export const ADMIN_ACTIONS = [
   'send_platform_message',
   // GDPR fulfilment (items.md #6/#7)
   'gdpr_export',
+  // Owner-only raw-data tools (/admin/danger)
+  'owner_clear_phone',
 ] as const;
 
 export const IMPORT_JOB_STATES = [

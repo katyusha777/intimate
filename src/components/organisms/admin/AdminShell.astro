@@ -17,7 +17,7 @@ import '@fontsource/barlow-condensed/600.css';
 import '@fontsource/barlow-condensed/700.css';
 import '@/styles/global.css';
 import type { AdminRole } from '@/lib/taxonomy';
-import { getAdmin } from '@/actions/admin/lib';
+import { getAdmin, isOwner } from '@/actions/admin/lib';
 import { adminBadges } from '@/actions/admin/queues';
 import * as m from '@/paraglide/messages';
 import { getLocale } from '@/paraglide/runtime';
@@ -33,7 +33,7 @@ const session = await getAdmin(Astro);
 const badges = session ? await adminBadges() : { escalations: 0, reportsOpen: 0, verificationOpen: 0 };
 
 /** Nav items with the role capability that may see them (super sees all). */
-const NAV: { key: string; label: string; href: string; roles: AdminRole[]; icon: string; badge?: number }[] = [
+const NAV: { key: string; label: string; href: string; roles: AdminRole[]; owner?: boolean; icon: string; badge?: number }[] = [
   { key: 'overview', label: m.adm_nav_overview(), href: '/admin', roles: ['moderator', 'support', 'super'], icon: '<rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/>' },
   { key: 'verification', label: m.adm_nav_verification(), href: '/admin/verification', roles: ['moderator', 'super'], icon: '<path d="M12 3l7 4v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V7z"/><path d="m9 12 2 2 4-4"/>', badge: badges.verificationOpen },
   { key: 'moderation', label: m.adm_nav_moderation(), href: '/admin/moderation', roles: ['moderator', 'super'], icon: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>' },
@@ -48,9 +48,13 @@ const NAV: { key: string; label: string; href: string; roles: AdminRole[]; icon:
   { key: 'analytics', label: m.adm_nav_analytics(), href: '/admin/analytics', roles: ['moderator', 'support', 'super'], icon: '<path d="M3 3v18h18"/><rect x="7" y="12" width="3" height="6"/><rect x="12" y="8" width="3" height="10"/><rect x="17" y="5" width="3" height="13"/>' },
   { key: 'audit', label: m.adm_nav_audit(), href: '/admin/audit', roles: ['moderator', 'support', 'super'], icon: '<path d="M4 4h16v16H4z"/><path d="M8 8h8M8 12h8M8 16h5"/>' },
   { key: 'settings', label: m.settings_title(), href: '/admin/settings', roles: ['super'], icon: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 7 19.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 3 13.6a2 2 0 1 1 0-4a1.7 1.7 0 0 0 1.6-2.3L4.5 7a2 2 0 1 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 10.4 3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0 1.2 2.9H21a2 2 0 1 1 0 4Z"/>' },
+  // Owner-only (isOwner, not a role) — destructive raw-data tools. English on
+  // purpose: single-viewer internal surface, no i18n keys (ADMIN.md §1).
+  { key: 'danger', label: 'Danger zone', href: '/admin/danger', roles: [], owner: true, icon: '<path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/>' },
 ];
-const canSee = (roles: AdminRole[]) => session && (session.adminRole === 'super' || roles.includes(session.adminRole!));
-const nav = NAV.filter((n) => canSee(n.roles));
+const canSee = (n: { roles: AdminRole[]; owner?: boolean }) =>
+  n.owner ? isOwner(session) : session && (session.adminRole === 'super' || n.roles.includes(session.adminRole!));
+const nav = NAV.filter((n) => canSee(n));
 ---
 
 <!doctype html>

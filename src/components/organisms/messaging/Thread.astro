@@ -295,23 +295,30 @@ const utcTime = (iso: string): string =>
         ),
       )
     }
+    {
+      thread.isTeam && (
+        // Support chips right under the welcome bubble — the thread is
+        // read-only, so this IS the reply path (WhatsApp/Telegram).
+        <div class="flex items-center gap-5 pl-2 pt-2">
+          <a href={SUPPORT_CONTACT.whatsapp.href} target="_blank" rel="noopener" class="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground">
+            <Icon name="whatsapp" family="brands" class="text-base text-online" />
+            {SUPPORT_CONTACT.whatsapp.display}
+          </a>
+          <a href={SUPPORT_CONTACT.telegram.href} target="_blank" rel="noopener" class="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground">
+            <Icon name="telegram" family="brands" class="text-base text-telegram" />
+            {SUPPORT_CONTACT.telegram.display}
+          </a>
+        </div>
+      )
+    }
   </div>
 
   <!-- Composer -->
   {
     thread.isTeam ? (
-      // Team Intimate is read-only (unstaffed inbox) — support runs on
-      // WhatsApp/Telegram, so the composer becomes the contact chips.
-      <div class="flex flex-none items-center justify-center gap-6 border-t border-border px-4 py-4">
-        <a href={SUPPORT_CONTACT.whatsapp.href} target="_blank" rel="noopener" class="flex items-center gap-2.5">
-          <Icon name="whatsapp" family="brands" class="text-xl text-online" />
-          <span class="font-condensed text-lg font-bold">{SUPPORT_CONTACT.whatsapp.display}</span>
-        </a>
-        <a href={SUPPORT_CONTACT.telegram.href} target="_blank" rel="noopener" class="flex items-center gap-2.5">
-          <Icon name="telegram" family="brands" class="text-xl text-telegram" />
-          <span class="font-condensed text-lg font-bold">{SUPPORT_CONTACT.telegram.display}</span>
-        </a>
-      </div>
+      // Read-only thread (unstaffed inbox) — the chips live under the welcome
+      // bubble; just keep the safe-area so the last message clears the notch.
+      <div class="flex-none" style="padding-bottom: env(safe-area-inset-bottom)" />
     ) : blocked ? (
       <div class="flex-none border-t border-border px-4 py-4 text-center text-sm text-muted-foreground">
         {m.msg_blocked_note()}

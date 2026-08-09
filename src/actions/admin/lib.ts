@@ -62,6 +62,23 @@ export async function getAdmin(context: AdminCtx): Promise<Session | null> {
   return session;
 }
 
+/**
+ * The platform OWNER — the only admin who sees /admin/danger (destructive
+ * raw-data tools other admins must not reach). An email, not a role: `super`
+ * is a team tier; owner is one person.
+ */
+export const OWNER_EMAIL = 'katyusha@intimate.nl';
+
+export const isOwner = (session: Session | null): boolean =>
+  !!session && session.email.toLowerCase() === OWNER_EMAIL;
+
+/** Owner gate for destructive actions — admin AND the owner email, or throw. */
+export async function requireOwner(context: AdminCtx): Promise<Session> {
+  const session = await requireAdmin(context);
+  if (!isOwner(session)) throw new ActionError({ code: 'FORBIDDEN', message: 'owner only' });
+  return session;
+}
+
 // --- Audit log (append-only; every admin action + sensitive read) ---------
 // Postgres `audit_log`, guarded append-only by the 0001 trigger (no role can
 // rewrite history). admin_account_id keeps the actor even after user deletion.

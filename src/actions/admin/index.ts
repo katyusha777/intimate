@@ -12,12 +12,12 @@ import { env } from 'cloudflare:workers';
 import { REJECTION_REASONS, REPORT_RESOLUTIONS } from '@/lib/taxonomy';
 import { bustProfiles, type CacheKv } from '@/lib/page-cache';
 import { listWarmUrls } from '@/lib/warm';
-import { claimItem, record, releaseItem, requireAdmin } from './lib';
+import { claimItem, record, releaseItem, requireAdmin, requireOwner } from './lib';
 
 const sessionKv = () => (env as unknown as Record<string, unknown>).SESSION as CacheKv | undefined;
 import { and, eq } from 'drizzle-orm';
 import { requestDb } from '@/db/client';
-import { media, profiles } from '@/db/schema';
+import { accounts, media, profiles } from '@/db/schema';
 import { approveWholeSubmission, decideModeration } from './queues';
 import { setProfileState } from './entities';
 import { approveDeletion, exportAccountData } from './gdpr';
@@ -191,6 +191,22 @@ export const admin = {
       }
       await bustProfiles(sessionKv());
       await record(session, { action: 'reject_media', entityType: 'media', entityId: rows[0]!.id });
+      return { ok: true };
+    },
+  }),
+
+  // --- owner-only raw-data tools (/admin/danger, ADMIN.md §1) ---
+  ownerClearPhone: defineAction({
+    input: z.object({ accountId: z.string().max(60) }),
+    handler: async ({ accountId }, context) => {
+      const session = await requireOwner(context);
+      const rows = await adb()
+        .update(accounts)
+        .set({ phone: null, phoneVerifiedAt: null })
+        .where(eq(accounts.id, accountId))
+        .returning({ email: accounts.email, phone: accounts.phone });
+      if (!rows.length) throw new ActionError({ code: 'NOT_FOUND', message: 'account not found' });
+      await record(session, { action: 'owner_clear_phone', entityType: 'account', entityId: rows[0]!.email ?? accountId });
       return { ok: true };
     },
   }),

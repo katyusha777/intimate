@@ -120,6 +120,13 @@
       "when": 1786400400000,
       "tag": "0016_sloppy_stone_men",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1786400500000,
+      "tag": "0017_minor_maddog",
+      "breakpoints": true
     }
   ]
 }
