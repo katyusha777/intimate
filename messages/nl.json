@@ -70,6 +70,7 @@
   "nav_register": "Registreren",
   "role_advertiser": "Adverteerder",
   "role_client": "Klant",
+  "settings_account_type": "Accounttype",
   "auth_email": "E-mailadres",
   "auth_password": "Wachtwoord",
   "auth_create_account": "Account aanmaken",

@@ -76,7 +76,14 @@ const heading = 'font-condensed text-sm font-bold uppercase tracking-wide text-m
             data-saved={m.settings_saved()} data-sent={m.settings_change_email_sent()}
             data-wrong={m.settings_pw_wrong()} data-err={m.auth_error()}>
             <h2 class={heading}>{m.settings_account()}</h2>
-            <div class="mt-3">
+            {/* Read-only: which kind of account this is (client/advertiser/admin). */}
+            <div class="mt-3 flex items-center justify-between text-sm">
+              <span class="font-medium">{m.settings_account_type()}</span>
+              <span class="text-muted-foreground">
+                {session.role === 'advertiser' ? m.role_advertiser() : session.role === 'client' ? m.role_client() : 'Admin'}
+              </span>
+            </div>
+            <div class="mt-4">
               <label class="text-sm font-medium" for="acct-email">{m.settings_change_email()}</label>
               <div class="mt-1.5 flex flex-wrap items-stretch gap-2">
                 <span class="slab-field grow basis-56">

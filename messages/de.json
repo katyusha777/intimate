@@ -70,6 +70,7 @@
   "nav_register": "Registrieren",
   "role_advertiser": "Inserent",
   "role_client": "Kunde",
+  "settings_account_type": "Kontotyp",
   "auth_email": "E-Mail-Adresse",
   "auth_password": "Passwort",
   "auth_create_account": "Konto erstellen",
