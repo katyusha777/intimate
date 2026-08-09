@@ -5,10 +5,18 @@
  * per-admin user keys live on accounts.pushover_key (/admin/settings).
  *
  * Fire-and-forget like push.ts/email.ts — never adds latency to, or fails,
- * the action that caused it. LESSON BAKED IN: waitUntil wraps the WHOLE async
- * chain (DB read + fetch) — anything slow outside it gets dropped when the
- * invocation ends (the bug that silently killed early email sends).
+ * the action that caused it. TWO lessons baked in:
+ * - waitUntil wraps the WHOLE async chain (DB read + fetch) — anything slow
+ *   outside it gets dropped when the invocation ends (the early-email bug).
+ * - db/client + schema + drizzle are STATIC imports: dynamically importing a
+ *   module the rest of the graph imports statically gave the bundle a second,
+ *   racing evaluation order — cold isolates 500'd the whole site with "Class
+ *   extends value undefined" (2026-08-10). Only cloudflare:workers stays
+ *   dynamic (bun tests can't load it).
  */
+import { and, isNotNull } from 'drizzle-orm';
+import { requestDb } from '@/db/client';
+import { accounts } from '@/db/schema';
 
 export function pushoverAdmins(title: string, message: string): void {
   void (async () => {
@@ -22,9 +30,6 @@ export function pushoverAdmins(title: string, message: string): void {
       }
       waitUntil(
         (async () => {
-          const { requestDb } = await import('@/db/client');
-          const { accounts } = await import('@/db/schema');
-          const { and, isNotNull } = await import('drizzle-orm');
           const d = requestDb(e.HYPERDRIVE as Hyperdrive);
           const rows = await d
             .select({ key: accounts.pushoverKey })
