@@ -17,22 +17,35 @@ export function sendEmail(opts: { to: string; subject: string; text: string }): 
       const user = e.SMTP_USER;
       const pass = e.SMTP_PASS;
       const from = e.EMAIL_FROM;
-      if (!host || !user || !pass || !from) return; // unconfigured — silent no-op
-      const { WorkerMailer } = await import('worker-mailer');
+      if (!host || !user || !pass || !from) {
+        console.warn('[email] unconfigured — skipping', opts.subject);
+        return;
+      }
+      console.log('[email] queued:', opts.subject, '->', opts.to);
+      // waitUntil wraps the WHOLE chain: `import('worker-mailer')` is a lazy
+      // chunk load that yields the event loop — registered any later, the
+      // invocation is already done and the send dies silently.
       waitUntil(
-        WorkerMailer.send(
-          {
-            host,
-            port: Number(e.SMTP_PORT ?? 587),
-            credentials: { username: user, password: pass },
-            authType: 'plain',
-            startTls: true,
-          },
-          { from: { name: 'Intimate', email: from }, to: opts.to, subject: opts.subject, text: opts.text },
-        ).catch((err) => console.error('[email] send failed:', (err as Error).message)),
+        (async () => {
+          const { WorkerMailer } = await import('worker-mailer');
+          await WorkerMailer.send(
+            {
+              host,
+              port: Number(e.SMTP_PORT ?? 587),
+              credentials: { username: user, password: pass },
+              authType: 'plain',
+              startTls: true,
+            },
+            { from: { name: 'Intimate', email: from }, to: opts.to, subject: opts.subject, text: opts.text },
+          );
+          console.log('[email] sent:', opts.subject, '->', opts.to);
+        })().catch((err) => console.error('[email] send FAILED:', opts.subject, (err as Error).message)),
       );
-    } catch {
-      /* off-workerd (tests, scripts) — no-op */
+    } catch (err) {
+      // Off-workerd (tests, scripts) this throws on the cloudflare:workers
+      // import — fine. Anywhere else, be LOUD: a silent catch here once hid a
+      // dead send path entirely.
+      console.error('[email] hook failed before send:', (err as Error)?.message ?? err);
     }
   })();
 }
@@ -88,9 +101,13 @@ function emailAdmin(subject: string, text: string): void {
     try {
       const { env } = await import('cloudflare:workers');
       const admin = (env as unknown as Record<string, string | undefined>).ADMIN_EMAIL;
-      if (admin) sendEmail({ to: admin, subject, text });
-    } catch {
-      /* off-workerd — no-op */
+      if (!admin) {
+        console.warn('[email] ADMIN_EMAIL unset — skipping', subject);
+        return;
+      }
+      sendEmail({ to: admin, subject, text });
+    } catch (err) {
+      console.error('[email] admin hook failed:', (err as Error)?.message ?? err);
     }
   })();
 }
