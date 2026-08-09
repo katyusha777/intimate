@@ -93,6 +93,8 @@ export interface AccountRecord extends Account {
   accountType: AccountType;
   /** Admin sub-role (present only for admin accounts). */
   adminRole?: AdminRole;
+  /** Pushover user key (admins only) — admin-event notifications. */
+  pushoverKey?: string;
   displayName: string;
   /** Her profile slug, when she has one (advertisers). */
   profileSlug?: string;

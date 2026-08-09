@@ -8,6 +8,8 @@
  * advertiser-facing template is bilingual NL/EN by owner decision.
  */
 
+import { pushoverAdmins } from '@/lib/pushover';
+
 export function sendEmail(opts: { to: string; subject: string; text: string }): void {
   void (async () => {
     try {
@@ -112,12 +114,14 @@ function emailAdmin(subject: string, text: string): void {
   })();
 }
 
-/** Admin: a new advertiser account just registered (pre-confirmation). */
+/** Admin: a new advertiser account just registered (pre-confirmation).
+ *  Email to ADMIN_EMAIL + Pushover to every admin with a key. */
 export function emailAdminNewAdvertiser(email: string): void {
   emailAdmin(
     'New advertiser registration — Intimate',
     `A new advertiser just registered: ${email}\n\nAdmin: https://intimate.nl/admin`,
   );
+  pushoverAdmins('New advertiser 🎉', `${email} just registered on Intimate`);
 }
 
 /** Admin: verification documents submitted, review pending. */
@@ -126,4 +130,5 @@ export function emailAdminVerificationPending(email: string): void {
     'Verification pending review — Intimate',
     `${email} submitted verification documents.\n\nReview: https://intimate.nl/admin/verification`,
   );
+  pushoverAdmins('Verification pending', `${email} submitted documents — review at intimate.nl/admin/verification`);
 }

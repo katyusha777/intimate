@@ -17,7 +17,7 @@ const isSuper = session?.adminRole === 'super';
 const admins = isSuper
   ? (await accountApi.all())
       .filter((a) => a.accountType === 'admin')
-      .map((a) => ({ email: a.email, role: a.adminRole ?? '—' }))
+      .map((a) => ({ id: a.id, email: a.email, role: a.adminRole ?? '—', pushoverKey: a.pushoverKey ?? '' }))
       .sort((a, b) => a.email.localeCompare(b.email))
   : [];
 const flags = [
@@ -49,13 +49,37 @@ const taxo = [
             <h2 class="font-condensed text-sm font-bold uppercase tracking-wide text-muted-foreground">{m.adm_settings_admins()}</h2>
             <div class="mt-3 max-w-lg divide-y divide-border border border-border">
               {admins.map((a) => (
-                <div class="flex items-center justify-between px-3 py-2.5 text-sm">
-                  <span>{a.email}</span>
-                  <span class="slab-cut border border-foreground/20 px-2 py-0.5 text-2xs font-bold uppercase tracking-wide">{a.role}</span>
+                <div class="px-3 py-2.5 text-sm">
+                  <div class="flex items-center justify-between">
+                    <span>{a.email}</span>
+                    <span class="slab-cut border border-foreground/20 px-2 py-0.5 text-2xs font-bold uppercase tracking-wide">{a.role}</span>
+                  </div>
+                  {/* Pushover user key — admin-event notifications (English on
+                      purpose: internal surface). Empty + save clears it. */}
+                  <div class="mt-2 flex items-center gap-2">
+                    <input
+                      data-pushover-key={a.id}
+                      value={a.pushoverKey}
+                      placeholder="Pushover user key"
+                      autocomplete="off"
+                      spellcheck="false"
+                      class="w-full border border-border bg-transparent px-2 py-1 font-mono text-xs caret-brand outline-none placeholder:text-muted-foreground focus:border-foreground/50"
+                    />
+                    <button
+                      type="button"
+                      data-pushover-save={a.id}
+                      class="cursor-pointer border border-foreground/20 px-2.5 py-1 text-2xs font-bold uppercase tracking-wide transition-colors hover:border-foreground/60"
+                    >
+                      Save
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
             <p class="mt-2 text-2xs text-muted-foreground" set:html={m.adm_settings_admins_note()} />
+            <p class="mt-1 text-2xs text-muted-foreground">
+              Pushover: each admin gets pinged on new-advertiser + pending-verification events when their user key is set.
+            </p>
           </section>
 
           <section>
@@ -169,5 +193,23 @@ const taxo = [
     await Promise.all(Array.from({ length: Math.min(8, urls.length) }, run));
     if (status) status.textContent = m.adm_cache_warmed({ done, total: urls.length });
     setBusy(false);
+  });
+
+  // Pushover keys — save per admin row.
+  document.querySelectorAll<HTMLButtonElement>('[data-pushover-save]').forEach((btn) => {
+    if (btn.dataset.init) return;
+    btn.dataset.init = '1';
+    btn.addEventListener('click', async () => {
+      const id = btn.dataset.pushoverSave!;
+      const input = document.querySelector<HTMLInputElement>(`[data-pushover-key="${id}"]`);
+      if (!input) return;
+      btn.disabled = true;
+      const prev = btn.textContent;
+      const { error } = await actions.admin.setPushoverKey({ accountId: id, key: input.value });
+      btn.disabled = false;
+      btn.textContent = error ? 'Error' : 'Saved';
+      if (error) console.error(error.message);
+      setTimeout(() => (btn.textContent = prev), 1500);
+    });
   });
 </script>

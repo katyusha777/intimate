@@ -122,6 +122,8 @@ export const ADMIN_ACTIONS = [
   'gdpr_export',
   // Owner-only raw-data tools (/admin/danger)
   'owner_clear_phone',
+  // Admin notification config (/admin/settings)
+  'set_pushover_key',
 ] as const;
 
 export const IMPORT_JOB_STATES = [

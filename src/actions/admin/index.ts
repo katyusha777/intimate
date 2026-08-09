@@ -15,7 +15,7 @@ import { listWarmUrls } from '@/lib/warm';
 import { claimItem, record, releaseItem, requireAdmin, requireOwner } from './lib';
 
 const sessionKv = () => (env as unknown as Record<string, unknown>).SESSION as CacheKv | undefined;
-import { and, eq } from 'drizzle-orm';
+import { and, eq, isNotNull } from 'drizzle-orm';
 import { requestDb } from '@/db/client';
 import { accounts, media, profiles } from '@/db/schema';
 import { approveWholeSubmission, decideModeration } from './queues';
@@ -191,6 +191,27 @@ export const admin = {
       }
       await bustProfiles(sessionKv());
       await record(session, { action: 'reject_media', entityType: 'media', entityId: rows[0]!.id });
+      return { ok: true };
+    },
+  }),
+
+  // --- admin notification config (/admin/settings, super-only) ---
+  setPushoverKey: defineAction({
+    input: z.object({ accountId: z.string().max(60), key: z.string().trim().max(60) }),
+    handler: async ({ accountId, key }, context) => {
+      const session = await requireAdmin(context, ['super']);
+      const clean = key.trim();
+      // Pushover user keys are 30 alphanumerics; empty clears the key.
+      if (clean && !/^[A-Za-z0-9]{30}$/.test(clean)) {
+        throw new ActionError({ code: 'BAD_REQUEST', message: 'invalid Pushover key (30 letters/digits)' });
+      }
+      const rows = await adb()
+        .update(accounts)
+        .set({ pushoverKey: clean || null })
+        .where(and(eq(accounts.id, accountId), isNotNull(accounts.adminRole)))
+        .returning({ email: accounts.email });
+      if (!rows.length) throw new ActionError({ code: 'NOT_FOUND', message: 'admin account not found' });
+      await record(session, { action: 'set_pushover_key', entityType: 'account', entityId: rows[0]!.email ?? accountId });
       return { ok: true };
     },
   }),

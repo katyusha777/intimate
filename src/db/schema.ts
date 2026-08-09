@@ -158,6 +158,8 @@ export const accounts = pgTable(
     displayName: text('display_name'),
     phone: text('phone'),
   phoneVerifiedAt: timestamp('phone_verified_at', { withTimezone: true }),
+  /** Pushover user key (admins only) — admin-event notifications (lib/pushover.ts). */
+  pushoverKey: text('pushover_key'),
     idVerification: verificationStateEnum('id_verification').notNull().default('unverified'),
     verificationSubmittedAt: timestamp('verification_submitted_at', { withTimezone: true }),
     verificationReason: text('verification_reason'),
