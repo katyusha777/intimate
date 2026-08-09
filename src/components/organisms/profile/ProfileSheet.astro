@@ -163,6 +163,10 @@ import SideDrawer from '@/components/molecules/SideDrawer.astro';
         // in place and KEEP the original return target, so dismissing still
         // lands on the listing rather than the just-closed profile's URL.
         history.replaceState(null, '', url);
+        // Plausible only auto-tracks pushState/popstate, not replaceState — so a
+        // profile→profile swap would go uncounted. Fire it manually (URL is now
+        // the new profile). The first open below uses pushState, auto-tracked.
+        (window as unknown as { plausible?: (e: string) => void }).plausible?.('pageview');
       } else {
         savedState = history.state;
         savedUrl = location.href;
