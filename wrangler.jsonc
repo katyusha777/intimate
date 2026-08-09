@@ -12,7 +12,13 @@
   // it — middleware 301s it to the apex (one canonical host).
   "routes": [
     { "pattern": "intimate.nl/*", "zone_name": "intimate.nl" },
-    { "pattern": "www.intimate.nl/*", "zone_name": "intimate.nl" }
+    { "pattern": "www.intimate.nl/*", "zone_name": "intimate.nl" },
+    // Admin host — middleware serves ONLY /admin surfaces here and 301s apex
+    // /admin/* over; Cloudflare Access is configured on this hostname (owner).
+    // custom_domain (not a zone route): no DNS record existed for this
+    // subdomain, so the auto-provisioning works here — the apex/www dummy-IP
+    // trap above doesn't apply.
+    { "pattern": "admin.intimate.nl", "custom_domain": true }
   ],
   "compatibility_date": "2026-07-01",
   "compatibility_flags": ["nodejs_compat"],

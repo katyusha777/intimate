@@ -55,7 +55,7 @@ Admin is isolated by folder discipline, not a separate deployment:
 2. The Supabase **service-role client is constructed ONLY in `src/actions/admin/**`** — CI grep asserts zero occurrences elsewhere.
 3. Shared code lives in `lib/`, `atoms/`, `molecules/`; those never import from route-level or domain folders.
 4. Public CI gates (Lighthouse, JS budget) run on public templates only — admin may use heavy islands freely.
-5. `/admin/*` sits behind Cloudflare Access (edge wall, environment config verified at deploy) + Supabase MFA (aal2 asserted in middleware). See docs/ADMIN.md.
+5. Admin lives on `admin.intimate.nl` (apex `/admin/*` 301s there) behind Cloudflare Access (edge wall, environment config verified at deploy) + Supabase MFA (aal2 asserted in middleware). See docs/ADMIN.md.
 Boundary lint + grep land in the SAME PR that creates the admin folders — grandfather nothing.
 
 ## Taxonomy = law

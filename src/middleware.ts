@@ -94,6 +94,22 @@ export const onRequest = defineMiddleware(async (context, next) => {
   if (context.url.hostname === 'www.intimate.nl') {
     return context.redirect(context.url.href.replace('//www.', '//'), 301);
   }
+  // Admin lives on its own host so Cloudflare Access can wall it (ADMIN.md §1).
+  // Apex /admin → the subdomain (the edge wall must not be path-bypassable);
+  // the admin host serves ONLY admin surfaces + what they load (actions, auth,
+  // media, static) and bounces public paths back to the apex — no duplicate
+  // public site, no cross-host page-cache pollution (its key is pathname-only).
+  const ADMIN_HOST = 'admin.intimate.nl';
+  if (context.url.hostname === 'intimate.nl' && /^\/admin(\/|$)/.test(context.url.pathname)) {
+    return context.redirect(`https://${ADMIN_HOST}${context.url.pathname}${context.url.search}`, 301);
+  }
+  if (context.url.hostname === ADMIN_HOST) {
+    if (context.url.pathname === '/') return context.redirect('/admin', 302);
+    const ADMIN_OK = ['/admin', '/_actions', '/_astro', '/auth', '/media', '/fa/', '/icons/', '/favicon'];
+    if (!ADMIN_OK.some((p) => context.url.pathname.startsWith(p))) {
+      return context.redirect(`https://intimate.nl${context.url.pathname}${context.url.search}`, 301);
+    }
+  }
   const res = await handle(context, next);
   try {
     for (const [k, v] of Object.entries(SECURITY_HEADERS)) res.headers.set(k, v);
