@@ -307,7 +307,11 @@ export const media = pgTable(
     nsfwScore: real('nsfw_score'),
     createdAt: createdAt(),
   },
-  (t) => [index('media_profile_idx').on(t.profileId, t.position)],
+  (t) => [
+    index('media_profile_idx').on(t.profileId, t.position),
+    // The /media takedown gate looks up by key alone (every image view).
+    index('media_image_key_idx').on(t.imageKey),
+  ],
 );
 
 // ---------------------------------------------------------------------------

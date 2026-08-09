@@ -1,0 +1,1 @@
+CREATE INDEX "media_image_key_idx" ON "media" USING btree ("image_key");

@@ -97,11 +97,14 @@ export const GET: APIRoute = async (ctx) => {
     // THE takedown gate, one round trip: the media row (missing = removed by
     // removePhoto/GDPR; 'rejected' = mediaReject) AND the profile lifecycle.
     // Runs before the cache lookup so a takedown blocks even cached copies.
+    // Lookup by image_key ALONE (globally-unique UUID key; media_image_key_idx)
+    // — the id embedded in the key is R2 naming, not truth: the profile state
+    // is checked on the row's REAL owner via the join.
     const [row] = await db()
       .select({ profileState: profiles.state, mediaState: media.state })
       .from(media)
       .innerJoin(profiles, eq(profiles.id, media.profileId))
-      .where(and(eq(media.profileId, profileId), eq(media.imageKey, key)))
+      .where(eq(media.imageKey, key))
       .limit(1);
     if (!row || row.mediaState === 'rejected') return GONE();
     if (row.profileState !== 'live') {
