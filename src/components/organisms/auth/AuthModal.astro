@@ -76,9 +76,6 @@ const tabBtn =
         <span>{m.auth_or_support()}</span>{' '}
         <a href={localizePath('/support/')} class="font-medium underline underline-offset-2">{m.nav_support()}</a>
       </p>
-      <p data-auth-confirm class="hidden border border-foreground/20 bg-muted p-3 text-sm leading-relaxed">
-        {m.auth_confirm_sent()}
-      </p>
       <Button type="submit" size="lg" class="w-full">{m.auth_create_account()}</Button>
       <p class="text-center text-xs leading-relaxed text-muted-foreground">
         {m.auth_terms()}
@@ -124,6 +121,24 @@ const tabBtn =
         </button>
       </p>
     </form>
+  </div>
+</Modal>
+
+<!-- Confirmation-sent modal: stacks ON TOP of the auth modal (native <dialog>
+     top layer) so the "check your inbox" moment is unmissable, with a way
+     back to fix a mistyped email. -->
+<Modal id="auth-confirm" class="max-w-sm">
+  <div class="p-6 text-center md:p-8">
+    <p class="eyebrow">{m.auth_create_account()}</p>
+    <p class="display mt-2 text-3xl">{m.auth_confirm_title()}</p>
+    <p data-confirm-email class="mt-4 break-all font-condensed text-lg font-bold"></p>
+    <p class="mt-3 text-sm leading-relaxed text-muted-foreground">{m.auth_confirm_sent()}</p>
+    <Button data-confirm-ok size="lg" class="mt-6 w-full">{m.auth_confirm_ok()}</Button>
+    <p class="mt-4 text-center text-xs">
+      <button type="button" data-change-email class="cursor-pointer text-muted-foreground underline-offset-2 hover:underline">
+        {m.auth_confirm_change()}
+      </button>
+    </p>
   </div>
 </Modal>
 
@@ -189,6 +204,22 @@ const tabBtn =
     modal.querySelector<HTMLElement>('[data-go-reset]')?.addEventListener('click', goReset);
     modal.querySelector<HTMLElement>('[data-back-login]')?.addEventListener('click', () => selectTab(modal, 'login'));
 
+    // "Wrong address?" in the confirmation modal → back to the register form
+    // with the email field focused for the fix.
+    const confirmDlg = document.querySelector<HTMLDialogElement>('dialog#auth-confirm');
+    // "Got it" ends the whole flow — both dialogs close, back to the page.
+    confirmDlg?.querySelector<HTMLElement>('[data-confirm-ok]')?.addEventListener('click', () => {
+      confirmDlg.close();
+      (modal as HTMLDialogElement).close();
+    });
+    confirmDlg?.querySelector<HTMLElement>('[data-change-email]')?.addEventListener('click', () => {
+      confirmDlg.close();
+      selectTab(modal, 'register');
+      const box = modal.querySelector<HTMLInputElement>('[data-auth-form="register"] input[name="email"]');
+      box?.focus();
+      box?.select();
+    });
+
     // Submit via actions; hard navigation so role-aware chrome re-renders.
     modal.querySelectorAll<HTMLFormElement>('[data-auth-form]').forEach((form) => {
       form.addEventListener('submit', async (e) => {
@@ -226,10 +257,15 @@ const tabBtn =
             delete form.dataset.loading;
             return;
           }
-          // Email confirmation pending: no session yet — tell them to check mail.
+          // Email confirmation pending: no session yet — a modal stacked over
+          // the auth dialog (unmissable), showing the address it went to.
           if (!result.data?.href) {
-            const note = form.querySelector<HTMLElement>('[data-auth-confirm]');
-            note?.classList.remove('hidden');
+            const dlg = document.querySelector<HTMLDialogElement>('dialog#auth-confirm');
+            if (dlg) {
+              const addr = dlg.querySelector<HTMLElement>('[data-confirm-email]');
+              if (addr) addr.textContent = email;
+              if (!dlg.open) dlg.showModal();
+            }
             delete form.dataset.loading;
             return;
           }
