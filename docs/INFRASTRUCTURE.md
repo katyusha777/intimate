@@ -19,7 +19,6 @@ is dormant; **auth/API settings are configured in the project dashboard**.
 ```bash
 bun run db:generate           # drizzle-kit generate (from src/db/schema.ts)
 bun run db:migrate            # apply migrations (DATABASE_URL from .env)
-bun run db:seed               # mock catalog → the db (idempotent, replaces prior seed)
 ```
 
 **Upgrade path (when the project proves itself):** re-introduce tiers — local

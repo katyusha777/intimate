@@ -275,8 +275,7 @@ regardless of policies, and the server path (`app_server`) still can.
   NOT `postgres` and has no reach into `auth`/`storage` schemas.
 - Because this path bypasses RLS, **backend code is the guard** (API.md §3):
   every public read filters `state = 'live'`, every input is Zod-parsed, admin
-  operations live behind the admin boundary. The json backend already implements
-  these semantics; the db backend mirrors them exactly.
+  operations live behind the admin boundary.
 - The audit-log append-only trigger guard (SECURITY.md §3) binds even here —
   trigger-enforced, so no role short of superuser can rewrite history.
 - Migrations run over `DATABASE_URL` (`bun run db:migrate`; per-tier scripts
@@ -516,8 +515,7 @@ Do at prod-project creation, verify at launch gate:
 2. ✅ First migration wave (2026-08-03): `drizzle/0000_*.sql` (14 tables, DB
    constraints) + `drizzle/0001_security.sql` (`app_server` role ·
    default-privilege revokes · `private` schema · RLS everywhere · realtime
-   policies · audit/broadcast/stamp triggers) · deny tests `tests/rls.test.ts` ·
-   dev seed `bun run db:seed` · parity `tests/db-parity.test.ts`.
+   policies · audit/broadcast/stamp triggers) · deny tests `tests/rls.test.ts`.
    Apply to the hosted project via `bun run db:migrate` (advisors are the gate).
 3. ✅ Auth swap (2026-08-03, TOTP pending): `data/supabase/session.ts` +
    `getClaims()` replaced the mock (deleted); email+password live, role claims

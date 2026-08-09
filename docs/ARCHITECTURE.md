@@ -106,7 +106,7 @@ Site-level: segmented XML sitemaps (real lastmod) · robots.txt allowing GPTBot/
 
 **Single-tier for now** (decided 2026-08-03, pre-launch simplicity): ONE hosted
 Supabase project (`jqrfzqbuvekhcptqcpda`, Frankfurt) serves dev, both Workers,
-tests and seeds — `bun run db:migrate` / `db:seed` over `DATABASE_URL` from
+tests — `bun run db:migrate` over `DATABASE_URL` from
 `.env`. The three-tier split (local Docker stack / staging / dedicated prod
 project, migrations strictly `local → staging → prod`) is the **upgrade path
 before real data lands** — runbook and provisioning checklist:

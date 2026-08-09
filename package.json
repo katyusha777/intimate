@@ -7,13 +7,12 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro build && wrangler dev",
-    "test": "bun test",
+    "test": "bun test --timeout 15000",
     "check": "astro check",
     "deploy:prod": "astro build && wrangler deploy",
     "db:generate": "drizzle-kit generate",
     "cf-typegen": "wrangler types",
-    "db:migrate": "drizzle-kit migrate",
-    "db:seed": "bun scripts/seed-dev.ts"
+    "db:migrate": "drizzle-kit migrate"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^14.1.7",

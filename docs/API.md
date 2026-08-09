@@ -13,10 +13,9 @@ src/app/
 ├─ models/        # Zod schemas = source of truth: validation + TS types + backend contracts
 │   profile.ts    #   ProfileSchema, ProfileListParamsSchema, ProfilesApi interface
 ├─ api/           # THE SEAM — what pages call. One re-export per domain.
-│   profiles.ts   #   export { profilesApi } from '@/app/data/json/profiles'
+│   profiles.ts   #   wires profilesApi to the db backend (Hyperdrive)
 ├─ data/          # backend implementations
-│   └─ json/      #   current "database": .json files + impls of the Api interfaces
-│       profiles.json · profiles.ts
+│   └─ db/        #   THE database: Drizzle over hosted Postgres
 └─ services/      # future cross-cutting helpers (TURN creds, images, AI search)
 ```
 
@@ -59,7 +58,7 @@ Two access paths, different guards (ARCHITECTURE §3):
 
 **Server path (Drizzle → Hyperdrive → Postgres).** The pooled connection is not
 subject to end-user RLS — so the backend code is the guard: every public read
-filters `state = 'live'` (the json backend already enforces this), inputs are
+filters `state = 'live'`, inputs are
 Zod-parsed, and admin-only operations live in `src/actions/` behind auth
 checks. Service-role keys never leave the server.
 

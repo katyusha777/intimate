@@ -19,10 +19,10 @@ Drizzle-inferred row types (`typeof profiles.$inferSelect`) are the server
 path's types; the Zod models remain what pages/actions/components consume. The
 db backend (`src/app/data/db/*`) projects rows → Zod models so call sites never
 change (API.md §2). **List semantics live once**: `applyProfileListParams`
-(models/profile.ts) is shared by the json and db backends — filter/sort/paging
-can't drift; `tests/db-parity.test.ts` asserts the projections match too.
+(models/profile.ts) owns filter/sort/paging.
 `online` is derived from the `last_active_at` heartbeat (`ONLINE_WINDOW_MS`),
-never stored. Seed the db with the mock catalog: `bun run db:seed`.
+never stored. Real profiles only — the demo/seed catalog was removed
+2026-08-09 (data is created through the app, nothing else).
 
 ---
 
