@@ -219,3 +219,28 @@ t('contacts CRM: conversation contact + manual entry, note round-trips', async (
   expect(manual?.name).toBe('Walk-in');
   expect(manual?.handle).toBe('+31600000000');
 });
+
+t('unreadCount matches the listThreads sum for both parties, incl. block/hide', async () => {
+  await api.setMode(professional, 'everyone');
+  // Two threads with traffic in both directions.
+  const t1 = await api.startRequest(client, { profileSlug: SLUG, request: REQUEST });
+  await api.respondRequest(professional, { threadId: t1!.id, accept: true });
+  await api.send(client, { threadId: t1!.id, kind: 'text', body: 'hi' });
+  await api.send(professional, { threadId: t1!.id, kind: 'text', body: 'hello' });
+  const t2 = await api.startRequest(otherClient, { profileSlug: SLUG, request: REQUEST });
+
+  const sumFor = async (s: Session) =>
+    (await api.listThreads(s)).reduce((n, x) => n + x.unread, 0);
+  expect(await api.unreadCount(professional)).toBe(await sumFor(professional));
+  expect(await api.unreadCount(professional)).toBeGreaterThan(0);
+  expect(await api.unreadCount(client)).toBe(await sumFor(client));
+
+  // Reading zeroes it for the reader only.
+  await api.markRead(professional, t1!.id);
+  expect(await api.unreadCount(professional)).toBe(await sumFor(professional));
+
+  // Block & delete (hiddenBy) drops t2 from her count, like listThreads.
+  await api.setBlocked(professional, { threadId: t2!.id, blocked: true, del: true });
+  expect(await api.unreadCount(professional)).toBe(await sumFor(professional));
+  expect(await api.unreadCount(otherClient)).toBe(await sumFor(otherClient));
+});

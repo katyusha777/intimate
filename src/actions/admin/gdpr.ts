@@ -15,7 +15,7 @@ import { env } from 'cloudflare:workers';
 import { createClient } from '@supabase/supabase-js';
 import { eq, inArray, or } from 'drizzle-orm';
 import { requestDb, type Db } from '@/db/client';
-import { isR2Key, mediaBucket } from '@/lib/media-keys';
+import { evictMediaCache, isR2Key, mediaBucket } from '@/lib/media-keys';
 import {
   accounts,
   callSessions,
@@ -97,6 +97,10 @@ export async function approveDeletion(accountId: string): Promise<{ authDeleted:
       .returning({ key: media.imageKey });
     const b = mediaBucket();
     await Promise.allSettled(removed.filter((r) => isR2Key(r.key)).map((r) => b.delete(r.key)));
+    // The deleted media rows make /media 410 before its edge-cache lookup —
+    // but that gate read can lag writes (Hyperdrive), so evict the edge
+    // copies too: identity photos must not outlive a GDPR wipe by even minutes.
+    evictMediaCache(removed.map((r) => r.key));
   }
   // Scrub PII; the skeletal row survives for audit (deliberately NOT deleted).
   // Clear both request flags in the same scrub so the account leaves the banner.

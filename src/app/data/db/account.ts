@@ -22,7 +22,7 @@ import {
 import { ProfileSchema, birthDateForAge, priceFromRates, type Profile } from '@/app/models/profile';
 import { mediaUrl, toProfile } from '@/app/data/db/profiles';
 import { CITIES, POLICY_MIN_AGE, type Locale } from '@/lib/taxonomy';
-import { isR2Key, mediaBucket as bucket } from '@/lib/media-keys';
+import { evictMediaCache, isR2Key, mediaBucket as bucket } from '@/lib/media-keys';
 import { createWelcomeThread } from '@/app/data/db/messaging';
 import { getLocale } from '@/paraglide/runtime';
 import type { Session } from '@/app/models/session';
@@ -343,7 +343,10 @@ export const accountApi: AccountApi = {
       .delete(media)
       .where(and(eq(media.id, id), eq(media.profileId, row.id)))
       .returning({ key: media.imageKey });
-    if (gone && isR2Key(gone.key)) await bucket().delete(gone.key);
+    if (gone && isR2Key(gone.key)) {
+      await bucket().delete(gone.key);
+      evictMediaCache([gone.key]); // fire-and-forget; the /media row-gate is the guarantee
+    }
   },
 
   async phoneInUse(phone, exceptAccountId) {
