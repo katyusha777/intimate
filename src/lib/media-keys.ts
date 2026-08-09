@@ -32,7 +32,9 @@ export const edgeCache = (): Cache | undefined =>
 export function mediaCacheUrl(key: string, variant?: string): string {
   const origin =
     (env as unknown as { PUBLIC_SITE_ORIGIN?: string }).PUBLIC_SITE_ORIGIN ?? 'https://intimate.nl';
-  const v = variant && VARIANT_WIDTH[variant] ? `?v=${variant}` : '';
+  // hasOwn, not truthiness: ?v= is attacker-controlled and a plain object
+  // lookup leaks Object.prototype keys ('constructor' → a Function).
+  const v = variant && Object.hasOwn(VARIANT_WIDTH, variant) ? `?v=${variant}` : '';
   return `${origin}/media/${key}${v}`;
 }
 

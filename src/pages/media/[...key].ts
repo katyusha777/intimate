@@ -125,7 +125,8 @@ export const GET: APIRoute = async (ctx) => {
   // have immutable headers, which would silently defeat the middleware's
   // security-header pass.
   const vParam = ctx.url.searchParams.get('v') ?? '';
-  const width = VARIANT_WIDTH[vParam];
+  // hasOwn: ?v= is attacker-controlled; a plain lookup leaks prototype keys.
+  const width = Object.hasOwn(VARIANT_WIDTH, vParam) ? VARIANT_WIDTH[vParam] : undefined;
   const cacheable = !isPrivate && !ownerPreview;
   const edge = edgeCache();
   const cacheUrl = mediaCacheUrl(key, vParam);
@@ -149,12 +150,22 @@ export const GET: APIRoute = async (ctx) => {
     if (!cacheable || !edge || res.headers.has('set-cookie')) return res;
     const copy = res.clone();
     copy.headers.set('x-cache', 'HIT'); // a later match self-identifies
-    waitUntil(edge.put(cacheUrl, copy).catch(() => {})); // best-effort, never an errored invocation
+    // Best-effort: a rejected put must never error the invocation, but DO log
+    // it — a silent put no-op is indistinguishable from a cold cache.
+    waitUntil(edge.put(cacheUrl, copy).catch((e) => console.warn('[media] cache.put failed:', (e as Error)?.message)));
     res.headers.set('x-cache', 'MISS');
     return res;
   };
 
   const IMAGES = images();
+  // A variant was requested but can't be produced (no binding) — serve the
+  // original UNCACHED, like the failed-transform branch below: full-size bytes
+  // must never get pinned under a variant URL (edge: forever; browsers: a year).
+  if (width && !IMAGES) {
+    return new Response(buf, {
+      headers: { 'Content-Type': contentType, 'Cache-Control': 'no-store' },
+    });
+  }
   if (width && IMAGES) {
     try {
       const result = await IMAGES.input(new Response(buf).body!)
