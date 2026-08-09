@@ -59,7 +59,11 @@ const locale = getLocale();
 // OG territory code; the other two locales become og:locale:alternate.
 const OG_LOCALES = { nl: 'nl_NL', en: 'en_US', de: 'de_DE', ro: 'ro_RO', it: 'it_IT' } as const satisfies Record<Locale, string>;
 const ogUrl = canonical ?? Astro.url.href;
-const ogImage = new URL(image ?? '/icons/maskable-512.png', Astro.url.origin).href;
+// Default share card = the 1200×630 brand image; a page (profile) may pass its
+// own SFW cover via `image`. Width/height are only emitted for the default,
+// since a passed cover has its own dimensions.
+const ogImage = new URL(image ?? '/og.jpg', Astro.url.origin).href;
+const ogImageIsDefault = !image;
 
 // The 18+ gate is hidden on the privacy + terms pages so the policy links inside
 // it can be read without the gate blocking them (#5). Consent sentence carries
@@ -121,12 +125,21 @@ const unread =
     {description && <meta property="og:description" content={description} />}
     <meta property="og:url" content={ogUrl} />
     <meta property="og:image" content={ogImage} />
+    <meta property="og:image:alt" content={m.app_name()} />
+    {ogImageIsDefault && (
+      <>
+        <meta property="og:image:type" content="image/jpeg" />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+      </>
+    )}
     <meta property="og:locale" content={OG_LOCALES[locale]} />
     {ogAltLocales.map((l) => <meta property="og:locale:alternate" content={OG_LOCALES[l]} />)}
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={title} />
     {description && <meta name="twitter:description" content={description} />}
     <meta name="twitter:image" content={ogImage} />
+    <meta name="twitter:image:alt" content={m.app_name()} />
     <link rel="manifest" href="/manifest.webmanifest" />
     <!-- Font Awesome 8 Pro (kit: thin + brands), self-hosted from public/fa/.
          Loaded ASYNC (print→all swap): 41KB of icon CSS was the biggest
@@ -135,7 +148,7 @@ const unread =
     <link rel="stylesheet" href="/fa/css/all.min.css" media="print" onload="this.media='all'" />
     <noscript><link rel="stylesheet" href="/fa/css/all.min.css" /></noscript>
     {preloadImage && <link rel="preload" as="image" href={preloadImage} fetchpriority="high" />}
-    <link rel="icon" data-real-icon href="/icons/icon.svg" type="image/svg+xml" />
+    <link rel="icon" data-real-icon href="/icons/favicon-32.png" type="image/png" sizes="32x32" />
     <!-- Dark is the site default (theme rides localStorage, not the device). -->
     <meta name="theme-color" content="#171717" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -350,7 +363,7 @@ const unread =
           const icon = root.querySelector('link[data-real-icon]');
           if (off) {
             root.title = realTitle(root);
-            if (icon) icon.setAttribute('href', '/icons/icon.svg');
+            if (icon) icon.setAttribute('href', '/icons/favicon-32.png');
           } else {
             root.title = NEUTRAL_TITLE;
             if (icon) icon.setAttribute('href', NEUTRAL_FAVICON);
