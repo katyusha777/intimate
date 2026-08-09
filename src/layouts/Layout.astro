@@ -72,18 +72,17 @@ const hideAgeGate = /\/(privacy|terms)\/?$/.test(Astro.url.pathname);
 const consentParts = m.age_gate_consent().split(/(%privacy%|%terms%)/);
 const ogAltLocales = (Object.keys(OG_LOCALES) as Locale[]).filter((l) => l !== locale);
 
-/* Session-aware chrome: layouts may read the seam (docs/API.md). */
+/* Session-aware chrome: layouts may read the seam (docs/API.md). Both lookups
+ * only need the session — run them in parallel, not as serial awaits. */
 const session = await sessionApi.current(Astro);
-const idVerified =
+const [idVerified, unread] = await Promise.all([
   session?.role === 'advertiser'
-    ? (await accountApi.get(session)).idVerification === 'approved'
-    : true;
-// Dock unread badge. ponytail: reads all thread docs per page (mock); the
-// Supabase backend replaces this with a realtime per-account count subscription.
-const unread =
-  session && !bare
-    ? (await messagingApi.listThreads(session)).reduce((n, t) => n + t.unread, 0)
-    : 0;
+    ? accountApi.get(session).then((a) => a.idVerification === 'approved')
+    : true,
+  // Dock unread badge — one SQL COUNT (unreadCount), not listThreads' full
+  // per-thread message load on every page render.
+  session && !bare ? messagingApi.unreadCount(session) : 0,
+]);
 ---
 
 <!doctype html>

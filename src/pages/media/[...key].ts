@@ -3,14 +3,21 @@
  * edge cache — no per-view delivery fee (unlike Cloudflare Images storage).
  *
  * Key encodes visibility: `pub/<profileId>/<uuid>` is world-readable and cached
- * hard at the edge (no DB hit on the hot path); `priv/…` is gated per-thread
- * and never cached. Optional `?v=thumb|card|full` resizes via the IMAGES
- * transform binding, cached per variant; if the binding is unavailable (local
- * dev, or Transformations not enabled on the zone) it falls back to the
- * original bytes — serving never breaks on a transform miss.
+ * at the edge (Cache API, per ?v variant); `priv/…` is gated per-thread and
+ * never cached. Optional `?v=thumb|card|full` resizes via the IMAGES transform
+ * binding — the transform runs once per URL, not per view (the cached copy is
+ * the transformed bytes). If the binding is unavailable (local dev, or
+ * Transformations not enabled on the zone) it falls back to the original
+ * bytes — serving never breaks on a transform miss.
+ *
+ * The profile-state gate runs BEFORE the cache lookup on purpose: takedown
+ * (paused/blocked/deleted) goes dark on the next request, no purge needed —
+ * one indexed SELECT per view buys exact takedown semantics.
+ * ponytail: that per-view SELECT is the known ceiling; drop it and purge by
+ * URL (zone API token) if media QPS ever makes it matter.
  */
 import type { APIRoute } from 'astro';
-import { env } from 'cloudflare:workers';
+import { env, waitUntil } from 'cloudflare:workers';
 import { and, eq } from 'drizzle-orm';
 import { requestDb } from '@/db/client';
 import { contacts, profiles } from '@/db/schema';
@@ -109,15 +116,33 @@ export const GET: APIRoute = async (ctx) => {
     }
   }
 
+  // Edge cache (public + live only): keys are content-addressed UUIDs — bytes
+  // never change under a URL, so a long TTL is safe; the state gate above owns
+  // takedown. Skips R2 + the Images transform (billed per run) on every HIT.
+  const cacheable = !isPrivate && !ownerPreview;
+  const edge = (globalThis.caches as unknown as { default?: Cache } | undefined)?.default;
+  if (cacheable && edge) {
+    const hit = await edge.match(ctx.request.url);
+    if (hit) return hit;
+  }
+
   const obj = await bucket().get(key);
   if (!obj) return new Response(null, { status: 404 });
 
-  const cacheControl =
-    isPrivate || ownerPreview
-      ? 'private, no-store'
-      : 'public, max-age=31536000, immutable';
+  const cacheControl = cacheable ? 'public, max-age=31536000, immutable' : 'private, no-store';
   const contentType = obj.httpMetadata?.contentType ?? 'image/jpeg';
+  // Buffered, not streamed: the transform-failure fallback below re-serves the
+  // same bytes, which a consumed stream can't.
   const buf = await obj.arrayBuffer();
+
+  const store = (res: Response): Response => {
+    if (!cacheable || !edge) return res;
+    const copy = res.clone();
+    copy.headers.set('x-cache', 'HIT'); // a later match self-identifies
+    waitUntil(edge.put(ctx.request.url, copy));
+    res.headers.set('x-cache', 'MISS');
+    return res;
+  };
 
   const width = VARIANT_WIDTH[ctx.url.searchParams.get('v') ?? ''];
   const IMAGES = images();
@@ -131,10 +156,12 @@ export const GET: APIRoute = async (ctx) => {
       const r = result.response();
       const headers = new Headers(r.headers);
       headers.set('Cache-Control', cacheControl);
-      return new Response(r.body, { headers });
+      return store(new Response(r.body, { headers }));
     } catch {
       // transform unavailable/failed → serve the original below.
     }
   }
-  return new Response(buf, { headers: { 'Content-Type': contentType, 'Cache-Control': cacheControl } });
+  return store(
+    new Response(buf, { headers: { 'Content-Type': contentType, 'Cache-Control': cacheControl } }),
+  );
 };

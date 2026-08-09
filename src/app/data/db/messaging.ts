@@ -11,7 +11,7 @@
  *
  * Fresh Db per call (workerd forbids cross-request I/O reuse).
  */
-import { and, eq, inArray, isNull, ne, sql, type SQL } from 'drizzle-orm';
+import { and, eq, inArray, isNull, ne, or, sql, type SQL } from 'drizzle-orm';
 import { type Db } from '@/db/client';
 import {
   accounts,
@@ -356,6 +356,29 @@ export function makeMessagingApi(db: () => Db): MessagingApi {
       .filter((t) => (t.state !== 'blocked' || t.blockedBy === party) && t.hiddenBy !== party)
       .map((t) => toSummary(t, party))
       .sort((a, b) => Number(b.pinned) - Number(a.pinned) || b.lastMessageAt.localeCompare(a.lastMessageAt));
+  },
+
+  async unreadCount(session) {
+    // Mirrors listThreads exactly: messages from the OTHER party (never
+    // 'system'), unread, in my threads, minus blocked-against-me and hidden.
+    const party: Party = session.profileId ? 'professional' : 'client';
+    const other: Party = party === 'professional' ? 'client' : 'professional';
+    const [row] = await db()
+      .select({ n: sql<number>`count(*)::int` })
+      .from(messages)
+      .innerJoin(threads, eq(threads.id, messages.threadId))
+      .where(
+        and(
+          session.profileId
+            ? eq(threads.profileId, session.profileId)
+            : eq(threads.clientAccountId, session.accountId),
+          eq(messages.sender, other),
+          isNull(messages.readAt),
+          or(ne(threads.state, 'blocked'), eq(threads.blockedBy, party)),
+          or(isNull(threads.hiddenBy), ne(threads.hiddenBy, party)),
+        ),
+      );
+    return row?.n ?? 0;
   },
 
   async getThread(session, threadId) {

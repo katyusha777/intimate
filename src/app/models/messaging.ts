@@ -238,6 +238,9 @@ export interface MessagingApi {
   setMode(session: Session, mode: ConversationSettings['mode']): Promise<void>;
 
   listThreads(session: Session): Promise<ThreadSummary[]>;
+  /** Total unread across the account's threads (dock badge) — one SQL COUNT,
+   *  never the load-every-message pass listThreads pays. Same visibility rules. */
+  unreadCount(session: Session): Promise<number>;
   /** Participant-only (mock stand-in for RLS); non-participant → null. */
   getThread(session: Session, threadId: string): Promise<Thread | null>;
   /**
