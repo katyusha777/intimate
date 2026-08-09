@@ -265,6 +265,10 @@ const tabBtn =
               const addr = dlg.querySelector<HTMLElement>('[data-confirm-email]');
               if (addr) addr.textContent = email;
               if (!dlg.open) dlg.showModal();
+              // showModal auto-focuses the first button → an unwanted focus
+              // ring around GOT IT (same trap ActionSheet parks). Blur it;
+              // Tab still enters the dialog normally.
+              (document.activeElement as HTMLElement | null)?.blur?.();
             }
             delete form.dataset.loading;
             return;
