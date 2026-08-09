@@ -1,0 +1,2 @@
+ALTER TABLE "conversation_settings" ALTER COLUMN "mode" SET DEFAULT 'everyone';--> statement-breakpoint
+CREATE INDEX "messages_unread_idx" ON "messages" USING btree ("thread_id") WHERE "messages"."read_at" is null;

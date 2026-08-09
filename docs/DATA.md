@@ -94,10 +94,13 @@ the **R2 object key**, visibility-prefixed: `pub/<profileId>/<uuid>` (public) or
 `priv/<profileId>/<uuid>` (her locked set). Bytes live in the `intimate-media`
 R2 bucket (hard rule 2 — EXIF stripped client-side first); `mediaUrl()` routes
 keys through `/media/<key>` (`data/db/profiles.ts`), served by
-`src/pages/media/[...key].ts`: public = edge-cached immutable + Images-transform
-resize (`?v=thumb|card|full` → WebP, graceful fallback to original), private =
-authorization-gated (owner, or a client with `contacts.private_set_unlocked`)
-and `no-store`. Uploads enter `pending_review` (images are the one
+`src/pages/media/[...key].ts`: public = edge-cached (Cache API, canonical key
+per `?v` variant) + Images-transform resize (`?v=thumb|card|full` → WebP,
+graceful fallback to original) — a `media⟕profiles` gate runs BEFORE the cache
+lookup, so takedown (row deleted / `rejected` / profile not live) blocks even
+cached copies, and `evictMediaCache` (`lib/media-keys.ts`) makes the serving
+colo instant. Private = authorization-gated (owner, or a client with
+`contacts.private_set_unlocked`) and `no-store`, never edge-cached. Uploads enter `pending_review` (images are the one
 human-moderated surface, ADMIN.md §6); the owner dashboard badges them until
 approved. Seed/static keys (absolute path or full URL) pass through `mediaUrl`
 untouched. `state` (media review), `is_private` (her locked set, revealed

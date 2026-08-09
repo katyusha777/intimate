@@ -4,7 +4,6 @@ import * as m from '@/paraglide/messages';
 import { getLocale } from '@/paraglide/runtime';
 import { localizePath } from '@/lib/i18n';
 import type { Locale } from '@/lib/taxonomy';
-import { accountApi } from '@/app/api/account';
 import { messagingApi } from '@/app/api/messaging';
 import { sessionApi } from '@/app/api/session';
 import Header from '@/components/organisms/layout/Header.astro';
@@ -72,17 +71,13 @@ const hideAgeGate = /\/(privacy|terms)\/?$/.test(Astro.url.pathname);
 const consentParts = m.age_gate_consent().split(/(%privacy%|%terms%)/);
 const ogAltLocales = (Object.keys(OG_LOCALES) as Locale[]).filter((l) => l !== locale);
 
-/* Session-aware chrome: layouts may read the seam (docs/API.md). Both lookups
- * only need the session — run them in parallel, not as serial awaits. */
+/* Session-aware chrome: layouts may read the seam (docs/API.md). idVerification
+ * rides the session identity query (60s memo) — no separate accounts read. */
 const session = await sessionApi.current(Astro);
-const [idVerified, unread] = await Promise.all([
-  session?.role === 'advertiser'
-    ? accountApi.get(session).then((a) => a.idVerification === 'approved')
-    : true,
-  // Dock unread badge — one SQL COUNT (unreadCount), not listThreads' full
-  // per-thread message load on every page render.
-  session && !bare ? messagingApi.unreadCount(session) : 0,
-]);
+const idVerified = session?.role === 'advertiser' ? session.idVerification === 'approved' : true;
+// Dock unread badge — one SQL COUNT (unreadCount), not listThreads' full
+// per-thread message load on every page render.
+const unread = session && !bare ? await messagingApi.unreadCount(session) : 0;
 ---
 
 <!doctype html>

@@ -182,12 +182,12 @@ export const admin = {
         .returning({ id: media.id, key: media.imageKey });
       if (!rows.length) throw new ActionError({ code: 'NOT_FOUND', message: 'photo not found' });
       // Delete the bytes AND evict the edge copy — a rejected photo must not
-      // keep serving from its (already-known) pub URL. State-flag alone isn't
-      // enough, and since /media caches transformed bytes, R2 deletion alone
-      // isn't either (worst case past the evict: s-maxage, one hour).
+      // keep serving from its (already-known) pub URL. The /media route's
+      // media-row gate ('rejected' blocks before the cache lookup) is the
+      // global guarantee; the evict makes the serving colo instant.
       if (isR2Key(rows[0]!.key)) {
         await mediaBucket().delete(rows[0]!.key);
-        await evictMediaCache([rows[0]!.key]);
+        evictMediaCache([rows[0]!.key]);
       }
       await bustProfiles(sessionKv());
       await record(session, { action: 'reject_media', entityType: 'media', entityId: rows[0]!.id });

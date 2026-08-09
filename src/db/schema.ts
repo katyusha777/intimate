@@ -404,6 +404,9 @@ export const messages = pgTable(
   (t) => [
     index('messages_thread_idx').on(t.threadId, t.createdAt),
     index('messages_expires_idx').on(t.expiresAt),
+    // Dock badge (unreadCount, every signed-in SSR render): partial index keeps
+    // the COUNT O(unread rows) instead of O(lifetime message history).
+    index('messages_unread_idx').on(t.threadId).where(sql`${t.readAt} is null`),
   ],
 );
 

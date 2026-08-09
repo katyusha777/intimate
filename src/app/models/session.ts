@@ -4,7 +4,7 @@
  * @supabase/ssr cookie sessions, JWTs verified locally via getClaims().
  */
 import { z } from 'zod';
-import { ACCOUNT_TYPES, ADMIN_ROLES, PROFILE_STATES } from '@/lib/taxonomy';
+import { ACCOUNT_TYPES, ADMIN_ROLES, PROFILE_STATES, VERIFICATION_STATES } from '@/lib/taxonomy';
 
 export const SessionSchema = z.object({
   /** accounts.id = auth.users.id — the identity every table keys on. */
@@ -21,6 +21,10 @@ export const SessionSchema = z.object({
   /** Lifecycle state of the linked profile — gates "view public profile"
    *  (only 'live' has a public page) and the pause control. Absent until one exists. */
   profileState: z.enum(PROFILE_STATES).optional(),
+  /** ID-verification state (advertisers) — rides the identity query so layouts
+   *  don't pay a separate accounts read per render; lags ≤60s via the session
+   *  memo, same class as name/avatar. */
+  idVerification: z.enum(VERIFICATION_STATES).optional(),
   /** Admin sub-role (ADMIN.md §1). Present only when role === 'admin'. */
   adminRole: z.enum(ADMIN_ROLES).optional(),
   /** JWT assurance level ('aal1' | 'aal2') — 'aal2' means MFA was completed.

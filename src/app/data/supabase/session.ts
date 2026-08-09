@@ -28,6 +28,7 @@ async function identity(accountId: string, email: string | undefined): Promise<S
       adminRole: accounts.adminRole,
       email: accounts.email,
       displayName: accounts.displayName,
+      idVerification: accounts.idVerification,
       profileId: profiles.id,
       profileSlug: profiles.slug,
       profileState: profiles.state,
@@ -56,6 +57,7 @@ async function identity(accountId: string, email: string | undefined): Promise<S
     profileSlug: row.profileSlug ?? undefined,
     profileState: row.profileState ?? undefined,
     avatarUrl: row.avatarKey ? mediaUrl(row.avatarKey) : undefined,
+    idVerification: row.idVerification,
     adminRole: row.adminRole ?? undefined,
   };
 }

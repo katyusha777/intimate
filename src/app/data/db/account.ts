@@ -345,7 +345,7 @@ export const accountApi: AccountApi = {
       .returning({ key: media.imageKey });
     if (gone && isR2Key(gone.key)) {
       await bucket().delete(gone.key);
-      await evictMediaCache([gone.key]);
+      evictMediaCache([gone.key]); // fire-and-forget; the /media row-gate is the guarantee
     }
   },
 

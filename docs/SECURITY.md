@@ -64,9 +64,9 @@ Data we don't hold can't leak — collect GDPR-minimal, purge on schedule (messa
 
 Cache poisoning/bleed is the classic way fast sites leak private data — and our whole architecture is caching. Three laws:
 
-1. **Only anonymous, public HTML enters any shared cache** (Cache API, CDN). Pages that vary by user (`/account`, `/admin`, `/messages`, anything reading the session cookie) send `Cache-Control: private, no-store` and are never `cache.put()`. Personalization on cached pages happens ONLY via server islands (ARCHITECTURE §2) — never by baking user state into cacheable HTML.
+1. **Only anonymous, public content enters any shared cache** (Cache API, CDN): public HTML (KV page cache) and public live-profile photo bytes (`/media` — its media⟕profiles takedown gate runs BEFORE every cache lookup; private/owner-preview photos are `no-store`). Pages that vary by user (`/account`, `/admin`, `/messages`, anything reading the session cookie) send `Cache-Control: private, no-store` and are never `cache.put()`. Personalization on cached pages happens ONLY via server islands (ARCHITECTURE §2) — never by baking user state into cacheable HTML.
 2. **The service worker caches the app shell and static assets ONLY.** Never HTML of authed routes, never action responses. SW cache-name bumps on deploy (already practiced) so stale logic can't serve stale auth state.
-3. **`Set-Cookie` and caching never meet:** any response that sets a cookie is uncacheable, asserted in a test on the cache-wrapper helper (one helper owns edge caching so the rule has one home).
+3. **`Set-Cookie` and caching never meet:** any response that sets a cookie is uncacheable. Two cache surfaces own the rule: `lib/page-cache.ts` (HTML, asserted in its test) and the `/media` route's `store()` (photo bytes, same guard).
 
 **Security headers (base layout / Worker, launch gate):** HSTS (preload after stabilization) · `X-Content-Type-Options: nosniff` · `Referrer-Policy: strict-origin-when-cross-origin` (profile URLs in referrers leak browsing to third parties — this matters here) · `X-Frame-Options: DENY` (nothing embeds us) · `Permissions-Policy` minimal (camera/mic only on call routes when Phase C lands) · CSP: start `report-only`, tighten to enforced before launch — realistic given zero-JS pages + known island sources.
 
