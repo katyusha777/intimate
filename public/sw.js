@@ -2,7 +2,14 @@
 // SSR pages stay network-served (edge cache does the heavy lifting).
 // OneSignal push rides THIS worker (one worker, one scope) — the import wires
 // its push/notificationclick handlers; PushManager.astro points the SDK here.
-importScripts('https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js');
+// Wrapped: the OneSignal CDN is a known-blocked tracker (Brave Shields, ad
+// blockers) and can also just fail — an uncaught throw here aborts evaluation
+// and the WHOLE app-shell worker fails to register. Push degrades; PWA lives.
+try {
+  importScripts('https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js');
+} catch (e) {
+  // Push unavailable (CDN blocked/unreachable) — app-shell caching still works.
+}
 
 const STATIC_CACHE = 'static-v2';
 

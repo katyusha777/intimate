@@ -72,13 +72,9 @@ const tabBtn =
       <SlabField label={m.auth_email()} name="email" type="email" autocomplete="email" required />
       <SlabField label={m.auth_password()} name="password" type="password" autocomplete="new-password" required />
 
-      {/* Live password-strength checklist (#3) — shown once she starts typing. */}
-      <ul data-pw-checks hidden class="grid grid-cols-1 gap-1 text-xs text-muted-foreground sm:grid-cols-2">
+      {/* Single requirement now — 8 characters (feedback: keep it simple). */}
+      <ul data-pw-checks hidden class="grid grid-cols-1 gap-1 text-xs text-muted-foreground">
         <li data-pw="len" class="flex items-center gap-1.5"><span data-dot class="size-1.5 flex-none rounded-full bg-foreground/30"></span>{m.pw_req_len()}</li>
-        <li data-pw="upper" class="flex items-center gap-1.5"><span data-dot class="size-1.5 flex-none rounded-full bg-foreground/30"></span>{m.pw_req_upper()}</li>
-        <li data-pw="lower" class="flex items-center gap-1.5"><span data-dot class="size-1.5 flex-none rounded-full bg-foreground/30"></span>{m.pw_req_lower()}</li>
-        <li data-pw="number" class="flex items-center gap-1.5"><span data-dot class="size-1.5 flex-none rounded-full bg-foreground/30"></span>{m.pw_req_number()}</li>
-        <li data-pw="special" class="flex items-center gap-1.5"><span data-dot class="size-1.5 flex-none rounded-full bg-foreground/30"></span>{m.pw_req_special()}</li>
       </ul>
 
       <p data-auth-error class="hidden text-sm font-medium text-brand">{m.auth_error()}</p>
