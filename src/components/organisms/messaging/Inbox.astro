@@ -70,6 +70,8 @@ const items: Item[] = [
           >
             {viewer === 'client' ? (
               <SafeImage imageKey={t.profileId} alt={t.profileName} class="size-12 flex-none rounded-full object-cover" />
+            ) : t.isTeam ? (
+              <img src="/icons/icon.svg" alt={t.clientName} class="size-12 flex-none rounded-full" />
             ) : (
               <span class="grid size-12 flex-none place-items-center rounded-full bg-foreground font-condensed text-lg font-bold text-background">
                 {(viewer === 'professional' ? t.clientName : t.profileName).charAt(0)}

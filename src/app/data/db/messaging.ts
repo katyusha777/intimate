@@ -24,6 +24,7 @@ import {
   threads,
 } from '@/db/schema';
 import { sendPush } from '@/lib/push';
+import { emailNewMessage } from '@/lib/email';
 import {
   ConversationSettingsSchema,
   RequestPayloadSchema,
@@ -42,7 +43,6 @@ import {
 } from '@/app/models/messaging';
 import type { Session } from '@/app/models/session';
 import { ratesMinPrice, type RateRow } from '@/app/models/profile';
-import type { Locale } from '@/lib/taxonomy';
 import { TEAM_INTIMATE_ACCOUNT_ID, TEAM_INTIMATE_NAME, welcomeBody } from '@/lib/welcome';
 
 const iso = (v: Date | string): string => (v instanceof Date ? v : new Date(v)).toISOString();
@@ -79,6 +79,7 @@ async function callInfoFor(d: Db, msgs: MsgRow[]): Promise<Map<string, CallInfo>
 interface ThreadJoin {
   id: string;
   profileId: string;
+  clientAccountId: string;
   profileSlug: string;
   profileName: string;
   clientEmail: string | null;
@@ -103,6 +104,7 @@ function toThread(r: ThreadJoin, msgs: MsgRow[], calls?: Map<string, CallInfo>):
     profileName: r.profileName,
     clientEmail: email,
     clientName: r.clientName ?? email.split('@')[0] ?? 'Client',
+    isTeam: r.clientAccountId === TEAM_INTIMATE_ACCOUNT_ID,
     state: r.state,
     blockedBy: r.blockedBy ?? undefined,
     hiddenBy: r.hiddenBy ?? undefined,
@@ -122,6 +124,7 @@ async function loadThreads(d: Db, where: SQL): Promise<Thread[]> {
     .select({
       id: threads.id,
       profileId: threads.profileId,
+      clientAccountId: threads.clientAccountId,
       profileSlug: profiles.slug,
       profileName: profiles.name,
       clientEmail: accounts.email,
@@ -179,6 +182,7 @@ function toSummary(t: Thread, party: Party): ThreadSummary {
     profileName: t.profileName,
     clientEmail: t.clientEmail,
     clientName: t.clientName,
+    isTeam: t.isTeam,
     state: t.state,
     pinned: t.pinned,
     note: t.note,
@@ -289,7 +293,7 @@ async function createThread(
  * lands in her inbox and she can reply. Self-bootstraps the account row (one
  * system record isn't worth a migration). Called once, on first profile save.
  */
-export async function createWelcomeThread(d: Db, profileId: string, locale: Locale): Promise<void> {
+export async function createWelcomeThread(d: Db, profileId: string): Promise<void> {
   await d
     .insert(accounts)
     .values({ id: TEAM_INTIMATE_ACCOUNT_ID, accountType: 'client', displayName: TEAM_INTIMATE_NAME })
@@ -299,7 +303,7 @@ export async function createWelcomeThread(d: Db, profileId: string, locale: Loca
     threadId: thread.id,
     sender: 'client',
     kind: 'text',
-    body: welcomeBody(locale),
+    body: welcomeBody(),
   });
 }
 
@@ -462,6 +466,11 @@ export function makeMessagingApi(db: () => Db): MessagingApi {
       });
     }
     sendPush({ accountId: profile.accountId, category: 'requests', path: `/messages/${thread.id}/` });
+    // A new request is the money moment — always email her (push is best-effort).
+    {
+      const [acc] = await d.select({ email: accounts.email }).from(accounts).where(eq(accounts.id, profile.accountId));
+      if (acc?.email) emailNewMessage(acc.email, thread.id);
+    }
     return (await loadThreads(d, eq(threads.id, thread.id)))[0]!;
   },
 
@@ -497,6 +506,9 @@ export function makeMessagingApi(db: () => Db): MessagingApi {
     // Free-compose only on an OPEN thread — a pending request blocks both sides
     // (the UX-PLAN 4.1 throttle) and blocked kills it.
     if (t.state !== 'open') return null;
+    // Team Intimate welcome thread is READ-ONLY: nobody staffs that inbox, so
+    // a reply would silently vanish — the UI points at WhatsApp/Telegram.
+    if (t.isTeam) return null;
 
     if (party === 'client') {
       if (!(await clientPassesMode(d, session.accountId, (await this.settings(t.profileId)).mode))) return null;
@@ -505,6 +517,17 @@ export function makeMessagingApi(db: () => Db): MessagingApi {
     const clean = body.trim().slice(0, 4000);
     if (kind === 'text' && !clean) return null;
     if (kind === 'photo' && !photo) return null;
+
+    // Email throttle: she gets a mail only when this message STARTS an unread
+    // burst (no unread client messages before it) — not one mail per message.
+    const firstUnread =
+      party === 'client' &&
+      (
+        await d
+          .select({ n: sql<number>`count(*)::int` })
+          .from(messages)
+          .where(and(eq(messages.threadId, threadId), eq(messages.sender, 'client'), isNull(messages.readAt)))
+      )[0]!.n === 0;
 
     const [row] = await d
       .insert(messages)
@@ -518,7 +541,16 @@ export function makeMessagingApi(db: () => Db): MessagingApi {
       .returning();
     // Notify the OTHER side; collapse per thread so a burst is one banner.
     const to = party === 'client' ? await profileOwnerAccount(d, t.profileId) : await threadClientAccount(d, threadId);
-    if (row && to) sendPush({ accountId: to, category: 'messages', path: `/messages/${threadId}/`, collapseId: threadId });
+    if (row && to) {
+      sendPush({ accountId: to, category: 'messages', path: `/messages/${threadId}/`, collapseId: threadId });
+      // Push is best-effort (few subscribe) — a new unread burst also emails
+      // her. ponytail: also fires when push DID land; gate on OneSignal
+      // subscription state if double-notifying ever annoys.
+      if (firstUnread) {
+        const [acc] = await d.select({ email: accounts.email }).from(accounts).where(eq(accounts.id, to));
+        if (acc?.email) emailNewMessage(acc.email, threadId);
+      }
+    }
     return row ? toMessage(row) : null;
   },
 

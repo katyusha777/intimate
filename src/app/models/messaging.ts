@@ -106,6 +106,8 @@ export const ThreadSchema = z.object({
   profileName: z.string(),
   clientEmail: z.string(),
   clientName: z.string(),
+  /** Team Intimate system thread (welcome DM) — read-only, brand avatar. */
+  isTeam: z.boolean().default(false),
   state: z.enum(THREAD_STATES).default('open'),
   /** Set when state=blocked, so each side sees its own block list. */
   blockedBy: z.enum(['professional', 'client']).optional(),
@@ -138,6 +140,8 @@ export interface ThreadSummary {
   profileName: string;
   clientEmail: string;
   clientName: string;
+  /** Team Intimate system thread (welcome DM) — read-only, brand avatar. */
+  isTeam: boolean;
   state: Thread['state'];
   pinned: boolean;
   note: string;

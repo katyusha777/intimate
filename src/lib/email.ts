@@ -62,6 +62,26 @@ export function emailProfileApproved(to: string, slug?: string): void {
   });
 }
 
+/** Professional notification: a client message/request is waiting (NL/EN).
+ *  Throttled by the caller to the start of an unread burst — never per message. */
+export function emailNewMessage(to: string, threadId: string): void {
+  sendEmail({
+    to,
+    subject: 'Nieuw bericht op Intimate · New message on Intimate',
+    text: [
+      'Je hebt een nieuw bericht op Intimate.',
+      `Lezen en beantwoorden: https://intimate.nl/nl/messages/${threadId}/`,
+      '',
+      '—',
+      '',
+      'You have a new message on Intimate.',
+      `Read and reply: https://intimate.nl/en/messages/${threadId}/`,
+      '',
+      '— Intimate · intimate.nl',
+    ].join('\n'),
+  });
+}
+
 /** Admin notification helper — target comes from ADMIN_EMAIL. */
 function emailAdmin(subject: string, text: string): void {
   void (async () => {

@@ -16,7 +16,9 @@ import * as m from '@/paraglide/messages';
 import type { Thread } from '@/app/models/messaging';
 import { localizePath } from '@/lib/i18n';
 import SafeImage from '@/components/atoms/SafeImage.astro';
+import Icon from '@/components/atoms/Icon.astro';
 import RequestCard from '@/components/organisms/messaging/RequestCard.astro';
+import { SUPPORT_CONTACT } from '@/lib/contact';
 
 interface Props {
   thread: Thread;
@@ -94,6 +96,8 @@ const utcTime = (iso: string): string =>
     {
       viewer === 'client' ? (
         <SafeImage imageKey={thread.profileId} alt={otherName} class="size-9 flex-none rounded-full object-cover" />
+      ) : thread.isTeam ? (
+        <img src="/icons/icon.svg" alt={otherName} class="size-9 flex-none rounded-full" />
       ) : (
         <span class="grid size-9 flex-none place-items-center rounded-full bg-foreground font-condensed text-sm font-bold text-background">
           {otherName.charAt(0)}
@@ -295,7 +299,20 @@ const utcTime = (iso: string): string =>
 
   <!-- Composer -->
   {
-    blocked ? (
+    thread.isTeam ? (
+      // Team Intimate is read-only (unstaffed inbox) — support runs on
+      // WhatsApp/Telegram, so the composer becomes the contact chips.
+      <div class="flex flex-none items-center justify-center gap-6 border-t border-border px-4 py-4">
+        <a href={SUPPORT_CONTACT.whatsapp.href} target="_blank" rel="noopener" class="flex items-center gap-2.5">
+          <Icon name="whatsapp" family="brands" class="text-xl text-online" />
+          <span class="font-condensed text-lg font-bold">{SUPPORT_CONTACT.whatsapp.display}</span>
+        </a>
+        <a href={SUPPORT_CONTACT.telegram.href} target="_blank" rel="noopener" class="flex items-center gap-2.5">
+          <Icon name="telegram" family="brands" class="text-xl text-telegram" />
+          <span class="font-condensed text-lg font-bold">{SUPPORT_CONTACT.telegram.display}</span>
+        </a>
+      </div>
+    ) : blocked ? (
       <div class="flex-none border-t border-border px-4 py-4 text-center text-sm text-muted-foreground">
         {m.msg_blocked_note()}
       </div>
