@@ -1,10 +1,10 @@
 name: CI
 
-# Branch → environment: push to `staging` deploys staging.intimate.nl,
-# push to `main` deploys intimate.nl (production). Tests gate both.
+# push to `main` deploys intimate.nl (production). Tests gate it.
+# (Staging retired 2026-08-09 — everything ships on prod for now.)
 on:
   push:
-    branches: [main, staging]
+    branches: [main]
   pull_request:
 
 jobs:
@@ -40,22 +40,6 @@ jobs:
           bun test tests/rls.test.ts
 
       - run: bun run build
-
-  deploy-staging:
-    needs: test
-    if: github.event_name == 'push' && github.ref == 'refs/heads/staging'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
-      - run: bun install --frozen-lockfile
-      - run: bun run build
-        env:
-          CLOUDFLARE_ENV: staging
-      - run: bunx wrangler deploy --env staging
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
   deploy-production:
     needs: test
