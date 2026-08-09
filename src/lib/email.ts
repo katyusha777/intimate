@@ -8,8 +8,6 @@
  * advertiser-facing template is bilingual NL/EN by owner decision.
  */
 
-import { pushoverAdmins } from '@/lib/pushover';
-
 export function sendEmail(opts: { to: string; subject: string; text: string }): void {
   void (async () => {
     try {
@@ -97,38 +95,6 @@ export function emailNewMessage(to: string, threadId: string): void {
   });
 }
 
-/** Admin notification helper — target comes from ADMIN_EMAIL. */
-function emailAdmin(subject: string, text: string): void {
-  void (async () => {
-    try {
-      const { env } = await import('cloudflare:workers');
-      const admin = (env as unknown as Record<string, string | undefined>).ADMIN_EMAIL;
-      if (!admin) {
-        console.warn('[email] ADMIN_EMAIL unset — skipping', subject);
-        return;
-      }
-      sendEmail({ to: admin, subject, text });
-    } catch (err) {
-      console.error('[email] admin hook failed:', (err as Error)?.message ?? err);
-    }
-  })();
-}
-
-/** Admin: a new advertiser account just registered (pre-confirmation).
- *  Email to ADMIN_EMAIL + Pushover to every admin with a key. */
-export function emailAdminNewAdvertiser(email: string): void {
-  emailAdmin(
-    'New advertiser registration — Intimate',
-    `A new advertiser just registered: ${email}\n\nAdmin: https://intimate.nl/admin`,
-  );
-  pushoverAdmins('New advertiser 🎉', `${email} just registered on Intimate`);
-}
-
-/** Admin: verification documents submitted, review pending. */
-export function emailAdminVerificationPending(email: string): void {
-  emailAdmin(
-    'Verification pending review — Intimate',
-    `${email} submitted verification documents.\n\nReview: https://intimate.nl/admin/verification`,
-  );
-  pushoverAdmins('Verification pending', `${email} submitted documents — review at intimate.nl/admin/verification`);
-}
+// Admin-event notifications live in lib/pushover.ts (pushoverAdmins) —
+// admin EMAILS for registration/verification were turned off 2026-08-10
+// (owner decision); this module is user-facing mail only.

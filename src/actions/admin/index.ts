@@ -24,6 +24,7 @@ import { approveDeletion, exportAccountData } from './gdpr';
 import { retryImport } from './imports';
 import { INDEXNOW_KEY, submitIndexNow } from '@/lib/indexnow';
 import { evictMediaCache, isR2Key, mediaBucket } from '@/lib/media-keys';
+import { ADMIN_EVENTS, NOTIFY_PREFS_KEY } from '@/lib/pushover';
 import { LOCALES, type AdminAction, type ProfileState } from '@/lib/taxonomy';
 
 const adb = () => requestDb((env as unknown as { HYPERDRIVE: Hyperdrive }).HYPERDRIVE);
@@ -212,6 +213,22 @@ export const admin = {
         .returning({ email: accounts.email });
       if (!rows.length) throw new ActionError({ code: 'NOT_FOUND', message: 'admin account not found' });
       await record(session, { action: 'set_pushover_key', entityType: 'account', entityId: rows[0]!.email ?? accountId });
+      return { ok: true };
+    },
+  }),
+
+  setNotifyPrefs: defineAction({
+    input: z.object({ prefs: z.record(z.string(), z.boolean()) }),
+    handler: async ({ prefs }, context) => {
+      const session = await requireAdmin(context, ['super']);
+      const kv = sessionKv();
+      if (!kv) throw new ActionError({ code: 'INTERNAL_SERVER_ERROR', message: 'KV unavailable' });
+      // Only known event keys survive — junk can't accumulate in the pref blob.
+      const known = Object.fromEntries(
+        ADMIN_EVENTS.filter((ev) => ev.key in prefs).map((ev) => [ev.key, !!prefs[ev.key]]),
+      );
+      await kv.put(NOTIFY_PREFS_KEY, JSON.stringify(known));
+      await record(session, { action: 'set_notify_prefs', entityType: 'config', entityId: 'notify:prefs' });
       return { ok: true };
     },
   }),

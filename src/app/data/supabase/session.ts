@@ -13,7 +13,7 @@ import { supabaseServer } from '@/lib/supabase';
 import { requestDb, type Db } from '@/db/client';
 import { accounts, media, profiles } from '@/db/schema';
 import { mediaUrl } from '@/app/data/db/profiles';
-import { emailAdminNewAdvertiser } from '@/lib/email';
+import { pushoverAdmins } from '@/lib/pushover';
 import type { Session, SessionApi } from '@/app/models/session';
 import { ACCOUNT_TYPES } from '@/lib/taxonomy';
 
@@ -119,8 +119,11 @@ export const sessionApi: SessionApi = {
     if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
       return { session: null, needsConfirmation: false, emailExists: true };
     }
-    // New advertiser on the platform → tell the admin (fire-and-forget).
-    if (role === 'advertiser' && data.user) emailAdminNewAdvertiser(email);
+    // New account on the platform → ping the admin team (fire-and-forget).
+    if (data.user) {
+      if (role === 'advertiser') pushoverAdmins('advertiser_registered', 'New advertiser 🎉', `${email} just registered on Intimate`);
+      else pushoverAdmins('client_registered', 'New client', `${email} registered on Intimate`);
+    }
     // Confirmation ON → user exists but no session until the email link.
     if (!data.session || !data.user) return { session: null, needsConfirmation: true };
     return { session: await identity(data.user.id, data.user.email), needsConfirmation: false };

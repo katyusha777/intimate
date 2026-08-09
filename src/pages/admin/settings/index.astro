@@ -4,7 +4,10 @@
  * the DB), feature flags (managed in PostHog, read-only here), taxonomy
  * snapshot, cache controls, retention/policy.
  */
+import { env } from 'cloudflare:workers';
 import { getAdmin } from '@/actions/admin/lib';
+import { ADMIN_EVENTS, NOTIFY_PREFS_KEY, mergeNotifyPrefs } from '@/lib/pushover';
+import type { CacheKv } from '@/lib/page-cache';
 import { accountApi } from '@/app/api/account';
 import { ADMIN_ROLES, ALL_SERVICES, CITIES, GENDERS, REJECTION_REASONS, SERVICE_CATEGORIES } from '@/lib/taxonomy';
 import AdminShell from '@/components/organisms/admin/AdminShell.astro';
@@ -20,6 +23,9 @@ const admins = isSuper
       .map((a) => ({ id: a.id, email: a.email, role: a.adminRole ?? '—', pushoverKey: a.pushoverKey ?? '' }))
       .sort((a, b) => a.email.localeCompare(b.email))
   : [];
+// Pushover event toggles (KV; all-on defaults). English: internal surface.
+const notifyKv = (env as unknown as Record<string, unknown>).SESSION as CacheKv | undefined;
+const notifyPrefs = mergeNotifyPrefs(notifyKv ? await notifyKv.get(NOTIFY_PREFS_KEY) : null);
 const flags = [
   { key: 'messaging', label: m.adm_nav_messaging(), on: true },
   { key: 'ai_search', label: m.wand_title(), on: true },
@@ -78,8 +84,26 @@ const taxo = [
             </div>
             <p class="mt-2 text-2xs text-muted-foreground" set:html={m.adm_settings_admins_note()} />
             <p class="mt-1 text-2xs text-muted-foreground">
-              Pushover: each admin gets pinged on new-advertiser + pending-verification events when their user key is set.
+              Pushover: admins with a user key get pinged on the events below.
             </p>
+          </section>
+
+          <section>
+            <h2 class="font-condensed text-sm font-bold uppercase tracking-wide text-muted-foreground">Admin notifications</h2>
+            <div class="mt-3 max-w-lg divide-y divide-border border border-border">
+              {ADMIN_EVENTS.map((ev) => (
+                <label class="flex cursor-pointer items-center justify-between px-3 py-2.5 text-sm">
+                  <span>{ev.label}</span>
+                  <input type="checkbox" data-notify-pref={ev.key} checked={notifyPrefs[ev.key]} class="size-4 accent-brand" />
+                </label>
+              ))}
+            </div>
+            <div class="mt-2 flex items-center gap-3">
+              <button type="button" data-notify-save class="cursor-pointer border border-foreground/20 px-3 py-1.5 text-2xs font-bold uppercase tracking-wide transition-colors hover:border-foreground/60">
+                Save notifications
+              </button>
+              <span data-notify-status class="text-2xs text-muted-foreground"></span>
+            </div>
           </section>
 
           <section>
@@ -211,5 +235,18 @@ const taxo = [
       if (error) console.error(error.message);
       setTimeout(() => (btn.textContent = prev), 1500);
     });
+  });
+
+  // Admin notification toggles — save the whole set at once.
+  document.querySelector<HTMLButtonElement>('[data-notify-save]')?.addEventListener('click', async (ev) => {
+    const btn = ev.currentTarget as HTMLButtonElement;
+    const boxes = document.querySelectorAll<HTMLInputElement>('[data-notify-pref]');
+    const prefs: Record<string, boolean> = {};
+    boxes.forEach((b) => (prefs[b.dataset.notifyPref!] = b.checked));
+    btn.disabled = true;
+    const { error } = await actions.admin.setNotifyPrefs({ prefs });
+    btn.disabled = false;
+    const s = document.querySelector<HTMLElement>('[data-notify-status]');
+    if (s) s.textContent = error ? error.message : 'Saved.';
   });
 </script>

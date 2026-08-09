@@ -134,6 +134,13 @@
       "when": 1786400600000,
       "tag": "0018_tricky_sersi",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1786400700000,
+      "tag": "0019_curvy_la_nuit",
+      "breakpoints": true
     }
   ]
 }

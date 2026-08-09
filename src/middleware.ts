@@ -5,6 +5,7 @@ import { paraglideMiddleware } from '@/paraglide/server';
 import { withRequestDb } from '@/db/client';
 import { negotiateLocale } from '@/lib/i18n';
 import { HOME_TTL_S, isAnonymousRequest, isCacheableHome, isCacheableProfile, servedFromCache, storeInCache, type CacheKv } from '@/lib/page-cache';
+import { captureError } from '@/lib/sentry';
 
 const cacheKv = (): CacheKv | undefined =>
   (env as unknown as Record<string, unknown>).SESSION as CacheKv | undefined;
@@ -101,7 +102,15 @@ export const onRequest = defineMiddleware(async (context, next) => {
   if (context.url.hostname === 'admin.intimate.nl') {
     return context.redirect(`https://intimate.nl${context.url.pathname}${context.url.search}`, 301);
   }
-  const res = await handle(context, next);
+  let res: Response;
+  try {
+    res = await handle(context, next);
+  } catch (err) {
+    // Sentry sees every SSR/page exception (the whole-site-500 class);
+    // rethrow so Astro still renders its error response.
+    captureError(err, { url: context.url.href });
+    throw err;
+  }
   try {
     for (const [k, v] of Object.entries(SECURITY_HEADERS)) res.headers.set(k, v);
   } catch {

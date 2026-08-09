@@ -23,7 +23,18 @@ import { ProfileSchema, birthDateForAge, priceFromRates, type Profile } from '@/
 import { mediaUrl, toProfile } from '@/app/data/db/profiles';
 import { CITIES, POLICY_MIN_AGE } from '@/lib/taxonomy';
 import { evictMediaCache, isR2Key, mediaBucket as bucket } from '@/lib/media-keys';
-import { emailAdminVerificationPending } from '@/lib/email';
+import { pushoverAdmins } from '@/lib/pushover';
+import { rateLimit } from '@/lib/rate-limit';
+import type { CacheKv } from '@/lib/page-cache';
+
+/** Admin ping on profile edits, throttled to one per profile per hour — the
+ *  onboarding wizard saves on every step and must not machine-gun phones. */
+async function notifyProfileChanged(email: string, profileId: string): Promise<void> {
+  const kv = (env as unknown as Record<string, unknown>).SESSION as CacheKv | undefined;
+  if (await rateLimit(kv, 'notif-profile', profileId, 1)) {
+    pushoverAdmins('profile_changed', 'Profile updated', `${email} updated her profile`);
+  }
+}
 import { createWelcomeThread } from '@/app/data/db/messaging';
 import type { Session } from '@/app/models/session';
 
@@ -217,6 +228,7 @@ export const accountApi: AccountApi = {
       const update = profileUpdate(patch);
       if (Object.keys(update).length) {
         await d.update(profiles).set(update).where(eq(profiles.id, existing.id));
+        await notifyProfileChanged(session.email, existing.id);
       }
       return;
     }
@@ -243,6 +255,7 @@ export const accountApi: AccountApi = {
       } catch (e) {
         console.error('[welcome] failed', e);
       }
+      await notifyProfileChanged(session.email, created.id);
     }
   },
 
@@ -285,8 +298,8 @@ export const accountApi: AccountApi = {
         .update(accounts)
         .set({ idVerification: 'pending', verificationSubmittedAt: new Date() })
         .where(eq(accounts.id, session.accountId));
-      // Verification waiting in the queue → tell the admin (fire-and-forget).
-      emailAdminVerificationPending(session.email);
+      // Verification waiting in the queue → ping the admin team (fire-and-forget).
+      pushoverAdmins('verification_pending', 'Verification pending', `${session.email} submitted documents — review at intimate.nl/admin/verification`);
     } catch (e) {
       // Never leave orphaned toxic-waste objects if the DB write fails — they'd
       // escape the retention/purge accounting (hard rule 3).

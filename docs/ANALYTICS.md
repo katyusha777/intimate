@@ -1,6 +1,6 @@
 # ANALYTICS.md — PostHog Plan
 
-PostHog EU Cloud (Frankfurt, AWS eu-central-1) is our analytics platform. It bundles product analytics, web analytics, session replay, feature flags, experiments, surveys, and error tracking under usage-based pricing with per-product free tiers (1M events, 5K recordings, 1M flag requests, 250 survey responses/mo) and per-product billing caps. **It is also our error tracker — we do not use Sentry** (one vendor, one SDK, errors correlated with the same session/flag context).
+PostHog EU Cloud (Frankfurt, AWS eu-central-1) is our analytics platform. It bundles product analytics, web analytics, session replay, feature flags, experiments, surveys, and error tracking under usage-based pricing with per-product free tiers (1M events, 5K recordings, 1M flag requests, 250 survey responses/mo) and per-product billing caps. **Error tracking moved to Sentry** (owner decision 2026-08-10 — `lib/sentry.ts`, envelope API from the worker middleware, no SDK); PostHog stays the analytics platform.
 
 **Hosting path: EU Cloud now → likely self-hosted before launch.** Build everything cloud-first, but keep the migration trivial: the instance URL lives in ONE place (the `/relay` proxy target + the server-side client config, §3) — no `*.posthog.com` reference anywhere else in code. Self-hosting note: PostHog self-hosted (Docker, open-source hobby deploy) has no error-tracking/replay parity guarantees and no support — the switch is a deliberate pre-launch decision (data sovereignty for an adult platform), re-checked against feature parity when we make it. Event schema, wrapper, and dashboards carry over unchanged; historical cloud data does not migrate automatically (accepted — pre-launch data is disposable).
 
@@ -19,7 +19,7 @@ PostHog EU Cloud (Frankfurt, AWS eu-central-1) is our analytics platform. It bun
 | Feature flags | Kill switches + gradual rollouts (InstallCoach, ranking tweaks, new features) | Launch |
 | Surveys | Feedback from professionals (the founding-cohort strategy, instrumented) | Fast follow |
 | Experiments (A/B) | Card layout, coach-mark copy, ranking variants | Post-launch |
-| Error tracking | **Our error tracker — no Sentry.** Client + Worker exceptions land in PostHog (one vendor, same EU project, same proxy) | Launch |
+| Error tracking | **Sentry** (2026-08-10): Worker/SSR exceptions via `lib/sentry.ts` from the middleware catch; browser-side capture = later | Live |
 | Session replay | **OFF for all public/client surfaces, permanently.** Optional later: professional onboarding/wizard only, explicit consent, all inputs masked | Not at launch |
 | Group analytics | Agencies as groups (org-level product usage) | Later, if needed |
 

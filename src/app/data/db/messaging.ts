@@ -25,6 +25,7 @@ import {
 } from '@/db/schema';
 import { sendPush } from '@/lib/push';
 import { emailNewMessage } from '@/lib/email';
+import { pushoverAdmins } from '@/lib/pushover';
 import {
   ConversationSettingsSchema,
   RequestPayloadSchema,
@@ -471,6 +472,7 @@ export function makeMessagingApi(db: () => Db): MessagingApi {
       const [acc] = await d.select({ email: accounts.email }).from(accounts).where(eq(accounts.id, profile.accountId));
       if (acc?.email) emailNewMessage(acc.email, thread.id);
     }
+    pushoverAdmins('client_message', 'New request', `${session.email} → ${profileSlug}`);
     return (await loadThreads(d, eq(threads.id, thread.id)))[0]!;
   },
 
@@ -549,6 +551,7 @@ export function makeMessagingApi(db: () => Db): MessagingApi {
       if (firstUnread) {
         const [acc] = await d.select({ email: accounts.email }).from(accounts).where(eq(accounts.id, to));
         if (acc?.email) emailNewMessage(acc.email, threadId);
+        pushoverAdmins('client_message', 'New message', `${t.clientEmail || 'client'} → ${t.profileName}`);
       }
     }
     return row ? toMessage(row) : null;

@@ -124,6 +124,7 @@ export const ADMIN_ACTIONS = [
   'owner_clear_phone',
   // Admin notification config (/admin/settings)
   'set_pushover_key',
+  'set_notify_prefs',
 ] as const;
 
 export const IMPORT_JOB_STATES = [
