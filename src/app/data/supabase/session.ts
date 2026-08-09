@@ -13,6 +13,7 @@ import { supabaseServer } from '@/lib/supabase';
 import { requestDb, type Db } from '@/db/client';
 import { accounts, media, profiles } from '@/db/schema';
 import { mediaUrl } from '@/app/data/db/profiles';
+import { emailAdminNewAdvertiser } from '@/lib/email';
 import type { Session, SessionApi } from '@/app/models/session';
 import { ACCOUNT_TYPES } from '@/lib/taxonomy';
 
@@ -118,6 +119,8 @@ export const sessionApi: SessionApi = {
     if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
       return { session: null, needsConfirmation: false, emailExists: true };
     }
+    // New advertiser on the platform → tell the admin (fire-and-forget).
+    if (role === 'advertiser' && data.user) emailAdminNewAdvertiser(email);
     // Confirmation ON → user exists but no session until the email link.
     if (!data.session || !data.user) return { session: null, needsConfirmation: true };
     return { session: await identity(data.user.id, data.user.email), needsConfirmation: false };

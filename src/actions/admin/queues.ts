@@ -12,6 +12,7 @@ import { accountApi } from '@/app/api/account';
 import { reportsApi } from '@/app/api/reports';
 import { profilesApi } from '@/app/api/profiles';
 import { getClaims } from './lib';
+import { emailProfileApproved } from '@/lib/email';
 import type { ModerationItem, Overview, ReportItem, VerificationItem } from './types';
 
 const adb = (): Db => requestDb((env as unknown as { HYPERDRIVE: Hyperdrive }).HYPERDRIVE);
@@ -157,13 +158,31 @@ export async function approveWholeSubmission(by: { email?: string; profileId?: s
     accountId = p?.accountId;
   }
   // Clear a pending ID verification.
+  let verified = false;
   if (accountId) {
-    await d.update(accounts).set({ idVerification: 'approved' }).where(and(eq(accounts.id, accountId), eq(accounts.idVerification, 'pending')));
+    const rows = await d
+      .update(accounts)
+      .set({ idVerification: 'approved' })
+      .where(and(eq(accounts.id, accountId), eq(accounts.idVerification, 'pending')))
+      .returning({ id: accounts.id });
+    verified = rows.length > 0;
   }
   // Publish a submitted profile + approve its pending photos.
+  let publishedSlug: string | undefined;
   if (profileId) {
-    await d.update(profiles).set({ state: 'live' }).where(and(eq(profiles.id, profileId), eq(profiles.state, 'pending_review')));
+    const rows = await d
+      .update(profiles)
+      .set({ state: 'live' })
+      .where(and(eq(profiles.id, profileId), eq(profiles.state, 'pending_review')))
+      .returning({ slug: profiles.slug });
+    publishedSlug = rows[0]?.slug;
     await d.update(media).set({ state: 'approved' }).where(and(eq(media.profileId, profileId), eq(media.state, 'pending_review')));
+  }
+  // Tell her — only when something actually flipped (approve is re-runnable;
+  // a second click must not re-send the mail).
+  if (accountId && (verified || publishedSlug)) {
+    const [acc] = await d.select({ email: accounts.email }).from(accounts).where(eq(accounts.id, accountId));
+    if (acc?.email) emailProfileApproved(acc.email, publishedSlug);
   }
 }
 

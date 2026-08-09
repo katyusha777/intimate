@@ -23,6 +23,7 @@ import { ProfileSchema, birthDateForAge, priceFromRates, type Profile } from '@/
 import { mediaUrl, toProfile } from '@/app/data/db/profiles';
 import { CITIES, POLICY_MIN_AGE, type Locale } from '@/lib/taxonomy';
 import { evictMediaCache, isR2Key, mediaBucket as bucket } from '@/lib/media-keys';
+import { emailAdminVerificationPending } from '@/lib/email';
 import { createWelcomeThread } from '@/app/data/db/messaging';
 import { getLocale } from '@/paraglide/runtime';
 import type { Session } from '@/app/models/session';
@@ -284,6 +285,8 @@ export const accountApi: AccountApi = {
         .update(accounts)
         .set({ idVerification: 'pending', verificationSubmittedAt: new Date() })
         .where(eq(accounts.id, session.accountId));
+      // Verification waiting in the queue → tell the admin (fire-and-forget).
+      emailAdminVerificationPending(session.email);
     } catch (e) {
       // Never leave orphaned toxic-waste objects if the DB write fails — they'd
       // escape the retention/purge accounting (hard rule 3).

@@ -58,6 +58,12 @@
     // Worker secret (ONESIGNAL_API_KEY), never here.
     "PUBLIC_ONESIGNAL_APP_ID": "33308041-5873-497c-8a28-d20f2d29181d",
     // Absolute origin for outbound links (push deep links) — per-env.
-    "PUBLIC_SITE_ORIGIN": "https://intimate.nl"
+    "PUBLIC_SITE_ORIGIN": "https://intimate.nl",
+    // Outbound mail (lib/email.ts): SMTP2GO relay over workerd sockets.
+    // SMTP_USER / SMTP_PASS are Worker secrets, never here.
+    "SMTP_HOST": "mail-eu.smtp2go.com",
+    "SMTP_PORT": "587",
+    "EMAIL_FROM": "noreply@intimate.nl",
+    "ADMIN_EMAIL": "admin@intimate.nl"
   }
 }

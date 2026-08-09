@@ -95,6 +95,14 @@ deploys keep failing/targeting the old one).
   ffmpeg (`-an`, h264 crf 24 / vp9 crf 36) from a source file on the desktop.
 - **Fulldev UI** — `@fulldev` registry configured in `components.json`; served
   through the shadcn CLI/MCP into `src/components/ui/` (vendor; wrap in atoms).
+- **SMTP2GO (outbound email, 2026-08-10)** — relay `mail-eu.smtp2go.com:587`
+  (STARTTLS, wrangler vars `SMTP_HOST`/`SMTP_PORT`/`EMAIL_FROM`/`ADMIN_EMAIL`);
+  credentials = Worker secrets `SMTP_USER` + `SMTP_PASS`. Send seam
+  `src/lib/email.ts` (worker-mailer over workerd sockets, fire-and-forget).
+  Sends: profile approved → advertiser (NL/EN) · new advertiser registration +
+  verification submitted → `ADMIN_EMAIL`. **Owner steps:** verify the
+  `intimate.nl` sender domain in SMTP2GO (SPF/DKIM DNS) or mail lands in spam;
+  optionally point Supabase Auth SMTP at the same relay (dashboard → Auth).
 - **OneSignal (web push)** — app id `33308041-…` is public (wrangler vars +
   `.env` `PUBLIC_ONESIGNAL_APP_ID`); REST key = Worker secret
   `ONESIGNAL_API_KEY` (set on prod + staging 2026-08-08). Send seam

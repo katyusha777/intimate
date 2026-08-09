@@ -30,6 +30,7 @@
     "postgres": "^3.4.9",
     "tailwind-merge": "^3.6.0",
     "tailwindcss": "^4.3.3",
+    "worker-mailer": "^1.2.1",
     "zod": "^4.4.3"
   },
   "devDependencies": {
