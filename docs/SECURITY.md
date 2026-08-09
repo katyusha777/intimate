@@ -70,7 +70,7 @@ Cache poisoning/bleed is the classic way fast sites leak private data — and ou
 
 **Security headers (base layout / Worker, launch gate):** HSTS (preload after stabilization) · `X-Content-Type-Options: nosniff` · `Referrer-Policy: strict-origin-when-cross-origin` (profile URLs in referrers leak browsing to third parties — this matters here) · `X-Frame-Options: DENY` (nothing embeds us) · `Permissions-Policy` minimal (camera/mic only on call routes when Phase C lands) · CSP: start `report-only`, tighten to enforced before launch — realistic given zero-JS pages + known island sources.
 
-**Abuse walls, outermost first:** Cloudflare WAF/bot rules (never challenging the SEO/AI allowlist bots — SEO.md §1.3) → zone rate-limit on `/_actions/*` (INFRASTRUCTURE §7) → Turnstile on registration, contact-reveal, SMS start, first message of a thread → KV counters in actions (hourly budgets; VERIFICATION.md §4). Scraping of public pages is accepted as physics (we're the fastest site in the market to scrape); Turnstile guards the *expensive* and *personal* actions, not reading.
+**Abuse walls, outermost first:** Cloudflare WAF/bot rules (never challenging the SEO/AI allowlist bots — SEO.md §1.3) → zone rate-limit on `/_actions/*` (INFRASTRUCTURE §7) → KV counters in actions (hourly budgets; VERIFICATION.md §4 — registration: 10/h per IP). Scraping of public pages is accepted as physics (we're the fastest site in the market to scrape). Turnstile was removed 2026-08-09 (error 600010 false-positives blocked real registrations); a captcha comes back only with evidence of real bot abuse the rate limits can't hold.
 
 ## 6. Application security (the code itself)
 
@@ -125,7 +125,7 @@ The failure mode is not malice; it's a confident, plausible, wrong diff at 2am m
 - [ ] EXIF-strip verified on every uploader path (test with a GPS-tagged fixture)
 - [ ] Cache audit: no `Set-Cookie` response cacheable; authed routes `no-store`; SW caches shell/static only
 - [ ] Security headers live (CSP enforced or report-only with a tightening date)
-- [ ] Turnstile on registration, contact-reveal, SMS start, first message; zone rate-limit on `/_actions/*`
+- [ ] Zone rate-limit on `/_actions/*` (Turnstile removed 2026-08-09 — false positives; KV IP limits are the bot wall)
 - [ ] CI greps live: service-role boundary · raw `posthog.capture` · `set:html` · key-shaped strings · `100vh` (MOBILE) — the full grep suite in one CI job
 - [ ] **All third-party keys rotated post-development** (§7); secrets nowhere in repo history (scan with a secrets scanner once)
 - [ ] 2FA on Cloudflare/Supabase/GitHub/Twilio/PostHog operator accounts; CI token least-privilege

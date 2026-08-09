@@ -35,7 +35,7 @@ Design cohesion is the product. Before writing ANY markup: check `/kitchen-sink`
 
 ## Stack & runtime rule
 
-Bun (toolchain) · Astro SSR (Cloudflare adapter) · Cloudflare Workers + static assets (NOT Pages) · Supabase (Postgres Frankfurt, Auth, Realtime, RLS) · Drizzle (via **Hyperdrive** server-side) · Fulldev UI (`npx shadcn@latest add @fulldev/<item>`, AI docs at `ui.full.dev/index.md`) + shadcn/ui islands · Tailwind · Paraglide (`nl`,`en`,`de`,`ro`,`it`) · Zod · OpenRouter · Firecrawl · Cloudflare Images/KV/R2/Queues/Cron/Turnstile · PostHog (analytics + errors — no Sentry, see docs/ANALYTICS.md) · OneSignal (web push, signed-in only — docs/MESSAGING.md §8).
+Bun (toolchain) · Astro SSR (Cloudflare adapter) · Cloudflare Workers + static assets (NOT Pages) · Supabase (Postgres Frankfurt, Auth, Realtime, RLS) · Drizzle (via **Hyperdrive** server-side) · Fulldev UI (`npx shadcn@latest add @fulldev/<item>`, AI docs at `ui.full.dev/index.md`) + shadcn/ui islands · Tailwind · Paraglide (`nl`,`en`,`de`,`ro`,`it`) · Zod · OpenRouter · Firecrawl · Cloudflare Images/KV/R2/Queues/Cron · PostHog (analytics + errors — no Sentry, see docs/ANALYTICS.md) · OneSignal (web push, signed-in only — docs/MESSAGING.md §8).
 
 **Bun is the toolchain, workerd is the runtime.** `bun install`, `bun run dev`, `bun test`, `bunx wrangler ...`. Never use Bun-specific APIs (`Bun.serve`, `bun:sqlite`, `Bun.file`) in `src/` — app code must run on workerd. Bun APIs allowed in `scripts/` only.
 

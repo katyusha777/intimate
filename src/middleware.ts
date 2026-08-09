@@ -65,18 +65,18 @@ const SECURITY_HEADERS: Record<string, string> = {
   'Permissions-Policy': 'camera=(self), microphone=(self), geolocation=(), payment=(), usb=()',
   'Content-Security-Policy': [
     "default-src 'self'",
-    // Turnstile + (future) PostHog + Plausible + OneSignal (push SDK, signed-in
+    // (future) PostHog + Plausible + OneSignal (push SDK, signed-in
     // pages only); Astro's hydration/theme scripts are inline.
     // api.onesignal.com in script-src: the SDK loads its app config via JSONP
     // (a <script> to /sync/<appId>/web) — connect-src alone times init out.
-    "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com https://eu-assets.i.posthog.com https://plausible.io https://cdn.onesignal.com https://api.onesignal.com",
+    "script-src 'self' 'unsafe-inline' https://eu-assets.i.posthog.com https://plausible.io https://cdn.onesignal.com https://api.onesignal.com",
     "style-src 'self' 'unsafe-inline'",
     // Own photos ride /media; seed/demo imagery is external https for now.
     "img-src 'self' data: blob: https:",
     "media-src 'self' blob:",
     "font-src 'self'",
-    "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://challenges.cloudflare.com https://eu.i.posthog.com https://plausible.io https://api.onesignal.com https://cdn.onesignal.com",
-    'frame-src https://challenges.cloudflare.com',
+    "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://eu.i.posthog.com https://plausible.io https://api.onesignal.com https://cdn.onesignal.com",
+    "frame-src 'none'",
     "frame-ancestors 'self'",
     "base-uri 'self'",
     "form-action 'self'",

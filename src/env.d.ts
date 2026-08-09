@@ -3,9 +3,6 @@
 interface ImportMetaEnv {
   readonly PUBLIC_SUPABASE_URL: string;
   readonly PUBLIC_SUPABASE_KEY: string;
-  // Turnstile site key (public). Empty → the register widget is not rendered
-  // and server-side verification is skipped (the secret gates enforcement).
-  readonly PUBLIC_TURNSTILE_SITE_KEY: string;
 }
 
 interface ImportMeta {

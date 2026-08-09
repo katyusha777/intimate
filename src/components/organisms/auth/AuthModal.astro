@@ -12,10 +12,6 @@ import Button from '@/components/atoms/Button.astro';
 import Modal from '@/components/molecules/Modal.astro';
 import SlabField from '@/components/molecules/SlabField.astro';
 
-// Turnstile bot wall on register (SECURITY.md §5). Only rendered when the site
-// key is configured; the server verifies the token when the secret is set.
-const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY as string | undefined;
-
 /* Segmented control: wide, button-like, unmistakable active state (ink flip). */
 const tabBtn =
   'cursor-pointer py-2.5 font-condensed text-sm font-bold uppercase tracking-wide transition-colors data-[active=true]:bg-foreground data-[active=true]:text-background data-[active=false]:text-muted-foreground data-[active=false]:hover:text-foreground';
@@ -83,7 +79,6 @@ const tabBtn =
       <p data-auth-confirm class="hidden border border-foreground/20 bg-muted p-3 text-sm leading-relaxed">
         {m.auth_confirm_sent()}
       </p>
-      {turnstileSiteKey && <div class="cf-turnstile" data-sitekey={turnstileSiteKey} data-size="flexible"></div>}
       <Button type="submit" size="lg" class="w-full">{m.auth_create_account()}</Button>
       <p class="text-center text-xs leading-relaxed text-muted-foreground">
         {m.auth_terms()}
@@ -135,19 +130,6 @@ const tabBtn =
 <script>
   import { actions } from 'astro:actions';
 
-  // Turnstile's ~60KB script must NOT load on zero-JS public pages — inject it
-  // lazily the first time the auth modal opens (the .cf-turnstile div, present
-  // only when a site key is configured, auto-renders once the script loads).
-  function loadTurnstile() {
-    if ((window as any).__turnstileLoaded || !document.querySelector('.cf-turnstile')) return;
-    (window as any).__turnstileLoaded = true;
-    const s = document.createElement('script');
-    s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
-    s.async = true;
-    s.defer = true;
-    document.head.appendChild(s);
-  }
-
   function selectTab(scope: HTMLElement, name: string) {
     scope.querySelectorAll<HTMLElement>('[data-tab-btn]').forEach((b) => {
       b.dataset.active = String(b.dataset.tabBtn === name);
@@ -173,7 +155,6 @@ const tabBtn =
       document.addEventListener('click', (e) => {
         const opener = (e.target as HTMLElement).closest?.('[data-modal-open="auth"]');
         if (!(opener instanceof HTMLElement)) return;
-        loadTurnstile(); // first auth-modal open → fetch the bot-wall script
         const current = document.querySelector<HTMLElement>('dialog#auth');
         if (!current) return;
         if (opener.dataset.authTab) selectTab(current, opener.dataset.authTab);
@@ -232,11 +213,9 @@ const tabBtn =
           return;
         }
 
-        // Turnstile drops a hidden cf-turnstile-response into the form on solve.
-        const turnstileToken = String(fd.get('cf-turnstile-response') ?? '') || undefined;
         const call = () =>
           form.dataset.authForm === 'register'
-            ? actions.auth.register({ email, password, role, locale, turnstileToken })
+            ? actions.auth.register({ email, password, role, locale })
             : actions.auth.login({ email, password, locale });
         try {
           const result = await call();
@@ -244,7 +223,6 @@ const tabBtn =
           // Existing email (#13): show the "account already exists" message.
           if ((result.data as { emailExists?: boolean } | undefined)?.emailExists) {
             form.querySelector<HTMLElement>('[data-auth-exists]')?.classList.remove('hidden');
-            (window as any).turnstile?.reset?.();
             delete form.dataset.loading;
             return;
           }
@@ -271,8 +249,6 @@ const tabBtn =
         } catch (e) {
           console.error('[auth] failed', e);
           err?.classList.remove('hidden');
-          // Turnstile tokens are single-use — reset so a retry mints a fresh one.
-          (window as any).turnstile?.reset?.();
           delete form.dataset.loading;
         }
       });

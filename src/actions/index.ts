@@ -14,7 +14,6 @@ import { env } from "cloudflare:workers";
 import { startPhoneVerify, checkPhoneVerify } from "@/lib/twilio";
 import { bustProfiles, type CacheKv } from "@/lib/page-cache";
 import { rateLimit } from "@/lib/rate-limit";
-import { verifyTurnstile } from "@/lib/turnstile";
 import { mintIceServers } from "@/lib/turn";
 import { CONVERSATION_MODES, REPORT_REASONS, REPORT_TARGETS } from "@/lib/taxonomy";
 // The one sanctioned cross-fence import: the action registry wires in admin.
@@ -33,22 +32,9 @@ const cacheKv = (): CacheKv | undefined =>
 const turnSecret = (): string | undefined =>
   (env as unknown as Record<string, string | undefined>).TURN_SECRET;
 
-const turnstileSecret = (): string | undefined =>
-  (env as unknown as Record<string, string | undefined>).TURNSTILE_SECRET_KEY;
-
 /** Best-effort client IP for rate-limit keys (Cloudflare always sets this). */
 const clientIp = (context: { request: Request }): string =>
   context.request.headers.get("cf-connecting-ip") ?? "unknown";
-
-/** Turnstile bot wall — enforced only when the secret is configured, so local
- *  dev without keys still lets you sign up. Throws on a missing/invalid token. */
-async function requireTurnstile(context: { request: Request }, token: string | undefined) {
-  const secret = turnstileSecret();
-  if (!secret) return; // not configured (dev) → skip
-  if (!token || !(await verifyTurnstile(token, secret, clientIp(context)))) {
-    throw new ActionError({ code: "BAD_REQUEST", message: "captcha_failed" });
-  }
-}
 
 /** Shared spam wall for authenticated actions — throws TOO_MANY_REQUESTS. */
 async function requireUnderLimit(name: string, key: string, max: number, windowS = 3600) {
@@ -80,12 +66,12 @@ export const server = {
         password: z.string().min(6), // no policy of our own — 6 is Supabase's hard floor
         role: z.enum(["advertiser", "client"]),
         locale: z.enum(LOCALES),
-        turnstileToken: z.string().max(2048).optional(),
       }),
-      handler: async ({ email, password, role, locale, turnstileToken }, context) => {
-        // Bot + spam walls BEFORE any account creation (SECURITY.md §5).
+      handler: async ({ email, password, role, locale }, context) => {
+        // Spam wall BEFORE any account creation (SECURITY.md §5). Turnstile
+        // removed 2026-08-09: error 600010 false-positives were blocking real
+        // registrations — the IP rate limit is the bot wall now.
         await requireUnderLimit("register-ip", clientIp(context), 10);
-        await requireTurnstile(context, turnstileToken);
         try {
           const { needsConfirmation, emailExists } = await sessionApi.register(context, { email, password, role });
           // Existing email (#13): a distinct signal so the modal can show the

@@ -58,7 +58,7 @@ This document is the base architecture: stack, how we use each piece to its abso
 - **KV:** hot micro-caches (city counts, featured lists), rate limiting.
 - **Queues + Cron:** import jobs (Firecrawl → LLM → images) writing progress rows that Realtime streams to the UI; scheduled expiry/cleanup.
 - **R2 + Images transform:** ALL photos — upload via server action (EXIF stripped client-side first), bytes stored in the `intimate-media` R2 bucket, served through the `/media` route (edge-cached; `pub/…` public, `priv/…` gated per-thread), resized to `thumb`/`card`/`full` WebP by the Images transform binding. R2 avoids the per-view delivery fee that made Images-as-store wrong for a photo-heavy directory (decided 2026-08-03; hard rule 2). Video (if ever): Stream.
-- **Turnstile** on registration and contact-reveal. Bot protection on (we will be scraped like we scrape).
+- **Bot wall on registration = KV IP rate limit** (10/h per IP in the register action). Turnstile was removed 2026-08-09: widget error 600010 false-positives blocked real registrations. Re-adding it (or any captcha) needs evidence of actual bot signups first.
 - **AI-crawler settings:** Cloudflare blocks AI crawlers by default on new zones — explicitly ALLOW GPTBot, OAI-SearchBot, ClaudeBot, PerplexityBot (§6).
 
 ## 5. The feel doctrine (performance budgets)
