@@ -108,8 +108,14 @@ t('DENY: no free-compose on a new thread until an accepted request', async () =>
   expect(await api.send(client, { threadId: thread!.id, kind: 'text', body: 'thanks!' })).not.toBeNull();
 });
 
-t('DENY: request blocked when her mode is off (the default)', async () => {
-  // No settings row → default 'off'.
+t('default (no settings row) ALLOWS a request — reachable unless she opts out', async () => {
+  // 2026-08-09: default flipped 'off' → 'everyone'; an un-configured profile
+  // must be messageable ("she isn't taking requests" was the whole-app bug).
+  expect(await api.startRequest(client, { profileSlug: SLUG, request: REQUEST })).not.toBeNull();
+});
+
+t('DENY: request blocked when she explicitly turns messaging off', async () => {
+  await api.setMode(professional, 'off');
   expect(await api.startRequest(client, { profileSlug: SLUG, request: REQUEST })).toBeNull();
 });
 

@@ -1,8 +1,7 @@
 {
   "$schema": "../../node_modules/wrangler/config-schema.json",
   // Standalone cache-warm cron — NOT the app worker. See warm-worker.ts.
-  // Top level = production; `--env staging` = staging (mirrors the app config).
-  // Deploy: bunx wrangler deploy --config workers/warm/wrangler.jsonc [--env staging]
+  // Deploy: bunx wrangler deploy --config workers/warm/wrangler.jsonc
   "name": "intimate-warm",
   "main": "warm-worker.ts",
   "compatibility_date": "2026-07-01",
@@ -18,20 +17,5 @@
   "vars": { "ORIGIN": "https://intimate.nl" },
   "observability": {
     "enabled": true
-  },
-  "env": {
-    "staging": {
-      "name": "intimate-warm-staging",
-      "triggers": {
-        "crons": ["0 */6 * * *", "*/4 * * * *"]
-      },
-      "services": [
-        { "binding": "SITE", "service": "intimate-staging" }
-      ],
-      "vars": { "ORIGIN": "https://staging.intimate.nl" },
-      "observability": {
-        "enabled": true
-      }
-    }
   }
 }

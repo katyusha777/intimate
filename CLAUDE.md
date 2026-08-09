@@ -85,13 +85,12 @@ Visual verification/screenshots via the **Playwright MCP** (`mcp__playwright__*`
 bun install · bun run dev · bun test · bun run build
 bun run db:generate · bun run db:migrate      # migrations → THE hosted db (DATABASE_URL in .env)
 bun run db:seed                               # mock catalog → the hosted db (dev/parity)
-bun run deploy:staging                       # = CLOUDFLARE_ENV=staging astro build && wrangler deploy --env staging
-bun run deploy:prod                          # = astro build && wrangler deploy (env baked at BUILD time via CLOUDFLARE_ENV)
+bun run deploy:prod                          # = astro build && wrangler deploy → intimate.nl
 ```
 
-**Branch → environment:** push `staging` → staging.intimate.nl · push `main` →
-intimate.nl (CI deploys both; tests gate). Work lands on `staging`, merges to
-`main` when verified.
+**Prod-only (staging retired 2026-08-09):** push `main` → intimate.nl (CI
+deploys, tests gate). Work lands on `main` directly; the fastest path is
+`bun run deploy:prod` from the CLI. No staging tier.
 
 ## Environments
 

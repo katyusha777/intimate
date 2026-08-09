@@ -21,8 +21,10 @@ import {
 } from '@/app/models/account';
 import { ProfileSchema, birthDateForAge, priceFromRates, type Profile } from '@/app/models/profile';
 import { mediaUrl, toProfile } from '@/app/data/db/profiles';
-import { CITIES, POLICY_MIN_AGE } from '@/lib/taxonomy';
+import { CITIES, POLICY_MIN_AGE, type Locale } from '@/lib/taxonomy';
 import { isR2Key, mediaBucket as bucket } from '@/lib/media-keys';
+import { createWelcomeThread } from '@/app/data/db/messaging';
+import { getLocale } from '@/paraglide/runtime';
 import type { Session } from '@/app/models/session';
 
 const db = (): Db => requestDb((env as unknown as { HYPERDRIVE: Hyperdrive }).HYPERDRIVE);
@@ -219,16 +221,28 @@ export const accountApi: AccountApi = {
     }
     // First save creates the row — the identity fields are mandatory then.
     const seed = ProfileEditSchema.pick({ name: true, birthDate: true, gender: true, city: true }).parse(patch);
-    await d.insert(profiles).values({
-      accountId: session.accountId,
-      slug: await uniqueSlug(d, seed.name, seed.city),
-      state: 'draft',
-      ...(profileUpdate(patch) as { name: string }),
-      name: seed.name,
-      birthDate: seed.birthDate,
-      gender: seed.gender,
-      city: seed.city,
-    });
+    const [created] = await d
+      .insert(profiles)
+      .values({
+        accountId: session.accountId,
+        slug: await uniqueSlug(d, seed.name, seed.city),
+        state: 'draft',
+        ...(profileUpdate(patch) as { name: string }),
+        name: seed.name,
+        birthDate: seed.birthDate,
+        gender: seed.gender,
+        city: seed.city,
+      })
+      .returning({ id: profiles.id });
+    // One-time welcome DM from Team Intimate (feedback v7 #7). Never let a
+    // welcome failure block profile creation.
+    if (created) {
+      try {
+        await createWelcomeThread(d, created.id, getLocale() as Locale);
+      } catch (e) {
+        console.error('[welcome] failed', e);
+      }
+    }
   },
 
   async submitProfile(session) {

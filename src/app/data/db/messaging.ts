@@ -42,6 +42,8 @@ import {
 } from '@/app/models/messaging';
 import type { Session } from '@/app/models/session';
 import { ratesMinPrice, type RateRow } from '@/app/models/profile';
+import type { Locale } from '@/lib/taxonomy';
+import { TEAM_INTIMATE_ACCOUNT_ID, TEAM_INTIMATE_NAME, welcomeBody } from '@/lib/welcome';
 
 const iso = (v: Date | string): string => (v instanceof Date ? v : new Date(v)).toISOString();
 
@@ -282,6 +284,26 @@ async function createThread(
 }
 
 /**
+ * One-time welcome DM from Team Intimate to a brand-new professional (feedback
+ * v7 #7). Team Intimate is a fixed system account on the CLIENT side, so it
+ * lands in her inbox and she can reply. Self-bootstraps the account row (one
+ * system record isn't worth a migration). Called once, on first profile save.
+ */
+export async function createWelcomeThread(d: Db, profileId: string, locale: Locale): Promise<void> {
+  await d
+    .insert(accounts)
+    .values({ id: TEAM_INTIMATE_ACCOUNT_ID, accountType: 'client', displayName: TEAM_INTIMATE_NAME })
+    .onConflictDoNothing();
+  const thread = await createThread(d, profileId, TEAM_INTIMATE_ACCOUNT_ID, 'open');
+  await d.insert(messages).values({
+    threadId: thread.id,
+    sender: 'client',
+    kind: 'text',
+    body: welcomeBody(locale),
+  });
+}
+
+/**
  * Backend over a per-call Db factory (workerd forbids sharing a client across
  * requests → `db()` returns a fresh one). The seam (api/messaging.ts) injects
  * the Hyperdrive binding; tests inject a local-Postgres factory.
@@ -294,8 +316,9 @@ export function makeMessagingApi(db: () => Db): MessagingApi {
       .from(conversationSettings)
       .where(eq(conversationSettings.profileId, profileId))
       .limit(1);
-    // No row → default 'off' (product law, MESSAGING.md 0.1). The mock defaulted
-    // 'everyone' for explorability; prod is opt-in.
+    // No row → default 'everyone' (2026-08-09): un-configured profiles are
+    // reachable, so a client can always send. Opt-out (off / verified_only) is
+    // an explicit stored row.
     if (!row) return ConversationSettingsSchema.parse({});
     return ConversationSettingsSchema.parse({
       mode: row.mode,
@@ -405,6 +428,16 @@ export function makeMessagingApi(db: () => Db): MessagingApi {
       kind: 'request',
       request: requestData,
     });
+    // His note rides on the card, but also lands as a real chat message so the
+    // thread reads like a conversation, not just a form (feedback v7).
+    if (requestData.note) {
+      await d.insert(messages).values({
+        threadId: thread.id,
+        sender: 'client',
+        kind: 'text',
+        body: requestData.note,
+      });
+    }
     sendPush({ accountId: profile.accountId, category: 'requests', path: `/messages/${thread.id}/` });
     return (await loadThreads(d, eq(threads.id, thread.id)))[0]!;
   },

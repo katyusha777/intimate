@@ -163,31 +163,25 @@ function hoursLabel(h: (typeof hours)[keyof typeof hours]): string {
                 {/* "Today until 23:00" lives with the hours — contextual, not next to price. */}
                 <AvailabilityLine profile={p} variant="line" class="text-sm font-medium text-foreground" />
               </div>
-              {/* Collapsed to today by default; native <details> = zero-JS expand. */}
-              <details class="group mt-4 max-w-md">
-                <summary class="flex cursor-pointer list-none items-center justify-between py-2.5 text-sm font-semibold [&::-webkit-details-marker]:hidden">
-                  <span class="flex items-center gap-2">
-                    {dayLabel(todayKey)}
-                    <span class="eyebrow text-2xs text-muted-foreground group-open:hidden">{m.hours_show_all()}</span>
-                  </span>
-                  <span>{hoursLabel(hours[todayKey])}</span>
-                </summary>
-                <div class="divide-y divide-border border-t border-border">
-                  {DAYS.map((day) => (
-                    <div
-                      class:list={[
-                        'flex items-center justify-between py-2.5 text-sm',
-                        day === todayKey && 'font-semibold',
-                      ]}
-                    >
-                      <span class:list={[day === todayKey ? 'text-foreground' : 'text-muted-foreground']}>
-                        {dayLabel(day)}
-                      </span>
-                      <span>{hoursLabel(hours[day])}</span>
-                    </div>
-                  ))}
-                </div>
-              </details>
+              {/* Always the full week — today highlighted (feedback v7 #4: the
+                  "show all days" toggle read as a label, not a button). */}
+              <div class="mt-4 max-w-md divide-y divide-border">
+                {DAYS.map((day) => (
+                  <div
+                    class:list={[
+                      'flex items-center justify-between py-2.5 text-sm',
+                      day === todayKey && 'font-semibold',
+                    ]}
+                  >
+                    <span class:list={[day === todayKey ? 'text-foreground' : 'text-muted-foreground']}>
+                      {dayLabel(day)}
+                    </span>
+                    <span class:list={[day === todayKey ? 'text-foreground' : 'text-muted-foreground']}>
+                      {hoursLabel(hours[day])}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </section>
           )
         }

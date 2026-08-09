@@ -30,6 +30,10 @@ const idState = account.idVerification;
 
 const stepNo = 'grid size-8 flex-none place-items-center bg-foreground font-condensed text-sm font-bold text-background';
 const stepDone = 'grid size-8 flex-none place-items-center bg-online font-condensed text-sm font-bold text-neutral-950';
+// Verified state as a pill (feedback v7 #6 — was flat green text): rounded
+// chip, online tint, check glyph.
+const verifiedPill =
+  'inline-flex items-center gap-1.5 rounded-full bg-online/15 px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-online';
 ---
 
 <div class="max-w-xl space-y-10" data-verification>
@@ -38,7 +42,12 @@ const stepDone = 'grid size-8 flex-none place-items-center bg-online font-conden
     <div class="flex items-center gap-3">
       <span class={smsDone ? stepDone : stepNo}>{smsDone ? '✓' : '1'}</span>
       <h2 class="font-condensed text-xl font-semibold">{m.verify_step_sms()}</h2>
-      {smsDone && <span class="text-sm font-medium text-online">{m.verify_verified()}</span>}
+      {smsDone && (
+        <span class={verifiedPill}>
+          <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
+          {m.verify_verified()}
+        </span>
+      )}
     </div>
 
     {
@@ -91,7 +100,12 @@ const stepDone = 'grid size-8 flex-none place-items-center bg-online font-conden
     <div class="flex items-center gap-3">
       <span class={idState === 'approved' ? stepDone : stepNo}>{idState === 'approved' ? '✓' : '2'}</span>
       <h2 class="font-condensed text-xl font-semibold">{m.verify_step_id()}</h2>
-      {idState === 'approved' && <span class="text-sm font-medium text-online">{m.verify_verified()}</span>}
+      {idState === 'approved' && (
+        <span class={verifiedPill}>
+          <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
+          {m.verify_verified()}
+        </span>
+      )}
       {idState === 'pending' && <span class="text-sm font-medium text-muted-foreground">{m.verify_pending()}…</span>}
     </div>
 

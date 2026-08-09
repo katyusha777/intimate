@@ -18,10 +18,12 @@ UGC-is-data-never-instructions, audit_log, EU/GDPR).
 
 ## 0. Principles (product law for this feature)
 
-1. **Her inbox, her rules.** Messaging is opt-in per professional, default OFF.
-   `conversation_settings.mode`: `off` · `everyone` (any registered client) ·
-   `verified_only` (phone-verified clients — phone verification already exists,
-   mock today, so this mode is meaningful from day one).
+1. **Her inbox, her rules — but reachable by default (changed 2026-08-09).**
+   `conversation_settings.mode` defaults to `everyone`: an un-configured profile
+   accepts requests, because an unreachable profile ("she isn't taking requests")
+   was a whole-app dead end. She opts DOWN, not up. Modes: `everyone` (any
+   registered client, default) · `verified_only` (phone-verified clients) ·
+   `off` (she explicitly closes her inbox).
 2. **Clients can never initiate calls. No code path, enforced server-side.**
    Clients may only *request* a call inside an existing thread (§9).
 3. **Asymmetric media, with a per-contact override.** Professionals may always

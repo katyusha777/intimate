@@ -102,9 +102,13 @@ const dot = 'mt-0.5 flex-none';
         <p class="text-sm text-muted-foreground">{m.receipt_watermark()}</p>
       </div>
 
-      <!-- Member-since demoted to the weakest, last line (3.3). -->
+      <!-- Member-since demoted to the weakest, last line (3.3). A dated calendar
+           mark (was a near-invisible · glyph — feedback v7 #3). -->
       <div class={row}>
-        <span class={`${dot} eyebrow text-2xs text-muted-foreground`} aria-hidden="true">·</span>
+        <svg class={`${dot} size-4.5 text-muted-foreground`} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="3" y="5" width="18" height="16" rx="2" />
+          <path d="M3 10h18M8 3v4M16 3v4" />
+        </svg>
         <p class="text-sm text-muted-foreground">{m.receipt_member_since({ date: monthYear(p.createdAt) })}</p>
       </div>
     </div>

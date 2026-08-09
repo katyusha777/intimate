@@ -9,6 +9,7 @@ import { onboardingProgress } from '@/lib/onboarding';
 import type { ProfileState } from '@/lib/taxonomy';
 import { isLocale, localizePath } from '@/lib/i18n';
 import AccountShell from '@/components/organisms/dashboard/AccountShell.astro';
+import Icon from '@/components/atoms/Icon.astro';
 import OnboardingChecklist from '@/components/organisms/dashboard/OnboardingChecklist.astro';
 import SignInPrompt from '@/components/organisms/dashboard/SignInPrompt.astro';
 import Layout from '@/layouts/Layout.astro';
@@ -147,6 +148,25 @@ const stateLabel = (s: ProfileState) =>
               >
                 {m.verify_title()} →
               </a>
+            </div>
+          )}
+
+          {/* Advertiser-only profile lookup by username/name (feedback v7 —
+              never shown to clients). GETs to the shared search listing. */}
+          {session.role === 'advertiser' && (
+            <div class={card}>
+              <p class="eyebrow text-2xs text-white/50">{m.account_find_title()}</p>
+              <form method="GET" action={localizePath('/search/')} class="mt-3 flex items-center gap-2">
+                <input
+                  type="search"
+                  name="q"
+                  placeholder={m.search_find_ph()}
+                  class="min-w-0 flex-1 border border-white/20 bg-transparent px-3 py-2 text-sm text-white outline-none placeholder:text-white/40 focus:border-white/60"
+                />
+                <button type="submit" aria-label={m.search_open()} class="grid size-9 flex-none place-items-center bg-white text-neutral-950">
+                  <Icon name="magnifying-glass" class="text-base" />
+                </button>
+              </form>
             </div>
           )}
 

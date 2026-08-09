@@ -545,7 +545,8 @@
      the page every time a profile opened. Chrome tolerated it, which is why
      emulation never caught it. */
   html[data-sheet-open],
-  html[data-lightbox-open] {
+  html[data-lightbox-open],
+  html[data-modal-open] {
     overflow: hidden;
   }
 

@@ -92,11 +92,10 @@ export async function seed(url: string): Promise<number> {
           await tx`insert into media (profile_id, state, image_key, is_private, position) values
             (${seedProfileId(i)}, 'approved', ${m.key}, ${m.isPrivate}, ${m.pos})`;
         }
-        // Demo data opts into messaging so the flagship request flow works out
-        // of the box — real professionals still default OFF (product law). Every
-        // 3rd gets a screening question for variety.
+        // Explicit 'everyone' row (matches the new default) so the request flow
+        // works out of the box. No seeded screening question.
         await tx`insert into conversation_settings (profile_id, mode, screening_question) values
-          (${seedProfileId(i)}, 'everyone', ${i % 3 === 0 ? 'How did you find me?' : ''})`;
+          (${seedProfileId(i)}, 'everyone', '')`;
       }
     });
     return all.length;

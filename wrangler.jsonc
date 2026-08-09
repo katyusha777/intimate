@@ -58,30 +58,5 @@
     "PUBLIC_ONESIGNAL_APP_ID": "33308041-5873-497c-8a28-d20f2d29181d",
     // Absolute origin for outbound links (push deep links) — per-env.
     "PUBLIC_SITE_ORIGIN": "https://intimate.nl"
-  },
-  "env": {
-    "staging": {
-      "name": "intimate-staging",
-      "routes": [{ "pattern": "staging.intimate.nl", "custom_domain": true }],
-      "hyperdrive": [
-        { "binding": "HYPERDRIVE", "id": "542bb0bee7fa44148f4e6ae3e0129ae7" }
-      ],
-      "kv_namespaces": [
-        { "binding": "SESSION", "id": "691e3d062b07444fb1f659a438edc411" }
-      ],
-      "r2_buckets": [
-        { "binding": "MEDIA", "bucket_name": "intimate-media" },
-        { "binding": "VERIFICATION", "bucket_name": "intimate-verification", "jurisdiction": "eu" }
-      ],
-      "images": { "binding": "IMAGES" },
-      "version_metadata": { "binding": "CF_VERSION" },
-      "vars": {
-        "PUBLIC_SUPABASE_URL": "https://jqrfzqbuvekhcptqcpda.supabase.co",
-        "PUBLIC_SUPABASE_KEY": "sb_publishable_jzpgxggUIg8-uodVAaT1SA_KZxO34fe",
-        "PUBLIC_TURNSTILE_SITE_KEY": "0x4AAAAAAEJIcyxD4PkRnlyn",
-        "PUBLIC_ONESIGNAL_APP_ID": "33308041-5873-497c-8a28-d20f2d29181d",
-        "PUBLIC_SITE_ORIGIN": "https://staging.intimate.nl"
-      }
-    }
   }
 }

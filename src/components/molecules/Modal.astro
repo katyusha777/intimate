@@ -24,6 +24,14 @@ const { id, class: className } = Astro.props;
 </dialog>
 
 <script>
+  // Native <dialog> inerts the page but wheel/touch scroll still reaches the
+  // document behind it — lock the root while any modal is open (same marker the
+  // sheet/lightbox lock uses, in global.css).
+  const syncModalLock = () => {
+    const open = !!document.querySelector('dialog[data-modal][open]');
+    document.documentElement.toggleAttribute('data-modal-open', open);
+  };
+
   function initModals() {
     document.querySelectorAll<HTMLDialogElement>('dialog[data-modal]').forEach((d) => {
       if (d.dataset.init) return;
@@ -32,6 +40,7 @@ const { id, class: className } = Astro.props;
       d.addEventListener('click', (e) => {
         if (e.target === d) d.close();
       });
+      d.addEventListener('close', syncModalLock);
     });
   }
 
@@ -47,6 +56,7 @@ const { id, class: className } = Astro.props;
         if (dlg) {
           dlg.dispatchEvent(new CustomEvent('modal:open', { detail: opener.dataset }));
           dlg.showModal();
+          syncModalLock();
         }
         return;
       }
@@ -54,6 +64,12 @@ const { id, class: className } = Astro.props;
       if (closer) closer.closest('dialog')?.close();
     });
   }
+
+  // A navigation while a modal is open discards the dialog — clear the lock so
+  // it doesn't freeze the next page.
+  document.addEventListener('astro:after-swap', () =>
+    document.documentElement.removeAttribute('data-modal-open'),
+  );
 
   initModals();
   document.addEventListener('astro:page-load', initModals);

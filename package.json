@@ -9,7 +9,6 @@
     "preview": "astro build && wrangler dev",
     "test": "bun test",
     "check": "astro check",
-    "deploy:staging": "CLOUDFLARE_ENV=staging astro build && wrangler deploy --env staging",
     "deploy:prod": "astro build && wrangler deploy",
     "db:generate": "drizzle-kit generate",
     "cf-typegen": "wrangler types",

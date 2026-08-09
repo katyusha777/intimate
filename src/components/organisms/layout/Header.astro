@@ -21,11 +21,13 @@ interface Props {
 }
 const { session = null, unread = 0 } = Astro.props;
 
-/** Site languages — native names, no flags. */
+/** Site languages — native names, no flags. All five locales (LOCALES). */
 const LANGUAGES = [
   { value: 'nl', label: 'Nederlands' },
   { value: 'en', label: 'English' },
   { value: 'de', label: 'Deutsch' },
+  { value: 'ro', label: 'Română' },
+  { value: 'it', label: 'Italiano' },
 ];
 
 const locale = getLocale() as Locale;

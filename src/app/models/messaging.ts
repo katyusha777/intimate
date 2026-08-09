@@ -85,7 +85,11 @@ export interface ContactInvite {
 }
 
 export const ConversationSettingsSchema = z.object({
-  mode: z.enum(CONVERSATION_MODES).default('off'),
+  // Default OPEN: a professional is reachable unless she opts out. A client must
+  // always be able to send (product decision 2026-08-09 — reverses the earlier
+  // opt-in default that left un-configured profiles unreachable / "not taking
+  // requests"). She can still narrow to verified-only or turn it off.
+  mode: z.enum(CONVERSATION_MODES).default('everyone'),
   allowCallRequests: z.boolean().default(true),
   /**
    * Optional screening question (UX-PLAN 4.1, ≤140) shown as the last step of a

@@ -31,7 +31,7 @@ if (p.appearance) chips.push({ icon: 'globe', label: appearanceLabel(p.appearanc
 if (p.heightCm) chips.push({ icon: 'ruler', label: `${p.heightCm} cm` });
 if (p.bodyType) chips.push({ icon: 'person', label: bodyTypeLabel(p.bodyType) });
 if (p.hairColor) chips.push({ icon: 'scissors', label: hairColorLabel(p.hairColor) });
-if (p.cupSize) chips.push({ label: cupSizeLabel(p.cupSize) });
+if (p.cupSize) chips.push({ icon: 'venus', label: cupSizeLabel(p.cupSize) });
 if (p.availableFor.length)
   chips.push({ icon: 'heart', label: (p.availableFor as AvailableFor[]).map(availableForLabel).join(' · ') });
 for (const l of p.languages as Language[]) chips.push({ icon: 'language', label: languageLabel(l) });

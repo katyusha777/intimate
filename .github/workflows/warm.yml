@@ -15,8 +15,8 @@ jobs:
       # Fetch the live-profile URL list from the worker (it can't self-fetch —
       # Cloudflare 522s a loopback), then warm each from here (external → the
       # worker renders + stores in KV). -P 8 = eight in flight.
-      - name: Warm staging
+      - name: Warm production
         run: |
-          curl -fsS --max-time 60 "https://staging.intimate.nl/api/cache/urls" \
+          curl -fsS --max-time 60 "https://intimate.nl/api/cache/urls" \
             -H "Authorization: Bearer ${{ secrets.WARM_SECRET }}" \
             | xargs -r -P 8 -n 1 curl -fsS -o /dev/null --max-time 30 -H "X-Warm: 1"

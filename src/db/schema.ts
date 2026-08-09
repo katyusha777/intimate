@@ -351,7 +351,7 @@ export const conversationSettings = pgTable('conversation_settings', {
   profileId: uuid('profile_id')
     .primaryKey()
     .references(() => profiles.id),
-  mode: conversationModeEnum('mode').notNull().default('off'), // product law: default OFF
+  mode: conversationModeEnum('mode').notNull().default('everyone'), // default OPEN — reachable unless she opts out (2026-08-09)
   allowCallRequests: boolean('allow_call_requests').notNull().default(true),
   screeningQuestion: text('screening_question').notNull().default(''),
 });
