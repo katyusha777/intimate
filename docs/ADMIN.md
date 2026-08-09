@@ -17,7 +17,7 @@ Lives inside the main Astro app at `/admin` (same repo, same design system, same
 
 ## 1. Access & security (leverage the stack)
 
-- **Layer 1 — Cloudflare Access (Zero Trust)** in front of `admin.intimate.nl` (admin's own host — middleware serves only admin surfaces there and 301s apex `/admin/*` over, so the wall can't be path-bypassed): edge-level auth wall (email OTP/SSO, free tier covers a small team) — bots and credential-stuffers never reach the app. Environment config, verified in the deploy checklist, so the edge wall holds even if app middleware regresses.
+- **Layer 1 — Cloudflare Access (Zero Trust)** in front of `intimate.nl/admin` (self-hosted app with path `admin` — the subdomain experiment was reverted 2026-08-09 after it coincided with an apex-DNS outage): edge-level auth wall (email OTP/SSO, free tier covers a small team) — bots and credential-stuffers never reach the app. Environment config, verified in the deploy checklist, so the edge wall holds even if app middleware regresses.
 - **Layer 2 — Supabase Auth + mandatory MFA (TOTP)** for admin accounts; middleware asserts `aal2` for any `/admin` route.
 - **Layer 3 — roles:** `admin_role` claim: `moderator` (queues, profiles) · `support` (users, platform messages) · `super` (everything + admin management + settings). Values live in taxonomy (`ADMIN_ROLES`). Enforced in middleware AND in every server action (never UI-only).
 - **Code isolation (same app, hard fence — CLAUDE.md "Admin boundary", CI-enforced):** admin code lives ONLY in `src/pages/admin/`, `src/actions/admin/`, `src/components/organisms/admin/`. Nothing outside those folders imports from them (ESLint boundary rule); the Supabase **service-role client is constructed only in `src/actions/admin/**`** (CI grep asserts zero occurrences elsewhere). Boundary lint + grep land in the SAME PR that creates the folders — grandfather nothing. This folder discipline is also the migration path: admin can be promoted to its own Worker later by moving three folders.
@@ -130,7 +130,7 @@ List of `call_sessions`: participants, initiated_by (always professional — ass
 - **Postgres does the logic:** completeness score, queue SLA ages, relations panel — views/functions, not app code; audit via triggers on sensitive tables (can't forget to log).
 - **Cloudflare R2:** verification docs (dedicated private bucket, hard rule 3); presigned short-TTL GETs issued only by admin actions; purge via Workers Cron.
 - **Supabase Auth MFA:** aal2 enforcement for admins.
-- **Cloudflare Access:** the edge wall on `admin.intimate.nl`.
+- **Cloudflare Access:** the edge wall on `intimate.nl/admin`.
 - **Workers Cron:** materialized-view refresh, R2 purge job, SLA alert (queue >24h → email/platform-message to admins).
 - **Astro server islands:** admin pages SSR fast, live widgets hydrate on top — same architecture as the public site, no separate SPA.
 - **Feature flags (PostHog):** admin features roll out behind flags like everything else.
