@@ -8,6 +8,17 @@
 import SlabField from '@/components/molecules/SlabField.astro';
 import Button from '@/components/atoms/Button.astro';
 import * as m from '@/paraglide/messages';
+import { getLocale } from '@/paraglide/runtime';
+// Own document skeleton (mirrors AdminShell's): this component IS the page
+// when signed out — without an <html>/<head> no stylesheet ships, so the
+// login rendered unstyled with the error line visible (`hidden` needs CSS).
+import '@fontsource/barlow/400.css';
+import '@fontsource/barlow/500.css';
+import '@fontsource/barlow/600.css';
+import '@fontsource/barlow/700.css';
+import '@fontsource/barlow-condensed/600.css';
+import '@fontsource/barlow-condensed/700.css';
+import '@/styles/global.css';
 
 interface Props {
   /** Signed in successfully, but the account isn't an admin. */
@@ -16,6 +27,14 @@ interface Props {
 const { notAdmin = false } = Astro.props;
 ---
 
+<html lang={getLocale()}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>{m.adm_title()} · Intimate Admin</title>
+    <meta name="robots" content="noindex, nofollow" />
+  </head>
+  <body class="min-h-dvh bg-background font-sans text-foreground antialiased">
 <main class="grid min-h-dvh place-items-center bg-background px-4">
   <div class="w-full max-w-sm">
     <p class="eyebrow text-2xs text-muted-foreground">Intimate</p>
@@ -57,3 +76,5 @@ const { notAdmin = false } = Astro.props;
   initAdminLogin();
   document.addEventListener('astro:page-load', initAdminLogin);
 </script>
+  </body>
+</html>
