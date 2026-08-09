@@ -72,11 +72,6 @@ const tabBtn =
       <SlabField label={m.auth_email()} name="email" type="email" autocomplete="email" required />
       <SlabField label={m.auth_password()} name="password" type="password" autocomplete="new-password" required />
 
-      {/* Single requirement now — 8 characters (feedback: keep it simple). */}
-      <ul data-pw-checks hidden class="grid grid-cols-1 gap-1 text-xs text-muted-foreground">
-        <li data-pw="len" class="flex items-center gap-1.5"><span data-dot class="size-1.5 flex-none rounded-full bg-foreground/30"></span>{m.pw_req_len()}</li>
-      </ul>
-
       <p data-auth-error class="hidden text-sm font-medium text-brand">{m.auth_error()}</p>
       {/* Existing-email message (#13) with reset + support links. */}
       <p data-auth-exists class="hidden border border-brand/40 bg-brand/5 p-3 text-sm leading-relaxed">
@@ -139,7 +134,6 @@ const tabBtn =
 
 <script>
   import { actions } from 'astro:actions';
-  import { passwordChecks } from '@/lib/password';
 
   // Turnstile's ~60KB script must NOT load on zero-JS public pages — inject it
   // lazily the first time the auth modal opens (the .cf-turnstile div, present
@@ -201,21 +195,6 @@ const tabBtn =
       });
     });
 
-    // Live password-strength checklist on the register password (#3).
-    const pwInput = modal.querySelector<HTMLInputElement>('[data-auth-form="register"] input[name="password"]');
-    const pwList = modal.querySelector<HTMLElement>('[data-pw-checks]');
-    pwInput?.addEventListener('input', () => {
-      if (!pwList) return;
-      pwList.hidden = pwInput.value.length === 0;
-      for (const { id, ok } of passwordChecks(pwInput.value)) {
-        const li = pwList.querySelector<HTMLElement>(`[data-pw="${id}"]`);
-        const dot = li?.querySelector<HTMLElement>('[data-dot]');
-        li?.classList.toggle('text-foreground', ok);
-        dot?.classList.toggle('bg-online', ok);
-        dot?.classList.toggle('bg-foreground/30', !ok);
-      }
-    });
-
     // Forgot password → switch to the DEDICATED reset panel (#3), carrying over
     // whatever email was typed in the login field.
     const goReset = () => {
@@ -249,15 +228,6 @@ const tabBtn =
         if (form.dataset.authForm === 'reset') {
           await actions.auth.requestReset({ email });
           form.querySelector<HTMLElement>('[data-reset-sent]')?.classList.remove('hidden');
-          delete form.dataset.loading;
-          return;
-        }
-
-        // Client-side password gate on register (#3): don't submit a weak one —
-        // reveal the checklist so she sees exactly what's missing.
-        if (form.dataset.authForm === 'register' && !passwordChecks(password).every((c) => c.ok)) {
-          if (pwList) pwList.hidden = false;
-          pwInput?.focus();
           delete form.dataset.loading;
           return;
         }

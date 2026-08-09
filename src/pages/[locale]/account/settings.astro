@@ -74,7 +74,7 @@ const heading = 'font-condensed text-sm font-bold uppercase tracking-wide text-m
           {/* Account credentials (#6): change email (confirm link) + password. */}
           <section class="py-5" data-account-sec
             data-saved={m.settings_saved()} data-sent={m.settings_change_email_sent()}
-            data-wrong={m.settings_pw_wrong()} data-weak={m.pw_weak()} data-err={m.auth_error()}>
+            data-wrong={m.settings_pw_wrong()} data-err={m.auth_error()}>
             <h2 class={heading}>{m.settings_account()}</h2>
             <div class="mt-3">
               <label class="text-sm font-medium" for="acct-email">{m.settings_change_email()}</label>
@@ -380,7 +380,7 @@ const heading = 'font-condensed text-sm font-bold uppercase tracking-wide text-m
       const newPassword = sec.querySelector<HTMLInputElement>('[data-acct-new]')!.value;
       const msg = sec.querySelector<HTMLElement>('[data-acct-pw-msg]')!;
       const { error } = await actions.auth.changePassword({ currentPassword, newPassword });
-      const text = !error ? d.saved! : error.message === 'settings_pw_wrong' ? d.wrong! : error.message === 'pw_weak' ? d.weak! : d.err!;
+      const text = !error ? d.saved! : error.message === 'settings_pw_wrong' ? d.wrong! : d.err!;
       msg.textContent = text;
       msg.classList.remove('hidden', 'text-online', 'text-brand');
       msg.classList.add(error ? 'text-brand' : 'text-online');

@@ -15,7 +15,6 @@ import { startPhoneVerify, checkPhoneVerify } from "@/lib/twilio";
 import { bustProfiles, type CacheKv } from "@/lib/page-cache";
 import { rateLimit } from "@/lib/rate-limit";
 import { verifyTurnstile } from "@/lib/turnstile";
-import { passwordOk } from "@/lib/password";
 import { mintIceServers } from "@/lib/turn";
 import { CONVERSATION_MODES, REPORT_REASONS, REPORT_TARGETS } from "@/lib/taxonomy";
 // The one sanctioned cross-fence import: the action registry wires in admin.
@@ -78,7 +77,7 @@ export const server = {
     register: defineAction({
       input: z.object({
         email: z.string().email(),
-        password: z.string().min(8), // dashboard minimum mirrors this
+        password: z.string().min(6), // no policy of our own — 6 is Supabase's hard floor
         role: z.enum(["advertiser", "client"]),
         locale: z.enum(LOCALES),
         turnstileToken: z.string().max(2048).optional(),
@@ -87,7 +86,6 @@ export const server = {
         // Bot + spam walls BEFORE any account creation (SECURITY.md §5).
         await requireUnderLimit("register-ip", clientIp(context), 10);
         await requireTurnstile(context, turnstileToken);
-        if (!passwordOk(password)) throw new ActionError({ code: "BAD_REQUEST", message: "pw_weak" });
         try {
           const { needsConfirmation, emailExists } = await sessionApi.register(context, { email, password, role });
           // Existing email (#13): a distinct signal so the modal can show the
@@ -126,9 +124,8 @@ export const server = {
 
     // Set a new password for the recovery session (from the emailed link).
     setPassword: defineAction({
-      input: z.object({ password: z.string().min(8), locale: z.enum(LOCALES) }),
+      input: z.object({ password: z.string().min(6), locale: z.enum(LOCALES) }),
       handler: async ({ password, locale }, context) => {
-        if (!passwordOk(password)) throw new ActionError({ code: "BAD_REQUEST", message: "pw_weak" });
         const ok = await sessionApi.setPassword(context, { password });
         if (!ok) throw new ActionError({ code: "UNAUTHORIZED" });
         return { href: `/${locale}/account/` };
@@ -148,10 +145,9 @@ export const server = {
 
     // Change password after re-verifying the current one — settings (#6).
     changePassword: defineAction({
-      input: z.object({ currentPassword: z.string().min(1), newPassword: z.string().min(8) }),
+      input: z.object({ currentPassword: z.string().min(1), newPassword: z.string().min(6) }),
       handler: async ({ currentPassword, newPassword }, context) => {
         await requireSession(context);
-        if (!passwordOk(newPassword)) throw new ActionError({ code: "BAD_REQUEST", message: "pw_weak" });
         const { ok, error } = await sessionApi.changePassword(context, { currentPassword, newPassword });
         if (!ok) {
           throw new ActionError({
