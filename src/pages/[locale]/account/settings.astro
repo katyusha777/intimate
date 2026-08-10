@@ -24,6 +24,7 @@ const profile = session && isAdvertiser ? await accountApi.myProfile(session) : 
 // The pause toggle only makes sense for a profile that's actually live or paused.
 const canPause = profile?.state === 'live' || profile?.state === 'paused';
 const isPaused = profile?.state === 'paused';
+const isUnlisted = profile?.unlisted ?? false;
 const blocked = session ? await messagingApi.listBlocked(session) : [];
 const account = session ? await accountApi.get(session) : null;
 const modeLabel = (mode: (typeof CONVERSATION_MODES)[number]) =>
@@ -222,6 +223,19 @@ const heading = 'font-condensed text-sm font-bold uppercase tracking-wide text-m
             </section>
           )}
 
+          {session.role === 'advertiser' && canPause && (
+            <section class="py-5">
+              <div class="flex items-center justify-between gap-4">
+                <h2 class={heading}>{m.settings_unlisted()}</h2>
+                <label class="flex cursor-pointer items-center">
+                  <input type="checkbox" data-unlisted checked={isUnlisted} class="sr-only" />
+                  <span class="switch-track" aria-hidden="true" />
+                </label>
+              </div>
+              <p class="mt-2 text-xs text-muted-foreground">{m.settings_unlisted_note()}</p>
+            </section>
+          )}
+
           {/* GDPR self-service (items.md #6/#7) — both fulfilled by a human.
               Hidden for admin accounts: they manage GDPR through /admin, and the
               super admin must not self-request data/deletion (#3). */}
@@ -365,6 +379,19 @@ const heading = 'font-condensed text-sm font-bold uppercase tracking-wide text-m
           status.classList.toggle('text-brand', paused);
           status.classList.toggle('text-online', !paused);
         }
+      });
+    }
+
+    // Unlisted: out of listings/search, direct link keeps working.
+    const unlisted = document.querySelector('[data-unlisted]') as HTMLInputElement | null;
+    if (unlisted && !unlisted.dataset.init) {
+      unlisted.dataset.init = '1';
+      unlisted.addEventListener('change', async () => {
+        const value = unlisted.checked;
+        unlisted.disabled = true;
+        const { error } = await actions.account.setUnlisted({ unlisted: value });
+        unlisted.disabled = false;
+        if (error) unlisted.checked = !value; // revert on failure
       });
     }
   }

@@ -285,6 +285,8 @@
   "settings_language": "Lingua",
   "settings_pause": "Metti in pausa il mio profilo",
   "settings_pause_note": "Nascosto dalla ricerca finché non lo riattivi.",
+  "settings_unlisted": "Profilo non in elenco",
+  "settings_unlisted_note": "Nascosto da ricerca ed elenchi — solo chi ha il tuo link diretto ti trova.",
   "stat_views": "Visualizzazioni del profilo",
   "stat_contacts": "Click sui contatti",
   "stat_favorites": "Aggiunto ai preferiti da",

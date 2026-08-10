@@ -285,6 +285,8 @@
   "settings_language": "Sprache",
   "settings_pause": "Mein Profil pausieren",
   "settings_pause_note": "In der Suche verborgen, bis du fortsetzt.",
+  "settings_unlisted": "Nicht gelistetes Profil",
+  "settings_unlisted_note": "In Suche und Listen verborgen — nur wer deinen direkten Link hat, findet dich.",
   "stat_views": "Profilaufrufe",
   "stat_contacts": "Kontaktklicks",
   "stat_favorites": "Favorisiert von",

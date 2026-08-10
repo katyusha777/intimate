@@ -106,6 +106,8 @@ export const ProfileSchema = z.object({
   birthDate: z.iso.date(),
   gender: z.enum(GENDERS),
   city: z.enum(CITY_SLUGS),
+  /** Live but hidden from listings/search/sitemap — direct URL only. */
+  unlisted: z.boolean().default(false),
   verified: z.boolean(),
   /**
    * Trust-receipt dates (UX-PLAN 3.1) — the public projection of the account's

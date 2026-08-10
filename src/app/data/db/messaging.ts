@@ -43,6 +43,7 @@ import {
   type ThreadSummary,
 } from '@/app/models/messaging';
 import type { Session } from '@/app/models/session';
+import { mediaUrl } from '@/app/data/db/profiles';
 import { ratesMinPrice, type RateRow } from '@/app/models/profile';
 import { TEAM_INTIMATE_ACCOUNT_ID, TEAM_INTIMATE_NAME, welcomeBody } from '@/lib/welcome';
 
@@ -83,6 +84,7 @@ interface ThreadJoin {
   clientAccountId: string;
   profileSlug: string;
   profileName: string;
+  avatarKey: string | null;
   clientEmail: string | null;
   clientName: string | null;
   state: Thread['state'];
@@ -103,6 +105,7 @@ function toThread(r: ThreadJoin, msgs: MsgRow[], calls?: Map<string, CallInfo>):
     profileId: r.profileId,
     profileSlug: r.profileSlug,
     profileName: r.profileName,
+    profileAvatarUrl: r.avatarKey ? mediaUrl(r.avatarKey) : undefined,
     clientEmail: email,
     clientName: r.clientName ?? email.split('@')[0] ?? 'Client',
     isTeam: r.clientAccountId === TEAM_INTIMATE_ACCOUNT_ID,
@@ -128,6 +131,13 @@ async function loadThreads(d: Db, where: SQL): Promise<Thread[]> {
       clientAccountId: threads.clientAccountId,
       profileSlug: profiles.slug,
       profileName: profiles.name,
+      // Client-side chat avatar: her first approved public photo (same
+      // subquery as the call ring overlay in calls.ts).
+      avatarKey: sql<string | null>`(
+        select m.image_key from media m
+        where m.profile_id = ${threads.profileId}
+          and m.state = 'approved' and not m.is_private
+        order by m.position limit 1)`,
       clientEmail: accounts.email,
       clientName: accounts.displayName,
       state: threads.state,
@@ -181,6 +191,7 @@ function toSummary(t: Thread, party: Party): ThreadSummary {
     profileId: t.profileId,
     profileSlug: t.profileSlug,
     profileName: t.profileName,
+    profileAvatarUrl: t.profileAvatarUrl,
     clientEmail: t.clientEmail,
     clientName: t.clientName,
     isTeam: t.isTeam,

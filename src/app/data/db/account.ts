@@ -303,6 +303,11 @@ export const accountApi: AccountApi = {
       .where(and(eq(profiles.accountId, session.accountId), eq(profiles.state, paused ? 'live' : 'paused')));
   },
 
+  async setUnlisted(session, unlisted) {
+    // Pure visibility flag — no lifecycle transition, so no state guard.
+    await db().update(profiles).set({ unlisted }).where(eq(profiles.accountId, session.accountId));
+  },
+
   async submitVerification(session, { docs }) {
     const d = db();
     const b = verificationBucket();

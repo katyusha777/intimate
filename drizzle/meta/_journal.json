@@ -148,6 +148,13 @@
       "when": 1786400800000,
       "tag": "0020_graceful_the_fallen",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1786400900000,
+      "tag": "0021_romantic_maestro",
+      "breakpoints": true
     }
   ]
 }

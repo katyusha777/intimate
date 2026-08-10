@@ -285,6 +285,8 @@
   "settings_language": "Taal",
   "settings_pause": "Mijn profiel pauzeren",
   "settings_pause_note": "Verborgen in zoeken tot je hervat.",
+  "settings_unlisted": "Onvermeld profiel",
+  "settings_unlisted_note": "Verborgen in zoeken en lijsten — alleen wie je directe link heeft, vindt je.",
   "stat_views": "Profielweergaven",
   "stat_contacts": "Contactklikken",
   "stat_favorites": "Favoriet bij",

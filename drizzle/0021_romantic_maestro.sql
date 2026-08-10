@@ -1,0 +1,1 @@
+ALTER TABLE "profiles" ADD COLUMN "unlisted" boolean DEFAULT false NOT NULL;

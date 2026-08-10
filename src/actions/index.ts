@@ -280,6 +280,16 @@ export const server = {
       },
     }),
 
+    // Owner unlisted toggle: out of listings/search, direct URL keeps working.
+    setUnlisted: defineAction({
+      input: z.object({ unlisted: z.boolean() }),
+      handler: async ({ unlisted }, context) => {
+        const session = await requireSession(context);
+        await accountApi.setUnlisted(session, unlisted);
+        return { ok: true };
+      },
+    }),
+
     // GDPR self-service (items.md #6/#7): flag the request; admins fulfil
     // (deletion needs approval, export is sent by hand — stated in the UI).
     requestGdpr: defineAction({

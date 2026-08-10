@@ -285,6 +285,8 @@
   "settings_language": "Limbă",
   "settings_pause": "Pune profilul meu pe pauză",
   "settings_pause_note": "Ascuns din căutare până îl reactivezi.",
+  "settings_unlisted": "Profil nelistat",
+  "settings_unlisted_note": "Ascuns din căutare și liste — doar cei cu linkul tău direct te găsesc.",
   "stat_views": "Vizualizări de profil",
   "stat_contacts": "Clicuri de contact",
   "stat_favorites": "La favorite la",

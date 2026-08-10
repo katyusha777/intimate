@@ -133,6 +133,8 @@ export interface AccountApi {
   recordImportSource(session: Session, url: string): Promise<void>;
   /** Owner pause/unpause: hides a live profile (`paused`) and brings it back (`live`). */
   setPaused(session: Session, paused: boolean): Promise<void>;
+  /** Owner unlisted toggle: hidden from listings/search, direct URL still works. */
+  setUnlisted(session: Session, unlisted: boolean): Promise<void>;
   /**
    * Store EXIF-stripped ID documents in the private EU bucket + record a hash per
    * doc, then flag the account `pending` review (hard rule 3). Contents never

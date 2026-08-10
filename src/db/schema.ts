@@ -222,6 +222,9 @@ export const profiles = pgTable(
     idVerifiedAt: timestamp('id_verified_at', { withTimezone: true }),
     photoVerifiedAt: timestamp('photo_verified_at', { withTimezone: true }),
     featured: boolean('featured').notNull().default(false),
+    /** Owner visibility modifier: still live (direct URL + messaging + calls
+     *  work) but excluded from listings/search/sitemap and noindexed. */
+    unlisted: boolean('unlisted').notNull().default(false),
     lastActiveAt: timestamp('last_active_at', { withTimezone: true }),
 
     // Rates: order-preserving JSONB (RateRow[]); price_from is the derived min.

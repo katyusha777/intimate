@@ -71,7 +71,7 @@ const items: Item[] = [
             class:list={['flex items-center gap-3 px-2 py-3.5 transition-colors hover:bg-muted/50', t.id === activeId && 'bg-muted']}
           >
             {viewer === 'client' ? (
-              <SafeImage imageKey={t.profileId} alt={t.profileName} class="size-12 flex-none rounded-full object-cover" />
+              <SafeImage imageKey={t.profileId} src={t.profileAvatarUrl} variant="thumb" alt={t.profileName} class="size-12 flex-none rounded-full object-cover" />
             ) : t.isTeam ? (
               <img src="/icons/icon.svg" alt={t.clientName} class="size-12 flex-none rounded-full" />
             ) : (

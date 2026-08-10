@@ -104,6 +104,8 @@ export const ThreadSchema = z.object({
   profileId: z.string(),
   profileSlug: z.string(),
   profileName: z.string(),
+  /** Her first approved public photo — the client-side chat avatar. */
+  profileAvatarUrl: z.string().optional(),
   clientEmail: z.string(),
   clientName: z.string(),
   /** Team Intimate system thread (welcome DM) — read-only, brand avatar. */
@@ -138,6 +140,8 @@ export interface ThreadSummary {
   profileId: string;
   profileSlug: string;
   profileName: string;
+  /** Her first approved public photo — the client-side inbox avatar. */
+  profileAvatarUrl?: string;
   clientEmail: string;
   clientName: string;
   /** Team Intimate system thread (welcome DM) — read-only, brand avatar. */

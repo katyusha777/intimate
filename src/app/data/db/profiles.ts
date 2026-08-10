@@ -56,6 +56,7 @@ export function toProfile(
     birthDate: row.birthDate,
     gender: row.gender,
     city: row.city,
+    unlisted: row.unlisted,
     verified: row.verified,
     idVerifiedAt: iso(row.idVerifiedAt),
     photoVerifiedAt: iso(row.photoVerifiedAt),
@@ -122,7 +123,8 @@ async function fetchLiveProfiles(db: Db, now: Date, slug?: string, city?: string
       where: (p, { and, eq }) =>
         and(
           eq(p.state, 'live'),
-          slug === undefined ? undefined : eq(p.slug, slug),
+          // Unlisted: excluded from every listing, reachable by direct slug.
+          slug === undefined ? eq(p.unlisted, false) : eq(p.slug, slug),
           city === undefined ? undefined : eq(p.city, city as (typeof p.city)['_']['data']),
         ),
     })

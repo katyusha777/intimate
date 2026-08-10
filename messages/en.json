@@ -285,6 +285,8 @@
   "settings_language": "Language",
   "settings_pause": "Pause my profile",
   "settings_pause_note": "Hidden from search until you resume.",
+  "settings_unlisted": "Unlisted profile",
+  "settings_unlisted_note": "Hidden from search and listings — only people with your direct link can find you.",
   "stat_views": "Profile views",
   "stat_contacts": "Contact clicks",
   "stat_favorites": "Favorited by",

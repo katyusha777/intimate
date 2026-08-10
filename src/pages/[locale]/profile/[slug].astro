@@ -118,8 +118,8 @@ const jsonLd = [
   {title}
   description={metaDescription}
   {canonical}
-  noindex={preview}
-  alternates={preview ? undefined : samePathAlternates(Astro.url.origin, `/profile/${p.slug}/`)}
+  noindex={preview || p.unlisted}
+  alternates={preview || p.unlisted ? undefined : samePathAlternates(Astro.url.origin, `/profile/${p.slug}/`)}
   {jsonLd}
   preloadImage={realImageFor(`${p.id}-0`, p.photos[0])}
   image={realImageFor(`${p.id}-0`, p.photos[0])}
