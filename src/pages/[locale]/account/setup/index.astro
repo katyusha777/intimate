@@ -146,7 +146,7 @@ const why = 'mt-2 leading-relaxed text-muted-foreground';
         <div>
           <h1 class={title}>{m.verify_title()}</h1>
           <p class={why}>{m.onb_why_verify()}</p>
-          <div class="mt-6"><VerificationFlow {session} {account} /></div>
+          <div class="mt-6"><VerificationFlow {session} {account} wizardFinish={progress.firstIncomplete === 'id'} /></div>
           {progress.readyToSubmit && (
             <div class="mt-8 border-t border-border pt-6">
               <p class="mb-3 text-sm text-muted-foreground">{m.onb_verify_submit_hint()}</p>
@@ -226,6 +226,13 @@ const why = 'mt-2 leading-relaxed text-muted-foreground';
       submit.addEventListener('click', async () => {
         if (submit.dataset.loading) return;
         submit.dataset.loading = '1';
+        // If a phone code was typed (code sent) but not verified, verify it as
+        // part of submitting — best-effort, phone is optional so it never blocks.
+        const check = document.querySelector<HTMLElement>('[data-sms-check]');
+        const smsCode = (document.querySelector<HTMLInputElement>('[data-sms-check] input[name="code"]')?.value ?? '').trim();
+        if (check && !check.hidden && /^\d{6}$/.test(smsCode)) {
+          try { await actions.account.checkSms({ code: smsCode }); } catch { /* optional */ }
+        }
         const { error } = await actions.account.submitProfile({});
         if (error) {
           document.querySelector('[data-wizard-error]')?.classList.remove('hidden');

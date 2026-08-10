@@ -14,8 +14,12 @@ import SlabField from '@/components/molecules/SlabField.astro';
 interface Props {
   session: Session;
   account: Account;
+  /** Onboarding wizard AND ID is the last required step: uploading the ID
+   *  auto-verifies a pending phone code, submits for review, and jumps to done —
+   *  no extra button presses. False on the dashboard verification tab. */
+  wizardFinish?: boolean;
 }
-const { session, account } = Astro.props;
+const { session, account, wizardFinish = false } = Astro.props;
 
 const smsDone = Boolean(account.phoneVerifiedAt);
 const idState = account.idVerification;
@@ -28,7 +32,7 @@ const verifiedPill =
   'inline-flex items-center gap-1.5 rounded-full bg-online/15 px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-online';
 ---
 
-<div class="max-w-xl space-y-10" data-verification>
+<div class="max-w-xl space-y-10" data-verification data-wizard-finish={wizardFinish ? '1' : undefined}>
   <!-- Step 1 · SMS -->
   <section class="space-y-4">
     <div class="flex items-center gap-3">
@@ -244,8 +248,10 @@ const verifiedPill =
       // ID step: a doc chosen → submit. The file is read only to be re-encoded;
       // the ID goes to the private EU bucket (toxic waste rule). ID only now —
       // no selfie, and NOT gated on SMS (phone verification is optional).
+      const wizardFinish = root.dataset.wizardFinish === '1';
       const doc = root.querySelector<HTMLInputElement>('[data-id-doc]');
       const submit = root.querySelector<HTMLButtonElement>('[data-id-submit]');
+      const idErr = root.querySelector<HTMLElement>('[data-id-error]');
       // Inline style, not a Tailwind class: classes added at runtime aren't
       // compiled (Tailwind only emits what it sees in source), so a JS-toggled
       // `border-brand` would have no CSS. Inline colour is reliable.
@@ -260,21 +266,29 @@ const verifiedPill =
           markMissing(doc, false);
         }
       };
-      doc?.addEventListener('change', sync);
-      const idErr = root.querySelector<HTMLElement>('[data-id-error]');
-      submit?.addEventListener('click', async () => {
+
+      // If a code was SENT and typed but not verified, verify it now — so the
+      // final action (upload ID / submit for review) also finalizes the phone.
+      // Best-effort: phone is optional, so a wrong/missing code never blocks.
+      const verifyPendingSms = async () => {
+        const check = root.querySelector<HTMLElement>('[data-sms-check]');
+        const code = (root.querySelector<HTMLInputElement>('[data-sms-check] input[name="code"]')?.value ?? '').trim();
+        if (check && !check.hidden && /^\d{6}$/.test(code)) {
+          try { await actions.account.checkSms({ code }); } catch { /* optional */ }
+        }
+      };
+
+      let submitting = false;
+      const submitIdFlow = async () => {
         const docFile = doc?.files?.[0];
-        // Validate on click and TELL the user what's missing (red), instead of a
-        // silently-disabled button that gives no feedback.
         if (!docFile) {
           markMissing(doc, true);
-          idErr!.textContent = m.verify_fix_missing() + '\n• ' + m.verify_need_doc();
-          idErr!.classList.remove('hidden');
+          if (idErr) { idErr.textContent = m.verify_fix_missing() + '\n• ' + m.verify_need_doc(); idErr.classList.remove('hidden'); }
           return;
         }
-        if (submit.dataset.loading) return;
-        submit.dataset.loading = '1';
-        submit.disabled = true;
+        if (submitting) return;
+        submitting = true;
+        if (submit) submit.disabled = true;
         idErr?.classList.add('hidden');
         try {
           // EXIF-stripped on-device (hard rule 2); larger cap than photos so the
@@ -282,16 +296,27 @@ const verifiedPill =
           const docUrl = await reencode(docFile, 2000, 0.85);
           const { error } = await actions.account.submitId({ doc: docUrl });
           if (error) throw error;
-          location.reload();
-        } catch {
-          submit.disabled = false;
-          delete submit.dataset.loading;
-          if (idErr) {
-            idErr.textContent = m.auth_error();
-            idErr.classList.remove('hidden');
+          if (wizardFinish) {
+            // ID was the last required step — verify a pending phone code, submit
+            // for review, and jump to the done screen. No extra button presses.
+            await verifyPendingSms();
+            const { error: subErr } = await actions.account.submitProfile({});
+            if (subErr) { location.reload(); return; }
+            location.href = '?step=done';
+          } else {
+            location.reload();
           }
+        } catch {
+          submitting = false;
+          if (submit) submit.disabled = false;
+          if (idErr) { idErr.textContent = m.auth_error(); idErr.classList.remove('hidden'); }
         }
-      });
+      };
+
+      // Auto-submit the moment a file is chosen in the wizard — "upload → continue"
+      // with no button. On the dashboard tab the explicit button stays the trigger.
+      doc?.addEventListener('change', () => { sync(); if (wizardFinish) void submitIdFlow(); });
+      submit?.addEventListener('click', () => void submitIdFlow());
     });
   }
   initVerification();
