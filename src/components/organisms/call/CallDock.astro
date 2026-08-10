@@ -72,12 +72,26 @@ const { session } = Astro.props;
       <p data-incoming-name class="font-condensed text-3xl font-bold"></p>
       <p data-incoming-mode class="text-sm text-white/70"></p>
     </div>
-    <div class="flex items-center gap-16">
-      <button type="button" data-incoming-decline aria-label={m.call_decline()} class="grid size-16 cursor-pointer place-items-center rounded-full bg-white/10 transition-transform active:scale-90">
-        <svg class="size-7 rotate-[135deg]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-      </button>
-      <button type="button" data-incoming-accept aria-label={m.call_accept()} class="grid size-16 cursor-pointer place-items-center rounded-full bg-online text-neutral-950 transition-transform active:scale-90">
-        <svg class="size-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+    <div class="flex flex-col items-center">
+      <div class="flex items-center gap-16">
+        <button type="button" data-incoming-decline aria-label={m.call_decline()} class="grid size-16 cursor-pointer place-items-center rounded-full bg-white/10 transition-transform active:scale-90">
+          <svg class="size-7 rotate-[135deg]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+        </button>
+        <button type="button" data-incoming-accept aria-label={m.call_accept()} class="grid size-16 cursor-pointer place-items-center rounded-full bg-online text-neutral-950 transition-transform active:scale-90">
+          <svg class="size-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+        </button>
+      </div>
+      <!-- Ring-spam wall: block right from the ring, two-tap confirm (same
+           pattern as End & block — no native confirm()). -->
+      <button
+        type="button"
+        data-incoming-block
+        data-label={m.call_ring_block()}
+        data-confirm={m.call_ring_block_confirm()}
+        aria-pressed="false"
+        class="mt-8 cursor-pointer rounded-full border border-white/15 bg-white/5 px-5 py-2 text-sm font-medium text-white/60 transition-[background-color,transform] active:scale-95 aria-[pressed=true]:border-brand aria-[pressed=true]:bg-brand/25 aria-[pressed=true]:text-white"
+      >
+        {m.call_ring_block()}
       </button>
     </div>
   </div>
@@ -874,6 +888,10 @@ const { session } = Astro.props;
       $('[data-incoming-name]').textContent = view.peerName;
       $('[data-incoming-mode]').textContent =
         view.mode === 'video' ? root.dataset.i18nIncomingVideo! : root.dataset.i18nIncomingVoice!;
+      // Fresh block button per ring (never carry a half-armed confirm over).
+      const blockBtn = $('[data-incoming-block]');
+      blockBtn.setAttribute('aria-pressed', 'false');
+      blockBtn.textContent = blockBtn.dataset.label ?? '';
       incoming.hidden = false;
       startRingtone();
       // Auto-dismiss when the caller's 30s timeout lands server-side.
@@ -884,6 +902,21 @@ const { session } = Astro.props;
           stopRing?.();
         }
       }, RING_MS + 5000);
+
+      blockBtn.onclick = () => {
+        // First tap arms, second tap (still on screen) declines AND blocks —
+        // the ring-spam wall now that call.start is unlimited.
+        if (blockBtn.getAttribute('aria-pressed') !== 'true') {
+          blockBtn.setAttribute('aria-pressed', 'true');
+          blockBtn.textContent = blockBtn.dataset.confirm ?? '';
+          return;
+        }
+        incoming.hidden = true;
+        ringingId = null;
+        stopRing?.();
+        void actions.call.decline({ callId });
+        void actions.messaging.setBlocked({ threadId: view.threadId, blocked: true });
+      };
 
       $('[data-incoming-accept]').onclick = async () => {
         if (call) return;

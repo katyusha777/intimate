@@ -821,6 +821,8 @@
   "call_incoming": "Eingehender Anruf",
   "call_accept": "Annehmen",
   "call_decline": "Ablehnen",
+  "call_ring_block": "Blockieren",
+  "call_ring_block_confirm": "Diesen Anrufer blockieren?",
   "call_title": "Anruf",
   "call_mute": "Stumm",
   "call_camera": "Kamera an/aus",

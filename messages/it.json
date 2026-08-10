@@ -821,6 +821,8 @@
   "call_incoming": "Chiamata in arrivo",
   "call_accept": "Rispondi",
   "call_decline": "Rifiuta",
+  "call_ring_block": "Blocca",
+  "call_ring_block_confirm": "Bloccare questo chiamante?",
   "call_title": "Chiamata",
   "call_mute": "Silenzia",
   "call_camera": "Fotocamera on/off",

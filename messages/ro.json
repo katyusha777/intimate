@@ -821,6 +821,8 @@
   "call_incoming": "Apel primit",
   "call_accept": "Răspunde",
   "call_decline": "Refuză",
+  "call_ring_block": "Blochează",
+  "call_ring_block_confirm": "Blochezi acest apelant?",
   "call_title": "Apel",
   "call_mute": "Mut",
   "call_camera": "Cameră pornită/oprită",

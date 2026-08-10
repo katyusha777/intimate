@@ -821,6 +821,8 @@
   "call_incoming": "Inkomende oproep",
   "call_accept": "Opnemen",
   "call_decline": "Weigeren",
+  "call_ring_block": "Blokkeren",
+  "call_ring_block_confirm": "Deze beller blokkeren?",
   "call_title": "Oproep",
   "call_mute": "Dempen",
   "call_camera": "Camera aan/uit",
