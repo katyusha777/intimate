@@ -235,12 +235,17 @@ const { session } = Astro.props;
       remoteAudio: MediaStream;
       remoteVideo: MediaStream;
       accepted: boolean;
-      /** Local stream handed to the room (once, on first peer contact). */
+      /** Local stream handed to the room (once; caller only — the callee's
+       *  media rides back inside the ANSWER on the caller's transceivers). */
       sent: boolean;
-      /** Callee holds its stream until the caller's arrives — simultaneous
-       *  renegotiation is a deterministic Chromium kill ("RTP extension ID
-       *  reassignment not supported"). Lifted by onPeerStream or a fallback. */
+      /** Caller holds its renegotiation until the callee's media is captured
+       *  ('ready' action) — the offer must arrive when the callee can attach
+       *  its tracks to it. Lifted by the action or a fallback timer. */
       holdLocal: boolean;
+      /** Callee: 'ready' announced to the caller (once). */
+      readySent: boolean;
+      /** Callee → caller media-ready action (trystero data channel). */
+      sendReady: ((data: string) => unknown) | null;
       /** PiP tap swaps which stream fills the screen (video mode only). */
       swapped: boolean;
       timers: number[];
@@ -456,20 +461,32 @@ const { session } = Astro.props;
         },
       );
       me.room = room;
+      // Callee announces "my media is captured" over the data channel; only
+      // then does the caller renegotiate — so its offer always arrives when
+      // the callee can answer with tracks attached (see watchPeer).
+      const ready = room.makeAction('ready');
+      me.sendReady = (d: string) => ready.send(d);
+      ready.onMessage = () => {
+        if (call !== me || me.done) return;
+        dbg('peer media ready');
+        me.holdLocal = false;
+        maybeSendLocal(me);
+      };
       room.onPeerJoin = (peerId) => {
         if (call !== me || me.done) return;
         dbg('peer join');
         watchPeer(me, peerId);
         maybeSendLocal(me);
+        signalReady(me);
         if (me.holdLocal) {
-          // Fallback: if the caller's stream never arrives (her media died),
-          // send ours anyway rather than sit silent forever.
+          // Caller fallback: callee's media never materialised — offer anyway
+          // (one-way call beats silence; the callee answers recvonly).
           const t = window.setTimeout(() => {
             if (call === me && !me.done && me.holdLocal) {
               me.holdLocal = false;
               maybeSendLocal(me);
             }
-          }, 4000);
+          }, 5000);
           me.timers.push(t);
         }
       };
@@ -485,20 +502,15 @@ const { session } = Astro.props;
         }, 2000);
         me.timers.push(t);
       };
-      room.onPeerStream = (stream) => {
-        if (call !== me || me.done) return;
-        dbg('remote stream:', stream.getTracks().map((t) => t.kind).join('+'));
-        for (const t of stream.getTracks()) {
-          (t.kind === 'audio' ? me.remoteAudio : me.remoteVideo).addTrack(t);
-          t.onunmute = () => ensureRemotePlayback();
-        }
-        ensureRemotePlayback();
-        // Caller's renegotiation is done — the callee may now send its own.
-        if (me.holdLocal) {
-          me.holdLocal = false;
-          maybeSendLocal(me);
-        }
-      };
+    }
+
+    /** Callee: tell the caller our media is captured (once, peer present). */
+    function signalReady(me: NonNullable<typeof call>) {
+      if (me.done || me.readySent || me.view.party !== 'client') return;
+      if (!me.local || !me.room || !Object.keys(me.room.getPeers()).length) return;
+      me.readySent = true;
+      dbg('media ready → caller');
+      void me.sendReady?.('1');
     }
 
     /** Local stream → room, exactly once, only while a peer is present —
@@ -511,12 +523,39 @@ const { session } = Astro.props;
       for (const p of me.room.addStream(me.local)) void p.catch((e) => warn('addStream:', e));
     }
 
-    /** Observe the peer connection for the chip + connect budget only —
-     *  restart orchestration itself belongs to trystero core now. */
+    /** Observe the peer connection: remote tracks in, the callee's answer-side
+     *  media attach, and the state chip. Restart orchestration stays trystero's. */
     function watchPeer(me: NonNullable<typeof call>, peerId: string) {
       const pc = me.room?.getPeers()[peerId];
       if (!pc) return;
       me.pc = pc;
+      // Remote media lands here (raw pc events — trystero's own pc.ontrack
+      // property handler coexists and keeps serving its internals).
+      pc.addEventListener('track', (e) => {
+        if (call !== me || me.done) return;
+        const t = e.track;
+        dbg('track:', t.kind);
+        (t.kind === 'audio' ? me.remoteAudio : me.remoteVideo).addTrack(t);
+        t.onunmute = () => ensureRemotePlayback();
+        ensureRemotePlayback();
+        // Callee: ride our media back INSIDE THE ANSWER on the caller's own
+        // transceivers. A WebKit callee must never create an offer — its
+        // re-offer renumbers RTP extension IDs and Chromium kills the call
+        // ("RTP extension ID reassignment not supported"). This runs during
+        // setRemoteDescription, before trystero's createAnswer.
+        if (me.view.party === 'client') {
+          const tr = e.transceiver;
+          const local = me.local?.getTracks().find((l) => l.kind === t.kind);
+          if (tr?.sender && !tr.sender.track && local) {
+            try {
+              tr.direction = 'sendrecv';
+            } catch {
+              /* setter unsupported — replaceTrack alone still tries */
+            }
+            void tr.sender.replaceTrack(local).catch((err) => warn('attach:', err));
+          }
+        }
+      });
       const sync = () => {
         if (call !== me || me.done || me.pc !== pc) return;
         const s = pc.connectionState;
@@ -662,7 +701,9 @@ const { session } = Astro.props;
         remoteVideo: remote.video,
         accepted: false,
         sent: false,
-        holdLocal: false, // caller renegotiates first
+        holdLocal: true, // wait for the callee's 'ready' (or the fallback)
+        readySent: false,
+        sendReady: null,
         swapped: false,
         timers: [],
         ringTimer: null,
@@ -769,8 +810,10 @@ const { session } = Astro.props;
           remoteAudio: remote.audio,
           remoteVideo: remote.video,
           accepted: true,
-          sent: false,
-          holdLocal: true, // callee waits for the caller's stream (or fallback)
+          sent: true, // callee never addStreams — media rides the answer
+          holdLocal: false,
+          readySent: false,
+          sendReady: null,
           swapped: false,
           timers: [],
           ringTimer: null,
@@ -804,7 +847,7 @@ const { session } = Astro.props;
         }
         me.local = local;
         applyVideoLayout();
-        maybeSendLocal(me);
+        signalReady(me);
       };
       $('[data-incoming-decline]').onclick = () => {
         incoming.hidden = true;
@@ -852,11 +895,11 @@ const { session } = Astro.props;
       btn.setAttribute('aria-pressed', String(!track.enabled));
       localEl.classList.toggle('opacity-30', !track.enabled);
     });
-    /** Swap the SENT video track (replace when we had one, add when not). */
-    function swapSentVideo(old: MediaStreamTrack | undefined, fresh: MediaStreamTrack) {
-      if (!call?.room || !call.local) return;
-      const ps = old ? call.room.replaceTrack(old, fresh) : call.room.addTrack(fresh, call.local);
-      for (const p of ps) void p.catch((e: unknown) => warn('track swap:', e));
+    /** Swap the SENT video track via the raw sender — replaceTrack never
+     *  renegotiates, which the callee side is never allowed to do. */
+    function swapSentVideo(_old: MediaStreamTrack | undefined, fresh: MediaStreamTrack) {
+      const sender = call?.pc?.getSenders().find((s) => s.track?.kind === 'video');
+      if (sender) void sender.replaceTrack(fresh).catch((e: unknown) => warn('track swap:', e));
     }
     let facing: 'user' | 'environment' = 'user';
     let flipping = false;
