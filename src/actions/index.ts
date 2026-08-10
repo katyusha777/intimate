@@ -699,10 +699,9 @@ export const server = {
       input: z.object({ threadId: z.string().max(200), mode: z.enum(CALL_MODES) }),
       handler: async ({ threadId, mode }, context) => {
         const session = await requireSession(context);
-        // Ring-bomb wall (VIDEO-CALLING.md §9): cap call starts per professional.
-        // 60/h — the 30s ring + busy wall already bound per-client ring-bombing;
-        // this is the account-level abuse ceiling (30 blocked a heavy test day).
-        await requireUnderLimit("call-start", session.accountId, 60);
+        // No rate limit (2026-08-11): calls are P2P — media never touches our
+        // infrastructure, callers need an accepted open thread, and the busy
+        // wall + 30s ring already serialize any ring-bombing. Block is the wall.
         const call = await callsApi.start(session, { threadId, mode });
         if (call === 'busy') throw new ActionError({ code: "CONFLICT", message: "busy" });
         if (!call) throw new ActionError({ code: "BAD_REQUEST", message: "not callable" });

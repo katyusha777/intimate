@@ -333,7 +333,10 @@ to "built", §12 Phase C boxes ticked · □ **this file deleted.**
   no call path (RLS, tested).
 - Call metadata (parties, mode, timestamps, duration) is retained for audit —
   the 90-day message purge does not apply to it; privacy copy states this.
-- Rate limit `call.start` + invite minting (the existing KV limiter pattern).
+- `call.start` is NOT rate limited (2026-08-11): calls are P2P (no infra
+  cost), require an accepted open thread, and the busy wall + 30s ring
+  serialize any ring-bombing — block is the wall. Invite minting keeps the
+  existing KV limiter.
 - No analytics on call content ever; events per ANALYTICS.md contract only
   (`call_started`, `call_connected`, `call_ended` with mode + duration bucket).
 
