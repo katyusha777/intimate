@@ -171,6 +171,7 @@
   "account_id": "Ausweis",
   "account_demo_note": "Early access — du bist von den Ersten hier. Neue Funktionen kommen regelmäßig dazu.",
   "editor_title": "Profil bearbeiten",
+  "editor_completeness_hint": "Vervollständige dein Profil, um aufzufallen",
   "editor_saved": "Gespeichert",
   "editor_save": "Änderungen speichern",
   "editor_description": "Beschreibung",

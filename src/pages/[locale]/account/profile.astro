@@ -15,6 +15,23 @@ if (!isLocale(locale)) return new Response(null, { status: 404 });
 const session = await sessionApi.current(Astro);
 if (session && session.role !== 'advertiser') return Astro.redirect(localizePath('/account/'));
 const profile = session ? await accountApi.myProfile(session) : null;
+
+// Profile completeness. The required flow (identity/contact/photos/ID) is done by
+// the time she reaches the editor → weight it at 55%; the optional polish
+// (services, prices, about, hours, visit type) fills the rest. Arriving from
+// onboarding (?onboarded) the bar animates full → this % so it reads "you
+// finished the main part — now a little more to make it shine".
+const optionalDone = profile
+  ? [
+      profile.services.length >= 1,
+      profile.rates.some((r) => r.incall != null || r.outcall != null),
+      Boolean(profile.description?.trim()),
+      Object.keys(profile.openingHours ?? {}).length > 0,
+      profile.meetingTypes.length >= 1,
+    ].filter(Boolean).length
+  : 0;
+const completeness = Math.round(55 + (optionalDone / 5) * 45);
+const justOnboarded = Astro.url.searchParams.has('onboarded');
 ---
 
 <Layout noindex title={`${m.editor_title()} | Intimate`}>
@@ -22,8 +39,41 @@ const profile = session ? await accountApi.myProfile(session) : null;
   {
     session && profile && (
       <AccountShell {session} title={m.editor_title()} path={localizePath('/account/profile/')} bannerState={profile.state}>
+        <div class="mb-8" data-completeness style={`--pct:${completeness}%`} data-onboarded={justOnboarded ? '1' : undefined}>
+          <div class="flex items-baseline justify-between gap-3">
+            <p class="text-sm font-medium">{m.editor_completeness_hint()}</p>
+            <p class="font-condensed text-sm font-bold tabular-nums">{completeness}%</p>
+          </div>
+          <div class="mt-2 h-2 w-full overflow-hidden rounded-full bg-muted">
+            <div class="completeness-fill h-full rounded-full bg-online"></div>
+          </div>
+        </div>
         <ProfileEditorForm {profile} />
       </AccountShell>
     )
   }
 </Layout>
+
+<style>
+  .completeness-fill {
+    width: var(--pct);
+  }
+  /* Arriving from onboarding: the bar was full (required flow done) — it "grows"
+     to cover the whole profile, receding to the real %. */
+  [data-completeness][data-onboarded] .completeness-fill {
+    animation: completeness-recede 0.9s 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  @keyframes completeness-recede {
+    from {
+      width: 100%;
+    }
+    to {
+      width: var(--pct);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    [data-completeness][data-onboarded] .completeness-fill {
+      animation: none;
+    }
+  }
+</style>

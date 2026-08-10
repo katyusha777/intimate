@@ -15,11 +15,13 @@ interface Props {
   session: Session;
   account: Account;
   /** Onboarding wizard AND ID is the last required step: uploading the ID
-   *  auto-verifies a pending phone code, submits for review, and jumps to done —
-   *  no extra button presses. False on the dashboard verification tab. */
+   *  auto-verifies a pending phone code, submits for review, and jumps to
+   *  `finishUrl` — no extra button presses. False on the dashboard verification tab. */
   wizardFinish?: boolean;
+  /** Where to land after the wizard finish (default: the account home). */
+  finishUrl?: string;
 }
-const { session, account, wizardFinish = false } = Astro.props;
+const { session, account, wizardFinish = false, finishUrl = '/account/' } = Astro.props;
 
 const smsDone = Boolean(account.phoneVerifiedAt);
 const idState = account.idVerification;
@@ -32,7 +34,7 @@ const verifiedPill =
   'inline-flex items-center gap-1.5 rounded-full bg-online/15 px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-online';
 ---
 
-<div class="max-w-xl space-y-10" data-verification data-wizard-finish={wizardFinish ? '1' : undefined}>
+<div class="max-w-xl space-y-10" data-verification data-wizard-finish={wizardFinish ? '1' : undefined} data-finish-url={finishUrl}>
   <!-- Step 1 · SMS -->
   <section class="space-y-4">
     <div class="flex items-center gap-3">
@@ -298,11 +300,12 @@ const verifiedPill =
           if (error) throw error;
           if (wizardFinish) {
             // ID was the last required step — verify a pending phone code, submit
-            // for review, and jump to the done screen. No extra button presses.
+            // for review, and continue straight to the profile editor to keep
+            // building (services/prices) while the ID is reviewed. No buttons.
             await verifyPendingSms();
             const { error: subErr } = await actions.account.submitProfile({});
             if (subErr) { location.reload(); return; }
-            location.href = '?step=done';
+            location.href = root.dataset.finishUrl || '/account/';
           } else {
             location.reload();
           }

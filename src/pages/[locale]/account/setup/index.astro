@@ -146,11 +146,11 @@ const why = 'mt-2 leading-relaxed text-muted-foreground';
         <div>
           <h1 class={title}>{m.verify_title()}</h1>
           <p class={why}>{m.onb_why_verify()}</p>
-          <div class="mt-6"><VerificationFlow {session} {account} wizardFinish={progress.firstIncomplete === 'id'} /></div>
+          <div class="mt-6"><VerificationFlow {session} {account} wizardFinish={progress.firstIncomplete === 'id'} finishUrl={`${localizePath('/account/profile/')}?onboarded=1`} /></div>
           {progress.readyToSubmit && (
             <div class="mt-8 border-t border-border pt-6">
               <p class="mb-3 text-sm text-muted-foreground">{m.onb_verify_submit_hint()}</p>
-              <Button size="lg" class={cont} data-wizard-submit>{m.onb_submit()}</Button>
+              <Button size="lg" class={cont} data-wizard-submit data-finish-url={`${localizePath('/account/profile/')}?onboarded=1`}>{m.onb_submit()}</Button>
               <p data-wizard-error class="mt-2 hidden text-sm font-medium text-brand"></p>
             </div>
           )}
@@ -243,7 +243,8 @@ const why = 'mt-2 leading-relaxed text-muted-foreground';
           delete submit.dataset.loading;
           return;
         }
-        location.href = '?step=done';
+        // Continue straight to the editor to keep building while ID is reviewed.
+        location.href = submit.dataset.finishUrl || '/account/';
       });
     }
   }

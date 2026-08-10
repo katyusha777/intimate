@@ -219,6 +219,7 @@
   "account_id": "Documento d'identità",
   "account_demo_note": "Early access — sei tra i primi qui. Nuove funzioni arrivano regolarmente.",
   "editor_title": "Modifica profilo",
+  "editor_completeness_hint": "Completa il profilo per distinguerti",
   "editor_saved": "Salvato",
   "editor_save": "Salva modifiche",
   "editor_description": "Descrizione",

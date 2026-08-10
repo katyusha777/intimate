@@ -404,6 +404,26 @@ const selAvailableFor = setOf(p.availableFor ?? []);
 
   )}
 
+  {/* Personal info (about) sits BEFORE services (2026-08-10) — who she is draws
+      a client in more than the service list. */}
+  {show('description') && (
+  <label class="block space-y-2.5">
+    <span class="text-sm font-medium">{m.editor_description()}</span>
+    <p class="text-xs text-muted-foreground">{m.editor_description_hint()}</p>
+    <span class="slab-field block">
+      <span class="slab-field__face block">
+        <textarea
+          name="description"
+          rows="5"
+          maxlength="1000"
+          placeholder={m.editor_description_ph()}
+          class="w-full resize-none bg-transparent p-3 text-base caret-brand outline-none placeholder:text-muted-foreground md:text-sm"
+        >{p.description}</textarea>
+      </span>
+    </span>
+  </label>
+  )}
+
   {show('services') && (
   <Fragment>
   {/* Visit type sits WITH services (2026-08-10) — "where you work" belongs next
@@ -519,24 +539,6 @@ const selAvailableFor = setOf(p.availableFor ?? []);
     </div>
   </div>
 
-  )}
-
-  {show('description') && (
-  <label class="block space-y-2.5">
-    <span class="text-sm font-medium">{m.editor_description()}</span>
-    <p class="text-xs text-muted-foreground">{m.editor_description_hint()}</p>
-    <span class="slab-field block">
-      <span class="slab-field__face block">
-        <textarea
-          name="description"
-          rows="5"
-          maxlength="1000"
-          placeholder={m.editor_description_ph()}
-          class="w-full resize-none bg-transparent p-3 text-base caret-brand outline-none placeholder:text-muted-foreground md:text-sm"
-        >{p.description}</textarea>
-      </span>
-    </span>
-  </label>
   )}
 
   {!wizard && (

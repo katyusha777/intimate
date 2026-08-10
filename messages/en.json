@@ -219,6 +219,7 @@
   "account_id": "ID document",
   "account_demo_note": "Early access — you're one of the first here. New features are landing regularly.",
   "editor_title": "Edit profile",
+  "editor_completeness_hint": "Complete your profile to stand out",
   "editor_saved": "Saved",
   "editor_save": "Save changes",
   "editor_description": "Description",
