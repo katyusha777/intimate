@@ -25,6 +25,18 @@ export interface CacheKv {
 }
 
 const GEN_KEY = 'pc:gen';
+// Post-bust store guard: Hyperdrive's read cache serves pre-mutation rows for
+// minutes after a write, so a page rendered right after a bust can be the OLD
+// content — storing it under the new generation would resurrect it for the
+// full TTL (a deleted profile outliving its GDPR approval by 24h). Within the
+// window, reads still miss (new gen) and SSR simply goes uncached.
+const BUST_WINDOW_MS = 10 * 60_000;
+
+/** GEN_KEY holds `<n>:<bustedAtMs>`; legacy plain `<n>` parses as bustedAt 0. */
+const parseGen = (raw: string | null): { gen: string; at: number } => {
+  const [gen = '0', at = '0'] = (raw ?? '0').split(':');
+  return { gen, at: Number(at) || 0 };
+};
 const TTL_S = 86_400; // 24h — content freshness comes from the bust, not the TTL.
 // The homepage TTL is short instead: its SSR'd "online now" count has no
 // client-side refresh, so freshness DOES come from the TTL here.
@@ -67,7 +79,7 @@ export async function servedFromCache(
   url: URL,
 ): Promise<Response | null> {
   if (!kv) return null;
-  const gen = (await kv.get(GEN_KEY)) ?? '0';
+  const { gen } = parseGen(await kv.get(GEN_KEY));
   const html = await kv.get(cacheKey(deployId, gen, url.pathname));
   if (html == null) return null;
   return new Response(html, {
@@ -88,8 +100,9 @@ export async function storeInCache(
   if (!kv || res.status !== 200 || !ct.includes('text/html') || res.headers.has('set-cookie')) {
     return res;
   }
+  const { gen, at } = parseGen(await kv.get(GEN_KEY));
+  if (Date.now() - at < BUST_WINDOW_MS) return res;
   const html = await res.text();
-  const gen = (await kv.get(GEN_KEY)) ?? '0';
   await kv.put(cacheKey(deployId, gen, url.pathname), html, { expirationTtl: ttl });
   return new Response(html, {
     status: 200,
@@ -100,6 +113,6 @@ export async function storeInCache(
 /** Bump the generation so every cached profile page misses on its next hit. */
 export async function bustProfiles(kv: CacheKv | undefined): Promise<void> {
   if (!kv) return;
-  const next = Number((await kv.get(GEN_KEY)) ?? '0') + 1;
-  await kv.put(GEN_KEY, String(next));
+  const { gen } = parseGen(await kv.get(GEN_KEY));
+  await kv.put(GEN_KEY, `${Number(gen) + 1}:${Date.now()}`);
 }

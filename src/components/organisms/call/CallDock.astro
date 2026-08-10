@@ -727,6 +727,7 @@ const { session } = Astro.props;
         dbg('start ignored — call in flight', call.view.id);
         return;
       }
+      facing = 'user'; // getMedia opens the front camera — never inherit a past flip
       dbg('start:', mode);
       // Synchronously inside the tap: the permission prompt opens privileged
       // (WebKit re-prompts after past denials only then) and remote playback
@@ -889,6 +890,7 @@ const { session } = Astro.props;
         incoming.hidden = true;
         ringingId = null;
         stopRing?.();
+        facing = 'user'; // getMedia opens the front camera — never inherit a past flip
         dbg('accept tapped:', view.mode);
         // Synchronously inside the tap (same law as startCall): the prompt is
         // privileged and playback primed BEFORE the accept round-trip.

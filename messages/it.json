@@ -314,6 +314,7 @@
   "day_short_sat": "Sab",
   "day_short_sun": "Dom",
   "msg_title": "Messaggi",
+  "msg_select_thread": "Seleziona una conversazione",
   "msg_empty_title": "Ancora nessun messaggio",
   "msg_empty_body": "Quando scrivi a qualcuno, la conversazione appare qui.",
   "msg_snippet_empty": "Ancora nessun messaggio",

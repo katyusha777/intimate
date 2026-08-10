@@ -66,7 +66,7 @@ const utcTime = (iso: string): string =>
 ---
 
 <div
-  class="mx-auto flex h-full max-w-2xl flex-col"
+  class="flex h-full flex-col"
   data-thread-root
   data-thread-id={thread.id}
   data-viewer={viewer}
@@ -220,7 +220,7 @@ const utcTime = (iso: string): string =>
   </header>
 
   <!-- Messages -->
-  <div data-msg-scroll class="flex-1 space-y-2 overflow-y-auto overscroll-contain px-3 py-4">
+  <div data-msg-scroll class="flex-1 space-y-2 overflow-y-auto overscroll-contain px-3 py-4 md:px-5">
     {
       privatePhotos.length > 0 && (
         // Her private set, unlocked for this client on accept (UX-PLAN 4.4).

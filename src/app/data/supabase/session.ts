@@ -8,7 +8,7 @@
  * Drizzle query over accounts ⟕ profiles.
  */
 import { env } from 'cloudflare:workers';
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, ne, sql } from 'drizzle-orm';
 import { supabaseServer } from '@/lib/supabase';
 import { requestDb, type Db } from '@/db/client';
 import { accounts, media, profiles } from '@/db/schema';
@@ -43,7 +43,10 @@ async function identity(accountId: string, email: string | undefined): Promise<S
         order by ${media.position} asc limit 1)`,
     })
     .from(accounts)
-    .leftJoin(profiles, eq(profiles.accountId, accounts.id))
+    // A soft-deleted profile (GDPR approval, lifecycle law) must not ride the
+    // session — without this filter the owner still saw her whole profile in
+    // the dashboard after the deletion was approved.
+    .leftJoin(profiles, and(eq(profiles.accountId, accounts.id), ne(profiles.state, 'deleted')))
     .where(eq(accounts.id, accountId))
     .limit(1);
   const row = rows[0];

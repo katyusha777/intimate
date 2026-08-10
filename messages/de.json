@@ -314,6 +314,7 @@
   "day_short_sat": "Sa",
   "day_short_sun": "So",
   "msg_title": "Nachrichten",
+  "msg_select_thread": "Wähle eine Unterhaltung",
   "msg_empty_title": "Noch keine Nachrichten",
   "msg_empty_body": "Sobald du jemandem schreibst, erscheint die Unterhaltung hier.",
   "msg_snippet_empty": "Noch keine Nachrichten",

@@ -51,7 +51,6 @@ const { session = null } = Astro.props;
               [m.cta_register_client(), '/account/', 'client'],
               [m.foot_about(), '/about/'],
               [m.foot_articles(), '/blog/'],
-              [m.foot_forum(), '/forum/'],
               [m.foot_docs(), '/docs/'],
             ],
           },
@@ -153,7 +152,7 @@ const { session = null } = Astro.props;
       <button
         type="button"
         data-scroll-top
-        class="slab-cut flex cursor-pointer items-center justify-center gap-2 bg-white px-4 py-2.5 eyebrow font-bold text-neutral-950 transition-colors hover:bg-brand hover:text-white active:scale-[0.98] sm:justify-start"
+        class="slab-cut hidden cursor-pointer items-center justify-center gap-2 bg-white px-4 py-2.5 eyebrow font-bold text-neutral-950 transition-colors hover:bg-brand hover:text-white active:scale-[0.98] sm:flex sm:justify-start"
       >
         {m.foot_back_top()}
         <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m18 15-6-6-6 6" /></svg>

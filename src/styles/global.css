@@ -453,14 +453,15 @@
   }
 
   /* Messages surface height: full-dvh app feel on mobile (Layout bare='mobile'
-     shows no chrome there); desktop subtracts the sticky site header so the
-     two-pane sits within the frame. 4.25rem = Header md:h-[4.25rem]. */
+     shows no chrome there); desktop subtracts the sticky site header (4.25rem =
+     Header md:h-[4.25rem]) plus the mailbox frame's py-6 wrapper (3rem) so the
+     bordered two-pane fits the viewport. */
   .h-thread {
     height: 100dvh;
   }
   @media (min-width: 48rem) {
     .h-thread {
-      height: calc(100dvh - 4.25rem);
+      height: calc(100dvh - 4.25rem - 3rem);
     }
   }
 

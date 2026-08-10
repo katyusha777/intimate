@@ -220,8 +220,20 @@ const typeChip =
       btn.dataset.init = '1';
       btn.addEventListener('click', async () => {
         if (!confirm(btn.dataset.confirm || 'Approve deletion?')) return;
-        const { data } = await actions.admin.gdprApproveDeletion({ accountId: btn.dataset.gdprDelete! });
+        const accountId = btn.dataset.gdprDelete!;
+        const { data, error } = await actions.admin.gdprApproveDeletion({ accountId });
+        if (error) {
+          alert(`Deletion failed: ${error.message}`);
+          return;
+        }
         if (data) settleGdpr(btn);
+        // Scrub + soft-delete succeeded but the auth user survived (no
+        // service-role key) — the login and auth email still exist. Ops
+        // warning, deliberately not localized.
+        if (data && !data.authDeleted)
+          alert(
+            `Data scrubbed and profile soft-deleted, but the Supabase auth user was NOT removed (SUPABASE_SERVICE_ROLE_KEY missing). Delete auth user ${accountId} in the Supabase dashboard, then configure the secret.`,
+          );
       });
     });
   }

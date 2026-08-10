@@ -249,7 +249,10 @@ throughout. New pieces live in `organisms/messaging` + `organisms/contacts`.
 **Inbox (Messages surface):** thread list — avatar (`SafeImage`), display name,
 snippet (or `✦ media` / `☎ call` glyph), timestamp, unread ink-dot, presence
 dot. Mobile swipe actions: pin (professional), mute, block. Per-role empty
-states. Thread search: later, not Phase A.
+states. Thread search: later, not Phase A. **Desktop is a mailbox:** one
+bordered frame within the site width (`.h-thread` height) — inbox rail left,
+conversation (or a "select a conversation" empty pane on `/messages/`) right;
+mobile stays list-page → full-screen thread.
 
 **Thread view:** WhatsApp-familiar. Bubbles, day separators, read ticks, typing
 indicator. Header: name + presence + (professional) call button (Phase C),

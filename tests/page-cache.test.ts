@@ -4,7 +4,7 @@
  * A wrong match here silently serves stale or uncacheable content.
  */
 import { expect, test } from 'bun:test';
-import { isAnonymousRequest, isCacheableProfile, servedFromCache, storeInCache, type CacheKv } from '@/lib/page-cache';
+import { bustProfiles, isAnonymousRequest, isCacheableProfile, servedFromCache, storeInCache, type CacheKv } from '@/lib/page-cache';
 
 /** Minimal in-memory KV for the store/serve round-trip. */
 const fakeKv = (): CacheKv & { map: Map<string, string> } => {
@@ -56,4 +56,20 @@ test('a new deploy id invalidates cached HTML (no stale-after-redeploy)', async 
 
   // New deploy id → MISS (old entry unreachable), so the fresh render is served.
   expect(await servedFromCache(kv, 'deploy-v2', url)).toBeNull();
+});
+
+test('a bust invalidates AND blocks re-caching during the stale-read window', async () => {
+  const kv = fakeKv();
+  const url = new URL('https://x/en/profile/elif/');
+  await storeInCache(kv, 'd1', url, htmlRes('<p>live</p>'));
+  expect(await servedFromCache(kv, 'd1', url)).not.toBeNull();
+
+  await bustProfiles(kv); // e.g. deletion approved
+  expect(await servedFromCache(kv, 'd1', url)).toBeNull(); // old gen unreachable
+
+  // A render right after the bust may carry Hyperdrive-stale data — it must
+  // NOT be stored under the new generation (it would live until the TTL).
+  const res = await storeInCache(kv, 'd1', url, htmlRes('<p>stale</p>'));
+  expect(await res.text()).toBe('<p>stale</p>'); // response passes through untouched
+  expect(await servedFromCache(kv, 'd1', url)).toBeNull(); // …but was not cached
 });

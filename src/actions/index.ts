@@ -700,7 +700,9 @@ export const server = {
       handler: async ({ threadId, mode }, context) => {
         const session = await requireSession(context);
         // Ring-bomb wall (VIDEO-CALLING.md §9): cap call starts per professional.
-        await requireUnderLimit("call-start", session.accountId, 30);
+        // 60/h — the 30s ring + busy wall already bound per-client ring-bombing;
+        // this is the account-level abuse ceiling (30 blocked a heavy test day).
+        await requireUnderLimit("call-start", session.accountId, 60);
         const call = await callsApi.start(session, { threadId, mode });
         if (call === 'busy') throw new ActionError({ code: "CONFLICT", message: "busy" });
         if (!call) throw new ActionError({ code: "BAD_REQUEST", message: "not callable" });

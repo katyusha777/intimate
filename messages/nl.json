@@ -314,6 +314,7 @@
   "day_short_sat": "za",
   "day_short_sun": "zo",
   "msg_title": "Berichten",
+  "msg_select_thread": "Kies een gesprek",
   "msg_empty_title": "Nog geen berichten",
   "msg_empty_body": "Zodra je iemand een bericht stuurt, verschijnt het gesprek hier.",
   "msg_snippet_empty": "Nog geen berichten",

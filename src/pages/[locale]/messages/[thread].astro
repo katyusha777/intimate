@@ -37,24 +37,26 @@ if (viewer === 'client' && thread.privateSetUnlocked) {
   privatePhotos = profile?.privatePhotos ?? [];
 }
 
-// Desktop shows the inbox as a left rail beside the thread (two-pane) so it
-// never reads as a stuck modal. Mobile stays a single full-screen thread with
-// its own back button (unchanged).
+// Desktop is a mailbox: one bordered frame within the site width, inbox rail
+// left, conversation right. Mobile stays a single full-screen thread with its
+// own back button (unchanged).
 const threads = await messagingApi.listThreads(session);
 ---
 
 <Layout bare="mobile" noindex title={`${other} | Intimate`}>
-  <div class="flex h-thread">
-    <aside class="hidden w-[22rem] flex-none flex-col border-r border-border md:flex">
-      <a href={localizePath('/messages/')} class="flex flex-none items-center border-b border-border px-4 py-3.5 font-condensed text-lg font-bold">
-        {m.msg_title()}
-      </a>
-      <div class="min-h-0 flex-1 overflow-y-auto px-2 pb-4">
-        <Inbox threads={threads} {viewer} activeId={thread.id} />
+  <div class="md:mx-auto md:max-w-6xl md:px-6 md:py-6">
+    <div class="flex h-thread md:overflow-hidden md:border md:border-border">
+      <aside class="hidden w-80 flex-none flex-col border-r border-border md:flex">
+        <a href={localizePath('/messages/')} class="flex flex-none items-center border-b border-border px-4 py-3.5 font-condensed text-lg font-bold">
+          {m.msg_title()}
+        </a>
+        <div class="min-h-0 flex-1 overflow-y-auto px-2 pb-4">
+          <Inbox threads={threads} {viewer} activeId={thread.id} />
+        </div>
+      </aside>
+      <div class="min-w-0 flex-1">
+        <Thread {thread} {viewer} {paused} {privatePhotos} />
       </div>
-    </aside>
-    <div class="min-w-0 flex-1">
-      <Thread {thread} {viewer} {paused} {privatePhotos} />
     </div>
   </div>
 </Layout>

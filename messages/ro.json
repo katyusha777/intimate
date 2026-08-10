@@ -314,6 +314,7 @@
   "day_short_sat": "sâm",
   "day_short_sun": "dum",
   "msg_title": "Mesaje",
+  "msg_select_thread": "Alege o conversație",
   "msg_empty_title": "Încă niciun mesaj",
   "msg_empty_body": "Când trimiți cuiva un mesaj, conversația apare aici.",
   "msg_snippet_empty": "Încă niciun mesaj",

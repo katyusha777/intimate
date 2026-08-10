@@ -314,6 +314,7 @@
   "day_short_sat": "Sat",
   "day_short_sun": "Sun",
   "msg_title": "Messages",
+  "msg_select_thread": "Select a conversation",
   "msg_empty_title": "No messages yet",
   "msg_empty_body": "When you message someone, the conversation shows up here.",
   "msg_snippet_empty": "No messages yet",
