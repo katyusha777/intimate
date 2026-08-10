@@ -74,6 +74,17 @@ const btn = 'slab-cut border border-foreground/20 px-4 py-2 text-sm font-semibol
           </div>
         </form>
 
+        {/* Preview is a GET reload (~1 min); this overlay makes the wait visible
+            until the response replaces the page. */}
+        <div data-import-overlay hidden class="fixed inset-0 z-50 grid place-items-center bg-background/85 backdrop-blur-sm">
+          <div class="w-full max-w-sm px-8 text-center">
+            <div class="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+              <div data-import-bar class="h-full rounded-full bg-brand transition-[width] duration-500 ease-out" style="width:0%"></div>
+            </div>
+            <p data-import-msg class="mt-3 text-sm text-muted-foreground"></p>
+          </div>
+        </div>
+
         {error && <p class="mt-4 text-sm text-brand">Error: {error}</p>}
 
         {outcome && preview && (
@@ -117,21 +128,41 @@ const btn = 'slab-cut border border-foreground/20 px-4 py-2 text-sm font-semibol
 
 <script>
   import { actions } from 'astro:actions';
+  import { startImportProgress } from '@/lib/import-progress';
+
   function init() {
+    const form = document.querySelector<HTMLFormElement>('form[method="get"]');
+    if (!form || form.dataset.init) return;
+    form.dataset.init = '1';
+    const overlay = document.querySelector<HTMLElement>('[data-import-overlay]')!;
+    const bar = overlay.querySelector<HTMLElement>('[data-import-bar]')!;
+    const msg = overlay.querySelector<HTMLElement>('[data-import-msg]')!;
+    const showOverlay = () => {
+      overlay.hidden = false;
+      return startImportProgress(bar, msg);
+    };
+
+    // Preview = a real GET navigation; show the overlay and let it ride until the
+    // response replaces the page (no done() needed).
+    form.addEventListener('submit', () => {
+      showOverlay();
+    });
+
     const apply = document.querySelector<HTMLButtonElement>('[data-apply]');
-    if (!apply || apply.dataset.init) return;
-    apply.dataset.init = '1';
     const pidEl = document.querySelector<HTMLInputElement>('[data-profile-id]')!;
     const urlEl = document.querySelector<HTMLInputElement>('input[name="url"]')!;
     const status = document.querySelector<HTMLElement>('[data-status]')!;
-    apply.addEventListener('click', async () => {
+    apply?.addEventListener('click', async () => {
       const profileId = pidEl.value.trim();
       const url = urlEl.value.trim();
       if (!profileId || !url) { status.textContent = 'Need a URL and a profile UUID.'; return; }
       if (!confirm('Apply this import onto that profile? It overwrites the mapped fields.')) return;
       status.textContent = 'Importing + applying…';
       apply.disabled = true;
+      const prog = showOverlay();
       const { data, error } = await actions.admin.importApply({ profileId, url });
+      prog.done();
+      overlay.hidden = true;
       apply.disabled = false;
       status.textContent = error ? `Error: ${error.message}` : 'Applied ✓';
     });

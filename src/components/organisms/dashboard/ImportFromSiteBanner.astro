@@ -26,6 +26,12 @@ import Modal from '@/components/molecules/Modal.astro';
     />
     <Button type="submit" data-import-go size="lg">{m.import_cta()}</Button>
   </form>
+  <div data-import-progress hidden class="mt-4">
+    <div class="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+      <div data-import-bar class="h-full rounded-full bg-brand transition-[width] duration-500 ease-out" style="width:0%"></div>
+    </div>
+    <p data-import-msg class="mt-2 text-sm text-muted-foreground"></p>
+  </div>
   <p data-import-error hidden class="mt-2 text-sm font-medium text-brand"></p>
 </section>
 
@@ -48,6 +54,7 @@ import Modal from '@/components/molecules/Modal.astro';
 <script>
   import { actions } from 'astro:actions';
   import type { Locale } from '@/lib/taxonomy';
+  import { startImportProgress } from '@/lib/import-progress';
 
   // Row labels for the preview (humanized snake_case values — the real editor
   // shows proper localized labels after confirm; this is just reassurance).
@@ -94,6 +101,9 @@ import Modal from '@/components/molecules/Modal.astro';
     const urlInput = banner.querySelector<HTMLInputElement>('[data-import-url]')!;
     const go = banner.querySelector<HTMLButtonElement>('[data-import-go]')!;
     const err = banner.querySelector<HTMLElement>('[data-import-error]')!;
+    const progress = banner.querySelector<HTMLElement>('[data-import-progress]')!;
+    const bar = banner.querySelector<HTMLElement>('[data-import-bar]')!;
+    const barMsg = banner.querySelector<HTMLElement>('[data-import-msg]')!;
     const dialog = document.getElementById('import-preview') as HTMLDialogElement | null;
     const summary = dialog?.querySelector<HTMLElement>('[data-import-summary]');
     const warnBox = dialog?.querySelector<HTMLElement>('[data-import-warnings]');
@@ -106,9 +116,13 @@ import Modal from '@/components/molecules/Modal.astro';
       e.preventDefault();
       err.hidden = true;
       go.disabled = true;
+      progress.hidden = false;
+      const prog = startImportProgress(bar, barMsg);
       const locale = (document.documentElement.lang || 'en') as Locale;
       const { data, error } = await actions.account.importProfile({ url: urlInput.value.trim(), locale });
+      prog.done();
       go.disabled = false;
+      setTimeout(() => (progress.hidden = true), 400);
       if (error || !data) {
         err.textContent = error?.message || 'Import failed — check the link and try again.';
         err.hidden = false;
