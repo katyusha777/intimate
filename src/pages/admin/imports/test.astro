@@ -1,17 +1,55 @@
 ---
 /**
- * Import test tool (docs/ADMIN.md §3). Paste a source URL → see the raw LLM
- * extraction beside our taxonomy-mapped ProfileEdit fields + warnings, so you
- * can verify the mapping holds field-by-field. Optionally apply it onto a
- * profile by id (super-only, audit-logged). Uses the same src/lib/import/ path
- * the advertiser flow uses — testing this tests the real thing.
+ * Import test tool (docs/ADMIN.md §3). Paste a source URL → the import runs
+ * server-side and the result is shown three ways: (1) our REAL profile editor,
+ * pre-filled and read-only, so you see exactly how each field maps into our UI;
+ * (2) the mapped JSON; (3) the raw LLM output. Optionally apply onto a profile
+ * by id (super-only, audit-logged). Same src/lib/import/ path the advertiser
+ * flow uses — testing this tests the real thing.
  */
 import { getAdmin } from '@/actions/admin/lib';
-import { knownSites } from '@/lib/import';
+import { importFromUrl, knownSites } from '@/lib/import';
+import { ProfileSchema, type Profile } from '@/app/models/profile';
+import { CITIES } from '@/lib/taxonomy';
 import AdminShell from '@/components/organisms/admin/AdminShell.astro';
+import ProfileEditorForm from '@/components/organisms/dashboard/ProfileEditorForm.astro';
 
 const session = await getAdmin(Astro);
 const sites = knownSites().map((s) => s.label).join(', ');
+const url = Astro.url.searchParams.get('url')?.trim() || '';
+
+let outcome: Awaited<ReturnType<typeof importFromUrl>> | null = null;
+let preview: Profile | null = null;
+let error: string | null = null;
+if (session && url) {
+  try {
+    outcome = await importFromUrl(url);
+    // Build a throwaway Profile so the REAL editor renders populated. Identity
+    // fields she owns (name/DOB) aren't imported, so we seed placeholders.
+    preview = ProfileSchema.parse({
+      id: '',
+      slug: '',
+      state: 'draft',
+      name: 'Imported preview',
+      birthDate: '1995-06-15',
+      gender: outcome.fields.gender ?? 'female',
+      city: outcome.fields.city ?? CITIES[0]!.slug,
+      verified: false,
+      online: false,
+      featured: false,
+      rates: [],
+      services: [],
+      meetingTypes: [],
+      description: '',
+      photos: [],
+      createdAt: new Date().toISOString(),
+      ...outcome.fields,
+    });
+  } catch (e) {
+    error = (e as Error).message;
+  }
+}
+
 const input = 'slab-cut w-full border border-foreground/20 bg-background px-3 py-2 text-sm outline-none focus:border-foreground';
 const btn = 'slab-cut border border-foreground/20 px-4 py-2 text-sm font-semibold hover:border-foreground/60 disabled:opacity-50';
 ---
@@ -23,29 +61,55 @@ const btn = 'slab-cut border border-foreground/20 px-4 py-2 text-sm font-semibol
         <h1 class="display text-3xl">Import test</h1>
         <p class="mt-1 text-sm text-muted-foreground">Scrape + normalize a profile URL and inspect the mapping. Supported: {sites}.</p>
 
-        <div class="mt-6 space-y-3">
-          <input data-url type="url" placeholder="https://www.kinky.nl/advertenties/12345-…" class={input} />
+        {/* Preview = a plain GET so the import runs server-side and the real
+            editor can render pre-filled below. */}
+        <form method="get" class="mt-6 space-y-3">
+          <input name="url" type="url" required value={url} placeholder="https://www.kinky.nl/advertenties/12345-…" class={input} />
           <div class="flex flex-wrap items-center gap-3">
-            <button type="button" data-preview class={btn}>Preview mapping</button>
+            <button type="submit" class={btn}>Preview mapping</button>
             <span class="text-2xs text-muted-foreground">or apply onto a profile:</span>
             <input data-profile-id placeholder="profile UUID" class={`${input} max-w-xs`} />
-            <button type="button" data-apply class={btn}>Apply (super)</button>
+            <button type="button" data-apply data-url={url} class={btn}>Apply (super)</button>
+            <span data-status class="text-2xs text-muted-foreground" />
           </div>
-          <p data-status class="text-sm text-muted-foreground" />
-        </div>
+        </form>
 
-        <div data-results hidden class="mt-8 grid gap-6 lg:grid-cols-2">
-          <div>
-            <h2 class="font-condensed text-sm font-bold uppercase tracking-wide">Mapped → our schema</h2>
-            <p data-meta class="mt-1 text-2xs text-muted-foreground" />
-            <div data-warnings hidden class="mt-2 border-l-2 border-amber-500 pl-3 text-xs text-muted-foreground" />
-            <pre data-fields class="mt-2 overflow-x-auto border border-border bg-muted p-3 text-xs" />
+        {error && <p class="mt-4 text-sm text-brand">Error: {error}</p>}
+
+        {outcome && preview && (
+          <div class="mt-8 space-y-8">
+            <p class="text-2xs text-muted-foreground">
+              {outcome.site.label} · ${outcome.cost.toFixed(4)}
+              {outcome.warnings.length > 0 && ` · ${outcome.warnings.length} warning(s)`}
+            </p>
+            {outcome.warnings.length > 0 && (
+              <div class="border-l-2 border-amber-500 pl-3 text-xs text-muted-foreground">
+                {outcome.warnings.map((w) => (<div>• {w}</div>))}
+              </div>
+            )}
+
+            <section>
+              <h2 class="font-condensed text-sm font-bold uppercase tracking-wide">Our fields, populated (read-only preview)</h2>
+              <p class="mt-1 text-2xs text-muted-foreground">This is the actual editor — name & date of birth are placeholders (she enters those herself).</p>
+              {/* Disabled fieldset = native read-only: every field/chip/dropdown
+                  shows its imported value, nothing can be edited or saved here. */}
+              <fieldset disabled class="mt-3 border border-border p-4">
+                <ProfileEditorForm profile={preview} />
+              </fieldset>
+            </section>
+
+            <div class="grid gap-6 lg:grid-cols-2">
+              <div>
+                <h2 class="font-condensed text-sm font-bold uppercase tracking-wide">Mapped → our schema</h2>
+                <pre class="mt-2 overflow-x-auto border border-border bg-muted p-3 text-xs">{JSON.stringify(outcome.fields, null, 2)}</pre>
+              </div>
+              <div>
+                <h2 class="font-condensed text-sm font-bold uppercase tracking-wide">Raw LLM output</h2>
+                <pre class="mt-2 overflow-x-auto border border-border bg-muted p-3 text-xs">{JSON.stringify(outcome.raw, null, 2)}</pre>
+              </div>
+            </div>
           </div>
-          <div>
-            <h2 class="font-condensed text-sm font-bold uppercase tracking-wide">Raw LLM output</h2>
-            <pre data-raw class="mt-2 overflow-x-auto border border-border bg-muted p-3 text-xs" />
-          </div>
-        </div>
+        )}
       </div>
     )
   }
@@ -53,61 +117,23 @@ const btn = 'slab-cut border border-foreground/20 px-4 py-2 text-sm font-semibol
 
 <script>
   import { actions } from 'astro:actions';
-
   function init() {
-    const url = document.querySelector<HTMLInputElement>('[data-url]');
-    if (!url || url.dataset.init) return;
-    url.dataset.init = '1';
+    const apply = document.querySelector<HTMLButtonElement>('[data-apply]');
+    if (!apply || apply.dataset.init) return;
+    apply.dataset.init = '1';
     const pidEl = document.querySelector<HTMLInputElement>('[data-profile-id]')!;
+    const urlEl = document.querySelector<HTMLInputElement>('input[name="url"]')!;
     const status = document.querySelector<HTMLElement>('[data-status]')!;
-    const results = document.querySelector<HTMLElement>('[data-results]')!;
-    const meta = document.querySelector<HTMLElement>('[data-meta]')!;
-    const warnings = document.querySelector<HTMLElement>('[data-warnings]')!;
-    const fieldsPre = document.querySelector<HTMLElement>('[data-fields]')!;
-    const rawPre = document.querySelector<HTMLElement>('[data-raw]')!;
-    const preview = document.querySelector<HTMLButtonElement>('[data-preview]')!;
-    const apply = document.querySelector<HTMLButtonElement>('[data-apply]')!;
-
-    const render = (site: any, fields: any, warns: string[], raw: unknown, cost?: number) => {
-      results.hidden = false;
-      meta.textContent = `${site?.label ?? '?'} · $${(cost ?? 0).toFixed(4)}`;
-      fieldsPre.textContent = JSON.stringify(fields, null, 2);
-      rawPre.textContent = raw === undefined ? '(not shown)' : JSON.stringify(raw, null, 2);
-      if (warns?.length) {
-        warnings.hidden = false;
-        warnings.innerHTML = warns.map((w) => `<div>• ${w.replace(/</g, '&lt;')}</div>`).join('');
-      } else warnings.hidden = true;
-    };
-
-    preview.addEventListener('click', async () => {
-      status.textContent = 'Scraping + extracting…';
-      preview.disabled = true;
-      const { data, error } = await actions.admin.importPreview({ url: url.value.trim() });
-      preview.disabled = false;
-      if (error || !data) {
-        status.textContent = `Error: ${error?.message ?? 'failed'}`;
-        return;
-      }
-      status.textContent = 'Done.';
-      render(data.site, data.fields, data.warnings, data.raw, data.cost);
-    });
-
     apply.addEventListener('click', async () => {
-      if (!pidEl.value.trim()) {
-        status.textContent = 'Enter a profile UUID to apply.';
-        return;
-      }
+      const profileId = pidEl.value.trim();
+      const url = urlEl.value.trim();
+      if (!profileId || !url) { status.textContent = 'Need a URL and a profile UUID.'; return; }
       if (!confirm('Apply this import onto that profile? It overwrites the mapped fields.')) return;
       status.textContent = 'Importing + applying…';
       apply.disabled = true;
-      const { data, error } = await actions.admin.importApply({ profileId: pidEl.value.trim(), url: url.value.trim() });
+      const { data, error } = await actions.admin.importApply({ profileId, url });
       apply.disabled = false;
-      if (error || !data) {
-        status.textContent = `Error: ${error?.message ?? 'failed'}`;
-        return;
-      }
-      status.textContent = 'Applied ✓';
-      render({ label: 'applied' }, data.fields, data.warnings, undefined);
+      status.textContent = error ? `Error: ${error.message}` : 'Applied ✓';
     });
   }
   init();
