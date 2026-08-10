@@ -492,7 +492,7 @@ const { session } = Astro.props;
       const pc = me.room?.getPeers()[peerId];
       if (!pc) return;
       me.pc = pc;
-      pc.addEventListener('connectionstatechange', () => {
+      const sync = () => {
         if (call !== me || me.done || me.pc !== pc) return;
         const s = pc.connectionState;
         dbg('pc:', s);
@@ -503,7 +503,11 @@ const { session } = Astro.props;
         } else if (s === 'disconnected' || s === 'failed') {
           setChip('reconnecting'); // trystero restarts; onPeerLeave is the exit
         }
-      });
+      };
+      pc.addEventListener('connectionstatechange', sync);
+      // onPeerJoin fires once the data channel is open — the pc is usually
+      // ALREADY 'connected', so the transition we listen for never comes.
+      sync();
     }
 
     /**
