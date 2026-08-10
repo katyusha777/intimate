@@ -237,6 +237,10 @@ const { session } = Astro.props;
       accepted: boolean;
       /** Local stream handed to the room (once, on first peer contact). */
       sent: boolean;
+      /** Callee holds its stream until the caller's arrives — simultaneous
+       *  renegotiation is a deterministic Chromium kill ("RTP extension ID
+       *  reassignment not supported"). Lifted by onPeerStream or a fallback. */
+      holdLocal: boolean;
       /** PiP tap swaps which stream fills the screen (video mode only). */
       swapped: boolean;
       timers: number[];
@@ -457,6 +461,17 @@ const { session } = Astro.props;
         dbg('peer join');
         watchPeer(me, peerId);
         maybeSendLocal(me);
+        if (me.holdLocal) {
+          // Fallback: if the caller's stream never arrives (her media died),
+          // send ours anyway rather than sit silent forever.
+          const t = window.setTimeout(() => {
+            if (call === me && !me.done && me.holdLocal) {
+              me.holdLocal = false;
+              maybeSendLocal(me);
+            }
+          }, 4000);
+          me.timers.push(t);
+        }
       };
       room.onPeerLeave = () => {
         if (call !== me || me.done) return;
@@ -478,13 +493,18 @@ const { session } = Astro.props;
           t.onunmute = () => ensureRemotePlayback();
         }
         ensureRemotePlayback();
+        // Caller's renegotiation is done — the callee may now send its own.
+        if (me.holdLocal) {
+          me.holdLocal = false;
+          maybeSendLocal(me);
+        }
       };
     }
 
     /** Local stream → room, exactly once, only while a peer is present —
      *  trystero sends streams to CURRENT peers, not to future joiners. */
     function maybeSendLocal(me: NonNullable<typeof call>) {
-      if (me.done || !me.local || !me.room || me.sent) return;
+      if (me.done || !me.local || !me.room || me.sent || me.holdLocal) return;
       if (!Object.keys(me.room.getPeers()).length) return;
       me.sent = true;
       dbg('local stream sent');
@@ -642,6 +662,7 @@ const { session } = Astro.props;
         remoteVideo: remote.video,
         accepted: false,
         sent: false,
+        holdLocal: false, // caller renegotiates first
         swapped: false,
         timers: [],
         ringTimer: null,
@@ -749,6 +770,7 @@ const { session } = Astro.props;
           remoteVideo: remote.video,
           accepted: true,
           sent: false,
+          holdLocal: true, // callee waits for the caller's stream (or fallback)
           swapped: false,
           timers: [],
           ringTimer: null,
