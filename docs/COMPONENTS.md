@@ -45,7 +45,8 @@ Pages = `src/pages/` (compose organisms; own no reusable markup).
   AvailabilityLine (dot + text availability, card/line variants),
   ContactButtons (open tap-to-contact links — WhatsApp/Telegram/Instagram/phone,
   handles pre-sanitized by contactLinks()),
-  AdminLogin (organisms/admin — sign-in shown by /admin when there's no admin session),
+  AdminLogin (organisms/admin — sign-in shown by /admin when there's no admin session; also drives the TOTP step-up/enroll after a correct password),
+  MfaCard (organisms/admin — per-admin two-factor (TOTP) enroll/status/disable card on /admin/settings; ADMIN.md §1),
   EssentialsTags (kinky-style icon chips of the key person attributes —
   ethnicity/height/body/hair/cup/available-for/languages — set ones only),
   CitySheet (first-visit city picker), RegionSheet (mobile "CITY | EN" header

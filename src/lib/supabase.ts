@@ -22,9 +22,15 @@ function toJarOptions(o: Record<string, unknown> | undefined): CookieOpts {
   return {
     path: typeof o.path === 'string' ? o.path : undefined,
     maxAge: typeof o.maxAge === 'number' ? o.maxAge : undefined,
-    // Default ON when the SDK omits them — never silently fall to a weaker default.
-    httpOnly: typeof o.httpOnly === 'boolean' ? o.httpOnly : true,
-    // Off only on plain-http localhost dev; ON everywhere the runtime is prod.
+    // Respect the SDK's explicit httpOnly. Supabase auth cookies are
+    // intentionally httpOnly:FALSE (DEFAULT_COOKIE_OPTIONS) — the browser client
+    // reads the token from document.cookie for realtime + MFA step-up; forcing
+    // httpOnly on would break client-side auth. Fall back to false (not true) so
+    // a future SDK that omits it can't silently lock the browser client out.
+    httpOnly: typeof o.httpOnly === 'boolean' ? o.httpOnly : false,
+    // The SDK does NOT set `secure` (the one flag it omits) — add it: off only on
+    // plain-http localhost dev, ON everywhere the runtime is prod. `secure` cookies
+    // stay JS-readable on https, so this doesn't affect the browser client.
     secure: typeof o.secure === 'boolean' ? o.secure : import.meta.env.PROD,
     sameSite:
       sameSite === 'lax' || sameSite === 'strict' || sameSite === 'none' ? sameSite : 'lax',

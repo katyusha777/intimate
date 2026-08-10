@@ -152,7 +152,7 @@ fixes that LANDED on branch `fix/security-hardening`:
 - **Log/leak hygiene** — worker error-capture strips the query string before send (token_hash/PII in `?params`); email recipient dropped from worker logs; `/api/purge` + `/api/cache/urls` bearer checks are now constant-time.
 
 **Deferred — need the hosted DB / TOTP first (do NOT ship blind):**
-- **aal2 / admin MFA** — code is live but staged off; enroll TOTP then `ADMIN_REQUIRE_AAL2=true` (ADMIN.md §1). Until then admin is single-factor behind Access.
+- **aal2 / admin MFA** — the enroll + login step-up UI is now built (MfaCard on /admin/settings + AdminLogin challenge/forced-enroll, ADMIN.md §1). Remaining owner steps: every admin enrolls TOTP, confirm step-up works, then set `ADMIN_REQUIRE_AAL2=true`. Until then admin is single-factor behind Access.
 - **`FORCE ROW LEVEL SECURITY`** on toxic tables — deferred: the app connects via Hyperdrive as a role that could be the table owner, so forcing RLS risks breaking the app's own reads. Needs a test against the hosted DB before applying.
 - **DB-level restrictive `aal2` policy** — documented but never applied (SUPABASE.md §2.3); add with the aal2 wall + a deny test.
 - **Realtime `presence` policies** — dormant but over-broad; scope + de-stable-key before any presence feature (SUPABASE.md §5.4).

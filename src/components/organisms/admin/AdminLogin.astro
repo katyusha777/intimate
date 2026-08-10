@@ -23,8 +23,11 @@ import '@/styles/global.css';
 interface Props {
   /** Signed in successfully, but the account isn't an admin. */
   notAdmin?: boolean;
+  /** ADMIN_REQUIRE_AAL2 is on → an admin with no factor must enroll at sign-in
+   *  (else the aal2 gate would lock them out with no way to reach settings). */
+  requireMfa?: boolean;
 }
-const { notAdmin = false } = Astro.props;
+const { notAdmin = false, requireMfa = false } = Astro.props;
 ---
 
 <html lang={getLocale()}>
@@ -62,6 +65,26 @@ const { notAdmin = false } = Astro.props;
         <Button type="submit" class="w-full">{m.adm_login_submit()}</Button>
         <p data-admin-login-error class="hidden text-sm font-medium text-brand">{m.adm_login_error()}</p>
       </form>
+
+      {/* Second step: TOTP challenge (has a factor) or forced enrollment (none +
+          MFA required). Shown after a correct password; English (internal §2). */}
+      <form data-mfa-form hidden class="mt-6 space-y-3" data-require-mfa={requireMfa ? '1' : ''}>
+        <p data-mfa-heading class="text-sm text-muted-foreground">Enter the 6-digit code from your authenticator app.</p>
+        <img data-mfa-qr alt="TOTP QR code" width="176" height="176" hidden class="mx-auto bg-white p-2" />
+        <p data-mfa-secret-wrap hidden class="text-2xs text-muted-foreground">
+          Manual key: <code data-mfa-secret class="select-all break-all font-mono text-foreground"></code>
+        </p>
+        <input
+          data-mfa-code
+          inputmode="numeric"
+          autocomplete="one-time-code"
+          maxlength="6"
+          placeholder="123456"
+          class="w-full border border-border bg-transparent px-3 py-2.5 text-center font-mono text-lg tracking-widest caret-brand outline-none focus:border-foreground/50"
+        />
+        <Button type="submit" class="w-full">Verify</Button>
+        <p data-mfa-error class="hidden text-sm font-medium text-brand"></p>
+      </form>
     </div>
     <p class="mt-4 text-center text-2xs text-muted-foreground">{m.adm_signin_prompt()}</p>
   </div>
@@ -69,11 +92,43 @@ const { notAdmin = false } = Astro.props;
 
 <script>
   import { actions } from 'astro:actions';
+  import { mfaStatus, startEnroll, verifyCode, verifiedTotpFactorId } from '@/app/mfa';
+
+  const DONE = '/admin?signedin=1'; // reload → getAdmin decides
+
   function initAdminLogin() {
     const form = document.querySelector<HTMLFormElement>('[data-admin-login]');
     if (!form || form.dataset.init) return;
     form.dataset.init = '1';
     const err = form.querySelector<HTMLElement>('[data-admin-login-error]');
+
+    const mfaForm = document.querySelector<HTMLFormElement>('[data-mfa-form]');
+    const requireMfa = mfaForm?.dataset.requireMfa === '1';
+    const heading = mfaForm?.querySelector<HTMLElement>('[data-mfa-heading]');
+    const qr = mfaForm?.querySelector<HTMLImageElement>('[data-mfa-qr]');
+    const secretWrap = mfaForm?.querySelector<HTMLElement>('[data-mfa-secret-wrap]');
+    const secret = mfaForm?.querySelector<HTMLElement>('[data-mfa-secret]');
+    const codeInput = mfaForm?.querySelector<HTMLInputElement>('[data-mfa-code]');
+    const mfaErr = mfaForm?.querySelector<HTMLElement>('[data-mfa-error]');
+    let factorId: string | null = null;
+
+    const mfaFail = (msg: string) => { if (mfaErr) { mfaErr.textContent = msg; mfaErr.classList.remove('hidden'); } };
+
+    // Reveal the second step; `enroll` shows the QR (no factor yet), otherwise a
+    // plain code challenge.
+    const showStep = (enroll: { qrCode: string; secret: string } | null) => {
+      form.classList.add('hidden');
+      mfaForm?.removeAttribute('hidden');
+      if (enroll && qr && secret) {
+        heading!.textContent = 'Set up two-factor auth: scan this, then enter the 6-digit code.';
+        qr.src = enroll.qrCode;
+        qr.removeAttribute('hidden');
+        secret.textContent = enroll.secret;
+        secretWrap?.removeAttribute('hidden');
+      }
+      codeInput?.focus();
+    };
+
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       err?.classList.add('hidden');
@@ -84,7 +139,38 @@ const { notAdmin = false } = Astro.props;
         locale: 'en',
       });
       if (error) { err?.classList.remove('hidden'); return; }
-      location.href = '/admin?signedin=1'; // reload → getAdmin decides
+
+      // Password OK (session now aal1). Decide the second factor step.
+      try {
+        const s = await mfaStatus();
+        if (s.currentLevel === 'aal2') { location.href = DONE; return; } // already stepped up
+        if (s.nextLevel === 'aal2') { // has a verified factor → challenge
+          factorId = await verifiedTotpFactorId();
+          showStep(null);
+          return;
+        }
+        if (requireMfa) { // no factor + MFA enforced → enroll on the spot
+          const e2 = await startEnroll();
+          factorId = e2.factorId;
+          showStep(e2);
+          return;
+        }
+      } catch { /* MFA unavailable → fall through and let getAdmin decide */ }
+      location.href = DONE; // no factor + not enforced → in at aal1
+    });
+
+    mfaForm?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      mfaErr?.classList.add('hidden');
+      const code = (codeInput?.value ?? '').trim();
+      if (!/^\d{6}$/.test(code)) { mfaFail('Enter the 6-digit code.'); return; }
+      if (!factorId) { mfaFail('Please sign in again.'); return; }
+      try {
+        await verifyCode(factorId, code);
+        location.href = DONE; // session is now aal2
+      } catch (err2) {
+        mfaFail((err2 as Error).message);
+      }
     });
   }
   initAdminLogin();

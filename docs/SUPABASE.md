@@ -167,6 +167,9 @@ Server-side assertion = read `claims.aal` from `getClaims()`. When
 `requireAdmin`/`getAdmin` read `claims.aal` and gate on it, but only when
 `ADMIN_REQUIRE_AAL2=true` — currently unset so an un-enrolled admin isn't locked
 out. Enrolling TOTP + flipping that flag is the owner task (ADMIN.md §1, launch gate).
+The `mfa.enroll`/`challenge`/`verify` calls above are wired up client-side in
+`src/app/mfa.ts`, surfaced by `MfaCard` (/admin/settings) and the `AdminLogin`
+step-up.
 
 **The belt-and-braces DB policy below is NOT yet applied** (no migration defines
 a restrictive `aal2` policy — verified against `drizzle/`). Admin access to toxic

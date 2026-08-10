@@ -4,6 +4,7 @@
  * age (SLA at a glance), today's counters, supply-by-city. Realtime layering
  * (Supabase) comes with the backend; SSR paint is the base.
  */
+import { env } from 'cloudflare:workers';
 import { getAdmin, listAudit } from '@/actions/admin/lib';
 import { overview } from '@/actions/admin/queues';
 import { commandStats } from '@/actions/admin/entities';
@@ -15,6 +16,9 @@ const session = await getAdmin(Astro);
 // No admin session → sign in right here (not via the app). `?signedin` means
 // they authenticated but the account isn't an admin.
 const signedIn = Astro.url.searchParams.has('signedin');
+// When aal2 is enforced, an admin with no factor must enroll at sign-in (else
+// the gate locks them out with no way to reach the settings enroll card).
+const requireMfa = (env as unknown as Record<string, string | undefined>).ADMIN_REQUIRE_AAL2 === 'true';
 const ov = session ? await overview() : null;
 const stats = session ? await commandStats() : null;
 const activity = session ? (await listAudit()).slice(0, 12) : [];
@@ -56,7 +60,7 @@ const counters = ov
   : [];
 ---
 
-{!session && <AdminLogin notAdmin={signedIn} />}
+{!session && <AdminLogin notAdmin={signedIn} requireMfa={requireMfa} />}
 {session && (
 <AdminShell title={m.adm_nav_overview()} section="overview">
   {

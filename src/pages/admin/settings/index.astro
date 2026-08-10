@@ -11,6 +11,7 @@ import type { CacheKv } from '@/lib/page-cache';
 import { accountApi } from '@/app/api/account';
 import { ADMIN_ROLES, ALL_SERVICES, CITIES, GENDERS, REJECTION_REASONS, SERVICE_CATEGORIES } from '@/lib/taxonomy';
 import AdminShell from '@/components/organisms/admin/AdminShell.astro';
+import MfaCard from '@/components/organisms/admin/MfaCard.astro';
 import * as m from '@/paraglide/messages';
 
 const session = await getAdmin(Astro);
@@ -44,13 +45,20 @@ const taxo = [
 
 <AdminShell title={m.settings_title()} section="settings">
   {
-    session && !isSuper ? (
-      <p class="text-sm text-muted-foreground" set:html={m.adm_settings_super_only()} />
-    ) : (
-      session && (
-        <div class="space-y-8">
-          <h1 class="display text-3xl">{m.settings_title()}</h1>
+    session && (
+      <div class="space-y-8">
+        <h1 class="display text-3xl">{m.settings_title()}</h1>
 
+        {/* 2FA is per-admin — shown to EVERY admin (not just super) so the whole
+            team can enroll before ADMIN_REQUIRE_AAL2 is turned on. */}
+        <MfaCard />
+
+        {!isSuper && (
+          <p class="text-sm text-muted-foreground" set:html={m.adm_settings_super_only()} />
+        )}
+
+        {isSuper && (
+          <Fragment>
           <section>
             <h2 class="font-condensed text-sm font-bold uppercase tracking-wide text-muted-foreground">{m.adm_settings_admins()}</h2>
             <div class="mt-3 max-w-lg divide-y divide-border border border-border">
@@ -163,8 +171,9 @@ const taxo = [
               <li>· <Fragment set:html={m.adm_settings_ret_age()} /></li>
             </ul>
           </section>
-        </div>
-      )
+          </Fragment>
+        )}
+      </div>
     )
   }
 </AdminShell>
