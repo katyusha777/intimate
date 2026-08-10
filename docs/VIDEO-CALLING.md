@@ -254,7 +254,8 @@ change):
 - **IncomingCall (client, global):** mounted for signed-in clients in Layout
   (same placement pattern as `FavoritesController`), subscribed to
   `account:{id}`: full-screen, `SafeImage` avatar, name, "Voice call ·
-  Intimate", Accept/Decline, vibrate + `wakeLock`, 30s auto-dismiss → missed.
+  Intimate", Accept/Decline, ring tone (WebAudio dual-tone, best-effort under
+  autoplay policy) + repeating vibrate + `wakeLock`, 30s auto-dismiss → missed.
 - **CallScreen voice mode:** avatar + pulsing ring + timer, mute · speaker ·
   end; camera never activates. Honest state chip: connecting / poor /
   reconnecting. Her overflow: **End & block** (one action, kills session +

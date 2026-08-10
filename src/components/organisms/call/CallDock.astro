@@ -92,20 +92,37 @@ const { session } = Astro.props;
   >
     <!-- Remote media split: video stays muted forever (muted playback is never
          autoplay-blocked), sound flows only through the audio element (primed
-         at the tap gesture; iOS can't do audio via hidden <video>). -->
-    <video data-remote autoplay playsinline muted class="hidden h-full w-full object-cover"></video>
+         at the tap gesture; iOS can't do audio via hidden <video>).
+         Cover recipe: WebKit unreliably honors object-fit:cover on
+         MediaStream-backed <video> (letterboxes instead — seen on iOS 27
+         beta), so each video fills an overflow-hidden wrapper via centered
+         min-w/min-h instead of relying on object-fit. -->
+    <div data-remote-wrap hidden class="absolute inset-0 overflow-hidden">
+      <video
+        data-remote
+        autoplay
+        playsinline
+        muted
+        class="absolute left-1/2 top-1/2 h-auto min-h-full w-auto min-w-full max-w-none -translate-x-1/2 -translate-y-1/2 object-cover"></video>
+    </div>
     <audio data-remote-audio class="hidden"></audio>
     <!-- PiP self-view; tapping it swaps which stream fills the screen (both
          video elements are muted forever, so the swap can never echo). -->
-    <video
-      data-local
-      autoplay
-      playsinline
-      muted
+    <div
+      data-local-wrap
+      hidden
       role="button"
       aria-label={m.call_swap()}
-      class="absolute right-4 z-10 hidden h-44 w-32 cursor-pointer rounded-xl border border-white/20 object-cover shadow-soft-lg"
-      style="top: calc(env(safe-area-inset-top) + 1rem)"></video>
+      class="absolute right-4 z-10 h-44 w-32 cursor-pointer overflow-hidden rounded-xl border border-white/20 shadow-soft-lg"
+      style="top: calc(env(safe-area-inset-top) + 1rem)"
+    >
+      <video
+        data-local
+        autoplay
+        playsinline
+        muted
+        class="absolute left-1/2 top-1/2 h-auto min-h-full w-auto min-w-full max-w-none -translate-x-1/2 -translate-y-1/2 object-cover"></video>
+    </div>
 
     <!-- Autoplay recovery: shown only when the browser refused un-gestured
          audio (e.g. Brave with autoplay blocked) — one tap re-plays unmuted. -->
@@ -211,8 +228,10 @@ const { session } = Astro.props;
     const $ = <T extends HTMLElement = HTMLElement>(sel: string) => root.querySelector<T>(sel)!;
     const incoming = $('[data-incoming]');
     const screen = $('[data-call-screen]');
+    const remoteWrap = $('[data-remote-wrap]');
     const remoteEl = $<HTMLVideoElement>('[data-remote]');
     const audioEl = $<HTMLAudioElement>('[data-remote-audio]');
+    const localWrap = $('[data-local-wrap]');
     const localEl = $<HTMLVideoElement>('[data-local]');
     const soundPill = $('[data-sound-pill]');
 
@@ -285,6 +304,8 @@ const { session } = Astro.props;
       remoteEl.srcObject = null;
       audioEl.srcObject = null;
       localEl.srcObject = null;
+      remoteEl.classList.remove('-scale-x-100');
+      localEl.classList.remove('-scale-x-100');
       soundPill.hidden = true;
       screen.hidden = true;
       incoming.hidden = true;
@@ -334,8 +355,8 @@ const { session } = Astro.props;
         initial.textContent = view.peerName.charAt(0).toUpperCase();
       }
       const isVideo = view.mode === 'video';
-      remoteEl.classList.toggle('hidden', !isVideo);
-      localEl.classList.toggle('hidden', !isVideo);
+      remoteWrap.hidden = !isVideo;
+      localWrap.hidden = !isVideo;
       $('[data-ctl-cam]').hidden = !isVideo;
       $('[data-ctl-flip]').hidden = !isVideo;
       $('[data-ctl-endblock]').hidden = view.party !== 'professional';
@@ -421,15 +442,20 @@ const { session } = Astro.props;
       remoteEl.srcObject = null;
     }
 
-    /** Route local/remote video into main vs PiP per the swap flag. */
+    /** Route local/remote video into main vs PiP per the swap flag; mirror
+     *  whichever element shows the local FRONT camera (mirror convention —
+     *  remote video and the back camera are never mirrored). */
     function applyVideoLayout() {
       if (!call?.local || call.view.mode !== 'video') return;
       remoteEl.srcObject = call.swapped ? call.local : call.remoteVideo;
       localEl.srcObject = call.swapped ? call.remoteVideo : call.local;
+      const mirror = facing === 'user';
+      remoteEl.classList.toggle('-scale-x-100', call.swapped && mirror);
+      localEl.classList.toggle('-scale-x-100', !call.swapped && mirror);
       void remoteEl.play().catch(() => {});
       void localEl.play().catch(() => {});
     }
-    localEl.addEventListener('click', () => {
+    localWrap.addEventListener('click', () => {
       if (!call || call.done) return;
       call.swapped = !call.swapped;
       applyVideoLayout();
@@ -758,6 +784,51 @@ const { session } = Astro.props;
     // ── callee flow (client) ──────────────────────────────────────────────
     let ringingId: string | null = null;
 
+    /** Best-effort audible ring + repeating vibration while the overlay is up.
+     *  WebAudio needs a prior gesture on the page (autoplay policy) — a client
+     *  who has tapped anything hears it, otherwise it fails silently; vibrate
+     *  covers Android regardless (iOS never exposes vibrate). */
+    let stopRing: (() => void) | null = null;
+    function startRingtone() {
+      stopRing?.();
+      let ac: AudioContext | null = null;
+      try {
+        ac = new AudioContext();
+      } catch {
+        return;
+      }
+      if (ac.state === 'suspended') void ac.resume().catch(() => {});
+      const gain = ac.createGain();
+      gain.gain.value = 0.15;
+      gain.connect(ac.destination);
+      const burst = () => {
+        if (!ac) return;
+        // Classic dual-tone ring: two 350ms bursts, half a second apart.
+        for (const at of [0, 0.5]) {
+          for (const f of [440, 480]) {
+            const o = ac.createOscillator();
+            o.frequency.value = f;
+            o.connect(gain);
+            o.start(ac.currentTime + at);
+            o.stop(ac.currentTime + at + 0.35);
+          }
+        }
+      };
+      burst();
+      (navigator as any).vibrate?.([300, 120, 300, 120, 300]);
+      const iv = window.setInterval(() => {
+        burst();
+        (navigator as any).vibrate?.([300, 120, 300]);
+      }, 2500);
+      stopRing = () => {
+        stopRing = null;
+        clearInterval(iv);
+        (navigator as any).vibrate?.(0);
+        void ac?.close().catch(() => {});
+        ac = null;
+      };
+    }
+
     async function showRing(callId: string) {
       if (call || ringingId) return;
       let res;
@@ -775,12 +846,13 @@ const { session } = Astro.props;
       $('[data-incoming-mode]').textContent =
         view.mode === 'video' ? root.dataset.i18nIncomingVideo! : root.dataset.i18nIncomingVoice!;
       incoming.hidden = false;
-      (navigator as any).vibrate?.([300, 120, 300, 120, 300]);
+      startRingtone();
       // Auto-dismiss when the caller's 30s timeout lands server-side.
       window.setTimeout(() => {
         if (ringingId === callId && !call) {
           incoming.hidden = true;
           ringingId = null;
+          stopRing?.();
         }
       }, RING_MS + 5000);
 
@@ -788,6 +860,7 @@ const { session } = Astro.props;
         if (call) return;
         incoming.hidden = true;
         ringingId = null;
+        stopRing?.();
         dbg('accept tapped:', view.mode);
         // Synchronously inside the tap (same law as startCall): the prompt is
         // privileged and playback primed BEFORE the accept round-trip.
@@ -859,6 +932,7 @@ const { session } = Astro.props;
       $('[data-incoming-decline]').onclick = () => {
         incoming.hidden = true;
         ringingId = null;
+        stopRing?.();
         void actions.call.decline({ callId });
       };
     }
@@ -976,6 +1050,7 @@ const { session } = Astro.props;
         else if (ringingId === id && state !== 'active') {
           incoming.hidden = true;
           ringingId = null;
+          stopRing?.();
         }
       },
     });
