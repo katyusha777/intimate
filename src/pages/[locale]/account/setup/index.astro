@@ -32,20 +32,20 @@ const progress = onboardingProgress(profile!, account);
 const photos = progress.steps.find((s) => s.key === 'basics')?.done ? await accountApi.photos(session) : [];
 
 // Flow order; NUMBERED drives the progress bar (welcome + done sit outside it).
-const NUMBERED = ['basics', 'rates', 'services', 'photos', 'hours', 'verify'] as const;
+// Photos-first (docs/ONBOARDING.md): identity → contact → photos → verify. The
+// "reading" (rates/services/hours) is optional and edited from the dashboard.
+const NUMBERED = ['basics', 'contact', 'photos', 'verify'] as const;
 const ALL = ['welcome', ...NUMBERED, 'done'] as const;
 type Step = (typeof ALL)[number];
 const NEXT: Record<string, Step> = {
-  welcome: 'basics', basics: 'rates', rates: 'services', services: 'photos',
-  photos: 'hours', hours: 'verify',
+  welcome: 'basics', basics: 'contact', contact: 'photos', photos: 'verify',
 };
 
-// Where a returning visitor resumes: the first incomplete REQUIRED step (phone/id
-// collapse into 'verify'); once all required are done, straight to 'verify' to submit.
+// Where a returning visitor resumes: the first incomplete REQUIRED step. `id`
+// lives on the 'verify' screen; once all required are done, land on 'verify'.
 const resume = (): Step => {
   const fi = progress.firstIncomplete;
-  if (fi === null) return 'verify';
-  if (fi === 'phone' || fi === 'id') return 'verify';
+  if (fi === null || fi === 'id') return 'verify';
   return fi as Step;
 };
 const basicsDone = progress.steps.find((s) => s.key === 'basics')!.done;
@@ -97,7 +97,7 @@ const why = 'mt-2 leading-relaxed text-muted-foreground';
           <h1 class={title}>{m.onb_step_basics()}</h1>
           <p class={why}>{m.onb_why_basics()}</p>
           <div class="mt-6"><ProfileEditorForm profile={profile!} only={['basics']} wizard /></div>
-          <Button size="lg" class={`${cont} mt-8`} data-wizard-continue data-save data-next="rates">
+          <Button size="lg" class={`${cont} mt-8`} data-wizard-continue data-save data-next="contact">
             {m.onb_continue()}
           </Button>
           <p data-wizard-error class="mt-2 hidden text-sm font-medium text-brand"></p>
@@ -106,45 +106,17 @@ const why = 'mt-2 leading-relaxed text-muted-foreground';
     }
 
     {
-      step === 'rates' && (
+      step === 'contact' && (
         <div>
-          <h1 class={title}>{m.onb_step_rates()}</h1>
-          <p class={why}>{m.onb_why_rates()}</p>
-          <div class="mt-6"><ProfileEditorForm profile={profile!} only={['rates']} wizard /></div>
-          <Button
-            size="lg"
-            class={`${cont} mt-8`}
-            data-wizard-continue
-            data-save
-            data-next="services"
-            data-require="rates"
-            data-require-msg={m.onb_need_rate()}
-          >
+          <h1 class={title}>{m.onb_step_contact()}</h1>
+          <p class={why}>{m.onb_why_contact()}</p>
+          <div class="mt-6"><ProfileEditorForm profile={profile!} only={['contact']} wizard /></div>
+          <Button size="lg" class={`${cont} mt-8`} data-wizard-continue data-save data-next="photos">
             {m.onb_continue()}
           </Button>
-          <p data-wizard-error class="mt-2 hidden text-sm font-medium text-brand"></p>
-        </div>
-      )
-    }
-
-    {
-      step === 'services' && (
-        <div>
-          <h1 class={title}>{m.onb_step_services()}</h1>
-          <p class={why}>{m.onb_why_services()}</p>
-          <p class="mt-2 text-sm text-muted-foreground">{m.onb_extras()}</p>
-          <div class="mt-6"><ProfileEditorForm profile={profile!} only={['services', 'gtk', 'description']} wizard /></div>
-          <Button
-            size="lg"
-            class={`${cont} mt-8`}
-            data-wizard-continue
-            data-save
-            data-next="photos"
-            data-require="services"
-            data-require-msg={m.onb_need_service()}
-          >
-            {m.onb_continue()}
-          </Button>
+          <a href={`?step=photos`} class="mt-3 block text-center text-sm text-muted-foreground underline-offset-2 hover:underline">
+            {m.onb_skip()}
+          </a>
           <p data-wizard-error class="mt-2 hidden text-sm font-medium text-brand"></p>
         </div>
       )
@@ -161,27 +133,10 @@ const why = 'mt-2 leading-relaxed text-muted-foreground';
           </ul>
           <div class="mt-6"><MediaManager {photos} /></div>
           {photos.length > 0 ? (
-            <Button as="a" href={`?step=hours`} size="lg" class={`${cont} mt-8`}>{m.onb_continue_photos()}</Button>
+            <Button as="a" href={`?step=verify`} size="lg" class={`${cont} mt-8`}>{m.onb_continue_photos()}</Button>
           ) : (
             <Button size="lg" class={`${cont} mt-8`} disabled>{m.onb_continue_photos()}</Button>
           )}
-        </div>
-      )
-    }
-
-    {
-      step === 'hours' && (
-        <div>
-          <h1 class={title}>{m.editor_hours()}</h1>
-          <p class={why}>{m.onb_why_hours()}</p>
-          <div class="mt-6"><ProfileEditorForm profile={profile!} only={['hours']} wizard /></div>
-          <Button size="lg" class={`${cont} mt-8`} data-wizard-continue data-save data-next="verify">
-            {m.onb_continue()}
-          </Button>
-          <a href={`?step=verify`} class="mt-3 block text-center text-sm text-muted-foreground underline-offset-2 hover:underline">
-            {m.onb_skip()}
-          </a>
-          <p data-wizard-error class="mt-2 hidden text-sm font-medium text-brand"></p>
         </div>
       )
     }

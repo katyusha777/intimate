@@ -12,7 +12,7 @@ import type { Profile } from '@/app/models/profile';
 import type { Account } from '@/app/models/account';
 import type { ProfileState } from '@/lib/taxonomy';
 
-export type OnboardingStepKey = 'basics' | 'rates' | 'services' | 'photos' | 'hours' | 'phone' | 'id';
+export type OnboardingStepKey = 'basics' | 'contact' | 'photos' | 'id' | 'rates' | 'services' | 'hours' | 'phone';
 
 export interface OnboardingStep {
   key: OnboardingStepKey;
@@ -22,7 +22,7 @@ export interface OnboardingStep {
 }
 
 export interface OnboardingProgress {
-  /** In flow order; `hours` is the one optional step. */
+  /** In flow order; rates/services/hours/phone are optional (filled later). */
   steps: OnboardingStep[];
   requiredTotal: number;
   requiredDone: number;
@@ -35,18 +35,29 @@ export interface OnboardingProgress {
   state: ProfileState;
 }
 
-// The flow order (docs/ONBOARDING.md §2). `hours` is optional.
-const ORDER: OnboardingStepKey[] = ['basics', 'rates', 'services', 'photos', 'hours', 'phone', 'id'];
-const OPTIONAL = new Set<OnboardingStepKey>(['hours']);
+// The flow order (docs/ONBOARDING.md §2). Photos-first onboarding (2026-08-10):
+// the REQUIRED path is identity → contact → photos → ID, so she gets a photo'd,
+// verified, approvable profile fast. The "reading" (rates, services, hours) and
+// the optional SMS-verify are demoted to optional — filled later from the
+// dashboard; a profile can be approved without them.
+const ORDER: OnboardingStepKey[] = ['basics', 'contact', 'photos', 'id', 'rates', 'services', 'hours', 'phone'];
+// Required to submit: identity (basics), photos, ID. Everything else — contact
+// channels, rates, services, hours, SMS — is optional (encouraged in the flow,
+// filled later; a profile is approvable without them).
+const OPTIONAL = new Set<OnboardingStepKey>(['contact', 'rates', 'services', 'hours', 'phone']);
 
 /** A rate row counts once it carries at least one price (incall or outcall). */
 const hasPricedRate = (p: Profile) => p.rates.some((r) => r.incall != null || r.outcall != null);
+
+/** At least one way for a client to reach her off-platform. */
+const hasContact = (p: Profile) => Boolean(p.whatsapp || p.telegram || p.instagram || p.phone);
 
 export function onboardingProgress(profile: Profile, account: Account): OnboardingProgress {
   const done: Record<OnboardingStepKey, boolean> = {
     // A profile row only exists once the mandatory identity fields were saved,
     // so its presence IS "basics done" (data/db/account.ts saveProfile).
     basics: profile.id !== '',
+    contact: hasContact(profile),
     rates: hasPricedRate(profile),
     services: profile.services.length >= 1,
     photos: profile.photos.length >= 1,

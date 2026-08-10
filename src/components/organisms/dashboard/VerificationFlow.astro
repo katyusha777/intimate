@@ -17,14 +17,6 @@ interface Props {
 }
 const { session, account } = Astro.props;
 
-/* Per-request handwritten code, derived from the email (stable for the demo). */
-const code =
-  'INT-' +
-  Math.abs([...session.email].reduce((h, c) => (h * 31 + c.charCodeAt(0)) | 0, 7))
-    .toString(36)
-    .slice(0, 4)
-    .toUpperCase();
-
 const smsDone = Boolean(account.phoneVerifiedAt);
 const idState = account.idVerification;
 
@@ -113,21 +105,11 @@ const verifiedPill =
       idState === 'unverified' && (
         <div class="space-y-4 border-l border-border pl-7">
           <p class="text-sm leading-relaxed">{m.verify_id_intro()}</p>
-          <p class="slab-cut inline-block bg-foreground px-4 py-2 font-condensed text-xl font-bold tracking-widest text-background">
-            {code}
-          </p>
-          <div class="grid gap-3 sm:grid-cols-2">
-            <label class="flex cursor-pointer flex-col items-center gap-2 border border-dashed border-foreground/30 px-3 py-6 text-center text-sm text-muted-foreground transition-colors hover:border-foreground/70 hover:text-foreground">
-              <input type="file" accept="image/*" data-id-doc class="sr-only" />
-              <svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2" /><circle cx="9" cy="11" r="2" /><path d="M14 9h4M14 13h4M6 17h12" /></svg>
-              <span data-file-label>{m.verify_id_doc()}</span>
-            </label>
-            <label class="flex cursor-pointer flex-col items-center gap-2 border border-dashed border-foreground/30 px-3 py-6 text-center text-sm text-muted-foreground transition-colors hover:border-foreground/70 hover:text-foreground">
-              <input type="file" accept="image/*" capture="user" data-id-selfie class="sr-only" />
-              <svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4" /><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6" /></svg>
-              <span data-file-label>{m.verify_id_selfie()}</span>
-            </label>
-          </div>
+          <label class="flex cursor-pointer flex-col items-center gap-2 border border-dashed border-foreground/30 px-3 py-8 text-center text-sm text-muted-foreground transition-colors hover:border-foreground/70 hover:text-foreground">
+            <input type="file" accept="image/*" data-id-doc class="sr-only" />
+            <svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2" /><circle cx="9" cy="11" r="2" /><path d="M14 9h4M14 13h4M6 17h12" /></svg>
+            <span data-file-label>{m.verify_id_doc()}</span>
+          </label>
           <p class="text-xs leading-relaxed text-muted-foreground">{m.verify_privacy()}</p>
           <Button type="button" data-id-submit>{m.verify_submit()}</Button>
           <p data-id-error class="hidden whitespace-pre-line text-sm font-medium text-brand"></p>
@@ -239,13 +221,11 @@ const verifiedPill =
       onEnter('[data-sms-start] input[name="phone"]', sendBtn);
       onEnter('[data-sms-check] input[name="code"]', verifyBtn);
 
-      // ID step: both files chosen → enable submit. Files are read only to be
-      // discarded — the mock never uploads them (toxic waste rule).
+      // ID step: a doc chosen → submit. The file is read only to be re-encoded;
+      // the ID goes to the private EU bucket (toxic waste rule). ID only now —
+      // no selfie, and NOT gated on SMS (phone verification is optional).
       const doc = root.querySelector<HTMLInputElement>('[data-id-doc]');
-      const selfie = root.querySelector<HTMLInputElement>('[data-id-selfie]');
       const submit = root.querySelector<HTMLButtonElement>('[data-id-submit]');
-      // Phone form still present in the DOM ⇒ phone not yet verified.
-      const phoneVerified = () => !root.querySelector('[data-sms-start]');
       // Inline style, not a Tailwind class: classes added at runtime aren't
       // compiled (Tailwind only emits what it sees in source), so a JS-toggled
       // `border-brand` would have no CSS. Inline colour is reliable.
@@ -254,28 +234,21 @@ const verifiedPill =
         if (label) label.style.borderColor = missing ? 'var(--brand)' : '';
       };
       const sync = () => {
-        [doc, selfie].forEach((inp) => {
-          const label = inp?.closest('label')?.querySelector('[data-file-label]');
-          if (inp?.files?.[0]) {
-            if (label) label.textContent = `✓ ${inp.files[0].name}`;
-            markMissing(inp, false);
-          }
-        });
+        const label = doc?.closest('label')?.querySelector('[data-file-label]');
+        if (doc?.files?.[0]) {
+          if (label) label.textContent = `✓ ${doc.files[0].name}`;
+          markMissing(doc, false);
+        }
       };
       doc?.addEventListener('change', sync);
-      selfie?.addEventListener('change', sync);
       const idErr = root.querySelector<HTMLElement>('[data-id-error]');
       submit?.addEventListener('click', async () => {
         const docFile = doc?.files?.[0];
-        const selfieFile = selfie?.files?.[0];
         // Validate on click and TELL the user what's missing (red), instead of a
         // silently-disabled button that gives no feedback.
-        const missing: string[] = [];
-        if (!phoneVerified()) missing.push(m.verify_need_phone());
-        if (!docFile) { missing.push(m.verify_need_doc()); markMissing(doc, true); }
-        if (!selfieFile) { missing.push(m.verify_need_selfie()); markMissing(selfie, true); }
-        if (missing.length) {
-          idErr!.textContent = m.verify_fix_missing() + '\n• ' + missing.join('\n• ');
+        if (!docFile) {
+          markMissing(doc, true);
+          idErr!.textContent = m.verify_fix_missing() + '\n• ' + m.verify_need_doc();
           idErr!.classList.remove('hidden');
           return;
         }
@@ -286,11 +259,8 @@ const verifiedPill =
         try {
           // EXIF-stripped on-device (hard rule 2); larger cap than photos so the
           // reviewer can actually read the ID. Then it's private + audit-logged.
-          const [docUrl, selfieUrl] = await Promise.all([
-            reencode(docFile, 2000, 0.85),
-            reencode(selfieFile, 2000, 0.85),
-          ]);
-          const { error } = await actions.account.submitId({ doc: docUrl, selfie: selfieUrl });
+          const docUrl = await reencode(docFile, 2000, 0.85);
+          const { error } = await actions.account.submitId({ doc: docUrl });
           if (error) throw error;
           location.reload();
         } catch {

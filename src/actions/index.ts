@@ -339,22 +339,22 @@ export const server = {
     }),
 
     submitId: defineAction({
-      // Client re-encodes both to JPEG via canvas (EXIF/GPS stripped, hard rule 2)
-      // before they ever leave the device; same shape + cap as account.addPhoto.
+      // Client re-encodes to JPEG via canvas (EXIF/GPS stripped, hard rule 2)
+      // before it leaves the device; same shape + cap as account.addPhoto. ID
+      // ONLY — the selfie-with-code was dropped 2026-08-10 (product decision).
       input: z.object({
         doc: z.string().regex(/^data:image\/jpeg;base64,/).max(2_000_000),
-        selfie: z.string().regex(/^data:image\/jpeg;base64,/).max(2_000_000),
       }),
-      handler: async ({ doc, selfie }, context) => {
+      handler: async ({ doc }, context) => {
         const session = await requireSession(context);
         try {
           // Streams to the private EU bucket + records hashes + flags pending
           // (hard rule 3). NEVER log the contents — only a generic failure.
           await accountApi.submitVerification(session, {
-            // Decode + re-strip server-side (hard rule 2) — the ID/selfie must
-            // never carry EXIF/GPS even if a crafted client skipped the canvas
+            // Decode + re-strip server-side (hard rule 2) — the ID must never
+            // carry EXIF/GPS even if a crafted client skipped the canvas
             // re-encode. A malformed body throws → caught below → 400.
-            docs: [{ bytes: dataUrlToJpegBytes(doc) }, { bytes: dataUrlToJpegBytes(selfie) }],
+            docs: [{ bytes: dataUrlToJpegBytes(doc) }],
           });
         } catch (e) {
           console.error("[verify] submit failed:", (e as Error).message);

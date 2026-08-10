@@ -23,6 +23,17 @@
 
 ## 2. The journey, screen by screen
 
+> **Reordered 2026-08-10 — photos-first, approvable-early.** The REQUIRED path is
+> now **identity (name/DOB/gender/city) → contact (WhatsApp/Telegram + how you
+> meet) → photos → ID** — she gets a photo'd, verified, approvable profile fast,
+> without "all that reading". Rates, services, hours and SMS-verify are now
+> **optional** (contact too): encouraged in the flow but never blocking, filled
+> later from the dashboard editor; a profile is approvable without them.
+> **ID verification is ID-only** — the selfie-with-code was dropped (product
+> decision). Source of truth: `src/lib/onboarding.ts` (`ORDER`/`OPTIONAL`) and
+> `src/pages/[locale]/account/setup/`. The per-step specs below still describe
+> the fuller original flow and are being trimmed to match.
+
 ### Entry
 Register (role tile PROFESSIONAL) → confirm email → she lands **in the flow** (`/account/setup/`), never on the bare dashboard. If she ever navigates away, the dashboard's first card is the same journey as a checklist (§3) — the flow and the checklist are one system, two views.
 

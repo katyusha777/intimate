@@ -87,7 +87,6 @@ const selAvailableFor = setOf(p.availableFor ?? []);
 
 <form data-profile-editor data-wizard={wizard ? '' : undefined} class="max-w-2xl space-y-12">
   {show('basics') && (
-  <Fragment>
   <div class="grid gap-4 sm:grid-cols-2">
     <SlabField label={m.editor_name()} name="name" value={p.name} required />
     <BirthDateField label={m.editor_birthdate()} value={p.birthDate} minAge={POLICY_MIN_AGE} />
@@ -104,7 +103,12 @@ const selAvailableFor = setOf(p.availableFor ?? []);
       </Select>
     </label>
   </div>
+  )}
 
+  {/* Contact + how-you-meet: its own step in the wizard (after identity, before
+      photos) so "how a client reaches you" is captured early. */}
+  {show('contact') && (
+  <Fragment>
   <div class="space-y-2">
     <h3 class={heading}>{m.editor_contact()}</h3>
     <p class="text-xs text-muted-foreground">{m.editor_contact_hint()}</p>
@@ -136,11 +140,11 @@ const selAvailableFor = setOf(p.availableFor ?? []);
       }
     </div>
   </div>
-
-  <!-- Rates table (UX-PLAN 2.1): the source of truth for priceFrom. Tick a
-       duration, fill an incall and/or outcall price. Empty rows are dropped. -->
   </Fragment>
   )}
+
+  {/* Rates table (UX-PLAN 2.1): the source of truth for priceFrom. Tick a
+      duration, fill an incall and/or outcall price. Empty rows are dropped. */}
 
   {show('rates') && (
   <div class="space-y-2">

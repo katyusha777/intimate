@@ -81,8 +81,12 @@ const { profile: p, replySpeed, isOwner = false } = Astro.props;
         <AvailabilityLine profile={p} variant="card" class="text-sm text-white/90" />
         <span aria-hidden="true">·</span>
         {cityName(p.city)}
-        <span aria-hidden="true">·</span>
-        {m.price_from()} <span class="font-semibold text-white">€{p.priceFrom}</span>
+        {p.priceFrom > 0 && (
+          <Fragment>
+            <span aria-hidden="true">·</span>
+            {m.price_from()} <span class="font-semibold text-white">€{p.priceFrom}</span>
+          </Fragment>
+        )}
       </p>
       {
         replySpeed && (

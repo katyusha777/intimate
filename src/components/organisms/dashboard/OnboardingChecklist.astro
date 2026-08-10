@@ -21,6 +21,7 @@ const { progress } = Astro.props;
 // lookup is always defined.
 const LABEL: Record<OnboardingStepKey, () => string> = {
   basics: m.onb_step_basics,
+  contact: m.onb_step_contact,
   rates: m.onb_step_rates,
   services: m.onb_step_services,
   photos: m.onb_step_photos,
@@ -28,7 +29,8 @@ const LABEL: Record<OnboardingStepKey, () => string> = {
   phone: m.onb_step_phone,
   id: m.onb_step_id,
 };
-// Required steps only (the "get live" list).
+// Required steps only (the "get live" list): basics → photos → id. Contact,
+// rates, services, hours and SMS are optional — filled from the editor later.
 const rows = progress.steps.filter((s) => !s.optional).map((s) => ({ done: s.done, label: LABEL[s.key] }));
 const pct = Math.round((progress.requiredDone / progress.requiredTotal) * 100);
 ---

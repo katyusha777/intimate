@@ -37,10 +37,12 @@ const hasRates = (p.rates ?? []).length > 0;
 
 <aside class:list={['lg:sticky lg:top-24', className]}>
   <div class="facts-slab dark bg-neutral-950 p-6 text-white">
-    <div class="flex items-baseline gap-2">
-      <span class="font-condensed text-3xl font-bold">€{p.priceFrom}</span>
-      <span class="text-sm text-white/60">{m.price_from()}</span>
-    </div>
+    {p.priceFrom > 0 && (
+      <div class="flex items-baseline gap-2">
+        <span class="font-condensed text-3xl font-bold">€{p.priceFrom}</span>
+        <span class="text-sm text-white/60">{m.price_from()}</span>
+      </div>
+    )}
 
     {
       hasRates && <RatesTable profile={p} variant="compact" class="mt-4" />

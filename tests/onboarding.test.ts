@@ -38,25 +38,25 @@ test('no profile row yet → basics is the first incomplete step', () => {
   expect(p.readyToSubmit).toBe(false);
 });
 
-test('a rate row without a price does not count', () => {
-  const p = onboardingProgress(profile({ rates: [{ duration: '1_hour' } as never] }), account());
-  expect(p.steps.find((s) => s.key === 'rates')!.done).toBe(false);
-  expect(p.firstIncomplete).toBe('rates');
-});
-
-test('unverified id / missing phone block submission', () => {
-  const noPhone = onboardingProgress(profile(), account({ phoneVerifiedAt: undefined }));
-  expect(noPhone.firstIncomplete).toBe('phone');
-  const noId = onboardingProgress(profile(), account({ idVerification: 'unverified' }));
-  expect(noId.firstIncomplete).toBe('id');
-  // 'rejected' also does not count as done.
+test('the required path is basics → photos → id (photos-first onboarding)', () => {
+  // No photos → photos blocks submission.
+  expect(onboardingProgress(profile({ photos: [] }), account()).firstIncomplete).toBe('photos');
+  // Unverified / rejected id → id blocks.
+  expect(onboardingProgress(profile(), account({ idVerification: 'unverified' })).firstIncomplete).toBe('id');
   expect(onboardingProgress(profile(), account({ idVerification: 'rejected' })).firstIncomplete).toBe('id');
 });
 
-test('hours is optional — it never blocks submit or resume', () => {
-  const p = onboardingProgress(profile({ openingHours: {} }), account());
-  expect(p.steps.find((s) => s.key === 'hours')!.optional).toBe(true);
-  expect(p.readyToSubmit).toBe(true); // hours empty, still submittable
+test('contact/rates/services/hours/phone are optional — they never block submit', () => {
+  // Everything soft empty, but the required three (basics, photos, id) are done.
+  const p = onboardingProgress(
+    profile({ rates: [{ duration: '1_hour' } as never], services: [], openingHours: {}, whatsapp: undefined, telegram: undefined, instagram: undefined, phone: undefined }),
+    account({ phoneVerifiedAt: undefined }),
+  );
+  for (const k of ['contact', 'rates', 'services', 'hours', 'phone'] as const) {
+    expect(p.steps.find((s) => s.key === k)!.optional).toBe(true);
+  }
+  expect(p.firstIncomplete).toBeNull();
+  expect(p.readyToSubmit).toBe(true); // approvable without the "reading" or SMS
 });
 
 test('once submitted, readyToSubmit is false and submitted is true', () => {
