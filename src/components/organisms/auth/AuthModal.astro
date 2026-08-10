@@ -98,17 +98,17 @@ const tabBtn =
     <form data-tab-panel="login" data-auth-form="login" class="mt-6 hidden space-y-4">
       <SlabField label={m.auth_email()} name="email" type="email" autocomplete="email" required />
       <SlabField label={m.auth_password()} name="password" type="password" autocomplete="current-password" required />
+      <div class="-mt-1 text-right">
+        <button type="button" data-forgot class="cursor-pointer text-sm font-semibold text-brand underline-offset-4 hover:underline">
+          {m.auth_forgot()}
+        </button>
+      </div>
 
       <p data-auth-error class="hidden text-sm font-medium text-brand">{m.auth_error()}</p>
       <p data-forgot-sent class="hidden border border-foreground/20 bg-muted p-3 text-sm leading-relaxed">
         {m.auth_reset_sent()}
       </p>
       <Button type="submit" size="lg" class="w-full">{m.nav_login()}</Button>
-      <p class="text-center text-xs">
-        <button type="button" data-forgot class="cursor-pointer text-muted-foreground underline-offset-2 hover:underline">
-          {m.auth_forgot()}
-        </button>
-      </p>
     </form>
 
     <!-- Reset-password request (#3): a DEDICATED email box, reached from the

@@ -214,6 +214,30 @@ export const server = {
       },
     }),
 
+    // Mis-registered client → advertiser (the dashboard banner). Self-service:
+    // client and advertiser are peers (no privilege boundary — RLS is
+    // ownership-based), so no admin needed. The switch is one accounts column
+    // (session.role reads it); a short-lived cookie bridges the DB read lag AND
+    // busts the 60s session memo (new Cookie header) so the next page sees her
+    // as an advertiser immediately.
+    becomeAdvertiser: defineAction({
+      input: z.object({ locale: z.enum(LOCALES) }),
+      handler: async ({ locale }, context) => {
+        const session = await requireSession(context);
+        if (session.role === 'client') {
+          await accountApi.setAccountType(session.accountId, 'advertiser');
+          context.cookies.set('became_advertiser', '1', {
+            path: '/',
+            httpOnly: true,
+            sameSite: 'lax',
+            secure: import.meta.env.PROD,
+            maxAge: 1800,
+          });
+        }
+        return { ok: true, href: `/${locale}/account/setup/` };
+      },
+    }),
+
     // Owner pause/unpause of a live profile (settings toggle).
     setPaused: defineAction({
       input: z.object({ paused: z.boolean() }),

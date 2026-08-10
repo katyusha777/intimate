@@ -1,0 +1,79 @@
+---
+/**
+ * Client dashboard prompt: "did you mean to advertise?" A mis-registered
+ * advertiser (registered as a client) switches here — the confirm modal runs
+ * account.becomeAdvertiser, which flips accounts.accountType and drops a cookie
+ * that bridges the DB read lag, then routes into advertiser onboarding.
+ * Dismissible (localStorage) so it doesn't nag a real client forever; admins
+ * can also switch a type from /admin/users.
+ */
+import * as m from '@/paraglide/messages';
+import Button from '@/components/atoms/Button.astro';
+import Modal from '@/components/molecules/Modal.astro';
+---
+
+<section data-become-adv hidden class="border border-brand/40 bg-brand/5 p-5 sm:p-6">
+  <p class="font-condensed text-xl font-bold sm:text-2xl">{m.become_adv_title()}</p>
+  <p class="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">{m.become_adv_body()}</p>
+  <div class="mt-4 flex flex-wrap items-center gap-3">
+    <Button size="lg" data-modal-open="become-advertiser">{m.become_adv_cta()}</Button>
+    <button
+      type="button"
+      data-become-adv-dismiss
+      class="cursor-pointer text-sm font-medium text-muted-foreground underline-offset-4 hover:underline"
+    >
+      {m.become_adv_dismiss()}
+    </button>
+  </div>
+</section>
+
+<Modal id="become-advertiser" class="max-w-md">
+  <div class="p-6">
+    <p class="font-condensed text-lg font-bold">{m.become_adv_confirm_title()}</p>
+    <p class="mt-2 text-sm leading-relaxed text-muted-foreground">{m.become_adv_confirm_body()}</p>
+    <div class="mt-6 flex flex-wrap justify-end gap-3">
+      <Button variant="tertiary" data-modal-close>{m.become_adv_cancel()}</Button>
+      <Button data-become-adv-go>{m.become_adv_confirm_yes()}</Button>
+    </div>
+  </div>
+</Modal>
+
+<script>
+  import { actions } from 'astro:actions';
+  import type { Locale } from '@/lib/taxonomy';
+
+  const HIDE_KEY = 'hide_become_adv';
+
+  function initBecomeAdvertiser() {
+    const banner = document.querySelector<HTMLElement>('[data-become-adv]');
+    if (!banner || banner.dataset.init) return;
+    banner.dataset.init = '1';
+
+    // SSR-hidden; reveal only if she hasn't dismissed it (keeps the prompt from
+    // flashing then vanishing for someone who already said "I'm a client").
+    if (localStorage.getItem(HIDE_KEY) !== '1') banner.hidden = false;
+
+    banner.querySelector<HTMLElement>('[data-become-adv-dismiss]')?.addEventListener('click', () => {
+      localStorage.setItem(HIDE_KEY, '1');
+      banner.hidden = true;
+    });
+
+    const go = document.querySelector<HTMLButtonElement>('[data-become-adv-go]');
+    go?.addEventListener('click', async () => {
+      go.disabled = true;
+      const locale = (document.documentElement.lang || 'en') as Locale;
+      const { data, error } = await actions.account.becomeAdvertiser({ locale });
+      if (error || !data) {
+        go.disabled = false;
+        return;
+      }
+      // The cookie set by the action busts the session memo + bridges the DB
+      // read lag, so the setup page sees her as an advertiser immediately.
+      localStorage.removeItem(HIDE_KEY);
+      location.href = data.href;
+    });
+  }
+
+  initBecomeAdvertiser();
+  document.addEventListener('astro:page-load', initBecomeAdvertiser);
+</script>

@@ -121,6 +121,12 @@ export interface AccountApi {
   saveProfile(session: Session, patch: Partial<ProfileEdit>): Promise<void>;
   /** Submit a draft/paused profile for review → `pending_review`. */
   submitProfile(session: Session): Promise<void>;
+  /**
+   * Switch an account's type (self-service client→advertiser, or an admin
+   * correction). Never sets `admin` — that tier is provisioned separately.
+   * `session.role` reads this column, so the change is the whole switch.
+   */
+  setAccountType(accountId: string, type: Exclude<AccountType, 'admin'>): Promise<void>;
   /** Owner pause/unpause: hides a live profile (`paused`) and brings it back (`live`). */
   setPaused(session: Session, paused: boolean): Promise<void>;
   /**

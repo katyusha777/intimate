@@ -57,6 +57,31 @@ export const admin = {
     },
   }),
 
+  // --- account type correction (§8): support/super ---
+  // A mis-registered client (or advertiser) fixed from the users panel. Never
+  // touches admin accounts and can't grant admin (enum forbids it) — no
+  // privilege change happens here. session.role reads accounts.accountType, so
+  // the column update IS the switch.
+  setAccountType: defineAction({
+    input: z.object({ accountId: z.string().uuid(), type: z.enum(['client', 'advertiser']) }),
+    handler: async ({ accountId, type }, context) => {
+      const session = await requireAdmin(context, ['support']);
+      const target = (await accountApi.all()).find((a) => a.id === accountId);
+      if (!target) throw new ActionError({ code: 'NOT_FOUND', message: 'account not found' });
+      if (target.accountType === 'admin') throw new ActionError({ code: 'FORBIDDEN', message: 'cannot change an admin account' });
+      if (target.accountType !== type) {
+        await accountApi.setAccountType(accountId, type);
+        await record(session, {
+          action: 'set_account_type',
+          entityType: 'account',
+          entityId: target.email,
+          meta: { from: target.accountType, to: type },
+        });
+      }
+      return { ok: true };
+    },
+  }),
+
   // --- verification (§5): moderator/super ---
   // NB: the doc READ itself is audited at the serve route (src/pages/admin/vdoc/[id].ts),
   // not via a client action — so there's no verificationDocViewed action here.

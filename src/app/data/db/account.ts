@@ -211,6 +211,13 @@ export const accountApi: AccountApi = {
     return row ? toAccount(row, await favSlugs(d, session.accountId)) : AccountSchema.parse({});
   },
 
+  async setAccountType(accountId, type) {
+    // One column update — session.role derives from accounts.accountType, so
+    // this is the entire switch (app_metadata is only a validity gate). The
+    // post-write read may lag (Hyperdrive/pooler); callers bridge it.
+    await db().update(accounts).set({ accountType: type }).where(eq(accounts.id, accountId));
+  },
+
   async myProfile(session) {
     const d = db();
     const row = await myProfileRow(d, session.accountId);

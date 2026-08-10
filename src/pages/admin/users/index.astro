@@ -154,6 +154,26 @@ const typeChip =
               {selProfile && (
                 <a href={`/en/profile/${selProfile.slug}/`} target="_blank" class="inline-block text-sm font-medium underline underline-offset-4">{m.adm_users_open_profile()} ↗</a>
               )}
+
+              {/* Fix a mis-registered account (client ↔ advertiser). Never shown
+                  for admins — this tool can't grant or remove admin. */}
+              {selected.accountType !== 'admin' && (
+                <div class="border-t border-border pt-4">
+                  <p class="text-2xs uppercase tracking-wide text-muted-foreground">{m.settings_account_type()}</p>
+                  <div class="mt-2 flex items-center gap-3">
+                    <button
+                      type="button"
+                      data-set-type={selected.id}
+                      data-to={selected.accountType === 'client' ? 'advertiser' : 'client'}
+                      class="slab-cut cursor-pointer border border-foreground/20 px-3 py-1.5 text-sm font-medium transition-colors hover:border-foreground/60"
+                    >
+                      {selected.accountType === 'client' ? 'Switch to advertiser' : 'Switch to client'}
+                    </button>
+                    <span data-set-type-done class="hidden text-2xs text-online">Changed ✓ (reload to confirm)</span>
+                  </div>
+                </div>
+              )}
+
               <p class="text-2xs text-muted-foreground">{m.adm_status_actions_note()}</p>
             </div>
           )}
@@ -207,4 +227,28 @@ const typeChip =
   }
   initGdpr();
   document.addEventListener('astro:page-load', initGdpr);
+
+  // Account-type correction (client ↔ advertiser). The post-write read lags
+  // Hyperdrive's cache, so confirm optimistically in place rather than reload.
+  function initSetType() {
+    document.querySelectorAll<HTMLButtonElement>('[data-set-type]').forEach((btn) => {
+      if (btn.dataset.init) return;
+      btn.dataset.init = '1';
+      btn.addEventListener('click', async () => {
+        btn.disabled = true;
+        const { data, error } = await actions.admin.setAccountType({
+          accountId: btn.dataset.setType!,
+          type: btn.dataset.to as 'client' | 'advertiser',
+        });
+        if (error || !data) {
+          btn.disabled = false;
+          return;
+        }
+        document.querySelector('[data-set-type-done]')?.classList.remove('hidden');
+        btn.remove();
+      });
+    });
+  }
+  initSetType();
+  document.addEventListener('astro:page-load', initSetType);
 </script>

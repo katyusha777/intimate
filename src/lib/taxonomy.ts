@@ -125,6 +125,8 @@ export const ADMIN_ACTIONS = [
   // Admin notification config (/admin/settings)
   'set_pushover_key',
   'set_notify_prefs',
+  // Account-type correction (client ↔ advertiser; never admin)
+  'set_account_type',
 ] as const;
 
 export const IMPORT_JOB_STATES = [

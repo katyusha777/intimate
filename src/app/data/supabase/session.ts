@@ -92,6 +92,14 @@ export const sessionApi: SessionApi = {
         if (session && typeof claims.aal === 'string') session.aal = claims.aal;
       }
     }
+    // Bridge a just-happened client→advertiser switch across the DB read lag
+    // (Hyperdrive/pooler can serve the pre-switch accounts row for a while). The
+    // switch action sets this short-lived cookie; honor it as advertiser until
+    // the DB catches up. client→advertiser ONLY — never admin, so it can't
+    // escalate (becoming an advertiser is self-service anyway).
+    if (session && session.role === 'client' && /(?:^|;\s*)became_advertiser=1(?:;|$)/.test(cookieKey)) {
+      session.role = 'advertiser';
+    }
     if (sessionCache.size >= SESSION_CACHE_MAX) {
       sessionCache.delete(sessionCache.keys().next().value!); // drop oldest
     }
