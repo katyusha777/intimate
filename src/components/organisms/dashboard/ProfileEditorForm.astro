@@ -5,6 +5,7 @@
  * account.saveProfile. Receives the MERGED profile (base + her edits).
  */
 import * as m from '@/paraglide/messages';
+import { localizePath } from '@/lib/i18n';
 import type { Profile } from '@/app/models/profile';
 import {
   amenityLabel,
@@ -542,8 +543,13 @@ const selAvailableFor = setOf(p.availableFor ?? []);
   )}
 
   {!wizard && (
-  <div class="flex items-center gap-4">
+  <div class="flex flex-wrap items-center gap-4">
     <Button type="submit">{m.editor_save()}</Button>
+    {/* View her own profile any time — the page serves a preview (with a
+        "not live yet" banner) until it's approved, so this never 404s. */}
+    {p.slug && (
+      <Button as="a" href={localizePath(`/profile/${p.slug}/`)} variant="tertiary">{m.account_view_public()}</Button>
+    )}
     <p data-editor-saved class="hidden text-sm font-medium text-online">{m.editor_saved()} ✓</p>
     <p data-editor-error class="hidden text-sm font-medium text-brand">{m.auth_error()}</p>
   </div>

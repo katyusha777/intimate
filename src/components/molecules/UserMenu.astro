@@ -58,10 +58,11 @@ const item =
       )
     }
     {
-      /* Always available to the owner — the profile route serves a preview
-         (with a "not live yet" banner) when it isn't live, so no more 404. */
-      isAdvertiser && session.profileSlug && (
-        <a href={localizePath(`/profile/${session.profileSlug}/`)} class={item} role="menuitem">
+      /* Always shown for advertisers — routed through /account/view (resolves her
+         slug server-side) so the ~60s session-memo lag can't hide it. The profile
+         page serves a preview (with a "not live yet" banner) until approved. */
+      isAdvertiser && (
+        <a href={localizePath('/account/view/')} class={item} role="menuitem">
           <svg class="size-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" /><circle cx="12" cy="12" r="3" /></svg>
           {m.account_view_public()}
         </a>

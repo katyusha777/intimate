@@ -31,7 +31,10 @@ const isAdmin = session?.role === 'admin';
 let p = publicProfile;
 let preview = false;
 if (!p) {
-  if (session?.role === 'advertiser' && session.profileSlug === slug) {
+  // Owner preview: compare her ACTUAL profile slug, not session.profileSlug —
+  // the session is memoised ~60s, so right after she creates her profile that
+  // field is still empty and would 404 her own fresh profile.
+  if (session?.role === 'advertiser') {
     const own = await accountApi.myProfile(session);
     if (own && own.slug === slug) {
       p = own;

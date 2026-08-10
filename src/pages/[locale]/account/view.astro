@@ -1,0 +1,19 @@
+---
+/**
+ * "View my public profile" resolver. Slug-independent so the account menu never
+ * hides the link on the ~60s session-memo lag: it fetches her actual profile and
+ * redirects to /profile/{slug} (which serves a preview + "not live yet" banner
+ * until approved), or to the editor if she has no profile row yet.
+ */
+import { accountApi } from '@/app/api/account';
+import { sessionApi } from '@/app/api/session';
+import { isLocale, localizePath } from '@/lib/i18n';
+
+const locale = Astro.params.locale;
+if (!isLocale(locale)) return new Response(null, { status: 404 });
+
+const session = await sessionApi.current(Astro);
+if (!session || session.role !== 'advertiser') return Astro.redirect(localizePath('/account/'));
+const profile = await accountApi.myProfile(session);
+return Astro.redirect(localizePath(profile?.slug ? `/profile/${profile.slug}/` : '/account/profile/'), 302);
+---
