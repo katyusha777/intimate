@@ -27,12 +27,20 @@ const next = nextParam && /^\/(?!\/)/.test(nextParam) ? nextParam : '/account/';
 const locale = negotiateLocale(Astro.request.headers.get('accept-language'));
 
 const supabase = supabaseServer(Astro);
+
+/** Where to land after a successful confirm. A FRESH signup (next still the
+ *  default /account/) drops an advertiser straight INTO the guided setup — no
+ *  "Continue setup" detour via the dashboard (ONBOARDING.md §Entry). Explicit
+ *  targets (recovery → /auth/reset, email change → /account/settings/) win. */
+const landing = (user: { app_metadata?: Record<string, unknown> } | null | undefined): string =>
+  next === '/account/' && user?.app_metadata?.account_type === 'advertiser' ? '/account/setup/' : next;
+
 if (code) {
-  const { error } = await supabase.auth.exchangeCodeForSession(code);
-  if (!error) return Astro.redirect(`/${locale}${next}`, 302);
+  const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+  if (!error) return Astro.redirect(`/${locale}${landing(data.user)}`, 302);
 } else if (tokenHash && type) {
-  const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type });
-  if (!error) return Astro.redirect(`/${locale}${next}`, 302);
+  const { data, error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type });
+  if (!error) return Astro.redirect(`/${locale}${landing(data.user)}`, 302);
 }
 // Token invalid/expired/already-used — send somewhere that explains, never the
 // bare homepage. Recovery → /auth/reset (shows the form if a session survives a

@@ -105,10 +105,9 @@ const selAvailableFor = setOf(p.availableFor ?? []);
   </div>
   )}
 
-  {/* Contact + how-you-meet: its own step in the wizard (after identity, before
+  {/* Contact channels: its own step in the wizard (after identity, before
       photos) so "how a client reaches you" is captured early. */}
   {show('contact') && (
-  <Fragment>
   <div class="space-y-2">
     <h3 class={heading}>{m.editor_contact()}</h3>
     <p class="text-xs text-muted-foreground">{m.editor_contact_hint()}</p>
@@ -119,28 +118,6 @@ const selAvailableFor = setOf(p.availableFor ?? []);
       <SlabField label="Instagram" name="instagram" value={p.instagram ?? ''} placeholder="@handle" autocomplete="off" />
     </div>
   </div>
-
-  <div class="space-y-2">
-    <h3 class={heading}>{m.filter_visit()}</h3>
-    <p class="text-xs text-muted-foreground">{m.editor_visit_hint()}</p>
-    <div class="flex flex-wrap gap-3">
-      {
-        MEETING_TYPES.map((t) => (
-          <label class="flex cursor-pointer select-none items-center gap-2.5 border border-foreground/25 px-4 py-2.5 text-sm font-medium transition-colors has-[:checked]:border-foreground has-[:checked]:bg-foreground has-[:checked]:text-background">
-            <input
-              type="checkbox"
-              name="meetingTypes"
-              value={t}
-              checked={(p.meetingTypes as readonly string[]).includes(t)}
-              class="sr-only"
-            />
-            {meetingTypeLabel(t)}
-          </label>
-        ))
-      }
-    </div>
-  </div>
-  </Fragment>
   )}
 
   {/* Rates table (UX-PLAN 2.1): the source of truth for priceFrom. Tick a
@@ -428,6 +405,30 @@ const selAvailableFor = setOf(p.availableFor ?? []);
   )}
 
   {show('services') && (
+  <Fragment>
+  {/* Visit type sits WITH services (2026-08-10) — "where you work" belongs next
+      to "what you offer", not with identity/contact. */}
+  <div class="space-y-2">
+    <h3 class={heading}>{m.filter_visit()}</h3>
+    <p class="text-xs text-muted-foreground">{m.editor_visit_hint()}</p>
+    <div class="flex flex-wrap gap-3">
+      {
+        MEETING_TYPES.map((t) => (
+          <label class="flex cursor-pointer select-none items-center gap-2.5 border border-foreground/25 px-4 py-2.5 text-sm font-medium transition-colors has-[:checked]:border-foreground has-[:checked]:bg-foreground has-[:checked]:text-background">
+            <input
+              type="checkbox"
+              name="meetingTypes"
+              value={t}
+              checked={(p.meetingTypes as readonly string[]).includes(t)}
+              class="sr-only"
+            />
+            {meetingTypeLabel(t)}
+          </label>
+        ))
+      }
+    </div>
+  </div>
+
   <div class="space-y-2">
     <div class="space-y-1.5">
       <h3 class={heading}>{m.filter_services()}</h3>
@@ -471,7 +472,7 @@ const selAvailableFor = setOf(p.availableFor ?? []);
       }
     </div>
   </div>
-
+  </Fragment>
   )}
 
   {show('hours') && (
