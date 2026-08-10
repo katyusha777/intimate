@@ -237,6 +237,7 @@
   "verify_step_id": "Verificarea actului de identitate",
   "verify_phone_label": "Număr de telefon",
   "verify_send_code": "Trimite codul",
+  "verify_change_number": "Folosește alt număr",
   "verify_code_label": "Cod din 6 cifre",
   "verify_check_code": "Verifică",
   "verify_verified": "Verificat",

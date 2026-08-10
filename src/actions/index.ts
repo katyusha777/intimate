@@ -80,7 +80,11 @@ export const server = {
           // "account already exists → reset / support" message.
           if (emailExists) return { href: null, needsConfirmation: false, emailExists: true };
           if (needsConfirmation) return { href: null, needsConfirmation: true, emailExists: false };
-          return { href: `/${locale}/account/`, needsConfirmation: false, emailExists: false };
+          // Auto-login (Supabase "Confirm email" OFF): a session exists now, so
+          // send the advertiser STRAIGHT into onboarding — no email stop, no
+          // dashboard detour. Clients go to their account home.
+          const dest = role === 'advertiser' ? `/${locale}/account/setup/` : `/${locale}/account/`;
+          return { href: dest, needsConfirmation: false, emailExists: false };
         } catch (e) {
           throw new ActionError({ code: "BAD_REQUEST", message: (e as Error).message });
         }

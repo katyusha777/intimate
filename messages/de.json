@@ -189,6 +189,7 @@
   "verify_step_id": "Ausweisverifizierung",
   "verify_phone_label": "Telefonnummer",
   "verify_send_code": "Code senden",
+  "verify_change_number": "Andere Nummer verwenden",
   "verify_code_label": "6-stelliger Code",
   "verify_check_code": "Verifizieren",
   "verify_verified": "Verifiziert",

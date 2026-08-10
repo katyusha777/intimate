@@ -237,6 +237,7 @@
   "verify_step_id": "ID verification",
   "verify_phone_label": "Phone number",
   "verify_send_code": "Send code",
+  "verify_change_number": "Use a different number",
   "verify_code_label": "6-digit code",
   "verify_check_code": "Verify",
   "verify_verified": "Verified",

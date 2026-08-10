@@ -75,6 +75,15 @@ const verifiedPill =
                 {m.verify_check_code()}
               </Button>
             </div>
+            {/* Escape hatch: the phone locks on send so it can't drift mid-verify;
+                this unlocks it to enter a different number. */}
+            <button
+              type="button"
+              data-sms-change
+              class="text-2xs text-muted-foreground underline underline-offset-2 transition-colors hover:text-foreground"
+            >
+              {m.verify_change_number()}
+            </button>
           </div>
           <p data-sms-error class="hidden text-sm font-medium text-brand">{m.auth_error()}</p>
           {/* Phone already on another account (#12) — clear message + support. */}
@@ -211,6 +220,17 @@ const verifiedPill =
         const { error } = await actions.account.checkSms({ code });
         if (error) return err?.classList.remove('hidden');
         location.reload();
+      });
+
+      // "Use a different number": unlock the phone (locked on send) and hide the
+      // code input so she can re-enter and send again.
+      root.querySelector<HTMLElement>('[data-sms-change]')?.addEventListener('click', () => {
+        const phoneInput = root.querySelector<HTMLInputElement>('[data-sms-start] input[name="phone"]');
+        if (phoneInput) { phoneInput.readOnly = false; phoneInput.focus(); phoneInput.select(); }
+        const check = root.querySelector<HTMLElement>('[data-sms-check]');
+        if (check) check.hidden = true;
+        err?.classList.add('hidden');
+        phoneExists?.classList.add('hidden');
       });
 
       // Enter in an input fires its action button (these aren't <form> submits).

@@ -112,10 +112,19 @@ export const sessionApi: SessionApi = {
         emailRedirectTo: `${origin}/auth/confirm`,
       },
     });
-    if (error) throw new Error(error.message);
+    if (error) {
+      // With "Confirm email" OFF, an existing email ERRORS (no anti-enumeration
+      // obfuscation) — surface it as the same "account already exists" signal
+      // (#13) instead of a raw error, so the modal shows reset/support.
+      if (/already registered|already exists|user_already_exists/i.test(`${error.code ?? ''} ${error.message}`)) {
+        return { session: null, needsConfirmation: false, emailExists: true };
+      }
+      throw new Error(error.message);
+    }
     // Supabase obfuscates a signup on an EXISTING email (anti-enumeration) by
-    // returning a user with an empty `identities` array and no session. The
-    // owner wants a clear "account already exists" message (#13), so surface it.
+    // returning a user with an empty `identities` array and no session (this is
+    // the "Confirm email" ON path). The owner wants a clear "account already
+    // exists" message (#13), so surface it.
     if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
       return { session: null, needsConfirmation: false, emailExists: true };
     }

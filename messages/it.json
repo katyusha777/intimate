@@ -237,6 +237,7 @@
   "verify_step_id": "Verifica del documento",
   "verify_phone_label": "Numero di telefono",
   "verify_send_code": "Invia codice",
+  "verify_change_number": "Usa un altro numero",
   "verify_code_label": "Codice a 6 cifre",
   "verify_check_code": "Verifica",
   "verify_verified": "Verificato",

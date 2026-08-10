@@ -189,6 +189,7 @@
   "verify_step_id": "ID-verificatie",
   "verify_phone_label": "Telefoonnummer",
   "verify_send_code": "Code versturen",
+  "verify_change_number": "Ander nummer gebruiken",
   "verify_code_label": "6-cijferige code",
   "verify_check_code": "Verifiëren",
   "verify_verified": "Geverifieerd",
