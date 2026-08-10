@@ -23,6 +23,11 @@ export interface SiteConfig {
 // so a phone-less profile doesn't fail the whole scrape.
 const SEXJOBS_REVEAL = `(async()=>{const bs=()=>[...document.querySelectorAll('button')];const click=p=>{const b=bs().find(p);if(b){b.click();return true}return false};click(b=>b.classList.contains('agree'));await new Promise(r=>setTimeout(r,1000));click(b=>b.classList.contains('agree'));await new Promise(r=>setTimeout(r,1000));click(b=>/toon nummer/i.test(b.textContent)||b.querySelector('i.icon-Phone'));await new Promise(r=>setTimeout(r,1800));return true})()`;
 
+// Tolerant reveal for kinky (classic + beta markup differ). A hard Firecrawl
+// `click` THROWS on a missing element (500s the whole scrape); a JS click never
+// does — dismiss consent, then click a phone-reveal button if one exists.
+const KINKY_REVEAL = `(async()=>{const els=()=>[...document.querySelectorAll('button,a,[role=button]')];const click=p=>{const b=els().find(e=>p(e.textContent||''));if(b){b.click();return true}return false};click(t=>/accepteer|akkoord|agree|toestaan|alles toestaan/i.test(t));await new Promise(r=>setTimeout(r,800));click(t=>/toon nummer|bekijk nummer|telefoon|nummer|bel /i.test(t));await new Promise(r=>setTimeout(r,1200));return true})()`;
+
 const SITES: Array<SiteConfig & { match: RegExp }> = [
   {
     key: 'sexjobs.nl',
@@ -48,7 +53,7 @@ const SITES: Array<SiteConfig & { match: RegExp }> = [
     match: /(^|\.)kinky\.nl$/i,
     onlyMainContent: true, // 360KB page — trim so extraction stays fast
     waitFor: 2000,
-    actions: [{ type: 'click', selector: '.phone-number' }, { type: 'wait', milliseconds: 1500 }],
+    actions: [{ type: 'executeJavascript', script: KINKY_REVEAL }],
     profileUrlPattern: '^https?://(www\\.)?kinky\\.nl/advertenties/\\d+-',
   },
 ];
