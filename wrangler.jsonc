@@ -20,6 +20,13 @@
   ],
   "compatibility_date": "2026-07-01",
   "compatibility_flags": ["nodejs_compat"],
+  // Close the workers.dev + preview-URL back doors: the worker answers ONLY on
+  // the custom domains above. Otherwise intimate.<account>.workers.dev serves
+  // the same worker and routes AROUND the Cloudflare Access wall that is scoped
+  // to the intimate.nl/admin PATH — turning admin into a single-password door
+  // (SECURITY.md admin section). Both must stay false.
+  "workers_dev": false,
+  "preview_urls": false,
   "assets": {
     "binding": "ASSETS",
     "directory": "./dist"

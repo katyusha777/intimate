@@ -19,4 +19,4 @@ jobs:
         run: |
           curl -fsS --max-time 60 "https://intimate.nl/api/cache/urls" \
             -H "Authorization: Bearer ${{ secrets.WARM_SECRET }}" \
-            | xargs -r -P 8 -n 1 curl -fsS -o /dev/null --max-time 30 -H "X-Warm: 1"
+            | xargs -r -P 8 -n 1 curl -fsS -o /dev/null --max-time 30 -H "X-Warm: ${{ secrets.WARM_SECRET }}"

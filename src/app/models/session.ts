@@ -43,6 +43,7 @@ export interface CookieJar {
       path?: string;
       maxAge?: number;
       httpOnly?: boolean;
+      secure?: boolean;
       sameSite?: 'lax' | 'strict' | 'none';
     },
   ): void;

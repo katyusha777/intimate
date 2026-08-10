@@ -45,8 +45,10 @@ export async function verifyVdoc(id: string, exp: string, sig: string, nowMs: nu
   return timingSafeEqual(expected, sig);
 }
 
-/** Constant-time string compare (hex sigs): length check, then XOR-accumulate over char codes. */
-function timingSafeEqual(a: string, b: string): boolean {
+/** Constant-time string compare (hex sigs / bearer secrets): length check, then
+ *  XOR-accumulate over char codes. Exported so the secret-guarded endpoints
+ *  (api/purge, api/cache/urls) compare their bearer token the same way. */
+export function timingSafeEqual(a: string, b: string): boolean {
   if (a.length !== b.length) return false;
   let diff = 0;
   for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);

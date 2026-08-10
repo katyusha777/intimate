@@ -472,7 +472,8 @@ export function makeMessagingApi(db: () => Db): MessagingApi {
       const [acc] = await d.select({ email: accounts.email }).from(accounts).where(eq(accounts.id, profile.accountId));
       if (acc?.email) emailNewMessage(acc.email, thread.id);
     }
-    pushoverAdmins('client_message', 'New request', `${session.email} → ${profileSlug}`);
+    // IDs only to the US processor (SECURITY.md) — no client email; the slug is public.
+    pushoverAdmins('client_message', 'New request', `client ${session.accountId} → ${profileSlug}`);
     return (await loadThreads(d, eq(threads.id, thread.id)))[0]!;
   },
 
@@ -551,7 +552,7 @@ export function makeMessagingApi(db: () => Db): MessagingApi {
       if (firstUnread) {
         const [acc] = await d.select({ email: accounts.email }).from(accounts).where(eq(accounts.id, to));
         if (acc?.email) emailNewMessage(acc.email, threadId);
-        pushoverAdmins('client_message', 'New message', `${t.clientEmail || 'client'} → ${t.profileName}`);
+        pushoverAdmins('client_message', 'New message', `new message in thread ${threadId}`);
       }
     }
     return row ? toMessage(row) : null;

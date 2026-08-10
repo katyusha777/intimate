@@ -11,16 +11,23 @@ const SUPABASE_KEY = import.meta.env.PUBLIC_SUPABASE_KEY;
  */
 type CookieOpts = Parameters<AuthCtx['cookies']['set']>[2];
 
-/** The SDK's cookie options are wider than our jar's (sameSite can be boolean). */
+/** The SDK's cookie options are wider than our jar's (sameSite can be boolean).
+ *  We force safe defaults instead of passing `undefined` through: auth cookies
+ *  hold a live session, so `Secure` and `HttpOnly` must be ON even if the SDK
+ *  ever omits them, and `Secure` was previously DROPPED entirely (never mapped)
+ *  — a plain-http request before the https redirect could leak the token. */
 function toJarOptions(o: Record<string, unknown> | undefined): CookieOpts {
   if (!o) return undefined;
   const sameSite = o.sameSite;
   return {
     path: typeof o.path === 'string' ? o.path : undefined,
     maxAge: typeof o.maxAge === 'number' ? o.maxAge : undefined,
-    httpOnly: typeof o.httpOnly === 'boolean' ? o.httpOnly : undefined,
+    // Default ON when the SDK omits them — never silently fall to a weaker default.
+    httpOnly: typeof o.httpOnly === 'boolean' ? o.httpOnly : true,
+    // Off only on plain-http localhost dev; ON everywhere the runtime is prod.
+    secure: typeof o.secure === 'boolean' ? o.secure : import.meta.env.PROD,
     sameSite:
-      sameSite === 'lax' || sameSite === 'strict' || sameSite === 'none' ? sameSite : undefined,
+      sameSite === 'lax' || sameSite === 'strict' || sameSite === 'none' ? sameSite : 'lax',
   };
 }
 

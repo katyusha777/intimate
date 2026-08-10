@@ -63,6 +63,17 @@ level = prod bound to `intimate`, `--env staging` bound to `intimate-staging`;
 `ORIGIN` var per tier). `PURGE_SECRET` must match between each tier's app
 worker and its purge worker. Deploy all four after changing either worker:
 `bunx wrangler deploy --config workers/<w>/wrangler.jsonc [--env staging]`.
+`WARM_SECRET` must ALSO match between the app worker and its warm worker
+(2026-08-10): the main worker gates the `X-Warm` home force-restore on it, so a
+warm worker without the secret set (`wrangler secret put WARM_SECRET` in
+`workers/warm/`) just falls back to normal short-TTL home warming — not broken,
+just not forced. Same secret is the Bearer on `/api/cache/urls`.
+
+**Admin edge wall — the worker answers ONLY on the custom domains.**
+`workers_dev:false` + `preview_urls:false` (`wrangler.jsonc`, set 2026-08-10):
+without them, `intimate.<account>.workers.dev/admin` would reach the app around
+the Cloudflare Access rule that is scoped to the `intimate.nl/admin` path
+(ADMIN.md §1). Keep both false.
 
 ## 3. CI (GitHub Actions)
 

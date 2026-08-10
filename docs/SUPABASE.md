@@ -161,8 +161,18 @@ await supabase.auth.mfa.verify({ factorId, challengeId, code })
 
 Server-side assertion = read `claims.aal` from `getClaims()`. When
 `aal !== 'aal2'` for an enrolled admin, redirect to the challenge screen (don't
-403 — the docs' guidance and better UX). Belt-and-braces at the DB for
-admin-touchable tables:
+403 — the docs' guidance and better UX).
+
+**Status (2026-08-10 audit): the assertion is implemented in code but STAGED OFF.**
+`requireAdmin`/`getAdmin` read `claims.aal` and gate on it, but only when
+`ADMIN_REQUIRE_AAL2=true` — currently unset so an un-enrolled admin isn't locked
+out. Enrolling TOTP + flipping that flag is the owner task (ADMIN.md §1, launch gate).
+
+**The belt-and-braces DB policy below is NOT yet applied** (no migration defines
+a restrictive `aal2` policy — verified against `drizzle/`). Admin access to toxic
+tables is currently gated by Cloudflare Access + the app-layer `requireAdmin`
+check only, NOT at the DB. Add this restrictive policy (and its RLS deny test)
+when the aal2 wall goes live — it needs testing against the hosted DB first:
 
 ```sql
 create policy "admin tables require aal2" on sensitive_table
@@ -373,6 +383,19 @@ room.on('presence', { event: 'sync' }, () => render(room.presenceState()))
 Presence is the *expensive* primitive — docs: slow-changing state only, throttle
 `track()` (hard limit 5 track calls / 30 s / client, 10 keys per presence
 object). Professionals tracking availability: perfect fit.
+
+> **Security (2026-08-10 audit): the presence realtime is DORMANT and the DB
+> policies are over-broad.** No client currently joins a `presence:*` channel —
+> "online" is derived entirely from `profiles.last_active_at` (below), so there
+> is no presence state to read today. But the `presence listen`/`presence track`
+> policies in `0001_security.sql` gate only on `topic LIKE 'presence:%'`, so ANY
+> authenticated user could join `presence:city:*` and, once presence carries a
+> stable `accountId` key, read who-is-online-where — a deanonymisation vector for
+> this platform. **Before any presence feature ships, scope the policies to the
+> caller's own city/role AND stop keying presence by a stable `accountId` (use an
+> ephemeral per-session token).** Ship the scoped policy + its RLS deny test in
+> the same change; leaving these broad policies live with real presence data is a
+> launch blocker.
 
 **How presence reaches SSR** (decided 2026-08-03): `profiles.last_active_at` is
 written by the professional's own island — a throttled, RLS-guarded own-row

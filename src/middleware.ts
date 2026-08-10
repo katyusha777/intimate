@@ -158,7 +158,13 @@ const handle = (context: APIContext, next: MiddlewareNext) =>
     const dep = deployId();
     // The warm cron re-stores homepages BEFORE their short TTL lapses (a plain
     // GET would HIT without extending it) — X-Warm skips the read, not the write.
-    const forceStore = cacheableHome && context.request.headers.get('x-warm') === '1';
+    // Gated on WARM_SECRET so an anonymous `X-Warm` header can't force a fresh
+    // SSR + KV write on every request (an unauthenticated cache-bypass DoS). A
+    // wrong/absent secret just serves from cache normally; the warmer (worker +
+    // GH action) sends `X-Warm: <WARM_SECRET>`.
+    const warmSecret = (env as unknown as Record<string, string | undefined>).WARM_SECRET;
+    const forceStore =
+      cacheableHome && !!warmSecret && context.request.headers.get('x-warm') === warmSecret;
     const hit = forceStore ? null : await servedFromCache(kv, dep, context.url);
     if (hit) return hit;
     const res = await paraglideMiddleware(context.request, () => next());

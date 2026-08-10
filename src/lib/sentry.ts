@@ -17,6 +17,11 @@ export function captureError(err: unknown, ctx?: { url?: string }): void {
     const m = e.SENTRY_DSN?.match(/^https:\/\/([a-f0-9]+)@([^/]+)\/(\d+)$/);
     if (!m) return; // unconfigured/malformed — silent no-op
     const [, key, host, project] = m;
+    // Drop the query string before it leaves the worker: recovery/confirm links
+    // carry token_hash and other paths carry PII in ?params — Sentry must only
+    // ever see the path (SECURITY.md logging discipline). Root-cause: strip here
+    // so no caller can leak a query string regardless of what it passes.
+    const safeUrl = ctx?.url?.split('?')[0];
     const error = err instanceof Error ? err : new Error(String(err));
     const eventId = crypto.randomUUID().replace(/-/g, '');
     const sentAt = new Date().toISOString();
@@ -29,7 +34,7 @@ export function captureError(err: unknown, ctx?: { url?: string }): void {
       release: e.CF_VERSION?.id,
       exception: { values: [{ type: error.name, value: error.message }] },
       extra: { stack: error.stack },
-      request: ctx?.url ? { url: ctx.url } : undefined,
+      request: safeUrl ? { url: safeUrl } : undefined,
     };
     const envelope = [
       JSON.stringify({ event_id: eventId, sent_at: sentAt }),

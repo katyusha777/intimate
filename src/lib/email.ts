@@ -21,7 +21,8 @@ export function sendEmail(opts: { to: string; subject: string; text: string }): 
         console.warn('[email] unconfigured — skipping', opts.subject);
         return;
       }
-      console.log('[email] queued:', opts.subject, '->', opts.to);
+      // No recipient in logs (SECURITY.md logging discipline) — subject only.
+      console.log('[email] queued:', opts.subject);
       // waitUntil wraps the WHOLE chain: `import('worker-mailer')` is a lazy
       // chunk load that yields the event loop — registered any later, the
       // invocation is already done and the send dies silently.
@@ -38,7 +39,7 @@ export function sendEmail(opts: { to: string; subject: string; text: string }): 
             },
             { from: { name: 'Intimate', email: from }, to: opts.to, subject: opts.subject, text: opts.text },
           );
-          console.log('[email] sent:', opts.subject, '->', opts.to);
+          console.log('[email] sent:', opts.subject);
         })().catch((err) => console.error('[email] send FAILED:', opts.subject, (err as Error).message)),
       );
     } catch (err) {

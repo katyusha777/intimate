@@ -14,6 +14,7 @@ import { env } from "cloudflare:workers";
 import { startPhoneVerify, checkPhoneVerify } from "@/lib/twilio";
 import { bustProfiles, type CacheKv } from "@/lib/page-cache";
 import { rateLimit } from "@/lib/rate-limit";
+import { stripJpegMetadata, stripJpegDataUrl } from "@/lib/jpeg-strip";
 import { mintIceServers } from "@/lib/turn";
 import { CONVERSATION_MODES, REPORT_REASONS, REPORT_TARGETS } from "@/lib/taxonomy";
 // The one sanctioned cross-fence import: the action registry wires in admin.
@@ -36,12 +37,21 @@ const turnSecret = (): string | undefined =>
 const clientIp = (context: { request: Request }): string =>
   context.request.headers.get("cf-connecting-ip") ?? "unknown";
 
-/** Shared spam wall for authenticated actions — throws TOO_MANY_REQUESTS. */
-async function requireUnderLimit(name: string, key: string, max: number, windowS = 3600) {
-  if (!(await rateLimit(cacheKv(), name, key, max, windowS))) {
+/** Shared spam wall for authenticated actions — throws TOO_MANY_REQUESTS.
+ *  `failClosedInProd` denies (instead of the dev-friendly open) when the KV
+ *  binding is missing in production — use it for money/brute-force walls
+ *  (auth, SMS) so a KV hiccup can't silently disable them. */
+async function requireUnderLimit(name: string, key: string, max: number, windowS = 3600, failClosedInProd = false) {
+  if (!(await rateLimit(cacheKv(), name, key, max, windowS, failClosedInProd))) {
     throw new ActionError({ code: "TOO_MANY_REQUESTS", message: "try again later" });
   }
 }
+
+/** Auth-input validators (normalise once at the trust boundary — L1): trim +
+ *  lowercase every email so uniqueness/enumeration/owner checks can't be split
+ *  by case; one shared password floor so the three password paths can't drift. */
+const emailField = z.string().trim().toLowerCase().email();
+const passwordField = z.string().min(8); // was 6; still under Supabase's ceiling
 
 /** Decode a `data:...;base64,` URL to bytes (photos + verification docs). */
 function dataUrlToBytes(dataUrl: string): ArrayBuffer {
@@ -62,8 +72,8 @@ export const server = {
   auth: {
     register: defineAction({
       input: z.object({
-        email: z.string().email(),
-        password: z.string().min(6), // no policy of our own — 6 is Supabase's hard floor
+        email: emailField,
+        password: passwordField,
         role: z.enum(["advertiser", "client"]),
         locale: z.enum(LOCALES),
       }),
@@ -87,11 +97,15 @@ export const server = {
 
     login: defineAction({
       input: z.object({
-        email: z.string().email(),
+        email: emailField,
         password: z.string().min(1),
         locale: z.enum(LOCALES),
       }),
       handler: async ({ email, password, locale }, context) => {
+        // Credential-stuffing / brute-force wall (SECURITY.md). Fails CLOSED in
+        // prod if KV is missing — an auth wall that silently opens is worse than
+        // a brief 429. Supabase's own limiter is the second layer.
+        await requireUnderLimit("login-ip", clientIp(context), 30, 3600, true);
         const session = await sessionApi.signIn(context, { email, password });
         if (!session) throw new ActionError({ code: "UNAUTHORIZED" });
         return { href: `/${locale}/account/` };
@@ -101,8 +115,13 @@ export const server = {
     // Send a password-reset email. Always returns ok (never reveal if the
     // address exists) — the honest "if that email exists, we sent a link" copy.
     requestReset: defineAction({
-      input: z.object({ email: z.string().email() }),
+      input: z.object({ email: emailField }),
       handler: async ({ email }, context) => {
+        // Two walls: per-IP (mail-bomb source) and per-email (a victim's inbox
+        // can't be flooded regardless of source IP). Reset stays anti-enumeration
+        // (always returns ok), so the limit never leaks existence either.
+        await requireUnderLimit("reset-ip", clientIp(context), 10);
+        await requireUnderLimit("reset-email", email, 5);
         await sessionApi.requestPasswordReset(context, { email });
         return { ok: true };
       },
@@ -110,7 +129,7 @@ export const server = {
 
     // Set a new password for the recovery session (from the emailed link).
     setPassword: defineAction({
-      input: z.object({ password: z.string().min(6), locale: z.enum(LOCALES) }),
+      input: z.object({ password: passwordField, locale: z.enum(LOCALES) }),
       handler: async ({ password, locale }, context) => {
         const ok = await sessionApi.setPassword(context, { password });
         if (!ok) throw new ActionError({ code: "UNAUTHORIZED" });
@@ -120,7 +139,7 @@ export const server = {
 
     // Change email (confirmation link to the NEW address) — settings (#6).
     changeEmail: defineAction({
-      input: z.object({ email: z.string().email() }),
+      input: z.object({ email: emailField }),
       handler: async ({ email }, context) => {
         await requireSession(context);
         const { ok, error } = await sessionApi.changeEmail(context, { email });
@@ -131,9 +150,12 @@ export const server = {
 
     // Change password after re-verifying the current one — settings (#6).
     changePassword: defineAction({
-      input: z.object({ currentPassword: z.string().min(1), newPassword: z.string().min(6) }),
+      input: z.object({ currentPassword: z.string().min(1), newPassword: passwordField }),
       handler: async ({ currentPassword, newPassword }, context) => {
-        await requireSession(context);
+        const session = await requireSession(context);
+        // The re-auth does a real signInWithPassword — brute-forceable by a
+        // hijacked session otherwise. Fail closed in prod (M3).
+        await requireUnderLimit("changepw", session.accountId, 10, 3600, true);
         const { ok, error } = await sessionApi.changePassword(context, { currentPassword, newPassword });
         if (!ok) {
           throw new ActionError({
@@ -238,9 +260,9 @@ export const server = {
       }),
       handler: async ({ dataUrl, isPrivate }, context) => {
         const session = await requireSession(context);
-        // Decode the client's EXIF-stripped JPEG data-URL → bytes → R2 (the
-        // data layer owns the upload).
-        await accountApi.addPhoto(session, { bytes: dataUrlToBytes(dataUrl), contentType: "image/jpeg", isPrivate });
+        // Decode → RE-STRIP metadata server-side (hard rule 2: never trust the
+        // client's canvas re-encode alone — a crafted POST keeps EXIF/GPS) → R2.
+        await accountApi.addPhoto(session, { bytes: stripJpegMetadata(dataUrlToBytes(dataUrl)), contentType: "image/jpeg", isPrivate });
         await bustProfiles(cacheKv());
         return { ok: true };
       },
@@ -267,9 +289,11 @@ export const server = {
           throw new ActionError({ code: 'CONFLICT', message: 'phone already in use' });
         }
         const kv = cacheKv();
+        // Each send costs real money (Twilio) → fail CLOSED in prod if KV is
+        // gone, so a binding hiccup can't open the toll-fraud tap.
         if (
-          !(await rateLimit(kv, 'sms-num', phone, 3)) ||
-          !(await rateLimit(kv, 'sms-acct', session.accountId, 5))
+          !(await rateLimit(kv, 'sms-num', phone, 3, 3600, true)) ||
+          !(await rateLimit(kv, 'sms-acct', session.accountId, 5, 3600, true))
         ) {
           throw new ActionError({ code: 'TOO_MANY_REQUESTS', message: 'try again later' });
         }
@@ -290,8 +314,9 @@ export const server = {
       input: z.object({ code: z.string().regex(/^\d{6}$/) }),
       handler: async ({ code }, context) => {
         const session = await requireSession(context);
-        // Brute-force wall on code guesses (items.md #12).
-        if (!(await rateLimit(cacheKv(), 'sms-check', session.accountId, 10))) {
+        // Brute-force wall on code guesses (items.md #12). 5/hr against a 6-digit
+        // code — Twilio's own attempt cap is the backstop; fail CLOSED in prod.
+        if (!(await rateLimit(cacheKv(), 'sms-check', session.accountId, 5, 3600, true))) {
           throw new ActionError({ code: 'TOO_MANY_REQUESTS', message: 'try again later' });
         }
         const { phone } = await accountApi.get(session);
@@ -327,7 +352,12 @@ export const server = {
           // Streams to the private EU bucket + records hashes + flags pending
           // (hard rule 3). NEVER log the contents — only a generic failure.
           await accountApi.submitVerification(session, {
-            docs: [{ bytes: dataUrlToBytes(doc) }, { bytes: dataUrlToBytes(selfie) }],
+            // Re-strip server-side (hard rule 2) — the ID/selfie must never carry
+            // EXIF/GPS even if a crafted client skipped the canvas re-encode.
+            docs: [
+              { bytes: stripJpegMetadata(dataUrlToBytes(doc)) },
+              { bytes: stripJpegMetadata(dataUrlToBytes(selfie)) },
+            ],
           });
         } catch (e) {
           console.error("[verify] submit failed:", (e as Error).message);
@@ -428,7 +458,15 @@ export const server = {
       handler: async (input, context) => {
         const session = await requireSession(context);
         await requireUnderLimit("msg-send", session.accountId, 60);
-        const message = await messagingApi.send(session, input);
+        // Re-strip metadata server-side (hard rule 2): chat photos are stored
+        // inline as data-URLs and re-served to the other party — a crafted client
+        // could otherwise deliver a GPS-tagged image. ponytail: chat photos still
+        // bypass R2/the /media gate (stored inline); move them to the addPhoto→R2
+        // pipeline with thread-scoped gating if inline storage ever bites.
+        const clean = input.kind === "photo" && input.photo
+          ? { ...input, photo: stripJpegDataUrl(input.photo) }
+          : input;
+        const message = await messagingApi.send(session, clean);
         if (!message) throw new ActionError({ code: "BAD_REQUEST" });
         return { message };
       },

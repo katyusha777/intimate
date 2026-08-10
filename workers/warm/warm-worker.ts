@@ -23,6 +23,10 @@ interface Env {
   SITE: { fetch(input: string | Request, init?: RequestInit): Promise<Response> };
   // Per-tier site origin (wrangler.jsonc vars).
   ORIGIN: string;
+  // Shared secret gating the X-Warm home force-restore (main worker middleware).
+  // Must match the main worker's WARM_SECRET; `wrangler secret put WARM_SECRET`.
+  // If unset, homes still re-warm on their normal short TTL — just not forced.
+  WARM_SECRET?: string;
 }
 
 const LOCALES = ['nl', 'en', 'de'] as const;
@@ -61,7 +65,7 @@ async function warm(env: Env, urls: string[]): Promise<WarmResult> {
     const batch = urls.slice(i, i + CONCURRENCY);
     await Promise.all(
       batch.map(async (u) => {
-        const res = await env.SITE.fetch(u, { headers: { 'X-Warm': '1' } });
+        const res = await env.SITE.fetch(u, { headers: { 'X-Warm': env.WARM_SECRET ?? '' } });
         await res.arrayBuffer(); // drain the body so the render completes
         if (res.ok) r.ok++;
         const cache = res.headers.get('x-cache');

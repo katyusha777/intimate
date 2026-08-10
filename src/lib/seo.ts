@@ -7,6 +7,16 @@ import { CITIES } from '@/lib/taxonomy';
 
 const BRAND = 'Intimate';
 
+/**
+ * Serialize an object for embedding inside a `<script>` block. `JSON.stringify`
+ * does NOT escape `<`, so an advertiser-controlled field (profile name/bio) that
+ * contains `</script>` would break out of the JSON-LD block and, under our
+ * inline-script CSP, execute — a stored XSS. Escaping `<` to the JSON unicode
+ * escape `<` (which JSON.parse decodes right back to `<`) closes it without
+ * changing the parsed data. Use for EVERY `set:html` that emits JSON in a script.
+ */
+export const jsonForScript = (obj: unknown): string => JSON.stringify(obj).replace(/</g, '\\u003c');
+
 export function websiteJsonLd(origin: string, locale: string) {
   return {
     '@context': 'https://schema.org',

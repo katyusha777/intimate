@@ -121,8 +121,9 @@ export const sessionApi: SessionApi = {
     }
     // New account on the platform → ping the admin team (fire-and-forget).
     if (data.user) {
-      if (role === 'advertiser') pushoverAdmins('advertiser_registered', 'New advertiser 🎉', `${email} just registered on Intimate`);
-      else pushoverAdmins('client_registered', 'New client', `${email} registered on Intimate`);
+      // IDs only to Pushover (US processor, SECURITY.md) — never the email.
+      if (role === 'advertiser') pushoverAdmins('advertiser_registered', 'New advertiser 🎉', `account ${data.user.id} registered as advertiser`);
+      else pushoverAdmins('client_registered', 'New client', `account ${data.user.id} registered as client`);
     }
     // Confirmation ON → user exists but no session until the email link.
     if (!data.session || !data.user) return { session: null, needsConfirmation: true };
@@ -196,6 +197,13 @@ export const sessionApi: SessionApi = {
   },
 
   async signOut(ctx) {
-    await supabaseServer(ctx).auth.signOut({ scope: 'local' });
+    // 'global' revokes the refresh token server-side (not just this device's
+    // cookie) — an explicit logout should kill a captured/stolen token too.
+    // Best-effort: if the revoke call fails, still clear the local cookies.
+    try {
+      await supabaseServer(ctx).auth.signOut({ scope: 'global' });
+    } catch {
+      await supabaseServer(ctx).auth.signOut({ scope: 'local' });
+    }
   },
 };

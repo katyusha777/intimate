@@ -28,11 +28,13 @@ import { rateLimit } from '@/lib/rate-limit';
 import type { CacheKv } from '@/lib/page-cache';
 
 /** Admin ping on profile edits, throttled to one per profile per hour — the
- *  onboarding wizard saves on every step and must not machine-gun phones. */
-async function notifyProfileChanged(email: string, profileId: string): Promise<void> {
+ *  onboarding wizard saves on every step and must not machine-gun phones.
+ *  IDs only in the payload (SECURITY.md): Pushover is a US processor — never
+ *  send emails/names there; admins click through to /admin for identity. */
+async function notifyProfileChanged(profileId: string): Promise<void> {
   const kv = (env as unknown as Record<string, unknown>).SESSION as CacheKv | undefined;
   if (await rateLimit(kv, 'notif-profile', profileId, 1)) {
-    pushoverAdmins('profile_changed', 'Profile updated', `${email} updated her profile`);
+    pushoverAdmins('profile_changed', 'Profile updated', `profile ${profileId} was edited`);
   }
 }
 import { createWelcomeThread } from '@/app/data/db/messaging';
@@ -228,7 +230,7 @@ export const accountApi: AccountApi = {
       const update = profileUpdate(patch);
       if (Object.keys(update).length) {
         await d.update(profiles).set(update).where(eq(profiles.id, existing.id));
-        await notifyProfileChanged(session.email, existing.id);
+        await notifyProfileChanged(existing.id);
       }
       return;
     }
@@ -255,7 +257,7 @@ export const accountApi: AccountApi = {
       } catch (e) {
         console.error('[welcome] failed', e);
       }
-      await notifyProfileChanged(session.email, created.id);
+      await notifyProfileChanged(created.id);
     }
   },
 
@@ -299,7 +301,7 @@ export const accountApi: AccountApi = {
         .set({ idVerification: 'pending', verificationSubmittedAt: new Date() })
         .where(eq(accounts.id, session.accountId));
       // Verification waiting in the queue → ping the admin team (fire-and-forget).
-      pushoverAdmins('verification_pending', 'Verification pending', `${session.email} submitted documents — review at intimate.nl/admin/verification`);
+      pushoverAdmins('verification_pending', 'Verification pending', `account ${session.accountId} submitted documents — review at intimate.nl/admin/verification`);
     } catch (e) {
       // Never leave orphaned toxic-waste objects if the DB write fails — they'd
       // escape the retention/purge accounting (hard rule 3).
@@ -336,7 +338,11 @@ export const accountApi: AccountApi = {
     // Key encodes visibility so the /media route can gate without a DB hit on
     // the hot (public) path: `pub/<profileId>/<uuid>` vs `priv/…`.
     const key = `${isPrivate ? 'priv' : 'pub'}/${row.id}/${crypto.randomUUID()}`;
-    await bucket().put(key, bytes, { httpMetadata: { contentType } });
+    // Force image/jpeg regardless of the caller's contentType: uploads are
+    // always canvas-re-encoded JPEGs, and pinning the type stops a future caller
+    // smuggling image/svg+xml (script-bearing) into the public MEDIA bucket.
+    void contentType;
+    await bucket().put(key, bytes, { httpMetadata: { contentType: 'image/jpeg' } });
     await d.insert(media).values({
       profileId: row.id,
       imageKey: key,

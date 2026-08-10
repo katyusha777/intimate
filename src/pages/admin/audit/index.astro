@@ -5,6 +5,7 @@
  * Retention is long by design — the audit trail is our defensibility.
  */
 import { getAdmin, listAudit } from '@/actions/admin/lib';
+import { jsonForScript } from '@/lib/seo';
 import { ADMIN_ACTIONS } from '@/lib/taxonomy';
 import AdminShell from '@/components/organisms/admin/AdminShell.astro';
 import * as m from '@/paraglide/messages';
@@ -40,7 +41,7 @@ const when = (iso: string) => iso.replace('T', ' ').slice(0, 16) + 'Z';
             <button type="button" data-export-csv class="slab-cut border border-foreground/20 px-3 py-2 text-sm font-medium">{m.adm_audit_export()}</button>
           </form>
         </div>
-        <script type="application/json" data-audit-json set:html={JSON.stringify(entries.map((e) => ({ at: e.at, admin: e.adminEmail, role: e.adminRole, action: e.action, entity: `${e.entityType}:${e.entityId}`, reason: e.reason ?? '' })))} />
+        <script type="application/json" data-audit-json set:html={jsonForScript(entries.map((e) => ({ at: e.at, admin: e.adminEmail, role: e.adminRole, action: e.action, entity: `${e.entityType}:${e.entityId}`, reason: e.reason ?? '' })))} />
         <script is:inline>
           document.querySelector('[data-export-csv]')?.addEventListener('click', () => {
             const rows = JSON.parse(document.querySelector('[data-audit-json]').textContent);

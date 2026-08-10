@@ -132,3 +132,29 @@ The failure mode is not malice; it's a confident, plausible, wrong diff at 2am m
 - [ ] DPAs on file; retention table current; DSR export/delete flows work
 - [ ] Kill switches tested; SEV-1 runbook walked through once on staging
 - [ ] `/security-review` full pass on the launch candidate; findings closed or accepted in writing
+
+## 12. Hardening log — 2026-08-10 audit pass
+
+A full security audit (admin/authz, RLS, media/PII, injection/cache, auth/session)
+ran on 2026-08-10. The core architecture held (verified-JWT authz everywhere,
+service-role fenced + CI-enforced, RLS on every table, exemplary vdoc route). The
+fixes that LANDED on branch `fix/security-hardening`:
+
+- **`workers.dev`/preview back door closed** — `workers_dev:false` + `preview_urls:false` (`wrangler.jsonc`). The worker answers only on the custom domains, so nothing reaches `/admin` around the path-scoped Cloudflare Access wall (ADMIN.md §1).
+- **Stored-XSS killed in JSON-LD** — advertiser name/bio flows into the profile page's `ld+json`; `JSON.stringify` doesn't escape `<`, so `</script>` broke out under the inline-script CSP. All `set:html` JSON now goes through `jsonForScript()` (`lib/seo.ts`) which escapes `<`.
+- **Server-side EXIF/GPS re-strip on EVERY uploader path** — profile photos, verification docs, AND chat photos now pass through `stripJpegMetadata` (`lib/jpeg-strip.ts`) server-side; the client canvas re-encode is no longer the only defence a crafted POST has to beat (hard rule 2).
+- **Chat photos** were stored/served as raw inline data-URLs with no EXIF guarantee — now server-re-stripped. (They still bypass R2/the `/media` gate; that migration is the tracked upgrade path, `ponytail:` in `actions/index.ts`.)
+- **Auth cookie `Secure` flag** was silently dropped by `toJarOptions` (`lib/supabase.ts`) — now forced on in prod, `HttpOnly`/`SameSite` default safe.
+- **PII to the US processor removed** — admin push pings (registration, message, profile edit, verification) sent real emails/slugs to Pushover; now IDs only (admins click through to `/admin`).
+- **Rate limits** added to `login`, `requestReset`, `changePassword`; OTP-check tightened (5/hr) and the money/brute-force walls (SMS, auth) now **fail closed in prod** if KV is missing (`lib/rate-limit.ts`). Zone `/_actions/*` rule (line 128) is still the outer wall to add.
+- **`signOut` → global scope** (revokes the refresh token, not just the local cookie); email normalised at the Zod boundary; password floor raised to 8.
+- **`X-Warm` DoS gate** — the unauthenticated forced-SSR header now requires `WARM_SECRET` (middleware + warm worker + GH action). **Owner step: set `WARM_SECRET` on the warm worker** (`wrangler secret put WARM_SECRET` in `workers/warm/`), else homes fall back to normal TTL warming.
+- **Log/leak hygiene** — worker error-capture strips the query string before send (token_hash/PII in `?params`); email recipient dropped from worker logs; `/api/purge` + `/api/cache/urls` bearer checks are now constant-time.
+
+**Deferred — need the hosted DB / TOTP first (do NOT ship blind):**
+- **aal2 / admin MFA** — code is live but staged off; enroll TOTP then `ADMIN_REQUIRE_AAL2=true` (ADMIN.md §1). Until then admin is single-factor behind Access.
+- **`FORCE ROW LEVEL SECURITY`** on toxic tables — deferred: the app connects via Hyperdrive as a role that could be the table owner, so forcing RLS risks breaking the app's own reads. Needs a test against the hosted DB before applying.
+- **DB-level restrictive `aal2` policy** — documented but never applied (SUPABASE.md §2.3); add with the aal2 wall + a deny test.
+- **Realtime `presence` policies** — dormant but over-broad; scope + de-stable-key before any presence feature (SUPABASE.md §5.4).
+
+**Accepted risk (product decision):** registration returns a distinct "account already exists" signal (#13) — an email-enumeration oracle the owner opted into for UX.

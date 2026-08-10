@@ -9,13 +9,14 @@ import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
 import { requestDb } from '@/db/client';
 import { runRetentionPurge } from '@/lib/purge';
+import { timingSafeEqual } from '@/lib/vdoc-sign';
 
 export const prerender = false;
 
 export const POST: APIRoute = async ({ request }) => {
   const secret = (env as unknown as Record<string, string>).PURGE_SECRET;
-  const auth = request.headers.get('authorization');
-  if (!secret || auth !== `Bearer ${secret}`) return new Response('forbidden', { status: 403 });
+  const auth = request.headers.get('authorization') ?? '';
+  if (!secret || !timingSafeEqual(auth, `Bearer ${secret}`)) return new Response('forbidden', { status: 403 });
 
   const d = requestDb((env as unknown as { HYPERDRIVE: Hyperdrive }).HYPERDRIVE);
   const verificationBucket = (env as unknown as { VERIFICATION: R2Bucket }).VERIFICATION;

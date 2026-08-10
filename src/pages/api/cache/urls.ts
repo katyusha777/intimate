@@ -7,11 +7,12 @@
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
 import { listWarmUrls } from '@/lib/warm';
+import { timingSafeEqual } from '@/lib/vdoc-sign';
 
 export const GET: APIRoute = async ({ request }) => {
   const secret = (env as unknown as Record<string, string>).WARM_SECRET;
-  const auth = request.headers.get('authorization');
-  if (!secret || auth !== `Bearer ${secret}`) return new Response('forbidden', { status: 403 });
+  const auth = request.headers.get('authorization') ?? '';
+  if (!secret || !timingSafeEqual(auth, `Bearer ${secret}`)) return new Response('forbidden', { status: 403 });
 
   const origin = new URL(request.url).origin;
   const hyperdrive = (env as unknown as { HYPERDRIVE: Hyperdrive }).HYPERDRIVE;

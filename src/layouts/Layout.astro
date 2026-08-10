@@ -3,6 +3,7 @@ import { ClientRouter } from 'astro:transitions';
 import * as m from '@/paraglide/messages';
 import { getLocale } from '@/paraglide/runtime';
 import { localizePath } from '@/lib/i18n';
+import { jsonForScript } from '@/lib/seo';
 import type { Locale } from '@/lib/taxonomy';
 import { messagingApi } from '@/app/api/messaging';
 import { sessionApi } from '@/app/api/session';
@@ -109,7 +110,7 @@ const unread = session && !bare ? await messagingApi.unreadCount(session) : 0;
     }
     {alternates && <link rel="alternate" hreflang="x-default" href={alternates.nl} />}
     {jsonLd.map((obj) => (
-      <script type="application/ld+json" set:html={JSON.stringify(obj)} />
+      <script type="application/ld+json" set:html={jsonForScript(obj)} />
     ))}
     <!-- OG / Twitter cards (#15). Absolute URLs; image is the SFW cover on
          profiles, the app icon elsewhere. -->
