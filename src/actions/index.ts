@@ -53,6 +53,13 @@ async function requireUnderLimit(name: string, key: string, max: number, windowS
 const emailField = z.string().trim().toLowerCase().email();
 const passwordField = z.string().min(8); // was 6; still under Supabase's ceiling
 
+/** QA whitelist: numbers in SMS_TEST_NUMBERS (comma-separated E.164) bypass ALL
+ *  SMS limits + the phone-in-use check + Twilio entirely — the code `000000`
+ *  verifies. For testing only; keep the list tiny. */
+const isTestNumber = (phone: string): boolean =>
+  ((env as unknown as Record<string, string | undefined>).SMS_TEST_NUMBERS ?? '')
+    .split(',').map((s) => s.trim()).filter(Boolean).includes(phone);
+
 /** Actions run with the request context — sessions verified per request. */
 async function requireSession(context: Parameters<typeof sessionApi.current>[0]) {
   const session = await sessionApi.current(context);
@@ -285,28 +292,31 @@ export const server = {
       input: z.object({ phone: z.string().regex(/^\+[1-9]\d{6,14}$/) }),
       handler: async ({ phone }, context) => {
         const session = await requireSession(context);
-        // Abuse walls (items.md #12) BEFORE any Twilio spend: a number verified
-        // on another account is dead here, and both the target number and the
-        // requesting account are rate-limited (each send costs real money).
-        if (await accountApi.phoneInUse(phone, session.accountId)) {
-          throw new ActionError({ code: 'CONFLICT', message: 'phone already in use' });
-        }
-        const kv = cacheKv();
-        // Each send costs real money (Twilio) → fail CLOSED in prod if KV is
-        // gone, so a binding hiccup can't open the toll-fraud tap.
-        if (
-          !(await rateLimit(kv, 'sms-num', phone, 3, 3600, true)) ||
-          !(await rateLimit(kv, 'sms-acct', session.accountId, 5, 3600, true))
-        ) {
-          throw new ActionError({ code: 'TOO_MANY_REQUESTS', message: 'try again later' });
-        }
-        // Twilio Verify sends the code; we stash the (still-unverified) number so
-        // checkSms knows which To to verify against. phoneVerifiedAt gates trust.
-        try {
-          await startPhoneVerify(phone);
-        } catch (e) {
-          console.error('[sms] start failed', (e as Error).message);
-          throw new ActionError({ code: 'BAD_REQUEST' });
+        // QA whitelist: skip every wall + Twilio for a test number.
+        if (!isTestNumber(phone)) {
+          // Abuse walls (items.md #12) BEFORE any Twilio spend: a number verified
+          // on another account is dead here, and both the target number and the
+          // requesting account are rate-limited (each send costs real money).
+          if (await accountApi.phoneInUse(phone, session.accountId)) {
+            throw new ActionError({ code: 'CONFLICT', message: 'phone already in use' });
+          }
+          const kv = cacheKv();
+          // Each send costs real money (Twilio) → fail CLOSED in prod if KV is
+          // gone, so a binding hiccup can't open the toll-fraud tap.
+          if (
+            !(await rateLimit(kv, 'sms-num', phone, 3, 3600, true)) ||
+            !(await rateLimit(kv, 'sms-acct', session.accountId, 5, 3600, true))
+          ) {
+            throw new ActionError({ code: 'TOO_MANY_REQUESTS', message: 'try again later' });
+          }
+          // Twilio Verify sends the code; we stash the (still-unverified) number so
+          // checkSms knows which To to verify against. phoneVerifiedAt gates trust.
+          try {
+            await startPhoneVerify(phone);
+          } catch (e) {
+            console.error('[sms] start failed', (e as Error).message);
+            throw new ActionError({ code: 'BAD_REQUEST' });
+          }
         }
         await accountApi.save(session, { phone });
         return { ok: true };
@@ -317,24 +327,29 @@ export const server = {
       input: z.object({ code: z.string().regex(/^\d{6}$/) }),
       handler: async ({ code }, context) => {
         const session = await requireSession(context);
-        // Brute-force wall on code guesses (items.md #12). 5/hr against a 6-digit
-        // code — Twilio's own attempt cap is the backstop; fail CLOSED in prod.
-        if (!(await rateLimit(cacheKv(), 'sms-check', session.accountId, 5, 3600, true))) {
-          throw new ActionError({ code: 'TOO_MANY_REQUESTS', message: 'try again later' });
-        }
         const { phone } = await accountApi.get(session);
         if (!phone) throw new ActionError({ code: 'BAD_REQUEST' });
-        // Re-check at the wall: the number may have been verified elsewhere
-        // between start and check.
-        if (await accountApi.phoneInUse(phone, session.accountId)) {
-          throw new ActionError({ code: 'CONFLICT', message: 'phone already in use' });
-        }
         let approved = false;
-        try {
-          approved = await checkPhoneVerify(phone, code);
-        } catch (e) {
-          console.error('[sms] check failed', (e as Error).message);
-          throw new ActionError({ code: 'BAD_REQUEST' });
+        if (isTestNumber(phone)) {
+          // QA whitelist: no limits, no Twilio — 000000 verifies.
+          approved = code === '000000';
+        } else {
+          // Brute-force wall on code guesses (items.md #12). 5/hr against a 6-digit
+          // code — Twilio's own attempt cap is the backstop; fail CLOSED in prod.
+          if (!(await rateLimit(cacheKv(), 'sms-check', session.accountId, 5, 3600, true))) {
+            throw new ActionError({ code: 'TOO_MANY_REQUESTS', message: 'try again later' });
+          }
+          // Re-check at the wall: the number may have been verified elsewhere
+          // between start and check.
+          if (await accountApi.phoneInUse(phone, session.accountId)) {
+            throw new ActionError({ code: 'CONFLICT', message: 'phone already in use' });
+          }
+          try {
+            approved = await checkPhoneVerify(phone, code);
+          } catch (e) {
+            console.error('[sms] check failed', (e as Error).message);
+            throw new ActionError({ code: 'BAD_REQUEST' });
+          }
         }
         if (!approved) throw new ActionError({ code: 'BAD_REQUEST', message: 'invalid code' });
         await accountApi.save(session, { phoneVerifiedAt: new Date().toISOString() });
