@@ -67,6 +67,9 @@ const btn = 'slab-cut border border-foreground/20 px-4 py-2 text-sm font-semibol
           <input name="url" type="url" required value={url} placeholder="https://www.kinky.nl/advertenties/12345-…" class={input} />
           <div class="flex flex-wrap items-center gap-3">
             <button type="submit" class={btn}>Preview mapping</button>
+            {(url || outcome) && (
+              <a href="/admin/imports/test" class={btn}>Clear</a>
+            )}
             <span class="text-2xs text-muted-foreground">or apply onto a profile:</span>
             <input data-profile-id placeholder="profile UUID" class={`${input} max-w-xs`} />
             <button type="button" data-apply data-url={url} class={btn}>Apply (super)</button>
