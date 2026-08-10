@@ -343,7 +343,7 @@
   "gtk_visits": "Visits you",
   "similar_online_now": "{count} similar profiles online in {city} now",
   "editor_rates": "Rates",
-  "editor_visit_hint": "Where you receive or visit clients — pick at least one to go live.",
+  "editor_visit_hint": "Where you receive or visit clients.",
   "editor_rates_hint": "Your price is the lowest amount in this table.",
   "editor_rates_duration": "Duration",
   "editor_extras": "Extras note",

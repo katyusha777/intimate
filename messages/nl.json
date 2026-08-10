@@ -343,7 +343,7 @@
   "gtk_visits": "Komt naar je toe",
   "similar_online_now": "{count} vergelijkbare profielen nu online in {city}",
   "editor_rates": "Tarieven",
-  "editor_visit_hint": "Waar je klanten ontvangt of bezoekt — kies er minstens één om live te gaan.",
+  "editor_visit_hint": "Waar je klanten ontvangt of bezoekt.",
   "editor_rates_hint": "Je prijs is het laagste bedrag in deze tabel.",
   "editor_rates_duration": "Duur",
   "editor_extras": "Notitie extra's",

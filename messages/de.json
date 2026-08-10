@@ -343,7 +343,7 @@
   "gtk_visits": "Besucht dich",
   "similar_online_now": "{count} ähnliche Profile jetzt online in {city}",
   "editor_rates": "Tarife",
-  "editor_visit_hint": "Wo du Kunden empfängst oder besuchst — wähle mindestens eine Option, um live zu gehen.",
+  "editor_visit_hint": "Wo du Kunden empfängst oder besuchst.",
   "editor_rates_hint": "Dein Preis ist der niedrigste Betrag in dieser Tabelle.",
   "editor_rates_duration": "Dauer",
   "editor_extras": "Hinweis Extras",
