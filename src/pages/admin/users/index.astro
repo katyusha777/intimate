@@ -32,6 +32,19 @@ const selProfile = selected ? profileFor(selected.email) : null;
 const madeBy = selected ? reports.filter((r) => r.reporterEmail === selected.email).length : 0;
 const againstProfile = selProfile ? reports.filter((r) => r.profileSlug === selProfile.slug).length : 0;
 const humanize = (s: string) => s.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
+// Account type (advertiser / client / admin) — the thing you most need to know
+// at a glance when viewing a user; admins also carry a sub-role.
+const accountType = selected
+  ? selected.accountType === 'admin' && selected.adminRole
+    ? `${humanize(selected.accountType)} · ${humanize(selected.adminRole)}`
+    : humanize(selected.accountType)
+  : '—';
+const typeChip =
+  selected?.accountType === 'admin'
+    ? 'border-brand text-brand'
+    : selected?.accountType === 'advertiser'
+      ? 'border-foreground text-foreground'
+      : 'border-border text-muted-foreground';
 ---
 
 <AdminShell title={m.adm_users_title()} section="users">
@@ -111,13 +124,17 @@ const humanize = (s: string) => s.replace(/_/g, ' ').replace(/^./, (c) => c.toUp
             <div class="grid place-items-center border border-dashed border-border py-24 text-sm text-muted-foreground">{m.adm_users_select()}</div>
           ) : (
             <div class="min-w-0 space-y-5">
-              <div class="flex items-center gap-3">
+              <div class="flex flex-wrap items-center gap-3">
                 <span class="grid size-10 flex-none place-items-center rounded-full bg-foreground font-condensed text-base font-bold text-background">{selected.email.charAt(0).toUpperCase()}</span>
-                <div><p class="font-condensed text-xl font-bold">{selected.email}</p></div>
+                <div class="min-w-0">
+                  <p class="break-all font-condensed text-xl font-bold">{selected.email}</p>
+                  <span class:list={['mt-1 inline-block slab-cut border px-2 py-0.5 text-2xs font-bold uppercase tracking-wide', typeChip]}>{accountType}</span>
+                </div>
               </div>
 
               <dl class="grid gap-px overflow-hidden border border-border bg-border sm:grid-cols-2">
                 {[
+                  [m.settings_account_type(), accountType],
                   [m.adm_users_linked_profile(), selProfile ? selProfile.name : '—'],
                   [m.adm_users_profile_state(), selProfile?.state ?? '—'],
                   [m.adm_users_id_verification(), humanize(selected.idVerification)],

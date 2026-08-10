@@ -42,48 +42,56 @@ const tabBtn =
 
     <!-- Register -->
     <form data-tab-panel="register" data-auth-form="register" class="mt-6 space-y-4">
+      {/* Step 1: pick the account type FIRST. The email/password only appear
+          AFTER a choice, so nobody registers as the wrong type by reflex. */}
+      <p class="text-center font-condensed text-sm font-semibold uppercase tracking-wide text-muted-foreground">{m.auth_pick_role()}</p>
       <div class="grid grid-cols-2 gap-3">
         <button
           type="button"
           data-role-btn="advertiser"
-          data-active="true"
-          class="group flex cursor-pointer flex-col items-center gap-1.5 border border-foreground/20 px-3 py-4 transition-colors data-[active=true]:border-foreground data-[active=true]:bg-foreground data-[active=true]:text-background"
+          data-active="false"
+          class="group flex cursor-pointer flex-col items-center gap-2 border border-foreground/20 p-5 text-center transition-colors hover:border-foreground/50 data-[active=true]:border-foreground data-[active=true]:bg-foreground data-[active=true]:text-background"
         >
-          <svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-2h6l2 2h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>
-          <span class="font-condensed text-sm font-bold uppercase tracking-wide">{m.role_advertiser()}</span>
-          <span class="text-2xs text-muted-foreground group-data-[active=true]:text-background/70">{m.role_advertiser_desc()}</span>
+          <svg class="size-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-2h6l2 2h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>
+          <span class="font-condensed text-base font-bold uppercase tracking-wide">{m.role_advertiser()}</span>
+          <span class="text-xs text-muted-foreground group-data-[active=true]:text-background/70">{m.role_advertiser_desc()}</span>
         </button>
         <button
           type="button"
           data-role-btn="client"
           data-active="false"
-          class="group flex cursor-pointer flex-col items-center gap-1.5 border border-foreground/20 px-3 py-4 transition-colors data-[active=true]:border-foreground data-[active=true]:bg-foreground data-[active=true]:text-background"
+          class="group flex cursor-pointer flex-col items-center gap-2 border border-foreground/20 p-5 text-center transition-colors hover:border-foreground/50 data-[active=true]:border-foreground data-[active=true]:bg-foreground data-[active=true]:text-background"
         >
-          <svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/></svg>
-          <span class="font-condensed text-sm font-bold uppercase tracking-wide">{m.role_client()}</span>
-          <span class="text-2xs text-muted-foreground group-data-[active=true]:text-background/70">{m.role_client_desc()}</span>
+          <svg class="size-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/></svg>
+          <span class="font-condensed text-base font-bold uppercase tracking-wide">{m.role_client()}</span>
+          <span class="text-xs text-muted-foreground group-data-[active=true]:text-background/70">{m.role_client_desc()}</span>
         </button>
       </div>
 
-      <SlabField label={m.auth_email()} name="email" type="email" autocomplete="email" required />
-      <SlabField label={m.auth_password()} name="password" type="password" autocomplete="new-password" required />
+      {/* Step 2: revealed once a role is chosen. */}
+      <div data-register-fields class="reveal-wrap">
+        <div class="reveal-inner space-y-4">
+          <SlabField label={m.auth_email()} name="email" type="email" autocomplete="email" required />
+          <SlabField label={m.auth_password()} name="password" type="password" autocomplete="new-password" required />
 
-      <p data-auth-error class="hidden text-sm font-medium text-brand">{m.auth_error()}</p>
-      {/* Existing-email message (#13) with reset + support links. */}
-      <p data-auth-exists class="hidden border border-brand/40 bg-brand/5 p-3 text-sm leading-relaxed">
-        {m.auth_email_exists()}{' '}
-        <button type="button" data-go-reset class="cursor-pointer font-medium text-brand underline underline-offset-2">{m.auth_reset_link()}</button>{' '}
-        <span>{m.auth_or_support()}</span>{' '}
-        <a href={localizePath('/support/')} class="font-medium underline underline-offset-2">{m.nav_support()}</a>
-      </p>
-      <Button type="submit" size="lg" class="w-full">{m.auth_create_account()}</Button>
-      <p class="text-center text-xs leading-relaxed text-muted-foreground">
-        {m.auth_terms()}
-        <br />
-        <a href={localizePath('/terms/')} class="underline underline-offset-2 hover:text-foreground">{m.legal_terms()}</a>
-        <span aria-hidden="true"> · </span>
-        <a href={localizePath('/privacy/')} class="underline underline-offset-2 hover:text-foreground">{m.legal_privacy()}</a>
-      </p>
+          <p data-auth-error class="hidden text-sm font-medium text-brand">{m.auth_error()}</p>
+          {/* Existing-email message (#13) with reset + support links. */}
+          <p data-auth-exists class="hidden border border-brand/40 bg-brand/5 p-3 text-sm leading-relaxed">
+            {m.auth_email_exists()}{' '}
+            <button type="button" data-go-reset class="cursor-pointer font-medium text-brand underline underline-offset-2">{m.auth_reset_link()}</button>{' '}
+            <span>{m.auth_or_support()}</span>{' '}
+            <a href={localizePath('/support/')} class="font-medium underline underline-offset-2">{m.nav_support()}</a>
+          </p>
+          <Button type="submit" size="lg" class="w-full">{m.auth_create_account()}</Button>
+          <p class="text-center text-xs leading-relaxed text-muted-foreground">
+            {m.auth_terms()}
+            <br />
+            <a href={localizePath('/terms/')} class="underline underline-offset-2 hover:text-foreground">{m.legal_terms()}</a>
+            <span aria-hidden="true"> · </span>
+            <a href={localizePath('/privacy/')} class="underline underline-offset-2 hover:text-foreground">{m.legal_privacy()}</a>
+          </p>
+        </div>
+      </div>
     </form>
 
     <!-- Login -->
@@ -142,6 +150,32 @@ const tabBtn =
   </div>
 </Modal>
 
+<style>
+  /* Register step 2: collapsed until a role is chosen, then it grows in. The
+     0fr→1fr grid trick animates auto height; inner clips during the transition. */
+  .reveal-wrap {
+    display: grid;
+    grid-template-rows: 0fr;
+    opacity: 0;
+    visibility: hidden;
+    transition: grid-template-rows 0.32s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.25s ease;
+  }
+  .reveal-wrap.is-open {
+    grid-template-rows: 1fr;
+    opacity: 1;
+    visibility: visible;
+  }
+  .reveal-inner {
+    min-height: 0;
+    overflow: hidden;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .reveal-wrap {
+      transition: none;
+    }
+  }
+</style>
+
 <script>
   import { actions } from 'astro:actions';
 
@@ -173,21 +207,31 @@ const tabBtn =
         const current = document.querySelector<HTMLElement>('dialog#auth');
         if (!current) return;
         if (opener.dataset.authTab) selectTab(current, opener.dataset.authTab);
-        // Openers can preselect a role tile (invite links → customer, #9).
+        // Openers can preselect a role tile (invite links → customer, #9) —
+        // reveal the fields too, since the choice is already made.
         if (opener.dataset.authRole) {
           current.querySelectorAll<HTMLElement>('[data-role-btn]').forEach((b) => {
             b.dataset.active = String(b.dataset.roleBtn === opener.dataset.authRole);
           });
+          current.querySelector<HTMLElement>('[data-register-fields]')?.classList.add('is-open');
         }
       });
     }
 
-    // Role tiles: pure selection (advertiser default).
+    // Reveal step 2 (email/password) once a role is chosen — registration is
+    // role-first so nobody signs up as the wrong type by reflex.
+    const revealRegisterFields = (focus = false) => {
+      modal.querySelector<HTMLElement>('[data-register-fields]')?.classList.add('is-open');
+      if (focus) modal.querySelector<HTMLInputElement>('[data-register-fields] input[name="email"]')?.focus();
+    };
+
+    // Role tiles: select + reveal the fields.
     modal.querySelectorAll<HTMLElement>('[data-role-btn]').forEach((btn) => {
       btn.addEventListener('click', () => {
         modal.querySelectorAll<HTMLElement>('[data-role-btn]').forEach((b) => {
           b.dataset.active = String(b === btn);
         });
+        revealRegisterFields(true);
       });
     });
 

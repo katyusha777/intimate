@@ -298,12 +298,16 @@ const unread = session && !bare ? await messagingApi.unreadCount(session) : 0;
           const m = root.querySelector("meta[name='x-real-title']");
           return (m && m.getAttribute('content')) || root.title;
         };
-        const STATES = ['off', 'neutral', 'dev'];
+        // The `dev` (anime build-in-public) skin is operator-only: it joins the
+        // cycle ONLY when localStorage 'dev' is set. Everyone else gets the two
+        // real states — off (photos) and neutral (blurred).
+        const devMode = () => { try { return localStorage.getItem('dev') !== null; } catch { return false; } };
 
         const state = () => {
           const m = document.cookie.match(/safe_mode=(\w+)/);
           const v = m && m[1];
-          if (v === 'off' || v === 'neutral' || v === 'dev') return v;
+          if (v === 'dev') return devMode() ? 'dev' : 'neutral'; // stale dev cookie → neutral for non-operators
+          if (v === 'off' || v === 'neutral') return v;
           if (v === 'on') return 'neutral'; // legacy cookie
           return 'off'; // photos by default — safe mode is a choice, not a wall
         };
@@ -365,9 +369,11 @@ const unread = session && !bare ? await messagingApi.unreadCount(session) : 0;
           }
         };
 
-        // Toggle cycles off → neutral → dev → off (5.2). Boss key flips on/off.
+        // Toggle cycles off → neutral (→ dev, operators only) → off (5.2). Boss
+        // key flips on/off. Non-operators never reach the anime skin.
         const cycle = () => {
-          setState(STATES[(STATES.indexOf(state()) + 1) % STATES.length]);
+          const states = devMode() ? ['off', 'neutral', 'dev'] : ['off', 'neutral'];
+          setState(states[(states.indexOf(state()) + 1) % states.length]);
           apply();
         };
         const flip = () => {
