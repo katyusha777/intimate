@@ -563,7 +563,10 @@ export function makeMessagingApi(db: () => Db): MessagingApi {
       if (firstUnread) {
         const [acc] = await d.select({ email: accounts.email }).from(accounts).where(eq(accounts.id, to));
         if (acc?.email) emailNewMessage(acc.email, threadId);
-        pushoverAdmins('client_message', 'New message', `new message in thread ${threadId}`);
+        // The event is "client messages a professional" — her replies must not
+        // ping the admin team.
+        if (party === 'client')
+          pushoverAdmins('client_message', 'New message', `new message in thread ${threadId}`);
       }
     }
     return row ? toMessage(row) : null;

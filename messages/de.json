@@ -90,6 +90,7 @@
   "import_warnings_label": "Bitte kurz prüfen:",
   "settings_account_type": "Kontotyp",
   "auth_email": "E-Mail-Adresse",
+  "auth_show_password": "Passwort anzeigen",
   "auth_password": "Passwort",
   "auth_create_account": "Konto erstellen",
   "auth_forgot": "Passwort vergessen?",

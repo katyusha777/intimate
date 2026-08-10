@@ -106,12 +106,7 @@ const taxo = [
                 </label>
               ))}
             </div>
-            <div class="mt-2 flex items-center gap-3">
-              <button type="button" data-notify-save class="cursor-pointer border border-foreground/20 px-3 py-1.5 text-2xs font-bold uppercase tracking-wide transition-colors hover:border-foreground/60">
-                Save notifications
-              </button>
-              <span data-notify-status class="text-2xs text-muted-foreground"></span>
-            </div>
+            <p class="mt-2 text-2xs text-muted-foreground" data-notify-status>Changes save immediately.</p>
           </section>
 
           <section>
@@ -246,16 +241,17 @@ const taxo = [
     });
   });
 
-  // Admin notification toggles — save the whole set at once.
-  document.querySelector<HTMLButtonElement>('[data-notify-save]')?.addEventListener('click', async (ev) => {
-    const btn = ev.currentTarget as HTMLButtonElement;
-    const boxes = document.querySelectorAll<HTMLInputElement>('[data-notify-pref]');
-    const prefs: Record<string, boolean> = {};
-    boxes.forEach((b) => (prefs[b.dataset.notifyPref!] = b.checked));
-    btn.disabled = true;
-    const { error } = await actions.admin.setNotifyPrefs({ prefs });
-    btn.disabled = false;
-    const s = document.querySelector<HTMLElement>('[data-notify-status]');
-    if (s) s.textContent = error ? error.message : 'Saved.';
-  });
+  // Admin notification toggles — auto-save the whole set on every flip (the
+  // old explicit Save button silently lost changes when it wasn't pressed).
+  const notifyBoxes = document.querySelectorAll<HTMLInputElement>('[data-notify-pref]');
+  notifyBoxes.forEach((box) =>
+    box.addEventListener('change', async () => {
+      const prefs: Record<string, boolean> = {};
+      notifyBoxes.forEach((b) => (prefs[b.dataset.notifyPref!] = b.checked));
+      const { error } = await actions.admin.setNotifyPrefs({ prefs });
+      const s = document.querySelector<HTMLElement>('[data-notify-status]');
+      if (s) s.textContent = error ? `Save failed: ${error.message}` : 'Saved.';
+      if (error) box.checked = !box.checked; // roll the optimistic flip back
+    }),
+  );
 </script>

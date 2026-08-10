@@ -2,8 +2,10 @@
 /**
  * Labelled Misprint slab input (DESIGN §1.1): the P5-style cut ink frame with
  * a paper face. One component for every auth/account form field.
+ * `type="password"` gets a show/hide eye toggle built in.
  */
 import type { HTMLAttributes } from 'astro/types';
+import * as m from '@/paraglide/messages';
 
 interface Props {
   label: string;
@@ -32,6 +34,7 @@ const {
   class: className,
   ...rest
 } = Astro.props;
+const isPassword = type === 'password';
 ---
 
 <label class:list={['block space-y-2.5', className]}>
@@ -48,11 +51,44 @@ const {
         {autocomplete}
         {inputmode}
         class:list={[
-          'h-full w-full bg-transparent pr-4 text-base caret-brand outline-none placeholder:text-muted-foreground md:text-sm',
+          'h-full w-full bg-transparent text-base caret-brand outline-none placeholder:text-muted-foreground md:text-sm',
           prefix ? 'pl-1.5' : 'pl-4',
+          isPassword ? 'pr-1' : 'pr-4',
         ]}
         {...rest}
       />
+      {
+        isPassword && (
+          <button
+            type="button"
+            data-pw-toggle
+            aria-label={m.auth_show_password()}
+            aria-pressed="false"
+            tabindex="-1"
+            class="grid h-full w-11 flex-none cursor-pointer place-items-center text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <svg data-eye class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>
+            <svg data-eye-off class="hidden size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49"/><path d="M14.084 14.158a3 3 0 0 1-4.242-4.242"/><path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143"/><path d="m2 2 20 20"/></svg>
+          </button>
+        )
+      }
     </span>
   </span>
 </label>
+
+<script>
+  // Delegated once (Astro dedupes this script across instances) — covers every
+  // password slab, including ones revealed later (register step 2), across
+  // view transitions. No-op on pages without a [data-pw-toggle].
+  document.addEventListener('click', (e) => {
+    const btn = (e.target as HTMLElement).closest<HTMLElement>('[data-pw-toggle]');
+    if (!btn) return;
+    const input = btn.parentElement?.querySelector('input');
+    if (!input) return;
+    const show = input.type === 'password';
+    input.type = show ? 'text' : 'password';
+    btn.setAttribute('aria-pressed', String(show));
+    btn.querySelector('[data-eye]')?.classList.toggle('hidden', show);
+    btn.querySelector('[data-eye-off]')?.classList.toggle('hidden', !show);
+  });
+</script>

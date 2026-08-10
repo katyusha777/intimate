@@ -90,6 +90,7 @@
   "import_warnings_label": "A few things to check:",
   "settings_account_type": "Account type",
   "auth_email": "Email address",
+  "auth_show_password": "Show password",
   "auth_password": "Password",
   "auth_create_account": "Create account",
   "auth_forgot": "Forgot password?",

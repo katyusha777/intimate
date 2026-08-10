@@ -90,6 +90,7 @@
   "import_warnings_label": "Even controleren:",
   "settings_account_type": "Accounttype",
   "auth_email": "E-mailadres",
+  "auth_show_password": "Toon wachtwoord",
   "auth_password": "Wachtwoord",
   "auth_create_account": "Account aanmaken",
   "auth_forgot": "Wachtwoord vergeten?",

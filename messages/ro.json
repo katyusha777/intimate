@@ -90,6 +90,7 @@
   "import_warnings_label": "Câteva lucruri de verificat:",
   "settings_account_type": "Tip de cont",
   "auth_email": "Adresă de e-mail",
+  "auth_show_password": "Arată parola",
   "auth_password": "Parolă",
   "auth_create_account": "Creează cont",
   "auth_forgot": "Ai uitat parola?",
