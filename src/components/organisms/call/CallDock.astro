@@ -225,6 +225,28 @@ const { session } = Astro.props;
           {m.call_error_close()}
         </button>
       </div>
+      <!-- Straight to support — WhatsApp opens with the report prefilled. -->
+      <div class="mt-2 flex gap-2">
+        <a
+          data-call-error-wa
+          href="https://wa.me/31853332377"
+          target="_blank"
+          rel="noopener"
+          class="flex flex-1 items-center justify-center gap-1.5 rounded-full border border-whatsapp/50 px-4 py-2 text-sm font-semibold text-whatsapp transition-transform active:scale-95"
+        >
+          <svg class="size-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2c-1.6 0-3.1-.4-4.4-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.6-6.1c-.3-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1-.2.3-.6.8-.8 1-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4 0-.5.1-.7l.4-.5c.1-.2.2-.3.3-.5v-.5c0-.1-.6-1.4-.8-1.9-.2-.5-.4-.4-.6-.4h-.5c-.2 0-.5.1-.7.3-.2.3-.9.9-.9 2.2s.9 2.5 1 2.7c.1.2 1.8 2.8 4.4 3.9.6.3 1.1.4 1.5.6.6.2 1.2.2 1.6.1.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.2-1.2l-.3-.2Z"/></svg>
+          WhatsApp
+        </a>
+        <a
+          href="https://t.me/intimatenl"
+          target="_blank"
+          rel="noopener"
+          class="flex flex-1 items-center justify-center gap-1.5 rounded-full border border-telegram/50 px-4 py-2 text-sm font-semibold text-telegram transition-transform active:scale-95"
+        >
+          <svg class="size-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.9 4.4 2.7 11.8c-1.3.5-1.3 1.3-.2 1.6l4.9 1.5 1.9 5.7c.2.6.1.9.8.9.5 0 .7-.2 1-.5l2.4-2.3 5 3.7c.9.5 1.6.2 1.8-.9l3.3-15.4c.3-1.3-.5-1.9-1.7-1.7Z"/></svg>
+          Telegram
+        </a>
+      </div>
     </div>
   </div>
 </div>
@@ -428,6 +450,9 @@ const { session } = Astro.props;
         ...logBuf,
       ].join('\n');
       $('[data-call-error-log]').textContent = report;
+      // WhatsApp opens with the report already typed — one tap to support.
+      $<HTMLAnchorElement>('[data-call-error-wa]').href =
+        `https://wa.me/31853332377?text=${encodeURIComponent(report.slice(0, 1200))}`;
       $('[data-call-error]').hidden = false;
       // Same report → Sentry, so support sees it without a screenshot.
       void actions.call
@@ -620,9 +645,13 @@ const { session } = Astro.props;
           handshakeTimeoutMs: CONNECT_MS,
           onJoinError: (d) => {
             if (call !== me || me.done) return;
-            warn('rtc join failed:', d.error);
-            alertToast(root.dataset.i18nCallFailed);
-            void teardown(false, 'failed');
+            // ADVISORY, not fatal: trystero reports "could not connect after
+            // exchanging SDP" whenever announce-glare destroys an in-flight
+            // answered offer (both sides offered; the loser is torn down) —
+            // then keeps retrying and usually connects. Tearing down here
+            // killed calls seconds from success. The 25s connect budget is
+            // the honest failure arbiter; this line feeds its report card.
+            warn('rtc join error (retrying):', d.error);
           },
         },
       );

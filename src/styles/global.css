@@ -145,6 +145,7 @@
   --color-online: var(--online);
   /* Brand colors for the support channels (test bans arbitrary hex classes). */
   --color-telegram: #229ed9;
+  --color-whatsapp: #25d366;
   --color-brand: var(--brand);
   --color-brand-foreground: var(--brand-foreground);
   --color-glass-ultrathin: var(--glass-ultrathin);
