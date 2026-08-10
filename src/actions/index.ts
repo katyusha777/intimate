@@ -712,6 +712,32 @@ export const server = {
       },
     }),
 
+    // Client-side call failures → Sentry (owner ask 2026-08-11: support sees
+    // the diagnosis without screenshots). The log is the content-free [call]
+    // ring buffer — data, never instructions; bounded; never SDP.
+    reportFailure: defineAction({
+      input: z.object({
+        callId: z.string().max(60),
+        reason: z.string().max(30),
+        log: z.string().max(4000),
+      }),
+      handler: async ({ callId, reason, log }, context) => {
+        const session = await requireSession(context);
+        try {
+          // Dynamic: sentry.ts imports cloudflare:workers — keep it out of
+          // bun's module graph (same discipline as pushover/email).
+          const { captureError } = await import('@/lib/sentry');
+          captureError(new Error(`call failed: ${reason}`), {
+            url: context.url?.pathname,
+            extra: { callId, account: session.accountId, log },
+          });
+        } catch {
+          /* sentry unavailable — the on-screen report card still exists */
+        }
+        return { ok: true };
+      },
+    }),
+
     get: defineAction({
       input: z.object({ callId: z.string().max(60) }),
       handler: async ({ callId }, context) => {

@@ -11,7 +11,7 @@
  */
 import { env, waitUntil } from 'cloudflare:workers';
 
-export function captureError(err: unknown, ctx?: { url?: string }): void {
+export function captureError(err: unknown, ctx?: { url?: string; extra?: Record<string, unknown> }): void {
   try {
     const e = env as unknown as { SENTRY_DSN?: string; CF_VERSION?: { id?: string } };
     const m = e.SENTRY_DSN?.match(/^https:\/\/([a-f0-9]+)@([^/]+)\/(\d+)$/);
@@ -33,7 +33,7 @@ export function captureError(err: unknown, ctx?: { url?: string }): void {
       environment: 'production',
       release: e.CF_VERSION?.id,
       exception: { values: [{ type: error.name, value: error.message }] },
-      extra: { stack: error.stack },
+      extra: { stack: error.stack, ...ctx?.extra },
       request: safeUrl ? { url: safeUrl } : undefined,
     };
     const envelope = [

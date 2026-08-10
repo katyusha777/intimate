@@ -420,14 +420,19 @@ const { session } = Astro.props;
     }
 
     function showCallError(me: { view: CallView }, reason: string) {
-      $('[data-call-error-log]').textContent = [
+      const report = [
         new Date().toISOString(),
         `call ${me.view.id} · ${me.view.mode} · ${me.view.party} · ${reason}`,
         navigator.userAgent,
         '──',
         ...logBuf,
       ].join('\n');
+      $('[data-call-error-log]').textContent = report;
       $('[data-call-error]').hidden = false;
+      // Same report → Sentry, so support sees it without a screenshot.
+      void actions.call
+        .reportFailure({ callId: me.view.id, reason, log: report.slice(0, 4000) })
+        .catch(() => {});
     }
     $('[data-call-error-close]').addEventListener('click', () => {
       $('[data-call-error]').hidden = true;
