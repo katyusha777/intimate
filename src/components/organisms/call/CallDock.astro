@@ -103,7 +103,7 @@ const { session } = Astro.props;
         autoplay
         playsinline
         muted
-        class="absolute left-1/2 top-1/2 h-auto min-h-full w-auto min-w-full max-w-none -translate-x-1/2 -translate-y-1/2 object-cover"></video>
+        class="absolute left-1/2 top-1/2 max-w-none -translate-x-1/2 -translate-y-1/2"></video>
     </div>
     <audio data-remote-audio class="hidden"></audio>
     <!-- PiP self-view; tapping it swaps which stream fills the screen (both
@@ -121,7 +121,7 @@ const { session } = Astro.props;
         autoplay
         playsinline
         muted
-        class="absolute left-1/2 top-1/2 h-auto min-h-full w-auto min-w-full max-w-none -translate-x-1/2 -translate-y-1/2 object-cover"></video>
+        class="absolute left-1/2 top-1/2 max-w-none -translate-x-1/2 -translate-y-1/2"></video>
     </div>
 
     <!-- Autoplay recovery: shown only when the browser refused un-gestured
@@ -234,6 +234,33 @@ const { session } = Astro.props;
     const localWrap = $('[data-local-wrap]');
     const localEl = $<HTMLVideoElement>('[data-local]');
     const soundPill = $('[data-sound-pill]');
+
+    /** object-fit-free cover (WebKit ignores it on MediaStream video): fill
+     *  the wrapper's tighter dimension, let overflow-hidden crop the other —
+     *  aspect preserved, box always filled, never intrinsic-size zoom. */
+    function coverFit(video: HTMLVideoElement, wrap: HTMLElement) {
+      const vw = video.videoWidth;
+      const vh = video.videoHeight;
+      const bw = wrap.clientWidth;
+      const bh = wrap.clientHeight;
+      if (!vw || !vh || !bw || !bh) return;
+      if (vw / vh > bw / bh) {
+        video.style.height = '100%';
+        video.style.width = 'auto';
+      } else {
+        video.style.width = '100%';
+        video.style.height = 'auto';
+      }
+    }
+    const fitVideos = () => {
+      coverFit(remoteEl, remoteWrap);
+      coverFit(localEl, localWrap);
+    };
+    // 'resize' on a video = its stream dimensions changed (first frame,
+    // camera flip, phone rotation); window resize = the boxes changed.
+    remoteEl.addEventListener('resize', fitVideos);
+    localEl.addEventListener('resize', fitVideos);
+    window.addEventListener('resize', fitVideos);
 
     // ── live unread dots (V0 DoD: badge moves without navigation) ─────────
     const showDots = () => {
@@ -452,6 +479,7 @@ const { session } = Astro.props;
       const mirror = facing === 'user';
       remoteEl.classList.toggle('-scale-x-100', call.swapped && mirror);
       localEl.classList.toggle('-scale-x-100', !call.swapped && mirror);
+      fitVideos();
       void remoteEl.play().catch(() => {});
       void localEl.play().catch(() => {});
     }
