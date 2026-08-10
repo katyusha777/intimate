@@ -46,6 +46,7 @@ const M_PEND = '00000000-0000-4000-8000-000000000022'; // pending media
 const M_PRIV = '00000000-0000-4000-8000-000000000023'; // approved private media
 const M_DRAFT = '00000000-0000-4000-8000-000000000024'; // approved media, draft profile
 const TH = '00000000-0000-4000-8000-000000000031'; // thread PRO×CLI
+const CS = '00000000-0000-4000-8000-000000000041'; // call session in TH
 
 async function seed() {
   await cleanup();
@@ -63,10 +64,12 @@ async function seed() {
     (${M_DRAFT}, ${P_DRAFT}, 'approved', 'k-draft', false)`;
   await sql`insert into threads (id, profile_id, client_account_id) values (${TH}, ${P_LIVE}, ${CLI})`;
   await sql`insert into messages (thread_id, sender, kind, body) values (${TH}, 'client', 'text', 'hi')`;
+  await sql`insert into call_sessions (id, profile_id, client_account_id, thread_id, mode) values (${CS}, ${P_LIVE}, ${CLI}, ${TH}, 'voice')`;
 }
 
 async function cleanup() {
   // FK order. audit_log is append-only — never seeded outside rolled-back txns.
+  await sql`delete from call_sessions where id = ${CS}`;
   await sql`delete from messages where thread_id = ${TH}`;
   await sql`delete from favorites where profile_id in (${P_LIVE}, ${P_DRAFT})`;
   await sql`delete from threads where id = ${TH}`;
@@ -256,12 +259,34 @@ t('anon cannot execute private.is_thread_participant', async () => {
 
 // ── realtime wiring ─────────────────────────────────────────────────────────
 
-t('realtime.messages carries our 4 policies', async () => {
+t('realtime.messages carries our policies', async () => {
   const rows = await sql`select policyname from pg_policies where schemaname = 'realtime' and tablename = 'messages'`;
   const names = rows.map((r) => r.policyname);
-  for (const p of ['thread participants listen', 'thread participants send', 'presence listen', 'presence track']) {
+  for (const p of [
+    'thread participants listen',
+    'thread participants send',
+    'presence listen',
+    'presence track',
+    'call participants listen',
+    'call participants send',
+  ]) {
     expect(names).toContain(p);
   }
+});
+
+// The trystero rtc channel (`call:{id}:rtc`, src/app/callroom.ts) rides the
+// 0010 call policies: `topic LIKE 'call:%'` + is_call_participant on
+// split_part position 2. Prove BOTH assumptions — suffix-tolerant parsing and
+// the participant gate per role — exactly as the policy evaluates them.
+t("rtc signaling topic 'call:{id}:rtc' authorizes participants only", async () => {
+  const topic = `call:${CS}:rtc`;
+  const check = (uid: string) =>
+    as('authenticated', uid, () =>
+      sql`select private.is_call_participant(split_part(${topic}, ':', 2)::uuid) as ok`,
+    );
+  expect((await check(CLI))[0]!.ok).toBe(true); // the client in the thread
+  expect((await check(PRO))[0]!.ok).toBe(true); // the professional
+  expect((await check(STR))[0]!.ok).toBe(false); // a stranger — no signaling path
 });
 
 t('message insert broadcasts to the private thread topic + touches the thread', async () => {

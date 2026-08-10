@@ -220,18 +220,24 @@ off; **rejects if she already has an active session — busy is server truth**)
 meanwhile her side joins the trystero room and announces (~5s re-announce
 loop) during the ring → his Accept tap starts *his* `getUserMedia` (same
 gesture law) in parallel with `call.accept` → his room join meets her
-announce → trystero negotiates (offer/answer, glare, trickle ICE — library-
-owned) → local streams attach per side once a peer is present, remote media
-flows via `onPeerStream` → hangup either side → `call.end(reason)` action;
-the trigger's `call` event plus trystero's instant peer-leave tear the other
-side down → `kind='call'` card posted. Decline → card her side ("not now"
-tone, no penalty copy) — reaches her ringing UI via the trigger's `call`
-event. 30s no-answer → `missed` + card; 25s accept-to-connect budget →
-honest failure toast. 30s heartbeat updates `last_beat_at` while active
-(liveness now, billing later). Mid-call drops: trystero restarts ICE
-internally; a peer that vanishes without writing server state → 2s grace →
-honest local `failed` teardown. Every state edge logs `[call]` to the
-console (content-free — never SDP).
+announce → trystero connects the peers (data channel; glare/ICE library-
+owned). **Media law — the caller owns every offer** (proven live 2026-08-11:
+any WebKit RE-offer renumbers RTP extension IDs and Chromium kills the call):
+the callee announces media-captured via a `ready` data-channel action → the
+caller makes the ONE renegotiation (`addStream`) → the callee attaches its
+tracks to the caller's transceivers *inside the answer* (`pc` track event
+during setRemoteDescription → `direction='sendrecv'` + `replaceTrack`); the
+callee never calls `addStream`. Remote media lands via raw `pc` track events
+both sides → hangup either side → `call.end(reason)` action; the trigger's
+`call` event plus trystero's instant peer-leave tear the other side down →
+`kind='call'` card posted. Decline → card her side ("not now" tone, no
+penalty copy) — reaches her ringing UI via the trigger's `call` event. 30s
+no-answer → `missed` + card; 25s accept-to-connect budget (also trystero's
+handshake timeout) → honest failure toast. 30s heartbeat updates
+`last_beat_at` while active (liveness now, billing later). Mid-call drops:
+trystero restarts ICE internally; a peer that vanishes without writing
+server state → 2s grace → honest local `failed` teardown. Every state edge
+logs `[call]` to the console (content-free — never SDP).
 
 UI (reuse law; register everything in COMPONENTS.md + `/kitchen-sink` same
 change):

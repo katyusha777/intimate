@@ -61,6 +61,10 @@ function entryFor(client: Client, roomId: string): Entry {
       return ch;
     })(),
   };
+  // A dead channel must not squat the map — the next join retries fresh.
+  void entry.ready.catch(() => {
+    if (entries.get(roomId) === entry) entries.delete(roomId);
+  });
   entries.set(roomId, entry);
   return entry;
 }

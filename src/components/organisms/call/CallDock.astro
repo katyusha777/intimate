@@ -475,18 +475,25 @@ const { session } = Astro.props;
       room.onPeerJoin = (peerId) => {
         if (call !== me || me.done) return;
         dbg('peer join');
+        // A peer in the RLS-gated room IS an accept (the callee only joins
+        // after the accept action) — backstop for a lost DB-trigger event,
+        // so the ring timer can never kill an already-connected call.
+        if (me.view.party === 'professional') onAccepted(me);
         watchPeer(me, peerId);
         maybeSendLocal(me);
         signalReady(me);
         if (me.holdLocal) {
           // Caller fallback: callee's media never materialised — offer anyway
-          // (one-way call beats silence; the callee answers recvonly).
+          // (one-way call beats silence; the callee answers recvonly). 15s,
+          // NOT shorter: iOS re-prompts for cam/mic each page load, and an
+          // offer that lands while the prompt is open locks the callee into
+          // a recvonly answer it can never upgrade (it may never offer).
           const t = window.setTimeout(() => {
             if (call === me && !me.done && me.holdLocal) {
               me.holdLocal = false;
               maybeSendLocal(me);
             }
-          }, 5000);
+          }, 15_000);
           me.timers.push(t);
         }
       };
