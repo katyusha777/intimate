@@ -47,7 +47,7 @@ The admin is built from the SAME component pyramid as the public site. Consisten
 │  ├─ Moderation       new/edited profiles + media
 │  ├─ Reports          user reports (escalations pinned)
 │  ├─ Taxonomy         unmapped import terms
-│  └─ Imports          job monitor (failures, retries)
+│  └─ Imports          job monitor + /imports/test (paste-URL → mapping preview, apply-to-profile)
 ├─ Profiles            search/filter, detail, state, completeness
 ├─ Users               accounts, relations, status
 ├─ Organizations       agencies, members, rosters

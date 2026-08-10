@@ -22,6 +22,7 @@ import { approveWholeSubmission, decideModeration } from './queues';
 import { setProfileState } from './entities';
 import { approveDeletion, exportAccountData } from './gdpr';
 import { retryImport } from './imports';
+import { importFromUrl } from '@/lib/import';
 import { INDEXNOW_KEY, submitIndexNow } from '@/lib/indexnow';
 import { evictMediaCache, isR2Key, mediaBucket } from '@/lib/media-keys';
 import { ADMIN_EVENTS, NOTIFY_PREFS_KEY } from '@/lib/pushover';
@@ -310,6 +311,36 @@ export const admin = {
       await retryImport(id);
       await record(session, { action: 'add_note', entityType: 'import', entityId: id, meta: { note: 'retry' } });
       return { ok: true };
+    },
+  }),
+
+  // Import test tool (/admin/imports/test): scrape+normalize a URL and see the
+  // raw LLM output beside our mapped fields — how you verify the mapping holds.
+  importPreview: defineAction({
+    input: z.object({ url: z.string().url().max(500) }),
+    handler: async ({ url }, context) => {
+      await requireAdmin(context, ['moderator']);
+      try {
+        const { site, fields, warnings, raw, cost } = await importFromUrl(url);
+        return { site, fields, warnings, raw, cost };
+      } catch (e) {
+        throw new ActionError({ code: 'BAD_REQUEST', message: (e as Error).message });
+      }
+    },
+  }),
+  // Apply an import directly onto a profile by id (super-only, audit-logged).
+  importApply: defineAction({
+    input: z.object({ profileId: z.string().uuid(), url: z.string().url().max(500) }),
+    handler: async ({ profileId, url }, context) => {
+      const session = await requireAdmin(context, ['super']);
+      try {
+        const { fields, warnings } = await importFromUrl(url);
+        await accountApi.saveProfileById(profileId, fields);
+        await record(session, { action: 'edit_profile_admin', entityType: 'profile', entityId: profileId, meta: { note: `import from ${url}` } });
+        return { ok: true, fields, warnings };
+      } catch (e) {
+        throw new ActionError({ code: 'BAD_REQUEST', message: (e as Error).message });
+      }
     },
   }),
 

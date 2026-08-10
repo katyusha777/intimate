@@ -6,6 +6,7 @@ import { sessionApi } from '@/app/api/session';
 import { isLocale, localizePath } from '@/lib/i18n';
 import AccountShell from '@/components/organisms/dashboard/AccountShell.astro';
 import ProfileEditorForm from '@/components/organisms/dashboard/ProfileEditorForm.astro';
+import ImportFromSiteBanner from '@/components/organisms/dashboard/ImportFromSiteBanner.astro';
 import SignInPrompt from '@/components/organisms/dashboard/SignInPrompt.astro';
 import Layout from '@/layouts/Layout.astro';
 
@@ -39,6 +40,13 @@ const justOnboarded = Astro.url.searchParams.has('onboarded');
   {
     session && profile && (
       <AccountShell {session} title={m.editor_title()} path={localizePath('/account/profile/')} bannerState={profile.state}>
+        {/* Offer the one-paste import while the rich data is still empty — once
+            she has services or rates, she's past the point it helps. */}
+        {profile.services.length === 0 && profile.rates.length === 0 && (
+          <div class="mb-8">
+            <ImportFromSiteBanner />
+          </div>
+        )}
         <div class="mb-8" data-completeness style={`--pct:${completeness}%`} data-onboarded={justOnboarded ? '1' : undefined}>
           <div class="flex items-baseline justify-between gap-3">
             <p class="text-sm font-medium">{m.editor_completeness_hint()}</p>

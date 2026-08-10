@@ -1,0 +1,164 @@
+---
+/**
+ * "Import your data from another site" — sits above the profile editor once
+ * she's building a still-empty profile. She pastes her existing profile URL
+ * (kinky.nl / sexjobs.nl / redlights.nl), we scrape + normalize to our taxonomy
+ * (account.importProfile), and show a cleaned preview modal. On confirm we call
+ * the normal saveProfile — nothing is saved until she says so, and photos are
+ * never imported (she uploads her own). See src/lib/import/.
+ */
+import * as m from '@/paraglide/messages';
+import Button from '@/components/atoms/Button.astro';
+import Modal from '@/components/molecules/Modal.astro';
+---
+
+<section data-import class="border border-brand/40 bg-brand/5 p-5 sm:p-6">
+  <p class="font-condensed text-xl font-bold sm:text-2xl">{m.import_title()}</p>
+  <p class="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">{m.import_body()}</p>
+  <form data-import-form class="mt-4 flex flex-col gap-2 sm:flex-row">
+    <input
+      data-import-url
+      type="url"
+      required
+      inputmode="url"
+      placeholder="https://…"
+      class="min-w-0 flex-1 border border-foreground/20 bg-background px-3 py-2.5 text-sm outline-none focus:border-foreground"
+    />
+    <Button type="submit" data-import-go size="lg">{m.import_cta()}</Button>
+  </form>
+  <p data-import-error hidden class="mt-2 text-sm font-medium text-brand"></p>
+</section>
+
+<Modal id="import-preview" class="max-w-lg">
+  <div class="p-6">
+    <p class="font-condensed text-lg font-bold">{m.import_preview_title()}</p>
+    <p class="mt-1 text-sm text-muted-foreground">{m.import_preview_sub()}</p>
+    <dl data-import-summary class="mt-4 divide-y divide-border border-y border-border"></dl>
+    <div data-import-warnings hidden class="mt-3 border-l-2 border-amber-500 pl-3 text-xs leading-relaxed text-muted-foreground">
+      <p class="font-semibold">{m.import_warnings_label()}</p>
+      <ul data-import-warnlist class="mt-1 list-disc pl-4"></ul>
+    </div>
+    <div class="mt-6 flex flex-wrap justify-end gap-3">
+      <Button variant="tertiary" data-modal-close>{m.import_cancel()}</Button>
+      <Button data-import-confirm>{m.import_confirm()}</Button>
+    </div>
+  </div>
+</Modal>
+
+<script>
+  import { actions } from 'astro:actions';
+  import type { Locale } from '@/lib/taxonomy';
+
+  // Row labels for the preview (humanized snake_case values — the real editor
+  // shows proper localized labels after confirm; this is just reassurance).
+  const LABELS: Record<string, string> = {
+    services: 'Services',
+    prices: 'Prices',
+    hours: 'Hours',
+    languages: 'Languages',
+    looks: 'Appearance',
+    contact: 'Contact',
+    about: 'About',
+  };
+  const human = (s: string) => s.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
+
+  function summarize(f: Record<string, any>): Array<[string, string]> {
+    const rows: Array<[string, string]> = [];
+    if (Array.isArray(f.services) && f.services.length)
+      rows.push([LABELS.services, f.services.map(human).join(', ')]);
+    if (Array.isArray(f.rates) && f.rates.length) {
+      const prices = f.rates.flatMap((r: any) => [r.incall, r.outcall].filter((n: any) => typeof n === 'number'));
+      const from = prices.length ? ` — from €${Math.min(...prices)}` : '';
+      rows.push([LABELS.prices, `${f.rates.length} rate${f.rates.length > 1 ? 's' : ''}${from}`]);
+    }
+    if (f.openingHours && Object.keys(f.openingHours).length)
+      rows.push([LABELS.hours, `${Object.keys(f.openingHours).length} day(s)`]);
+    if (Array.isArray(f.languages) && f.languages.length)
+      rows.push([LABELS.languages, f.languages.join(', ').toUpperCase()]);
+    const looks = ['hairColor', 'eyeColor', 'bodyType', 'cupSize', 'appearance']
+      .map((k) => f[k]).filter(Boolean).map(human);
+    if (looks.length) rows.push([LABELS.looks, looks.join(', ')]);
+    const contact = ['phone', 'whatsapp', 'telegram'].map((k) => f[k]).filter(Boolean);
+    if (contact.length) rows.push([LABELS.contact, contact.join(' · ')]);
+    if (typeof f.description === 'string' && f.description)
+      rows.push([LABELS.about, f.description.slice(0, 140) + (f.description.length > 140 ? '…' : '')]);
+    return rows;
+  }
+
+  function initImport() {
+    const banner = document.querySelector<HTMLElement>('[data-import]');
+    if (!banner || banner.dataset.init) return;
+    banner.dataset.init = '1';
+
+    const form = banner.querySelector<HTMLFormElement>('[data-import-form]')!;
+    const urlInput = banner.querySelector<HTMLInputElement>('[data-import-url]')!;
+    const go = banner.querySelector<HTMLButtonElement>('[data-import-go]')!;
+    const err = banner.querySelector<HTMLElement>('[data-import-error]')!;
+    const dialog = document.getElementById('import-preview') as HTMLDialogElement | null;
+    const summary = dialog?.querySelector<HTMLElement>('[data-import-summary]');
+    const warnBox = dialog?.querySelector<HTMLElement>('[data-import-warnings]');
+    const warnList = dialog?.querySelector<HTMLElement>('[data-import-warnlist]');
+    const confirm = dialog?.querySelector<HTMLButtonElement>('[data-import-confirm]');
+
+    let pending: Record<string, any> | null = null;
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      err.hidden = true;
+      go.disabled = true;
+      const locale = (document.documentElement.lang || 'en') as Locale;
+      const { data, error } = await actions.account.importProfile({ url: urlInput.value.trim(), locale });
+      go.disabled = false;
+      if (error || !data) {
+        err.textContent = error?.message || 'Import failed — check the link and try again.';
+        err.hidden = false;
+        return;
+      }
+      pending = data.fields;
+      // Build the summary
+      if (summary) {
+        summary.innerHTML = '';
+        const rows = summarize(data.fields);
+        if (!rows.length) {
+          err.textContent = "We couldn't read enough from that page.";
+          err.hidden = false;
+          return;
+        }
+        for (const [k, v] of rows) {
+          const row = document.createElement('div');
+          row.className = 'flex gap-3 py-2.5';
+          row.innerHTML = `<dt class="w-24 flex-none text-2xs uppercase tracking-wide text-muted-foreground">${k}</dt><dd class="min-w-0 text-sm">${v.replace(/</g, '&lt;')}</dd>`;
+          summary.appendChild(row);
+        }
+      }
+      if (warnBox && warnList) {
+        warnList.innerHTML = '';
+        if (data.warnings?.length) {
+          for (const w of data.warnings) {
+            const li = document.createElement('li');
+            li.textContent = w;
+            warnList.appendChild(li);
+          }
+          warnBox.hidden = false;
+        } else warnBox.hidden = true;
+      }
+      dialog?.showModal();
+      document.documentElement.toggleAttribute('data-modal-open', true);
+    });
+
+    confirm?.addEventListener('click', async () => {
+      if (!pending) return;
+      confirm.disabled = true;
+      const { data, error } = await actions.account.saveProfile({ patch: pending });
+      if (error || !data) {
+        confirm.disabled = false;
+        return;
+      }
+      // Editor reloads prefilled; the banner is gone (profile now has content).
+      location.reload();
+    });
+  }
+
+  initImport();
+  document.addEventListener('astro:page-load', initImport);
+</script>

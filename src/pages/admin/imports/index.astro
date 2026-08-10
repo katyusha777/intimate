@@ -22,7 +22,10 @@ const stateClass = (s: string) =>
   {
     session && (
       <div>
-        <h1 class="display text-3xl">{m.adm_nav_imports()}</h1>
+        <div class="flex flex-wrap items-baseline justify-between gap-3">
+          <h1 class="display text-3xl">{m.adm_nav_imports()}</h1>
+          <a href="/admin/imports/test" class="text-sm font-medium underline underline-offset-4">Import test tool →</a>
+        </div>
         <p class="mt-1 text-sm text-muted-foreground">{m.adm_imports_meta({ count: jobs.length, failed })}</p>
 
         <div class="mt-6 overflow-x-auto border border-border">

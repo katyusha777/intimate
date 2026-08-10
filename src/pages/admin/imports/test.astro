@@ -1,0 +1,115 @@
+---
+/**
+ * Import test tool (docs/ADMIN.md §3). Paste a source URL → see the raw LLM
+ * extraction beside our taxonomy-mapped ProfileEdit fields + warnings, so you
+ * can verify the mapping holds field-by-field. Optionally apply it onto a
+ * profile by id (super-only, audit-logged). Uses the same src/lib/import/ path
+ * the advertiser flow uses — testing this tests the real thing.
+ */
+import { getAdmin } from '@/actions/admin/lib';
+import { knownSites } from '@/lib/import';
+import AdminShell from '@/components/organisms/admin/AdminShell.astro';
+
+const session = await getAdmin(Astro);
+const sites = knownSites().map((s) => s.label).join(', ');
+const input = 'slab-cut w-full border border-foreground/20 bg-background px-3 py-2 text-sm outline-none focus:border-foreground';
+const btn = 'slab-cut border border-foreground/20 px-4 py-2 text-sm font-semibold hover:border-foreground/60 disabled:opacity-50';
+---
+
+<AdminShell title="Import test" section="imports">
+  {
+    session && (
+      <div class="max-w-5xl">
+        <h1 class="display text-3xl">Import test</h1>
+        <p class="mt-1 text-sm text-muted-foreground">Scrape + normalize a profile URL and inspect the mapping. Supported: {sites}.</p>
+
+        <div class="mt-6 space-y-3">
+          <input data-url type="url" placeholder="https://www.kinky.nl/advertenties/12345-…" class={input} />
+          <div class="flex flex-wrap items-center gap-3">
+            <button type="button" data-preview class={btn}>Preview mapping</button>
+            <span class="text-2xs text-muted-foreground">or apply onto a profile:</span>
+            <input data-profile-id placeholder="profile UUID" class={`${input} max-w-xs`} />
+            <button type="button" data-apply class={btn}>Apply (super)</button>
+          </div>
+          <p data-status class="text-sm text-muted-foreground" />
+        </div>
+
+        <div data-results hidden class="mt-8 grid gap-6 lg:grid-cols-2">
+          <div>
+            <h2 class="font-condensed text-sm font-bold uppercase tracking-wide">Mapped → our schema</h2>
+            <p data-meta class="mt-1 text-2xs text-muted-foreground" />
+            <div data-warnings hidden class="mt-2 border-l-2 border-amber-500 pl-3 text-xs text-muted-foreground" />
+            <pre data-fields class="mt-2 overflow-x-auto border border-border bg-muted p-3 text-xs" />
+          </div>
+          <div>
+            <h2 class="font-condensed text-sm font-bold uppercase tracking-wide">Raw LLM output</h2>
+            <pre data-raw class="mt-2 overflow-x-auto border border-border bg-muted p-3 text-xs" />
+          </div>
+        </div>
+      </div>
+    )
+  }
+</AdminShell>
+
+<script>
+  import { actions } from 'astro:actions';
+
+  function init() {
+    const url = document.querySelector<HTMLInputElement>('[data-url]');
+    if (!url || url.dataset.init) return;
+    url.dataset.init = '1';
+    const pidEl = document.querySelector<HTMLInputElement>('[data-profile-id]')!;
+    const status = document.querySelector<HTMLElement>('[data-status]')!;
+    const results = document.querySelector<HTMLElement>('[data-results]')!;
+    const meta = document.querySelector<HTMLElement>('[data-meta]')!;
+    const warnings = document.querySelector<HTMLElement>('[data-warnings]')!;
+    const fieldsPre = document.querySelector<HTMLElement>('[data-fields]')!;
+    const rawPre = document.querySelector<HTMLElement>('[data-raw]')!;
+    const preview = document.querySelector<HTMLButtonElement>('[data-preview]')!;
+    const apply = document.querySelector<HTMLButtonElement>('[data-apply]')!;
+
+    const render = (site: any, fields: any, warns: string[], raw: unknown, cost?: number) => {
+      results.hidden = false;
+      meta.textContent = `${site?.label ?? '?'} · $${(cost ?? 0).toFixed(4)}`;
+      fieldsPre.textContent = JSON.stringify(fields, null, 2);
+      rawPre.textContent = raw === undefined ? '(not shown)' : JSON.stringify(raw, null, 2);
+      if (warns?.length) {
+        warnings.hidden = false;
+        warnings.innerHTML = warns.map((w) => `<div>• ${w.replace(/</g, '&lt;')}</div>`).join('');
+      } else warnings.hidden = true;
+    };
+
+    preview.addEventListener('click', async () => {
+      status.textContent = 'Scraping + extracting…';
+      preview.disabled = true;
+      const { data, error } = await actions.admin.importPreview({ url: url.value.trim() });
+      preview.disabled = false;
+      if (error || !data) {
+        status.textContent = `Error: ${error?.message ?? 'failed'}`;
+        return;
+      }
+      status.textContent = 'Done.';
+      render(data.site, data.fields, data.warnings, data.raw, data.cost);
+    });
+
+    apply.addEventListener('click', async () => {
+      if (!pidEl.value.trim()) {
+        status.textContent = 'Enter a profile UUID to apply.';
+        return;
+      }
+      if (!confirm('Apply this import onto that profile? It overwrites the mapped fields.')) return;
+      status.textContent = 'Importing + applying…';
+      apply.disabled = true;
+      const { data, error } = await actions.admin.importApply({ profileId: pidEl.value.trim(), url: url.value.trim() });
+      apply.disabled = false;
+      if (error || !data) {
+        status.textContent = `Error: ${error?.message ?? 'failed'}`;
+        return;
+      }
+      status.textContent = 'Applied ✓';
+      render({ label: 'applied' }, data.fields, data.warnings, undefined);
+    });
+  }
+  init();
+  document.addEventListener('astro:page-load', init);
+</script>

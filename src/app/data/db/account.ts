@@ -218,6 +218,15 @@ export const accountApi: AccountApi = {
     await db().update(accounts).set({ accountType: type }).where(eq(accounts.id, accountId));
   },
 
+  async saveProfileById(profileId, patch) {
+    const d = db();
+    const update = profileUpdate(patch);
+    if (Object.keys(update).length) {
+      await d.update(profiles).set(update).where(eq(profiles.id, profileId));
+      await notifyProfileChanged(profileId);
+    }
+  },
+
   async myProfile(session) {
     const d = db();
     const row = await myProfileRow(d, session.accountId);

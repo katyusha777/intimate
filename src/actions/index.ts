@@ -15,6 +15,7 @@ import { startPhoneVerify, checkPhoneVerify } from "@/lib/twilio";
 import { bustProfiles, type CacheKv } from "@/lib/page-cache";
 import { rateLimit } from "@/lib/rate-limit";
 import { dataUrlToJpegBytes, stripJpegDataUrl } from "@/lib/jpeg-strip";
+import { importFromUrl } from "@/lib/import";
 import { mintIceServers } from "@/lib/turn";
 import { CONVERSATION_MODES, REPORT_REASONS, REPORT_TARGETS } from "@/lib/taxonomy";
 // The one sanctioned cross-fence import: the action registry wires in admin.
@@ -201,6 +202,26 @@ export const server = {
         }
         await bustProfiles(cacheKv()); // her public page changed → drop the edge cache
         return { ok: true };
+      },
+    }),
+
+    // Self-service import (ARCHITECTURE §6): she pastes HER OWN profile URL from
+    // a supported site, we scrape + normalize to our taxonomy and hand back the
+    // fields for her to review in a modal. Does NOT save — the confirm step calls
+    // saveProfile with the fields she keeps. Photos are never imported (she
+    // uploads her own). Firecrawl + LLM cost money → capped per account.
+    importProfile: defineAction({
+      input: z.object({ url: z.string().url().max(500), locale: z.enum(LOCALES) }),
+      handler: async ({ url }, context) => {
+        const session = await requireSession(context);
+        if (session.role !== 'advertiser') throw new ActionError({ code: 'UNAUTHORIZED' });
+        await requireUnderLimit('import-account', session.accountId, 8, 86400);
+        try {
+          const { site, fields, warnings } = await importFromUrl(url);
+          return { ok: true, site, fields, warnings };
+        } catch (e) {
+          throw new ActionError({ code: 'BAD_REQUEST', message: (e as Error).message });
+        }
       },
     }),
 
