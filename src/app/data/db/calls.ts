@@ -206,7 +206,9 @@ export function makeCallsApi(db: () => Db): CallsApi {
         .from(conversationSettings)
         .where(eq(conversationSettings.profileId, t.profileId))
         .limit(1);
-      if (!settings || settings.mode === 'off') return null;
+      // No row = default 'everyone' (2026-08-09, same law as messagingApi
+      // .settings): only an explicit stored 'off' blocks calls.
+      if (settings?.mode === 'off') return null;
 
       await sweepStale(d, t.profileId);
       const live = await d

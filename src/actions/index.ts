@@ -703,7 +703,7 @@ export const server = {
         await requireUnderLimit("call-start", session.accountId, 30);
         const call = await callsApi.start(session, { threadId, mode });
         if (call === 'busy') throw new ActionError({ code: "CONFLICT", message: "busy" });
-        if (!call) throw new ActionError({ code: "BAD_REQUEST" });
+        if (!call) throw new ActionError({ code: "BAD_REQUEST", message: "not callable" });
         // Caller side forces relay when TURN is live: her candidates never
         // contain her address — the client can only ever learn the relay's.
         const ice = await mintIceServers(turnSecret(), call.id, new Date());
