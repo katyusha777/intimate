@@ -129,6 +129,8 @@ export interface AccountApi {
   setAccountType(accountId: string, type: Exclude<AccountType, 'admin'>): Promise<void>;
   /** Write profile columns onto an arbitrary profile by id (admin import tool). */
   saveProfileById(profileId: string, patch: Partial<ProfileEdit>): Promise<void>;
+  /** Record the URL she imported her data from, on her own profile row. */
+  recordImportSource(session: Session, url: string): Promise<void>;
   /** Owner pause/unpause: hides a live profile (`paused`) and brings it back (`live`). */
   setPaused(session: Session, paused: boolean): Promise<void>;
   /**

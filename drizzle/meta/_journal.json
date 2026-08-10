@@ -141,6 +141,13 @@
       "when": 1786400700000,
       "tag": "0019_curvy_la_nuit",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1786400800000,
+      "tag": "0020_graceful_the_fallen",
+      "breakpoints": true
     }
   ]
 }

@@ -268,6 +268,10 @@ export const profiles = pgTable(
       .$type<Partial<Record<string, string>>>()
       .notNull()
       .default({}),
+    // Provenance: the source URL she imported her data from (self-service import
+    // or admin apply). We never persist the scraped profile itself — just this
+    // pointer, so we can see where her fields came from. Null = hand-entered.
+    importedFromUrl: text('imported_from_url'),
     createdAt: createdAt(),
   },
   (t) => [

@@ -336,6 +336,7 @@ export const admin = {
       try {
         const { fields, warnings } = await importFromUrl(url);
         await accountApi.saveProfileById(profileId, fields);
+        await adb().update(profiles).set({ importedFromUrl: url }).where(eq(profiles.id, profileId));
         await record(session, { action: 'edit_profile_admin', entityType: 'profile', entityId: profileId, meta: { note: `import from ${url}` } });
         return { ok: true, fields, warnings };
       } catch (e) {

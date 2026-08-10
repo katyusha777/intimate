@@ -227,6 +227,12 @@ export const accountApi: AccountApi = {
     }
   },
 
+  async recordImportSource(session, url) {
+    const d = db();
+    const row = await myProfileRow(d, session.accountId);
+    if (row) await d.update(profiles).set({ importedFromUrl: url }).where(eq(profiles.id, row.id));
+  },
+
   async myProfile(session) {
     const d = db();
     const row = await myProfileRow(d, session.accountId);

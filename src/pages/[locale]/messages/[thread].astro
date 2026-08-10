@@ -8,7 +8,9 @@ import { profilesApi } from '@/app/api/profiles';
 import { sessionApi } from '@/app/api/session';
 import { isLocale, localizePath } from '@/lib/i18n';
 import Thread from '@/components/organisms/messaging/Thread.astro';
+import Inbox from '@/components/organisms/messaging/Inbox.astro';
 import Layout from '@/layouts/Layout.astro';
+import * as m from '@/paraglide/messages';
 
 const { locale, thread: threadId } = Astro.params;
 if (!isLocale(locale) || !threadId) return new Response(null, { status: 404 });
@@ -34,8 +36,25 @@ if (viewer === 'client' && thread.privateSetUnlocked) {
   const profile = await profilesApi.bySlug(thread.profileSlug);
   privatePhotos = profile?.privatePhotos ?? [];
 }
+
+// Desktop shows the inbox as a left rail beside the thread (two-pane) so it
+// never reads as a stuck modal. Mobile stays a single full-screen thread with
+// its own back button (unchanged).
+const threads = await messagingApi.listThreads(session);
 ---
 
 <Layout bare noindex title={`${other} | Intimate`}>
-  <Thread {thread} {viewer} {paused} {privatePhotos} />
+  <div class="flex h-[100dvh]">
+    <aside class="hidden w-[22rem] flex-none flex-col border-r border-border md:flex">
+      <a href={localizePath('/messages/')} class="flex flex-none items-center border-b border-border px-4 py-3.5 font-condensed text-lg font-bold">
+        {m.msg_title()}
+      </a>
+      <div class="min-h-0 flex-1 overflow-y-auto px-2 pb-4">
+        <Inbox threads={threads} {viewer} activeId={thread.id} />
+      </div>
+    </aside>
+    <div class="min-w-0 flex-1">
+      <Thread {thread} {viewer} {paused} {privatePhotos} />
+    </div>
+  </div>
 </Layout>

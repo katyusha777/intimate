@@ -184,6 +184,8 @@ export const ProfileSchema = z.object({
    * request") — never the images. Optional; empty = no locked set.
    */
   privatePhotos: z.array(z.string()).default([]),
+  /** Provenance: the URL she imported her data from (admin-only display). */
+  importedFromUrl: z.string().optional(),
   createdAt: z.iso.datetime(),
 }).transform((p) => ({
   // priceFrom is derived: the rates table wins; the authored number is only a

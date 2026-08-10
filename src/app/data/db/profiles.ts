@@ -98,6 +98,7 @@ export function toProfile(
     descriptionTranslations: row.descriptionTranslations,
     photos: gallery.filter((m) => !m.isPrivate).map((m) => mediaUrl(m.imageKey)),
     privatePhotos: gallery.filter((m) => m.isPrivate).map((m) => mediaUrl(m.imageKey)),
+    importedFromUrl: row.importedFromUrl ?? undefined,
     createdAt: iso(row.createdAt),
   });
 }

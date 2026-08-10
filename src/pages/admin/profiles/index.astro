@@ -186,6 +186,12 @@ const ago = (iso: string) => {
                 <a href={`/en/profile/${detail.profile.slug}/`} target="_blank" class="text-xs font-medium underline underline-offset-4">{m.adm_profiles_public_page()} ↗</a>
               </div>
 
+              {detail.profile.importedFromUrl && (
+                <p class="break-all text-2xs text-muted-foreground">
+                  Imported from <a href={detail.profile.importedFromUrl} target="_blank" class="underline underline-offset-2">{detail.profile.importedFromUrl}</a>
+                </p>
+              )}
+
               {reportsAgainst.length > 0 && (
                 <div class="border-t border-border pt-3">
                   <p class="text-2xs font-semibold uppercase tracking-wide text-brand">{m.adm_profiles_reports_against({ count: reportsAgainst.length })}</p>

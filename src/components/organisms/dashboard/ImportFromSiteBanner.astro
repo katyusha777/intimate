@@ -101,6 +101,7 @@ import Modal from '@/components/molecules/Modal.astro';
 
     const form = banner.querySelector<HTMLFormElement>('[data-import-form]')!;
     const urlInput = banner.querySelector<HTMLInputElement>('[data-import-url]')!;
+    let lastUrl = '';
     const go = banner.querySelector<HTMLButtonElement>('[data-import-go]')!;
     const err = banner.querySelector<HTMLElement>('[data-import-error]')!;
     const progress = banner.querySelector<HTMLElement>('[data-import-progress]')!;
@@ -121,7 +122,8 @@ import Modal from '@/components/molecules/Modal.astro';
       progress.hidden = false;
       const prog = startImportProgress(bar, barMsg);
       const locale = (document.documentElement.lang || 'en') as Locale;
-      const { data, error } = await actions.account.importProfile({ url: urlInput.value.trim(), locale });
+      lastUrl = urlInput.value.trim();
+      const { data, error } = await actions.account.importProfile({ url: lastUrl, locale });
       prog.done();
       go.disabled = false;
       setTimeout(() => (progress.hidden = true), 400);
@@ -170,6 +172,8 @@ import Modal from '@/components/molecules/Modal.astro';
         confirm.disabled = false;
         return;
       }
+      // Stamp the source URL on her profile (best-effort — provenance only).
+      if (lastUrl) void actions.account.recordImportSource({ url: lastUrl });
       // Saved — toast + straight to her profile so she sees the imported result.
       localStorage.removeItem(HIDE_KEY);
       toast(`${m.editor_saved()} ✓`);

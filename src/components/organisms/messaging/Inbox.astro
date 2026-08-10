@@ -12,8 +12,10 @@ import SafeImage from '@/components/atoms/SafeImage.astro';
 interface Props {
   threads: ThreadSummary[];
   viewer: 'professional' | 'client';
+  /** Highlight the open thread when shown as a two-pane rail (desktop). */
+  activeId?: string;
 }
-const { threads, viewer } = Astro.props;
+const { threads, viewer, activeId } = Astro.props;
 
 /** UTC fallback; the client script localizes each row to the user's timezone. */
 function utcTime(iso: string): string {
@@ -66,7 +68,7 @@ const items: Item[] = [
         <li>
           <a
             href={localizePath(`/messages/${t.id}/`)}
-            class="flex items-center gap-3 py-3.5 transition-colors hover:bg-muted/50"
+            class:list={['flex items-center gap-3 px-2 py-3.5 transition-colors hover:bg-muted/50', t.id === activeId && 'bg-muted']}
           >
             {viewer === 'client' ? (
               <SafeImage imageKey={t.profileId} alt={t.profileName} class="size-12 flex-none rounded-full object-cover" />

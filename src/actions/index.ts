@@ -225,6 +225,17 @@ export const server = {
       },
     }),
 
+    // Stamp the source URL on her profile after she confirms an import (we never
+    // persist the scraped profile itself — just this provenance pointer).
+    recordImportSource: defineAction({
+      input: z.object({ url: z.string().url().max(500) }),
+      handler: async ({ url }, context) => {
+        const session = await requireSession(context);
+        if (session.role === 'advertiser') await accountApi.recordImportSource(session, url);
+        return { ok: true };
+      },
+    }),
+
     // Draft/paused → the moderation queue. Never auto-publishes (hard rule 5).
     submitProfile: defineAction({
       input: z.object({}),
