@@ -101,11 +101,23 @@ const moreArticles = articles.filter((a) => a !== featuredArticle).slice(0, 3);
     {
       loggedOut && (
         <div class="mt-5 text-center">
-          <!-- Same anaglyph skew as every primary CTA — unmistakably clickable. -->
-          <Button as="a" href={localizePath('/account/')} class="block w-full">
+          <!-- Same anaglyph skew as every primary CTA — unmistakably clickable.
+               Opens the register modal with ADVERTISER preselected. -->
+          <Button data-modal-open="auth" data-auth-tab="register" data-auth-role="advertiser" class="block w-full">
             {m.cta_start_advertising()} →
           </Button>
-          <p class="mt-2.5 text-2xs text-muted-foreground">{m.home_verified_free()}</p>
+          <p class="mt-2.5">
+            <button
+              type="button"
+              data-modal-open="auth"
+              data-auth-tab="register"
+              data-auth-role="client"
+              class="text-2xs text-muted-foreground underline underline-offset-2 transition-colors hover:text-foreground"
+            >
+              {m.cta_or_register_client()}
+            </button>
+          </p>
+          <p class="mt-2 text-2xs text-muted-foreground">{m.home_verified_free()}</p>
         </div>
       )
     }
@@ -152,11 +164,24 @@ const moreArticles = articles.filter((a) => a !== featuredArticle).slice(0, 3);
         <p class="mt-4 max-w-md leading-relaxed text-white/70">{m.home_hero_sub()}</p>
         {
           loggedOut && (
-            <div class="mt-7 flex flex-wrap items-center gap-4">
-              <Button as="a" href={localizePath('/account/')} size="lg">
-                {m.cta_start_advertising()}
-              </Button>
-              <span class="text-sm text-white/70">{m.home_verified_free()}</span>
+            <div class="mt-7">
+              <div class="flex flex-wrap items-center gap-4">
+                <Button data-modal-open="auth" data-auth-tab="register" data-auth-role="advertiser" size="lg">
+                  {m.cta_start_advertising()}
+                </Button>
+                <span class="text-sm text-white/70">{m.home_verified_free()}</span>
+              </div>
+              <p class="mt-3">
+                <button
+                  type="button"
+                  data-modal-open="auth"
+                  data-auth-tab="register"
+                  data-auth-role="client"
+                  class="text-sm text-white/60 underline underline-offset-2 transition-colors hover:text-white"
+                >
+                  {m.cta_or_register_client()}
+                </button>
+              </p>
             </div>
           )
         }

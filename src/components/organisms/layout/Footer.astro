@@ -43,9 +43,12 @@ const { session = null } = Astro.props;
           {
             title: m.foot_col_information(),
             links: [
-              // START ADVERTISING lives here + in the menu (UX-PLAN 1.1) —
-              // professionals find it deliberately; clients never trip over it.
-              [m.cta_start_advertising(), '/account/'],
+              // START ADVERTISING lives here + in the menu (UX-PLAN 1.1). Both
+              // open the register modal with the role preselected (advertiser /
+              // client); the href is the no-JS fallback (Modal preventDefaults
+              // the click when JS is on).
+              [m.cta_start_advertising(), '/account/', 'advertiser'],
+              [m.cta_register_client(), '/account/', 'client'],
               [m.foot_about(), '/about/'],
               [m.foot_articles(), '/blog/'],
               [m.foot_forum(), '/forum/'],
@@ -75,9 +78,15 @@ const { session = null } = Astro.props;
               {col.title}
             </p>
             <ul class="mt-4 space-y-2.5">
-              {col.links.map(([label, href]) => (
+              {col.links.map(([label, href, role]) => (
                 <li>
-                  <a href={localizePath(href)} class="text-sm text-white/75 transition-colors hover:text-white">
+                  <a
+                    href={localizePath(href)}
+                    data-modal-open={role ? 'auth' : undefined}
+                    data-auth-tab={role ? 'register' : undefined}
+                    data-auth-role={role || undefined}
+                    class="text-sm text-white/75 transition-colors hover:text-white"
+                  >
                     {label}
                   </a>
                 </li>
