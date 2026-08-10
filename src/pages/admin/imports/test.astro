@@ -67,9 +67,7 @@ const btn = 'slab-cut border border-foreground/20 px-4 py-2 text-sm font-semibol
           <input name="url" type="url" required value={url} placeholder="https://www.kinky.nl/advertenties/12345-…" class={input} />
           <div class="flex flex-wrap items-center gap-3">
             <button type="submit" class={btn}>Preview mapping</button>
-            {(url || outcome) && (
-              <a href="/admin/imports/test" class={btn}>Clear</a>
-            )}
+            <a href="/admin/imports/test" data-clear class={btn} style={url || outcome ? undefined : 'display:none'}>Clear</a>
             <span class="text-2xs text-muted-foreground">or apply onto a profile:</span>
             <input data-profile-id placeholder="profile UUID" class={`${input} max-w-xs`} />
             <button type="button" data-apply data-url={url} class={btn}>Apply (super)</button>
@@ -88,6 +86,7 @@ const btn = 'slab-cut border border-foreground/20 px-4 py-2 text-sm font-semibol
           </div>
         </div>
 
+        <div data-results-region>
         {error && <p class="mt-4 text-sm text-brand">Error: {error}</p>}
 
         {outcome && preview && (
@@ -124,6 +123,7 @@ const btn = 'slab-cut border border-foreground/20 px-4 py-2 text-sm font-semibol
             </div>
           </div>
         )}
+        </div>
       </div>
     )
   }
@@ -145,16 +145,39 @@ const btn = 'slab-cut border border-foreground/20 px-4 py-2 text-sm font-semibol
       return startImportProgress(bar, msg);
     };
 
-    // Preview = a real GET navigation; show the overlay and let it ride until the
-    // response replaces the page (no done() needed).
-    form.addEventListener('submit', () => {
-      showOverlay();
-    });
-
     const apply = document.querySelector<HTMLButtonElement>('[data-apply]');
     const pidEl = document.querySelector<HTMLInputElement>('[data-profile-id]')!;
     const urlEl = document.querySelector<HTMLInputElement>('input[name="url"]')!;
     const status = document.querySelector<HTMLElement>('[data-status]')!;
+    const clear = document.querySelector<HTMLElement>('[data-clear]');
+
+    // Preview via fetch + swap (NOT a full GET navigation): the outgoing page
+    // freezes while a navigation is pending, so the bar can't animate. Fetching
+    // keeps the page alive; we swap in only the results region (a read-only
+    // fieldset — no scripts to re-run).
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const u = urlEl.value.trim();
+      if (!u) return;
+      const dest = '/admin/imports/test?url=' + encodeURIComponent(u);
+      const prog = showOverlay();
+      try {
+        const res = await fetch(dest, { headers: { accept: 'text/html' } });
+        const html = await res.text();
+        const region = new DOMParser().parseFromString(html, 'text/html').querySelector('[data-results-region]');
+        const current = document.querySelector('[data-results-region]');
+        if (region && current) current.innerHTML = region.innerHTML;
+        history.replaceState({}, '', dest);
+        if (clear) clear.style.display = '';
+      } catch {
+        location.href = dest; // fall back to a real navigation
+        return;
+      } finally {
+        prog.done();
+        overlay.hidden = true;
+      }
+    });
+
     apply?.addEventListener('click', async () => {
       const profileId = pidEl.value.trim();
       const url = urlEl.value.trim();

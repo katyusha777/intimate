@@ -559,6 +559,8 @@ const selAvailableFor = setOf(p.availableFor ?? []);
 <script>
   import { actions } from 'astro:actions';
   import { readProfilePatch, initEditorInteractions } from '@/lib/editor-form';
+  import { toast } from '@/lib/toast';
+  import * as m from '@/paraglide/messages';
 
   function initEditor() {
     document.querySelectorAll<HTMLFormElement>('[data-profile-editor]').forEach((form) => {
@@ -579,8 +581,16 @@ const selAvailableFor = setOf(p.availableFor ?? []);
         error.classList.add('hidden');
         const { error: err } = await actions.account.saveProfile({ patch });
         // Surface the specific reason (which field) instead of a mute generic fail.
-        if (err?.message) error.textContent = err.message;
-        (err ? error : saved).classList.remove('hidden');
+        if (err?.message) {
+          error.textContent = err.message;
+          error.classList.remove('hidden');
+          return;
+        }
+        saved.classList.remove('hidden');
+        toast(`${m.editor_saved()} ✓`);
+        // Take her straight to her public profile so she sees the result.
+        const lang = document.documentElement.lang || 'en';
+        setTimeout(() => (location.href = `/${lang}/account/view/`), 900);
       });
     });
   }

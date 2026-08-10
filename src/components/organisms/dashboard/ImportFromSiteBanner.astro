@@ -55,6 +55,8 @@ import Modal from '@/components/molecules/Modal.astro';
   import { actions } from 'astro:actions';
   import type { Locale } from '@/lib/taxonomy';
   import { startImportProgress } from '@/lib/import-progress';
+  import { toast } from '@/lib/toast';
+  import * as m from '@/paraglide/messages';
 
   // Row labels for the preview (humanized snake_case values — the real editor
   // shows proper localized labels after confirm; this is just reassurance).
@@ -168,8 +170,11 @@ import Modal from '@/components/molecules/Modal.astro';
         confirm.disabled = false;
         return;
       }
-      // Editor reloads prefilled; the banner is gone (profile now has content).
-      location.reload();
+      // Saved — toast + straight to her profile so she sees the imported result.
+      localStorage.removeItem(HIDE_KEY);
+      toast(`${m.editor_saved()} ✓`);
+      const lang = document.documentElement.lang || 'en';
+      setTimeout(() => (location.href = `/${lang}/account/view/`), 700);
     });
   }
 

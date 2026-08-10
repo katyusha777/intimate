@@ -94,12 +94,16 @@ export async function listProfilesAdmin(f: ProfileFilters = {}): Promise<AdminPr
   // Admin sees EVERY state (drafts, pending, blocked) — not the public shelf.
   let rows = await enrich(await profilesApi.listAll());
   if (f.q) { const q = f.q.toLowerCase(); rows = rows.filter((r) => r.name.toLowerCase().includes(q) || r.city.includes(q)); }
+  // Default view hides the dead (deleted/blocked) — surface them only when the
+  // state filter explicitly asks for them.
   if (f.state) rows = rows.filter((r) => r.state === f.state);
+  else rows = rows.filter((r) => r.state !== 'deleted' && r.state !== 'blocked');
   if (f.city) rows = rows.filter((r) => r.city === f.city);
   if (f.gender) rows = rows.filter((r) => r.gender === f.gender);
   if (f.onlineOnly) rows = rows.filter((r) => r.online);
   if (f.verifiedOnly) rows = rows.filter((r) => r.verified);
-  return rows.sort((a, b) => a.name.localeCompare(b.name));
+  // Newest first.
+  return rows.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 export async function profileByIdAdmin(id: string): Promise<{ profile: Profile; admin: AdminProfile } | null> {
   const profile = await profilesApi.byId(id);

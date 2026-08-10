@@ -68,10 +68,16 @@ const item =
         </a>
       )
     }
-    <a href={localizePath('/messages/')} class={item} role="menuitem">
-      <svg class="size-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z" /></svg>
-      {m.msg_title()}
-    </a>
+    {
+      /* Messages omitted here — the header already has a messages icon beside
+         this menu. */
+      isAdvertiser && (
+        <a href={localizePath('/account/photos/')} class={item} role="menuitem">
+          <svg class="size-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="m21 15-5-5L5 21" /></svg>
+          {m.account_my_photos()}
+        </a>
+      )
+    }
     {
       isAdvertiser && (
         <a href={localizePath('/contacts/')} class={item} role="menuitem">
