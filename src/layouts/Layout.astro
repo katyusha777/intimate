@@ -39,7 +39,8 @@ interface Props {
   /** Utility pages (account, favorites): keep out of the index. */
   noindex?: boolean;
   /** Immersive full-screen page (chat thread): drop header/footer/dock chrome. */
-  bare?: boolean;
+  /** true = no chrome at all; 'mobile' = app-like on mobile, site header on desktop. */
+  bare?: boolean | 'mobile';
   /** LCP image URL (realImageFor) — preloaded because the preload scanner
    *  can't see SafeImage's data-real; without it the hero/first-card photo is
    *  only discovered when the safe-mode swap script runs at end of body. */
@@ -78,7 +79,7 @@ const session = await sessionApi.current(Astro);
 const idVerified = session?.role === 'advertiser' ? session.idVerification === 'approved' : true;
 // Dock unread badge — one SQL COUNT (unreadCount), not listThreads' full
 // per-thread message load on every page render.
-const unread = session && !bare ? await messagingApi.unreadCount(session) : 0;
+const unread = session && bare !== true ? await messagingApi.unreadCount(session) : 0;
 ---
 
 <!doctype html>
@@ -259,6 +260,13 @@ const unread = session && !bare ? await messagingApi.unreadCount(session) : 0;
          chrome (dock, dialogs) lives outside it. -->
     <div class="page-zoom">
       {!bare && <Header {session} {unread} />}
+      {/* bare='mobile' (messages): full-screen app feel on mobile, but the
+          site header stays on desktop so navigation is never trapped. */}
+      {bare === 'mobile' && (
+        <div class="hidden md:block">
+          <Header {session} {unread} />
+        </div>
+      )}
 
       <main>
         <slot />

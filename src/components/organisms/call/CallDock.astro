@@ -273,6 +273,15 @@ const { session } = Astro.props;
       me.channel?.close();
       me.local?.getTracks().forEach((t) => t.stop());
       void me.wake?.release().catch(() => {});
+      remoteEl.srcObject = null;
+      audioEl.srcObject = null;
+      localEl.srcObject = null;
+      soundPill.hidden = true;
+      screen.hidden = true;
+      incoming.hidden = true;
+      // Free the dock BEFORE the network await — a slow/hung call.end must
+      // never leave a zombie `call` silently eating the next start tap.
+      call = null;
       if (!alreadyEnded) {
         try {
           await actions.call.end({ callId: me.view.id, reason });
@@ -280,13 +289,6 @@ const { session } = Astro.props;
           /* already terminal server-side */
         }
       }
-      remoteEl.srcObject = null;
-      audioEl.srcObject = null;
-      localEl.srcObject = null;
-      soundPill.hidden = true;
-      screen.hidden = true;
-      incoming.hidden = true;
-      call = null;
     }
 
     function setChip(key: 'ringing' | 'connecting' | 'connected' | 'poor' | 'reconnecting') {
@@ -601,7 +603,10 @@ const { session } = Astro.props;
 
     // ── caller flow (professional) ────────────────────────────────────────
     async function startCall(threadId: string, mode: 'voice' | 'video') {
-      if (call) return;
+      if (call) {
+        dbg('start ignored — call in flight', call.view.id);
+        return;
+      }
       dbg('start:', mode);
       // Synchronously inside the tap: the permission prompt opens privileged
       // (WebKit re-prompts after past denials only then) and remote playback

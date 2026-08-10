@@ -452,6 +452,18 @@
     @apply text-xs font-medium uppercase tracking-eyebrow text-muted-foreground;
   }
 
+  /* Messages surface height: full-dvh app feel on mobile (Layout bare='mobile'
+     shows no chrome there); desktop subtracts the sticky site header so the
+     two-pane sits within the frame. 4.25rem = Header md:h-[4.25rem]. */
+  .h-thread {
+    height: 100dvh;
+  }
+  @media (min-width: 48rem) {
+    .h-thread {
+      height: calc(100dvh - 4.25rem);
+    }
+  }
+
   /* iOS glass materials — floating chrome only, never resting cards. */
   .glass {
     @apply bg-glass-regular border-glass-border backdrop-blur-lg;
