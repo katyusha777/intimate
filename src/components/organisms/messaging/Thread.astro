@@ -318,9 +318,19 @@ const utcTime = (iso: string): string =>
       // bubble; just keep the safe-area so the last message clears the notch.
       <div class="flex-none" style="padding-bottom: env(safe-area-inset-bottom)" />
     ) : blocked ? (
-      <div class="flex-none border-t border-border px-4 py-4 text-center text-sm text-muted-foreground">
-        {m.msg_blocked_note()}
-      </div>
+      thread.blockedBy === viewer ? (
+        <button
+          type="button"
+          data-unblock
+          class="flex-none cursor-pointer border-t border-border px-4 py-4 text-center text-sm font-medium text-brand transition-colors hover:bg-muted/50"
+        >
+          {m.msg_blocked_by_you()}
+        </button>
+      ) : (
+        <div class="flex-none border-t border-border px-4 py-4 text-center text-sm text-muted-foreground">
+          {m.msg_blocked_note()}
+        </div>
+      )
     ) : composerLocked ? (
       // No free-compose until an accepted request (UX-PLAN 4.1). Pending →
       // waiting on her; frozen (declined) → quietly closed.
@@ -596,6 +606,12 @@ const utcTime = (iso: string): string =>
     scroll.addEventListener('click', (e) => {
       const img = (e.target as HTMLElement).closest<HTMLImageElement>('[data-chat-photo]');
       if (img) (window as any).__openLightbox?.([{ src: img.src, alt: '' }], 0);
+    });
+
+    // "You blocked this person — tap to unblock" (the blocker's honest exit).
+    root.querySelector('[data-unblock]')?.addEventListener('click', async () => {
+      await actions.messaging.setBlocked({ threadId, blocked: false });
+      location.reload();
     });
 
     // Call buttons (professional) → the global CallDock places the call.

@@ -31,6 +31,7 @@
  * strings go only into RTCPeerConnection APIs, never into the DOM.
  */
 import * as m from '@/paraglide/messages';
+import Modal from '@/components/molecules/Modal.astro';
 import type { Session } from '@/app/models/session';
 
 interface Props {
@@ -201,7 +202,48 @@ const { session } = Astro.props;
       <p class="mt-3 text-2xs text-white/40">{m.call_no_recording()}</p>
     </div>
   </div>
+
+  <!-- ── Failure report (screenshot-able support card, not a vanishing toast).
+       Shown on every local 'failed' teardown with the content-free [call] log
+       so "it didn't work" arrives with an actual diagnosis attached. -->
+  <div
+    data-call-error
+    hidden
+    class="dark fixed inset-0 z-[80] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+    role="alertdialog"
+    aria-label={m.call_error_title()}
+  >
+    <div class="w-full max-w-sm rounded-2xl border border-brand/40 bg-neutral-950 p-4 text-white shadow-soft-lg">
+      <p class="font-condensed text-xl font-bold text-brand">{m.call_error_title()}</p>
+      <p class="mt-1 text-xs text-white/60">{m.call_error_hint()}</p>
+      <pre data-call-error-log class="mt-3 max-h-60 overflow-y-auto whitespace-pre-wrap break-all rounded-lg bg-white/5 p-2 text-2xs leading-4 text-white/80"></pre>
+      <div class="mt-3 flex gap-2">
+        <button type="button" data-call-error-copy class="flex-1 cursor-pointer rounded-full border border-white/20 px-4 py-2 text-sm font-medium transition-transform active:scale-95">
+          {m.call_error_copy()}
+        </button>
+        <button type="button" data-call-error-close class="flex-1 cursor-pointer rounded-full bg-white px-4 py-2 text-sm font-semibold text-neutral-950 transition-transform active:scale-95">
+          {m.call_error_close()}
+        </button>
+      </div>
+    </div>
+  </div>
 </div>
+
+<!-- Shared block confirmation (End & block + ring Block) — a real dialog on
+     the native top layer, not a morphing button. -->
+<Modal id="call-block-confirm" class="dark">
+  <div class="p-5">
+    <p data-block-confirm-text class="text-base font-semibold"></p>
+    <div class="mt-4 flex gap-2">
+      <button type="button" data-modal-close class="flex-1 cursor-pointer rounded-full border border-border px-4 py-2 text-sm font-medium transition-transform active:scale-95">
+        {m.action_cancel()}
+      </button>
+      <button type="button" data-block-confirm-go class="flex-1 cursor-pointer rounded-full bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground transition-transform active:scale-95">
+        {m.call_ring_block()}
+      </button>
+    </div>
+  </div>
+</Modal>
 
 <script>
   import { actions } from 'astro:actions';
@@ -227,9 +269,21 @@ const { session } = Astro.props;
   const CONNECT_MS = 25_000; // accept → connected budget before honest failure
 
   // Content-free diagnostics (hard rule 7: never SDP/candidate bodies) — the
-  // "call died with nothing on the console" era ends here.
-  const dbg = (...a: unknown[]) => console.debug('[call]', ...a);
-  const warn = (...a: unknown[]) => console.warn('[call]', ...a);
+  // "call died with nothing on the console" era ends here. A ring buffer of
+  // the same lines feeds the on-screen failure report (screenshot → support).
+  const logBuf: string[] = [];
+  const pushLog = (a: unknown[]) => {
+    logBuf.push(`${new Date().toISOString().slice(11, 19)} ${a.map(String).join(' ')}`);
+    if (logBuf.length > 30) logBuf.shift();
+  };
+  const dbg = (...a: unknown[]) => {
+    console.debug('[call]', ...a);
+    pushLog(a);
+  };
+  const warn = (...a: unknown[]) => {
+    console.warn('[call]', ...a);
+    pushLog(a);
+  };
 
   function initCallDock() {
     const found = document.querySelector<HTMLElement>('[data-call-dock]');
@@ -353,6 +407,9 @@ const { session } = Astro.props;
       // Free the dock BEFORE the network await — a slow/hung call.end must
       // never leave a zombie `call` silently eating the next start tap.
       call = null;
+      // Local failure → the screenshot-able report card ("it didn't work"
+      // must never arrive at support without a diagnosis again).
+      if (reason === 'failed' && !alreadyEnded) showCallError(me, reason);
       if (!alreadyEnded) {
         try {
           await actions.call.end({ callId: me.view.id, reason });
@@ -361,6 +418,43 @@ const { session } = Astro.props;
         }
       }
     }
+
+    function showCallError(me: { view: CallView }, reason: string) {
+      $('[data-call-error-log]').textContent = [
+        new Date().toISOString(),
+        `call ${me.view.id} · ${me.view.mode} · ${me.view.party} · ${reason}`,
+        navigator.userAgent,
+        '──',
+        ...logBuf,
+      ].join('\n');
+      $('[data-call-error]').hidden = false;
+    }
+    $('[data-call-error-close]').addEventListener('click', () => {
+      $('[data-call-error]').hidden = true;
+    });
+    $('[data-call-error-copy]').addEventListener('click', () => {
+      void navigator.clipboard?.writeText($('[data-call-error-log]').textContent ?? '').catch(() => {});
+    });
+
+    /** Shared block confirmation dialog (native top layer via Modal). */
+    let onBlockConfirm: (() => void) | null = null;
+    function confirmBlock(text: string, fn: () => void) {
+      const dlg = document.getElementById('call-block-confirm') as HTMLDialogElement | null;
+      if (!dlg) return fn(); // dialog missing — never trap the action
+      const label = dlg.querySelector<HTMLElement>('[data-block-confirm-text]');
+      if (label) label.textContent = text;
+      onBlockConfirm = fn;
+      dlg.showModal();
+    }
+    // Delegated: the dialog element is outside the persisted dock and gets
+    // replaced on view transitions — a direct listener would orphan.
+    document.addEventListener('click', (e) => {
+      if (!(e.target as HTMLElement).closest?.('[data-block-confirm-go]')) return;
+      (document.getElementById('call-block-confirm') as HTMLDialogElement | null)?.close();
+      const fn = onBlockConfirm;
+      onBlockConfirm = null;
+      fn?.();
+    });
 
     function setChip(key: 'ringing' | 'connecting' | 'connected' | 'poor' | 'reconnecting') {
       const el = $('[data-call-state-chip]');
@@ -401,7 +495,6 @@ const { session } = Astro.props;
       $('[data-ctl-cam]').hidden = !isVideo;
       $('[data-ctl-flip]').hidden = !isVideo;
       $('[data-ctl-endblock]').hidden = view.party !== 'professional';
-      resetEndblock(); // never open a fresh call mid-confirm
       $('[data-call-idpanel]').classList.remove('hidden');
       screen.hidden = false;
     }
@@ -742,6 +835,7 @@ const { session } = Astro.props;
         return;
       }
       facing = 'user'; // getMedia opens the front camera — never inherit a past flip
+      logBuf.length = 0; // fresh diagnostic trail per call
       dbg('start:', mode);
       // Synchronously inside the tap: the permission prompt opens privileged
       // (WebKit re-prompts after past denials only then) and remote playback
@@ -888,10 +982,7 @@ const { session } = Astro.props;
       $('[data-incoming-name]').textContent = view.peerName;
       $('[data-incoming-mode]').textContent =
         view.mode === 'video' ? root.dataset.i18nIncomingVideo! : root.dataset.i18nIncomingVoice!;
-      // Fresh block button per ring (never carry a half-armed confirm over).
       const blockBtn = $('[data-incoming-block]');
-      blockBtn.setAttribute('aria-pressed', 'false');
-      blockBtn.textContent = blockBtn.dataset.label ?? '';
       incoming.hidden = false;
       startRingtone();
       // Auto-dismiss when the caller's 30s timeout lands server-side.
@@ -904,18 +995,15 @@ const { session } = Astro.props;
       }, RING_MS + 5000);
 
       blockBtn.onclick = () => {
-        // First tap arms, second tap (still on screen) declines AND blocks —
-        // the ring-spam wall now that call.start is unlimited.
-        if (blockBtn.getAttribute('aria-pressed') !== 'true') {
-          blockBtn.setAttribute('aria-pressed', 'true');
-          blockBtn.textContent = blockBtn.dataset.confirm ?? '';
-          return;
-        }
-        incoming.hidden = true;
-        ringingId = null;
-        stopRing?.();
-        void actions.call.decline({ callId });
-        void actions.messaging.setBlocked({ threadId: view.threadId, blocked: true });
+        // Confirm dialog → decline AND block — the ring-spam wall now that
+        // call.start is unlimited.
+        confirmBlock(blockBtn.dataset.confirm ?? '', () => {
+          incoming.hidden = true;
+          ringingId = null;
+          stopRing?.();
+          void actions.call.decline({ callId });
+          void actions.messaging.setBlocked({ threadId: view.threadId, blocked: true });
+        });
       };
 
       $('[data-incoming-accept]').onclick = async () => {
@@ -924,6 +1012,7 @@ const { session } = Astro.props;
         ringingId = null;
         stopRing?.();
         facing = 'user'; // getMedia opens the front camera — never inherit a past flip
+        logBuf.length = 0; // fresh diagnostic trail per call
         dbg('accept tapped:', view.mode);
         // Synchronously inside the tap (same law as startCall): the prompt is
         // privileged and playback primed BEFORE the accept round-trip.
@@ -1003,26 +1092,17 @@ const { session } = Astro.props;
     // ── controls ──────────────────────────────────────────────────────────
     $('[data-ctl-end]').addEventListener('click', () => void teardown());
     const endblockBtn = $('[data-ctl-endblock]');
-    const resetEndblock = () => {
-      endblockBtn.setAttribute('aria-pressed', 'false');
-      endblockBtn.textContent = endblockBtn.dataset.label ?? '';
-    };
-    endblockBtn.addEventListener('click', async () => {
-      // First tap arms; the confirming second tap (still this gesture chain)
-      // runs teardown + block. No native confirm() — it can't be styled and
-      // steals the activation the WebRTC teardown still needs.
-      if (endblockBtn.getAttribute('aria-pressed') !== 'true') {
-        endblockBtn.setAttribute('aria-pressed', 'true');
-        endblockBtn.textContent = endblockBtn.dataset.confirm ?? '';
-        return;
-      }
-      const threadId = call?.view.threadId;
-      resetEndblock();
-      await teardown();
-      if (threadId) {
-        await actions.messaging.setBlocked({ threadId, blocked: true });
-        location.reload();
-      }
+    endblockBtn.addEventListener('click', () => {
+      confirmBlock(endblockBtn.dataset.confirm ?? '', () => {
+        const threadId = call?.view.threadId;
+        void (async () => {
+          await teardown();
+          if (threadId) {
+            await actions.messaging.setBlocked({ threadId, blocked: true });
+            location.reload();
+          }
+        })();
+      });
     });
     $('[data-ctl-mute]').addEventListener('click', (e) => {
       const btn = e.currentTarget as HTMLElement;
