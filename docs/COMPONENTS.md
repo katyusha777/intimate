@@ -49,7 +49,7 @@ Pages = `src/pages/` (compose organisms; own no reusable markup).
   MfaCard (organisms/admin — per-admin two-factor (TOTP) enroll/status/disable card on /admin/settings; ADMIN.md §1),
   EssentialsTags (kinky-style icon chips of the key person attributes —
   ethnicity/height/body/hair/cup/available-for/languages — set ones only),
-  CitySheet (first-visit city picker), RegionSheet (mobile "CITY | EN" header
+  RegionSheet (mobile "CITY | EN" header
   trigger → language radio + city picker in one ActionSheet), SideDrawer
   (right-hand slide-over speaking the ActionSheet contract — desktop profile
   presentation), PageSheet

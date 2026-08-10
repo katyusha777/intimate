@@ -10,7 +10,6 @@ import SafeImage from '@/components/atoms/SafeImage.astro';
 import Combobox from '@/components/molecules/Combobox.astro';
 import ActionSheet from '@/components/molecules/ActionSheet.astro';
 import AvailabilityLine from '@/components/molecules/AvailabilityLine.astro';
-import CitySheet from '@/components/molecules/CitySheet.astro';
 import ProfilePhotoMosaic from '@/components/organisms/profile/ProfilePhotoMosaic.astro';
 import RatesTable from '@/components/organisms/profile/RatesTable.astro';
 import GoodToKnow from '@/components/organisms/profile/GoodToKnow.astro';
@@ -548,15 +547,6 @@ const swatches = [
         Mounted once by the Header on every page; just trigger it.
       </p>
       <Button data-sheet-open="region-sheet">Open region sheet</Button>
-    </section>
-
-    <section class="space-y-4">
-      <h2 class="text-xl font-semibold">CitySheet — "ask the city once"</h2>
-      <p class="text-sm text-muted-foreground">
-        First-visit bottom sheet (auto-opens once). Trigger it manually here:
-      </p>
-      <Button data-sheet-open="city-sheet">Open city sheet</Button>
-      <CitySheet manual />
     </section>
 
     <section class="space-y-4">

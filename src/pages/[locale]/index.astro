@@ -6,7 +6,6 @@ import { organizationJsonLd, websiteJsonLd } from '@/lib/seo';
 import ProfileCard from '@/components/organisms/profile/ProfileCard.astro';
 import Section from '@/components/molecules/Section.astro';
 import SafeImage from '@/components/atoms/SafeImage.astro';
-import CitySheet from '@/components/molecules/CitySheet.astro';
 import Button from '@/components/atoms/Button.astro';
 import { articlesForLocale } from '@/lib/articles';
 import { realImageFor } from '@/lib/safe-images';
@@ -310,8 +309,6 @@ const moreArticles = articles.filter((a) => a !== featuredArticle).slice(0, 3);
     </section>
   </div>
 
-  <!-- First-visit "ask the city once" sheet (1.2). Island; auto-opens once. -->
-  <CitySheet />
 </Layout>
 
 <style>
