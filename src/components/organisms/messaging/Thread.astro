@@ -285,7 +285,7 @@ const utcTime = (iso: string): string =>
                 {msg.body && <p class="whitespace-pre-wrap break-words text-sm">{msg.body}</p>}
                 <span class="ml-auto flex flex-none items-center gap-1 text-2xs opacity-60">
                   <span data-time={msg.createdAt}>{utcTime(msg.createdAt)}</span>
-                  {msg.sender === viewer && <span data-tick>{msg.readAt ? '✓✓' : '✓'}</span>}
+                  {msg.sender === viewer && <span data-tick class="tracking-ticks pr-1">{msg.readAt ? '✓✓' : '✓'}</span>}
                 </span>
               </div>
             </div>
@@ -517,6 +517,7 @@ const utcTime = (iso: string): string =>
       if (own) {
         const tick = document.createElement('span');
         tick.dataset.tick = '';
+        tick.className = 'tracking-ticks pr-1'; // mirrors the SSR span
         tick.textContent = msg.readAt ? '✓✓' : '✓';
         stamp.appendChild(tick);
       }

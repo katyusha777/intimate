@@ -438,6 +438,9 @@ const { session } = Astro.props;
         },
         me.view.id,
         {
+          // trystero's default is 10s — too tight for relay-only ICE through
+          // coturn on mobile networks. Match our honest connect budget.
+          handshakeTimeoutMs: CONNECT_MS,
           onJoinError: (d) => {
             if (call !== me || me.done) return;
             warn('rtc join failed:', d.error);

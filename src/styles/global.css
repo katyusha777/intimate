@@ -140,6 +140,8 @@
   --text-2xs: 0.6875rem;
   --text-2xs--line-height: 0.875rem;
   --tracking-eyebrow: 0.14em;
+  /* WhatsApp-tight ✓✓ read ticks (messaging) — pulls the pair together */
+  --tracking-ticks: -0.25em;
   --color-online: var(--online);
   /* Brand colors for the support channels (test bans arbitrary hex classes). */
   --color-telegram: #229ed9;
