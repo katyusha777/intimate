@@ -339,11 +339,13 @@ phase (realtime seam → contact fast-path → voice → video → TURN) and pin
 open decisions (her-side relay-only, invite links, `kind='call'` cards).
 
 Architecture is locked in `ARCHITECTURE.md` §10 — restated: **WebRTC P2P**,
-DTLS-SRTP end-to-end. Signaling = the thread's Supabase Realtime channel (SDP/ICE
-as ephemeral broadcast, never persisted). STUN public; **TURN = self-hosted
-coturn** on a small EU VPS (HMAC creds minted per-call by a server action,
-TTL ≤ 1h; TURN relays ciphertext only). No SFU, no Cloudflare media products,
-**no recording** — nothing media touches our storage.
+DTLS-SRTP end-to-end. Negotiation = **trystero core** through a custom strategy
+on the private `call:{id}:rtc` Supabase channel (`src/app/callroom.ts` —
+ephemeral broadcast, never persisted); server truth (ring/accept/decline/sweep)
+on `call:{id}`. STUN public; **TURN = self-hosted coturn** on a small EU VPS
+(HMAC creds minted per-call by a server action, TTL ≤ 1h; TURN relays
+ciphertext only). No SFU, no Cloudflare media products, **no recording** —
+nothing media touches our storage.
 
 **Initiation:**
 - **Professional → client:** "Call" (choose voice/video) in thread header /

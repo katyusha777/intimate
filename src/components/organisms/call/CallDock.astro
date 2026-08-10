@@ -9,12 +9,14 @@
  *  · IncomingCall overlay (client): full-screen accept/decline, 30s, vibrate.
  *  · CallScreen (both parties): full-bleed remote, PiP self-view, controls.
  *
- * WebRTC is pure P2P (ARCHITECTURE §10): SDP/ICE ride the `call:{id}` private
- * channel (openChannel — RLS-authorized), media never touches a server. The
- * professional's RTCPeerConnection is relay-only when TURN is live (her IP
- * never reaches a client — VIDEO-CALLING.md §1.1); reason it stays vanilla
- * script, not an island: state is one module-scoped call object, same
- * discipline as Thread.astro.
+ * WebRTC is pure P2P (ARCHITECTURE §10): negotiation belongs to trystero core
+ * (offer/answer, glare, trickle ICE, restarts) signaling over the private
+ * `call:{id}:rtc` channel (src/app/callroom.ts — RLS-authorized); server truth
+ * (accept/decline/sweep) rides `call:{id}` via openChannel; media never
+ * touches a server. The professional's peer connection is relay-only when
+ * TURN is live (her IP never reaches a client — VIDEO-CALLING.md §1.1);
+ * reason it stays vanilla script, not an island: state is one module-scoped
+ * call object, same discipline as Thread.astro.
  *
  * Gesture discipline (the first-call killer): getUserMedia STARTS and remote
  * playback is PRIMED synchronously inside the tap handler, before any network
@@ -173,6 +175,8 @@ const { session } = Astro.props;
 <script>
   import { actions } from 'astro:actions';
   import { openChannel } from '@/app/realtime';
+  import { joinCallRoom } from '@/app/callroom';
+  import type { Room } from '@trystero-p2p/core';
 
   type CallView = {
     id: string;
@@ -190,8 +194,6 @@ const { session } = Astro.props;
   const RING_MS = 30_000;
   const BEAT_MS = 30_000;
   const CONNECT_MS = 25_000; // accept → connected budget before honest failure
-  const ICE_BATCH_MS = 150; // trickle coalescing (fewer broadcasts, same speed)
-  const MAX_RESTARTS = 2;
 
   // Content-free diagnostics (hard rule 7: never SDP/candidate bodies) — the
   // "call died with nothing on the console" era ends here.
@@ -223,25 +225,23 @@ const { session } = Astro.props;
     let call: {
       view: CallView;
       ice: Ice;
+      /** `call:{id}` server-truth events (DB trigger 0013). */
       channel: ReturnType<typeof openChannel> | null;
+      /** trystero room — owns negotiation, ICE, restarts (src/app/callroom.ts). */
+      room: Room | null;
+      /** The peer's RTCPeerConnection (via room.getPeers) — state chip only. */
       pc: RTCPeerConnection | null;
       local: MediaStream | null;
       remoteAudio: MediaStream;
       remoteVideo: MediaStream;
-      /** Caller only: media + pc + local offer, resolved during the ring. */
-      prep: Promise<void> | null;
       accepted: boolean;
+      /** Local stream handed to the room (once, on first peer contact). */
+      sent: boolean;
       /** PiP tap swaps which stream fills the screen (video mode only). */
       swapped: boolean;
-      trickle: boolean;
-      outIce: RTCIceCandidateInit[];
-      pendingIce: RTCIceCandidateInit[];
-      restarts: number;
       timers: number[];
-      iceTimer: number | null;
       ringTimer: number | null;
       connectTimer: number | null;
-      discTimer: number | null;
       wake: { release(): Promise<void> } | null;
       done: boolean;
     } | null = null;
@@ -253,11 +253,9 @@ const { session } = Astro.props;
       if (!call) return;
       call.timers.forEach((t) => clearInterval(t));
       call.timers = [];
-      clearT(call.iceTimer);
       clearT(call.ringTimer);
       clearT(call.connectTimer);
-      clearT(call.discTimer);
-      call.iceTimer = call.ringTimer = call.connectTimer = call.discTimer = null;
+      call.ringTimer = call.connectTimer = null;
     };
 
     async function teardown(alreadyEnded = false, reason: 'hangup' | 'timeout' | 'failed' = 'hangup') {
@@ -266,9 +264,13 @@ const { session } = Astro.props;
       me.done = true;
       dbg('teardown:', reason, alreadyEnded ? '(remote/server)' : '(local)');
       clearTimers();
-      me.channel?.send('end', { reason });
-      me.channel?.close(); // grace-delayed removal inside — the 'end' flushes
-      me.pc?.close();
+      // leave() tells the peer over the data channel (instant), destroys the
+      // peer connections, and removes the rtc signaling channel. The delayed
+      // pc.close() is belt-and-braces for a leave() that dies on a dead data
+      // channel before its own peer cleanup — the grace lets the goodbye flush.
+      void me.room?.leave().catch(() => {});
+      setTimeout(() => me.pc?.close(), 500);
+      me.channel?.close();
       me.local?.getTracks().forEach((t) => t.stop());
       void me.wake?.release().catch(() => {});
       if (!alreadyEnded) {
@@ -422,131 +424,116 @@ const { session } = Astro.props;
       applyVideoLayout();
     });
 
-    /** Build the RTCPeerConnection + shared handlers (both parties). */
-    function buildPc(ice: Ice, forceRelay: boolean) {
-      const pc = new RTCPeerConnection({
-        iceServers: ice.iceServers,
-        // Her side: relay-only when TURN is live — her address never appears
-        // in any candidate the client can see (VIDEO-CALLING.md §1.1).
-        iceTransportPolicy: forceRelay ? 'relay' : 'all',
-      });
-      pc.ontrack = (e) => {
-        if (!call) return;
-        dbg('track:', e.track.kind);
-        (e.track.kind === 'audio' ? call.remoteAudio : call.remoteVideo).addTrack(e.track);
-        e.track.onunmute = () => ensureRemotePlayback();
+    /** Join the trystero room — it owns offer/answer, glare, ICE, restarts. */
+    function joinRtc(me: NonNullable<typeof call>) {
+      const room = joinCallRoom(
+        {
+          appId: 'intimate',
+          rtcConfig: {
+            iceServers: me.ice.iceServers,
+            // Her side: relay-only when TURN is live — her address never
+            // appears in any candidate the client can see (VIDEO-CALLING §1.1).
+            iceTransportPolicy: me.ice.relayOnly ? 'relay' : 'all',
+          },
+        },
+        me.view.id,
+        {
+          onJoinError: (d) => {
+            if (call !== me || me.done) return;
+            warn('rtc join failed:', d.error);
+            alertToast(root.dataset.i18nCallFailed);
+            void teardown(false, 'failed');
+          },
+        },
+      );
+      me.room = room;
+      room.onPeerJoin = (peerId) => {
+        if (call !== me || me.done) return;
+        dbg('peer join');
+        watchPeer(me, peerId);
+        maybeSendLocal(me);
+      };
+      room.onPeerLeave = () => {
+        if (call !== me || me.done) return;
+        dbg('peer left');
+        setChip('reconnecting');
+        // Normal hangup: the server 'ended' event lands within ~½s and tears
+        // down first (alreadyEnded). Only a peer that died without writing
+        // state falls through to an honest local 'failed'.
+        const t = window.setTimeout(() => {
+          if (call === me && !me.done) void teardown(false, 'failed');
+        }, 2000);
+        me.timers.push(t);
+      };
+      room.onPeerStream = (stream) => {
+        if (call !== me || me.done) return;
+        dbg('remote stream:', stream.getTracks().map((t) => t.kind).join('+'));
+        for (const t of stream.getTracks()) {
+          (t.kind === 'audio' ? me.remoteAudio : me.remoteVideo).addTrack(t);
+          t.onunmute = () => ensureRemotePlayback();
+        }
         ensureRemotePlayback();
       };
-      pc.onicecandidate = (e) => {
-        if (!call) return;
-        if (e.candidate) {
-          call.outIce.push(e.candidate.toJSON());
-          if (call.trickle && call.iceTimer == null) {
-            call.iceTimer = window.setTimeout(flushOutIce, ICE_BATCH_MS);
-          }
-        } else {
-          dbg('gathering complete');
-          flushOutIce();
-        }
-      };
-      pc.oniceconnectionstatechange = () => dbg('ice:', pc.iceConnectionState);
-      pc.onconnectionstatechange = () => {
-        if (!call || call.pc !== pc) return;
+    }
+
+    /** Local stream → room, exactly once, only while a peer is present —
+     *  trystero sends streams to CURRENT peers, not to future joiners. */
+    function maybeSendLocal(me: NonNullable<typeof call>) {
+      if (me.done || !me.local || !me.room || me.sent) return;
+      if (!Object.keys(me.room.getPeers()).length) return;
+      me.sent = true;
+      dbg('local stream sent');
+      for (const p of me.room.addStream(me.local)) void p.catch((e) => warn('addStream:', e));
+    }
+
+    /** Observe the peer connection for the chip + connect budget only —
+     *  restart orchestration itself belongs to trystero core now. */
+    function watchPeer(me: NonNullable<typeof call>, peerId: string) {
+      const pc = me.room?.getPeers()[peerId];
+      if (!pc) return;
+      me.pc = pc;
+      pc.addEventListener('connectionstatechange', () => {
+        if (call !== me || me.done || me.pc !== pc) return;
         const s = pc.connectionState;
         dbg('pc:', s);
         if (s === 'connected') {
-          call.restarts = 0;
-          clearT(call.connectTimer);
-          clearT(call.discTimer);
-          call.connectTimer = call.discTimer = null;
+          clearT(me.connectTimer);
+          me.connectTimer = null;
           setChip('connected');
-        } else if (s === 'disconnected') {
-          // Often self-heals in seconds — only escalate if it lingers.
-          setChip('reconnecting');
-          call.discTimer ??= window.setTimeout(() => tryRestart('disconnected'), 6000);
-        } else if (s === 'failed') {
-          tryRestart('failed');
+        } else if (s === 'disconnected' || s === 'failed') {
+          setChip('reconnecting'); // trystero restarts; onPeerLeave is the exit
         }
-      };
-      return pc;
-    }
-
-    /** Trickle out the queued candidates as ONE broadcast (batching). */
-    function flushOutIce() {
-      if (!call) return;
-      clearT(call.iceTimer);
-      call.iceTimer = null;
-      if (!call.trickle || !call.channel) return; // pre-offer candidates ride inside the SDP
-      const batch = call.outIce.splice(0);
-      if (batch.length) {
-        dbg('ice out ×' + batch.length);
-        call.channel.send('ice', { candidates: batch });
-      }
-    }
-
-    async function addIce(c: RTCIceCandidateInit) {
-      if (!call?.pc) return;
-      if (!call.pc.remoteDescription) call.pendingIce.push(c);
-      else await call.pc.addIceCandidate(c).catch((e) => dbg('addIce:', (e as Error)?.name));
-    }
-    async function flushPendingIce() {
-      if (!call?.pc) return;
-      for (const c of call.pendingIce.splice(0)) {
-        await call.pc.addIceCandidate(c).catch((e) => dbg('addIce:', (e as Error)?.name));
-      }
-    }
-    /** Inbound ice event — batched `{candidates: []}` (legacy single tolerated). */
-    function onIceEvent(p: unknown) {
-      const q = p as { candidates?: RTCIceCandidateInit[]; candidate?: RTCIceCandidateInit };
-      const list = q.candidates ?? (q.candidate ? [q.candidate] : []);
-      dbg('ice in ×' + list.length);
-      for (const c of list) void addIce(c);
+      });
     }
 
     /**
-     * The caller's accept path: drop the ring timer, arm the connect timeout,
-     * send the pre-gathered offer, start the clock + heartbeat. Driven by the
-     * ephemeral `accept` broadcast AND — as a backstop — the reliable DB-trigger
-     * `active` event, so a dropped accept broadcast still connects instead of
-     * ringing out into a bogus "missed"/0s card. Idempotent via `me.accepted`.
+     * The caller's accept moment, driven by the reliable DB-trigger `active`
+     * event on the call topic (the callee learns of accept locally). The peers
+     * connect on their own — this only moves the UI, timers and heartbeat.
+     * Idempotent via `me.accepted`.
      */
-    async function onAccepted(me: NonNullable<typeof call>) {
-      if (!call || call !== me || me.accepted || me.done) return;
+    function onAccepted(me: NonNullable<typeof call>) {
+      if (call !== me || me.accepted || me.done) return;
       me.accepted = true;
       dbg('accepted');
       clearT(me.ringTimer);
       me.ringTimer = null;
       setChip('connecting');
       armConnectTimeout();
-      try {
-        await me.prep;
-      } catch {
-        return; // prep's catch already tore down
-      }
-      if (call !== me || me.done || !me.pc) return;
-      // The offer carries every candidate gathered during the ring; trickle
-      // takes over for stragglers only.
-      me.outIce = [];
-      me.trickle = true;
-      me.channel!.send('offer', { sdp: me.pc.localDescription });
-      dbg('offer sent (pre-gathered)');
       startTimer();
       beginBeat();
     }
 
     /**
      * Server-truth state changes (DB trigger 0013 on the call topic): how the
-     * ringing caller learns of a decline, how it learns of an accept when the
-     * ephemeral broadcast is lost, and how either side learns the session was
-     * swept/terminated elsewhere. Never carries SDP.
+     * ringing caller learns of an accept or a decline, and how either side
+     * learns the session was swept/terminated elsewhere. Never carries SDP.
      */
     function onCallStateEvent(p: unknown) {
       const { id, state } = p as { id: string; state: string };
       if (!call || call.view.id !== id || call.done) return;
       if (state === 'active') {
-        // Reliable accept backstop for the caller (the callee learns of accept
-        // locally). No-op once already accepted.
-        if (call.view.party === 'professional') void onAccepted(call);
+        if (call.view.party === 'professional') onAccepted(call);
         return;
       }
       if (state === 'ringing') return;
@@ -555,7 +542,7 @@ const { session } = Astro.props;
       void teardown(true);
     }
 
-    /** Signaling channel died: fatal before media connects, shrug after. */
+    /** Server-truth channel died: fatal before media connects, shrug after. */
     function onChannelStatus(s: 'ready' | 'down') {
       dbg('channel:', s);
       if (s !== 'down' || !call || call.done) return;
@@ -566,40 +553,6 @@ const { session } = Astro.props;
       warn('signaling channel dead before connect');
       alertToast(root.dataset.i18nCallFailed);
       void teardown(false, 'failed');
-    }
-
-    /** ICE restart, count-bounded; only the caller re-offers (no glare ever). */
-    function tryRestart(why: string) {
-      if (!call || call.done || !call.pc) return;
-      clearT(call.discTimer);
-      call.discTimer = null;
-      if (++call.restarts > MAX_RESTARTS) {
-        warn('restarts exhausted (' + why + ')');
-        void teardown(false, 'failed');
-        return;
-      }
-      warn('ice restart', call.restarts + '/' + MAX_RESTARTS, '—', why);
-      setChip('reconnecting');
-      if (call.view.party === 'professional') void reoffer(true);
-      else call.channel?.send('restart', {});
-      const me = call;
-      const t = window.setTimeout(() => {
-        if (call === me && !me.done && me.pc?.connectionState !== 'connected') tryRestart('stalled');
-      }, 8000);
-      me.timers.push(t);
-    }
-
-    async function reoffer(restart: boolean) {
-      if (!call?.pc || !call.channel) return;
-      try {
-        if (restart) call.pc.restartIce();
-        const offer = await call.pc.createOffer();
-        await call.pc.setLocalDescription(offer);
-        call.channel.send('offer', { sdp: call.pc.localDescription });
-        dbg('offer sent' + (restart ? ' (restart)' : ''));
-      } catch (e) {
-        warn('reoffer:', e);
-      }
     }
 
     function armConnectTimeout() {
@@ -648,7 +601,7 @@ const { session } = Astro.props;
       // is primed. Media + ICE warm up DURING the ring — on accept the offer
       // leaves instantly, no permission prompt in the critical path.
       const mediaP = getMedia(mode);
-      mediaP.catch(() => {}); // handled via prep below
+      mediaP.catch(() => {}); // handled in the media chain below
       const remote = primeRemoteMedia();
       let res;
       try {
@@ -670,22 +623,17 @@ const { session } = Astro.props;
         view,
         ice: { iceServers, relayOnly },
         channel: null,
+        room: null,
         pc: null,
         local: null,
         remoteAudio: remote.audio,
         remoteVideo: remote.video,
-        prep: null,
         accepted: false,
+        sent: false,
         swapped: false,
-        trickle: false,
-        outIce: [],
-        pendingIce: [],
-        restarts: 0,
         timers: [],
-        iceTimer: null,
         ringTimer: null,
         connectTimer: null,
-        discTimer: null,
         wake: null,
         done: false,
       };
@@ -694,54 +642,28 @@ const { session } = Astro.props;
       setChip('ringing');
       void grabWakeLock();
 
-      me.channel = openChannel(
-        `call:${view.id}`,
-        {
-          accept: () => void onAccepted(me),
-          answer: async (p) => {
-            const { sdp } = p as { sdp: RTCSessionDescriptionInit };
-            if (call !== me || !me.pc) return;
-            if (me.pc.signalingState !== 'have-local-offer') {
-              dbg('answer ignored in', me.pc.signalingState);
-              return;
-            }
-            await me.pc.setRemoteDescription(sdp).catch((e) => warn('setRemote(answer):', e));
-            dbg('answer applied');
-            await flushPendingIce();
-          },
-          restart: () => {
-            if (call === me && me.accepted && !me.done) void reoffer(true);
-          },
-          ice: onIceEvent,
-          end: () => {
-            dbg('peer end');
-            void teardown(true);
-          },
-          call: onCallStateEvent,
-        },
-        onChannelStatus,
-      );
+      me.channel = openChannel(`call:${view.id}`, { call: onCallStateEvent }, onChannelStatus);
+      joinRtc(me); // announce + ICE pre-warm run during the ring
 
-      me.prep = (async () => {
-        const local = await mediaP; // may sit on the permission prompt — ring continues
+      void (async () => {
+        let local: MediaStream;
+        try {
+          local = await mediaP; // may sit on the permission prompt — ring continues
+        } catch (e) {
+          if (call === me && !me.done) {
+            mediaFailToast(e);
+            void teardown(false, 'failed');
+          }
+          return;
+        }
         if (call !== me || me.done) {
           local.getTracks().forEach((t) => t.stop());
           return;
         }
         me.local = local;
         applyVideoLayout();
-        const pc = buildPc(me.ice, relayOnly);
-        me.pc = pc;
-        local.getTracks().forEach((t) => pc.addTrack(t, local));
-        await pc.setLocalDescription(await pc.createOffer()); // gathering runs during the ring
-        dbg('local offer ready');
+        maybeSendLocal(me);
       })();
-      me.prep.catch((e) => {
-        if (call === me && !me.done) {
-          mediaFailToast(e);
-          void teardown(false, 'failed');
-        }
-      });
 
       // 30s unanswered → timeout ("missed" card) — never fake a longer ring.
       me.ringTimer = window.setTimeout(() => {
@@ -808,22 +730,17 @@ const { session } = Astro.props;
           view: { ...view, state: 'active' },
           ice,
           channel: null,
+          room: null,
           pc: null,
           local: null,
           remoteAudio: remote.audio,
           remoteVideo: remote.video,
-          prep: null,
           accepted: true,
+          sent: false,
           swapped: false,
-          trickle: false,
-          outIce: [],
-          pendingIce: [],
-          restarts: 0,
           timers: [],
-          iceTimer: null,
           ringTimer: null,
           connectTimer: null,
-          discTimer: null,
           wake: null,
           done: false,
         };
@@ -831,34 +748,14 @@ const { session } = Astro.props;
         showScreen(me.view);
         setChip('connecting');
         void grabWakeLock();
-        // Channel opens (and joins) while the media prompt may still be up.
-        me.channel = openChannel(
-          `call:${callId}`,
-          {
-            offer: async (p) => {
-              // Initial offer AND ICE-restart re-offers land here.
-              const { sdp } = p as { sdp: RTCSessionDescriptionInit };
-              if (call !== me || !me.pc) return;
-              try {
-                await me.pc.setRemoteDescription(sdp);
-                await flushPendingIce();
-                const answer = await me.pc.createAnswer();
-                await me.pc.setLocalDescription(answer);
-                me.channel?.send('answer', { sdp: me.pc.localDescription });
-                dbg('answer sent');
-              } catch (e) {
-                warn('offer handling:', e);
-              }
-            },
-            ice: onIceEvent,
-            end: () => {
-              dbg('peer end');
-              void teardown(true);
-            },
-            call: onCallStateEvent,
-          },
-          onChannelStatus,
-        );
+        // Channel + room join while the media prompt may still be up; the
+        // caller has been announcing in the room since the ring started, so
+        // the handshake begins the moment our join lands.
+        me.channel = openChannel(`call:${callId}`, { call: onCallStateEvent }, onChannelStatus);
+        joinRtc(me);
+        armConnectTimeout();
+        startTimer();
+        beginBeat();
         let local: MediaStream;
         try {
           local = await mediaP;
@@ -873,16 +770,7 @@ const { session } = Astro.props;
         }
         me.local = local;
         applyVideoLayout();
-        const pc = buildPc(ice, false);
-        me.pc = pc;
-        local.getTracks().forEach((t) => pc.addTrack(t, local));
-        me.trickle = true;
-        // Queued until OUR join completes — the caller's offer can therefore
-        // never be broadcast before our handlers are live.
-        me.channel.send('accept', {});
-        armConnectTimeout();
-        startTimer();
-        beginBeat();
+        maybeSendLocal(me);
       };
       $('[data-incoming-decline]').onclick = () => {
         incoming.hidden = true;
@@ -930,10 +818,16 @@ const { session } = Astro.props;
       btn.setAttribute('aria-pressed', String(!track.enabled));
       localEl.classList.toggle('opacity-30', !track.enabled);
     });
+    /** Swap the SENT video track (replace when we had one, add when not). */
+    function swapSentVideo(old: MediaStreamTrack | undefined, fresh: MediaStreamTrack) {
+      if (!call?.room || !call.local) return;
+      const ps = old ? call.room.replaceTrack(old, fresh) : call.room.addTrack(fresh, call.local);
+      for (const p of ps) void p.catch((e: unknown) => warn('track swap:', e));
+    }
     let facing: 'user' | 'environment' = 'user';
     let flipping = false;
     $('[data-ctl-flip]').addEventListener('click', async () => {
-      if (!call?.pc || !call.local || flipping) return; // ignore double-taps mid-swap
+      if (!call?.room || !call.local || flipping) return; // ignore double-taps mid-swap
       flipping = true;
       const next = facing === 'user' ? 'environment' : 'user';
       const old = call.local.getVideoTracks()[0];
@@ -951,8 +845,7 @@ const { session } = Astro.props;
           video: { facingMode: { exact: next }, width: { ideal: 1280 }, height: { ideal: 720 } },
         });
         const newTrack = fresh.getVideoTracks()[0]!;
-        const sender = call.pc.getSenders().find((s) => s.track?.kind === 'video');
-        await sender?.replaceTrack(newTrack); // swap the SENT track too
+        swapSentVideo(old, newTrack); // swap the SENT track too
         call.local.addTrack(newTrack);
         facing = next;
         // call.local is live in whichever element currently shows it — the
@@ -967,8 +860,7 @@ const { session } = Astro.props;
             video: { facingMode: facing, width: { ideal: 1280 }, height: { ideal: 720 } },
           });
           const newTrack = fresh.getVideoTracks()[0]!;
-          const sender = call.pc?.getSenders().find((s) => s.track?.kind === 'video');
-          await sender?.replaceTrack(newTrack);
+          swapSentVideo(old, newTrack);
           call.local?.addTrack(newTrack);
           applyVideoLayout();
         } catch {

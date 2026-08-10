@@ -8,6 +8,16 @@ the real-device DoD items below (two-device call passes, forced-relay
 webrtc-internals check, kitchen-sink states) — tick them as they're proven,
 then fold back into MESSAGING.md §9 and delete this file.
 
+**2026-08-11: WebRTC layer rebuilt on trystero** (`@trystero-p2p/core`) after
+the hand-rolled negotiation proved unstable. The library owns offer/answer,
+glare, trickle ICE and restarts, signaling through a custom strategy
+(`src/app/callroom.ts`) on the private RLS-authorized `call:{id}:rtc` channel
+(NOT trystero's stock anon-key public-channel supabase strategy). The
+ephemeral `accept`/`offer`/`answer`/`ice`/`restart`/`end` protocol events are
+gone; §6 below reflects the reduced protocol. Everything else (schema, RLS,
+actions, TURN, UI, gesture law, timers) is unchanged. Real-device DoD passes
+must be re-proven on the new layer.
+
 **Temporary execution tracker** (like UX-PLAN.md / ONBOARDING.md): the concrete
 build plan for 1:1 calls and the contact flow that feeds them. The **spec of
 record stays** `ARCHITECTURE.md` §10 (call architecture, locked) and
@@ -193,17 +203,12 @@ gate (regression) · □ professional sees no favorites affordance anywhere ·
 
 ## 6. Phase V2 — voice calls end-to-end (the architecture proves itself here)
 
-Signaling protocol on `call:{sessionId}` (ephemeral broadcast; events are
-data, never instructions):
+Signaling (ephemeral broadcast; events are data, never instructions):
 
-| event | payload | sender |
-|---|---|---|
-| `accept` | `{}` | callee |
-| `offer` / `answer` | `{ sdp }` | caller / callee (offer repeats on ICE restart) |
-| `ice` | `{ candidates: [...] }` | both, trickled in ~150ms batches |
-| `restart` | `{}` | callee asks the caller to ICE-restart (only the caller ever offers) |
-| `end` | `{ reason }` | both |
-| `call` | `{ id, state }` | DB trigger 0013 — decline/sweep/terminal truth |
+| channel | event | payload | sender |
+|---|---|---|---|
+| `call:{id}` | `call` | `{ id, state }` | DB trigger 0013 — accept/decline/sweep/terminal truth |
+| `call:{id}:rtc` | `signal` | `{ t: topic, m: msg }` | trystero core, both sides — announce + SDP/ICE handshake (`src/app/callroom.ts`) |
 
 Flow: her tap → **`getUserMedia` starts synchronously in the tap** (gesture
 law: WebKit auto-denies unprivileged prompts after a past denial, Brave's
@@ -212,19 +217,21 @@ anchor to the tap, never after an await) and `call.start` runs in parallel
 (validates professional-owns-profile, thread `open`, pair unblocked, mode ≠
 off; **rejects if she already has an active session — busy is server truth**)
 → inserts `ringing` → trigger rings his `account:{id}` → global overlay →
-meanwhile her side pre-builds the `RTCPeerConnection` and gathers ICE during
-the ring → his Accept tap starts *his* `getUserMedia` (same gesture law) in
-parallel with `call.accept` → his `accept` broadcast (queued until his channel
-joins, so the offer can never outrun his handlers) → her pre-gathered offer
-goes out instantly → answer, residual trickle ICE → connected → hangup either
-side → `call.end(reason)` → `kind='call'` card posted. Decline → card her side
-("not now" tone, no penalty copy) — reaches her ringing UI via the trigger's
-`call` event. 30s no-answer → `missed` + card; 25s accept-to-connect budget →
+meanwhile her side joins the trystero room and announces (~5s re-announce
+loop) during the ring → his Accept tap starts *his* `getUserMedia` (same
+gesture law) in parallel with `call.accept` → his room join meets her
+announce → trystero negotiates (offer/answer, glare, trickle ICE — library-
+owned) → local streams attach per side once a peer is present, remote media
+flows via `onPeerStream` → hangup either side → `call.end(reason)` action;
+the trigger's `call` event plus trystero's instant peer-leave tear the other
+side down → `kind='call'` card posted. Decline → card her side ("not now"
+tone, no penalty copy) — reaches her ringing UI via the trigger's `call`
+event. 30s no-answer → `missed` + card; 25s accept-to-connect budget →
 honest failure toast. 30s heartbeat updates `last_beat_at` while active
-(liveness now, billing later). Mid-call drops: `disconnected` >6s or `failed`
-→ ICE restart (caller re-offers; callee requests via `restart`), two attempts,
-then honest teardown. Every state edge logs `[call]` to the console
-(content-free — never SDP).
+(liveness now, billing later). Mid-call drops: trystero restarts ICE
+internally; a peer that vanishes without writing server state → 2s grace →
+honest local `failed` teardown. Every state edge logs `[call]` to the
+console (content-free — never SDP).
 
 UI (reuse law; register everything in COMPONENTS.md + `/kitchen-sink` same
 change):
