@@ -75,12 +75,29 @@ export function stripJpegMetadata(input: ArrayBufferLike): ArrayBuffer {
   return out.slice(0, w).buffer;
 }
 
-/** Same, for a `data:image/jpeg;base64,…` URL (chat photos store the URL inline). */
-export function stripJpegDataUrl(dataUrl: string): string {
+/** Decode a `data:...;base64,` URL to raw bytes. Throws on a malformed base64
+ *  body (Zod only validates the prefix) — callers at the trust boundary catch it. */
+function dataUrlToBytes(dataUrl: string): ArrayBuffer {
   const bin = atob(dataUrl.slice(dataUrl.indexOf(',') + 1));
   const bytes = new Uint8Array(bin.length);
   for (let k = 0; k < bin.length; k++) bytes[k] = bin.charCodeAt(k);
-  const stripped = new Uint8Array(stripJpegMetadata(bytes.buffer));
+  return bytes.buffer;
+}
+
+/**
+ * THE ingestion choke point (hard rule 2): decode a client JPEG data-URL to
+ * bytes with EXIF/GPS stripped. Every client image (profile photos, verification
+ * docs) enters through this, so the strip is structural — no caller can forget
+ * it. Throws on a malformed base64 body; the action boundary maps that to 400.
+ */
+export function dataUrlToJpegBytes(dataUrl: string): ArrayBuffer {
+  return stripJpegMetadata(dataUrlToBytes(dataUrl));
+}
+
+/** Same, but returns a data-URL (chat photos are stored/served inline as a URL,
+ *  not R2 bytes). Reuses the shared decode + strip. Throws on malformed base64. */
+export function stripJpegDataUrl(dataUrl: string): string {
+  const stripped = new Uint8Array(stripJpegMetadata(dataUrlToBytes(dataUrl)));
   let s = '';
   // Chunked to keep the binary→string conversion off the call stack for ~1 MB.
   for (let k = 0; k < stripped.length; k += 0x8000) {

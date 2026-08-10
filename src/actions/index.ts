@@ -14,7 +14,7 @@ import { env } from "cloudflare:workers";
 import { startPhoneVerify, checkPhoneVerify } from "@/lib/twilio";
 import { bustProfiles, type CacheKv } from "@/lib/page-cache";
 import { rateLimit } from "@/lib/rate-limit";
-import { stripJpegMetadata, stripJpegDataUrl } from "@/lib/jpeg-strip";
+import { dataUrlToJpegBytes, stripJpegDataUrl } from "@/lib/jpeg-strip";
 import { mintIceServers } from "@/lib/turn";
 import { CONVERSATION_MODES, REPORT_REASONS, REPORT_TARGETS } from "@/lib/taxonomy";
 // The one sanctioned cross-fence import: the action registry wires in admin.
@@ -52,14 +52,6 @@ async function requireUnderLimit(name: string, key: string, max: number, windowS
  *  by case; one shared password floor so the three password paths can't drift. */
 const emailField = z.string().trim().toLowerCase().email();
 const passwordField = z.string().min(8); // was 6; still under Supabase's ceiling
-
-/** Decode a `data:...;base64,` URL to bytes (photos + verification docs). */
-function dataUrlToBytes(dataUrl: string): ArrayBuffer {
-  const bin = atob(dataUrl.slice(dataUrl.indexOf(",") + 1));
-  const bytes = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-  return bytes.buffer;
-}
 
 /** Actions run with the request context — sessions verified per request. */
 async function requireSession(context: Parameters<typeof sessionApi.current>[0]) {
@@ -262,7 +254,14 @@ export const server = {
         const session = await requireSession(context);
         // Decode → RE-STRIP metadata server-side (hard rule 2: never trust the
         // client's canvas re-encode alone — a crafted POST keeps EXIF/GPS) → R2.
-        await accountApi.addPhoto(session, { bytes: stripJpegMetadata(dataUrlToBytes(dataUrl)), contentType: "image/jpeg", isPrivate });
+        // Malformed base64 (Zod only checks the prefix) → clean 400, not a 500.
+        let bytes: ArrayBuffer;
+        try {
+          bytes = dataUrlToJpegBytes(dataUrl);
+        } catch {
+          throw new ActionError({ code: "BAD_REQUEST", message: "invalid image" });
+        }
+        await accountApi.addPhoto(session, { bytes, isPrivate });
         await bustProfiles(cacheKv());
         return { ok: true };
       },
@@ -352,12 +351,10 @@ export const server = {
           // Streams to the private EU bucket + records hashes + flags pending
           // (hard rule 3). NEVER log the contents — only a generic failure.
           await accountApi.submitVerification(session, {
-            // Re-strip server-side (hard rule 2) — the ID/selfie must never carry
-            // EXIF/GPS even if a crafted client skipped the canvas re-encode.
-            docs: [
-              { bytes: stripJpegMetadata(dataUrlToBytes(doc)) },
-              { bytes: stripJpegMetadata(dataUrlToBytes(selfie)) },
-            ],
+            // Decode + re-strip server-side (hard rule 2) — the ID/selfie must
+            // never carry EXIF/GPS even if a crafted client skipped the canvas
+            // re-encode. A malformed body throws → caught below → 400.
+            docs: [{ bytes: dataUrlToJpegBytes(doc) }, { bytes: dataUrlToJpegBytes(selfie) }],
           });
         } catch (e) {
           console.error("[verify] submit failed:", (e as Error).message);
@@ -460,12 +457,18 @@ export const server = {
         await requireUnderLimit("msg-send", session.accountId, 60);
         // Re-strip metadata server-side (hard rule 2): chat photos are stored
         // inline as data-URLs and re-served to the other party — a crafted client
-        // could otherwise deliver a GPS-tagged image. ponytail: chat photos still
-        // bypass R2/the /media gate (stored inline); move them to the addPhoto→R2
+        // could otherwise deliver a GPS-tagged image. Malformed base64 → 400, not
+        // a 500 + spurious error capture. ponytail: chat photos still bypass
+        // R2/the /media gate (stored inline); move them to the addPhoto→R2
         // pipeline with thread-scoped gating if inline storage ever bites.
-        const clean = input.kind === "photo" && input.photo
-          ? { ...input, photo: stripJpegDataUrl(input.photo) }
-          : input;
+        let clean = input;
+        if (input.kind === "photo" && input.photo) {
+          try {
+            clean = { ...input, photo: stripJpegDataUrl(input.photo) };
+          } catch {
+            throw new ActionError({ code: "BAD_REQUEST", message: "invalid image" });
+          }
+        }
         const message = await messagingApi.send(session, clean);
         if (!message) throw new ActionError({ code: "BAD_REQUEST" });
         return { message };

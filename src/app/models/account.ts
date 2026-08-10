@@ -132,7 +132,7 @@ export interface AccountApi {
 
   // --- media (her gallery) — bytes go to R2, the row records the key ---
   photos(session: Session): Promise<MediaItem[]>;
-  addPhoto(session: Session, input: { bytes: ArrayBuffer; contentType: string; isPrivate?: boolean }): Promise<void>;
+  addPhoto(session: Session, input: { bytes: ArrayBuffer; isPrivate?: boolean }): Promise<void>;
   removePhoto(session: Session, input: { id: string }): Promise<void>;
 
   /** Is this phone already VERIFIED on another account? (items.md #12) */

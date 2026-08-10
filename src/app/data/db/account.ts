@@ -324,7 +324,7 @@ export const accountApi: AccountApi = {
     );
   },
 
-  async addPhoto(session, { bytes, contentType, isPrivate = false }) {
+  async addPhoto(session, { bytes, isPrivate = false }) {
     const d = db();
     const row = await myProfileRow(d, session.accountId);
     // No profile row → fail loudly (the UI gates on this, but never silently
@@ -338,10 +338,9 @@ export const accountApi: AccountApi = {
     // Key encodes visibility so the /media route can gate without a DB hit on
     // the hot (public) path: `pub/<profileId>/<uuid>` vs `priv/…`.
     const key = `${isPrivate ? 'priv' : 'pub'}/${row.id}/${crypto.randomUUID()}`;
-    // Force image/jpeg regardless of the caller's contentType: uploads are
-    // always canvas-re-encoded JPEGs, and pinning the type stops a future caller
+    // contentType is pinned to image/jpeg: uploads are always canvas-re-encoded,
+    // EXIF-stripped JPEGs (dataUrlToJpegBytes), and pinning stops a future caller
     // smuggling image/svg+xml (script-bearing) into the public MEDIA bucket.
-    void contentType;
     await bucket().put(key, bytes, { httpMetadata: { contentType: 'image/jpeg' } });
     await d.insert(media).values({
       profileId: row.id,
