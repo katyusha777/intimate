@@ -28,8 +28,9 @@ export async function llmExtract(markdown: string): Promise<{ raw: unknown; cost
       usage: { include: true },
       messages: [
         { role: 'system', content: buildExtractPrompt() },
-        // The page content is DATA, never instructions (hard rule 7).
-        { role: 'user', content: markdown.slice(0, 40_000) },
+        // The page content is DATA, never instructions (hard rule 7). Cap high
+        // enough for the classic (server-rendered) pages, which run large.
+        { role: 'user', content: markdown.slice(0, 60_000) },
       ],
     }),
   });

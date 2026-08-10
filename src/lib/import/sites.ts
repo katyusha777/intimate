@@ -68,6 +68,22 @@ export function detectSite(url: string): SiteConfig | null {
   return SITES.find((s) => s.match.test(host)) ?? null;
 }
 
+/**
+ * Canonicalize a source URL to the host that scrapes best BEFORE fetching.
+ * kinky's `beta.` is a JS SPA that renders to almost nothing in markdown; the
+ * classic `www.kinky.nl` is server-rendered (WordPress) and far richer — always
+ * scrape that. Same path, so the profile is identical.
+ */
+export function canonicalizeUrl(raw: string): string {
+  try {
+    const u = new URL(raw);
+    if (/(^|\.)kinky\.nl$/i.test(u.hostname)) u.hostname = 'www.kinky.nl';
+    return u.toString();
+  } catch {
+    return raw;
+  }
+}
+
 export function knownSites(): Array<{ key: string; label: string }> {
   return SITES.map((s) => ({ key: s.key, label: s.label }));
 }

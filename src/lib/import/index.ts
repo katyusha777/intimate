@@ -5,7 +5,7 @@
  * uploads her own), no persistence here — the caller previews then saves.
  * Self-service consent: she imports HER OWN profile (ARCHITECTURE §6).
  */
-import { detectSite, knownSites } from './sites';
+import { canonicalizeUrl, detectSite, knownSites } from './sites';
 import { firecrawlScrape } from './firecrawl';
 import { llmExtract } from './extract';
 import { normalizeImported, type ImportResult } from './normalize';
@@ -20,13 +20,16 @@ export interface ImportOutcome extends ImportResult {
 }
 
 export async function importFromUrl(url: string): Promise<ImportOutcome> {
-  const site = detectSite(url);
+  // Rewrite to the best-scraping host (e.g. kinky beta → classic) before both
+  // the site match and the fetch.
+  const scrapeUrl = canonicalizeUrl(url);
+  const site = detectSite(scrapeUrl);
   if (!site) {
     const names = knownSites().map((s) => s.label).join(', ');
     throw new Error(`We can only import from ${names} right now.`);
   }
   const { markdown } = await firecrawlScrape({
-    url,
+    url: scrapeUrl,
     actions: site.actions,
     waitFor: site.waitFor,
     onlyMainContent: site.onlyMainContent,
