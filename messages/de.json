@@ -537,6 +537,8 @@
   "onb_done_title": "Fertig! Wir prüfen dein Profil.",
   "onb_done_note": "Das dauert meist bis zu 24 Stunden. Du bekommst eine E-Mail, sobald du live bist.",
   "onb_done_cta": "Mein Profil ansehen",
+  "onb_done_continue": "Services & Preise hinzufügen",
+  "onb_done_meanwhile": "Während wir deinen Ausweis prüfen, kannst du deine Services und Preise hinzufügen — so bist du bereit, sobald du freigegeben bist.",
   "onb_need_rate": "Füge mindestens einen Preis hinzu, um fortzufahren.",
   "onb_need_service": "Hake mindestens eine Leistung an, um fortzufahren.",
   "taxonomy_appearances_west_european": "Westeuropäisch",

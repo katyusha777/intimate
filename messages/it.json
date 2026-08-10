@@ -537,6 +537,8 @@
   "onb_done_title": "Fatto! Stiamo controllando il tuo profilo.",
   "onb_done_note": "Di solito ci vogliono fino a 24 ore. Riceverai un'email nel momento in cui sarai online.",
   "onb_done_cta": "Vedi il mio profilo",
+  "onb_done_continue": "Aggiungi servizi e prezzi",
+  "onb_done_meanwhile": "Mentre controlliamo il tuo documento, aggiungi servizi e prezzi — così sei pronta appena approvata.",
   "onb_need_rate": "Aggiungi almeno un prezzo per continuare.",
   "onb_need_service": "Spunta almeno un servizio per continuare.",
   "taxonomy_appearances_west_european": "Europeo occidentale",

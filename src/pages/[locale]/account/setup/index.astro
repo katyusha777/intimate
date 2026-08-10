@@ -166,14 +166,18 @@ const why = 'mt-2 leading-relaxed text-muted-foreground';
           </span>
           <h1 class="display mt-5 text-2xl md:text-3xl">{m.onb_done_title()}</h1>
           <p class="mx-auto mt-2 max-w-sm leading-relaxed text-muted-foreground">{m.onb_done_note()}</p>
-          <Button
-            as="a"
+          {/* Keep her building — services/rates/hours enrich the profile while
+              the ID is reviewed in the background. The editor is the normal home. */}
+          <p class="mx-auto mt-3 max-w-sm leading-relaxed text-muted-foreground">{m.onb_done_meanwhile()}</p>
+          <Button as="a" href={localizePath('/account/profile/')} size="lg" class={`${cont} mt-8`}>
+            {m.onb_done_continue()}
+          </Button>
+          <a
             href={profile?.slug ? localizePath(`/profile/${profile.slug}/`) : localizePath('/account/')}
-            size="lg"
-            class={`${cont} mt-8`}
+            class="mt-3 block text-center text-sm text-muted-foreground underline-offset-2 hover:underline"
           >
             {m.onb_done_cta()}
-          </Button>
+          </a>
         </div>
       )
     }

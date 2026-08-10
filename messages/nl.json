@@ -537,6 +537,8 @@
   "onb_done_title": "Klaar! We controleren je profiel.",
   "onb_done_note": "Dit duurt meestal maximaal 24 uur. Je krijgt een e-mail zodra je live bent.",
   "onb_done_cta": "Bekijk mijn profiel",
+  "onb_done_continue": "Voeg je diensten & prijzen toe",
+  "onb_done_meanwhile": "Terwijl wij je ID controleren, kun je je diensten en prijzen toevoegen — zo ben je klaar zodra je bent goedgekeurd.",
   "onb_need_rate": "Voeg minstens één prijs toe om door te gaan.",
   "onb_need_service": "Vink minstens één dienst aan om door te gaan.",
   "taxonomy_appearances_west_european": "West-Europees",

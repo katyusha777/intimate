@@ -537,6 +537,8 @@
   "onb_done_title": "Gata! Îți verificăm profilul.",
   "onb_done_note": "Durează de obicei cel mult 24 de ore. Primești un e-mail imediat ce ești live.",
   "onb_done_cta": "Vezi profilul meu",
+  "onb_done_continue": "Adaugă serviciile și prețurile",
+  "onb_done_meanwhile": "Cât timp verificăm actul tău, adaugă serviciile și prețurile — ca să fii gata în momentul aprobării.",
   "onb_need_rate": "Adaugă cel puțin un preț ca să continui.",
   "onb_need_service": "Bifează cel puțin un serviciu ca să continui.",
   "taxonomy_appearances_west_european": "Vest-european",

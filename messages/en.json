@@ -537,6 +537,8 @@
   "onb_done_title": "Done! We're checking your profile.",
   "onb_done_note": "This usually takes up to 24 hours. You'll get an email the moment you're live.",
   "onb_done_cta": "See my profile",
+  "onb_done_continue": "Add your services & prices",
+  "onb_done_meanwhile": "While we check your ID, add your services and prices — so you're ready the moment you're approved.",
   "onb_need_rate": "Add at least one price to continue.",
   "onb_need_service": "Tick at least one service to continue.",
   "taxonomy_appearances_west_european": "West European",
