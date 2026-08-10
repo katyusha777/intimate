@@ -38,6 +38,27 @@ describe('stripJpegMetadata', () => {
     expect(out[out.length - 1]).toBe(0xd9);
   });
 
+  test('drops EXIF even with a leading 0xFF fill byte before APP1 (the bypass)', () => {
+    // Spec-legal fill byte prepended before the APP1 marker — an attacker uses
+    // this to sneak EXIF past a naive walker. GPS must still be gone.
+    const exif = [...'Exif\0\0GPS-51.5,-0.1'].map((c) => c.charCodeAt(0));
+    const app1Len = exif.length + 2;
+    const src = new Uint8Array([
+      0xff, 0xd8, // SOI
+      0xff, // <-- fill byte
+      0xff, 0xe1, (app1Len >> 8) & 0xff, app1Len & 0xff, ...exif, // APP1/EXIF
+      0xff, 0xdb, 0x00, 0x04, 0x11, 0x22, // DQT (kept)
+      0xff, 0xda, 0x00, 0x02, 0xaa, 0xbb, // SOS + scan
+      0xff, 0xd9, // EOI
+    ]);
+    const out = new Uint8Array(stripJpegMetadata(src.buffer));
+    expect(Buffer.from(out).includes(Buffer.from('GPS'))).toBe(false);
+    let hasApp1 = false;
+    for (let i = 0; i + 1 < out.length; i++) if (out[i] === 0xff && out[i + 1] === 0xe1) hasApp1 = true;
+    expect(hasApp1).toBe(false);
+    expect(Buffer.from(out).includes(Buffer.from([0xff, 0xdb, 0x00, 0x04, 0x11, 0x22]))).toBe(true); // DQT survived
+  });
+
   test('non-JPEG input is returned untouched', () => {
     const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x01, 0x02]).buffer;
     expect(new Uint8Array(stripJpegMetadata(png))).toEqual(new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x01, 0x02]));

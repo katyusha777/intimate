@@ -29,33 +29,48 @@ export function stripJpegMetadata(input: ArrayBufferLike): ArrayBuffer {
   out[w++] = 0xff;
   out[w++] = 0xd8; // SOI
   let i = 2;
-  while (i + 1 < b.length) {
+  while (i < b.length) {
     if (b[i] !== 0xff) {
       // Out of sync with the marker structure — copy the remainder verbatim.
       copy(i, b.length);
       break;
     }
-    const marker = b[i + 1];
+    // Any number of 0xFF fill bytes may precede a marker (T.81 §B.1.1.2). A
+    // single one prepended before the APP1/EXIF marker would otherwise make the
+    // walker read the marker bytes AS a length and copy the whole EXIF through —
+    // a silent strip failure. Skip the fill run to the real marker code.
+    let m = i + 1;
+    while (m < b.length && b[m] === 0xff) m++;
+    if (m >= b.length) break; // trailing fill bytes only → drop them
+    const marker = b[m];
     if (marker === 0xd9) {
       out[w++] = 0xff;
       out[w++] = 0xd9; // EOI
       break;
     }
     if (marker === 0xda) {
-      // SOS — entropy-coded scan data runs to EOI; copy the rest verbatim.
-      copy(i, b.length);
+      // SOS — entropy-coded scan data runs to EOI; copy from the marker's 0xFF.
+      copy(m - 1, b.length);
       break;
     }
-    if (i + 3 >= b.length) {
+    // Standalone markers carry no length (TEM 0x01, RSTn 0xD0–0xD7, 0xFF00
+    // stuffing) — they only occur inside scan data (post-SOS, already copied),
+    // but guard so a crafted header can't desync the length read below.
+    if (marker === 0x00 || marker === 0x01 || (marker >= 0xd0 && marker <= 0xd7)) {
+      i = m + 1;
+      continue;
+    }
+    if (m + 2 >= b.length) {
       // Truncated segment length — bail safely, keep what's left.
-      copy(i, b.length);
+      copy(m - 1, b.length);
       break;
     }
-    const len = (b[i + 2] << 8) | b[i + 3]; // big-endian, includes the 2 length bytes
-    const seg = 2 + len; // marker (2) + length+payload (len)
+    const len = (b[m + 1] << 8) | b[m + 2]; // big-endian, includes the 2 length bytes
+    const segStart = m - 1; // the single 0xFF that belongs to this marker
+    const segEnd = Math.min(m + 1 + len, b.length); // 0xFF + marker + length+payload
     const drop = (marker >= 0xe0 && marker <= 0xef) || marker === 0xfe; // APPn or COM
-    if (!drop) copy(i, Math.min(i + seg, b.length));
-    i += seg;
+    if (!drop) copy(segStart, segEnd);
+    i = segEnd;
   }
   return out.slice(0, w).buffer;
 }
