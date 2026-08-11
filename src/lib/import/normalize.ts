@@ -154,6 +154,65 @@ export function normalizeImported(raw: unknown): ImportResult {
     if (Object.keys(oh).length) out.openingHours = oh;
   }
 
+  return finalGate(out, warnings);
+}
+
+// ---------------------------------------------------------------------------
+// Agency-crawl pickers (used by src/lib/import/agency.ts) — pure, same trust
+// boundary: LLM output in, validated values out.
+// ---------------------------------------------------------------------------
+
+/** Untrusted {profileUrls} from discovery → clean absolute same-site URLs. */
+export function pickProfileUrls(raw: unknown, baseUrl: string): string[] {
+  const arr = (raw as { profileUrls?: unknown })?.profileUrls;
+  if (!Array.isArray(arr)) return [];
+  const base = new URL(baseUrl);
+  const apex = base.hostname.split('.').slice(-2).join('.');
+  const out: string[] = [];
+  for (const item of arr.slice(0, 200)) {
+    if (typeof item !== 'string') continue;
+    let u: URL;
+    try {
+      u = new URL(item, base);
+    } catch {
+      continue;
+    }
+    if (u.protocol !== 'https:' && u.protocol !== 'http:') continue;
+    // Same site only (subdomains allowed) — the LLM must not send us elsewhere.
+    if (u.hostname !== base.hostname && !u.hostname.endsWith(`.${apex}`) && u.hostname !== apex) continue;
+    u.hash = '';
+    const href = u.href;
+    if (href === base.href || out.includes(href)) continue;
+    out.push(href);
+    if (out.length >= 100) break;
+  }
+  return out;
+}
+
+/** Untrusted agency-extraction extras → validated identity + photo URLs. */
+export function pickAgencyExtras(raw: unknown): { name?: string; age?: number; photoUrls: string[] } {
+  const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
+  const name = typeof r.name === 'string' && r.name.trim() ? r.name.trim().slice(0, 40) : undefined;
+  const ageN = typeof r.age === 'number' ? Math.round(r.age) : typeof r.age === 'string' ? parseInt(r.age, 10) : NaN;
+  const age = Number.isFinite(ageN) && ageN >= 18 && ageN <= 80 ? ageN : undefined;
+  const photoUrls: string[] = [];
+  if (Array.isArray(r.photoUrls)) {
+    for (const p of r.photoUrls.slice(0, 30)) {
+      if (typeof p !== 'string') continue;
+      try {
+        const u = new URL(p);
+        if (u.protocol !== 'https:' && u.protocol !== 'http:') continue;
+        if (!photoUrls.includes(u.href)) photoUrls.push(u.href);
+      } catch {
+        /* relative/garbage URL — drop */
+      }
+      if (photoUrls.length >= 12) break;
+    }
+  }
+  return { name, age, photoUrls };
+}
+
+function finalGate(out: Record<string, unknown>, warnings: string[]): ImportResult {
   // Final gate: guarantee validity so the downstream save can't reject the whole
   // patch over one bad field — drop offending top-level keys and re-parse.
   let candidate: Record<string, unknown> = out;

@@ -1,11 +1,14 @@
 ---
 /**
- * Organizations (docs/ADMIN.md §8): agencies with KvK + verification, roster
- * with per-profile states, aggregate quality. Master-detail via ?id=.
+ * Organizations / partner agencies (docs/ADMIN.md §8): CRUD + logo + roster +
+ * the auto-crawl panel (test discovery → test one URL → crawl now → job queue).
+ * Master-detail via ?id=. Agencies have no login; profiles are created for them
+ * by the crawl pipeline (src/lib/crawl.ts) into the moderation queue.
  */
 import { getAdmin } from '@/actions/admin/lib';
 import { listOrgs, orgById } from '@/actions/admin/orgs';
 import { cityName } from '@/lib/seo';
+import { CITIES } from '@/lib/taxonomy';
 import AdminShell from '@/components/organisms/admin/AdminShell.astro';
 import * as m from '@/paraglide/messages';
 
@@ -14,7 +17,11 @@ const orgs = session ? await listOrgs() : [];
 const id = Astro.url.searchParams.get('id');
 const detail = session && id ? await orgById(id) : null;
 const stateClass = (s: string) =>
-  ({ live: 'text-online', pending_review: 'text-amber-500', paused: 'text-muted-foreground', blocked: 'text-brand' })[s] ?? 'text-muted-foreground';
+  ({ live: 'text-online', pending_review: 'text-amber-500', paused: 'text-muted-foreground', blocked: 'text-brand', confirmed: 'text-online', failed: 'text-brand', queued: 'text-amber-500' })[s] ?? 'text-muted-foreground';
+
+const input = 'slab-cut w-full border border-foreground/20 bg-background px-3 py-2 text-sm outline-none focus:border-foreground';
+const btn = 'slab-cut border border-foreground/20 px-4 py-2 text-sm font-semibold hover:border-foreground/60 disabled:opacity-50';
+const label = 'block text-2xs uppercase tracking-wide text-muted-foreground';
 ---
 
 <AdminShell title={m.adm_orgs_title()} section="organizations">
@@ -23,6 +30,26 @@ const stateClass = (s: string) =>
       <div>
         <h1 class="display text-3xl">{m.adm_orgs_title()}</h1>
         <p class="mt-1 text-sm text-muted-foreground">{m.adm_orgs_meta({ count: orgs.length })}</p>
+
+        <details class="mt-4 max-w-xl border border-border">
+          <summary class="cursor-pointer px-3 py-2 text-sm font-semibold">+ New agency</summary>
+          <form data-org-create class="space-y-3 border-t border-border p-3">
+            <div class="grid gap-3 sm:grid-cols-2">
+              <div><span class={label}>Name *</span><input name="name" required minlength="2" class={input} /></div>
+              <div>
+                <span class={label}>City *</span>
+                <select name="city" class={input}>{CITIES.map((c) => <option value={c.slug}>{c.name}</option>)}</select>
+              </div>
+              <div><span class={label}>Website</span><input name="siteUrl" type="url" placeholder="https://…" class={input} /></div>
+              <div><span class={label}>Crawl URL (roster page)</span><input name="crawlListUrl" type="url" placeholder="https://…/dames" class={input} /></div>
+              <div><span class={label}>Contact email</span><input name="contactEmail" type="email" class={input} /></div>
+              <div><span class={label}>Contact phone</span><input name="contactPhone" class={input} /></div>
+              <div><span class={label}>KvK</span><input name="kvk" class={input} /></div>
+            </div>
+            <button type="submit" class={btn}>Create agency</button>
+            <span data-create-status class="text-2xs text-muted-foreground" />
+          </form>
+        </details>
 
         <div class="mt-6 grid gap-6 lg:grid-cols-[22rem_1fr]">
           <ul class="divide-y divide-border border border-border">
@@ -33,6 +60,7 @@ const stateClass = (s: string) =>
                     <span class="flex items-center gap-1.5 font-medium">
                       {o.name}
                       {o.verified && <svg class="size-3 flex-none text-online" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/><path d="M9 12l2 2 4-4"/></svg>}
+                      {o.crawlEnabled && <span class="text-2xs text-muted-foreground" title="auto-crawl on">⟳</span>}
                     </span>
                     <span class="block text-2xs text-muted-foreground">{cityName(o.city)} · {m.adm_orgs_members_count({ count: o.members.length })}</span>
                   </span>
@@ -45,33 +73,118 @@ const stateClass = (s: string) =>
           {!detail ? (
             <div class="grid place-items-center border border-dashed border-border py-24 text-sm text-muted-foreground">{m.adm_orgs_select()}</div>
           ) : (
-            <div class="min-w-0 space-y-4">
-              <div>
-                <p class="font-condensed text-xl font-bold">{detail.name}</p>
-                <p class="text-sm text-muted-foreground">
-                  KvK {detail.kvk} · {cityName(detail.city)} ·{' '}
-                  <span class:list={detail.verified ? 'text-online' : 'text-brand'}>{detail.verified ? m.verified() : m.adm_unverified()}</span>
-                </p>
+            <div class="min-w-0 space-y-6">
+              <div class="flex items-start justify-between gap-4">
+                <div class="flex items-center gap-3">
+                  {detail.logoKey && <img src={`/media/${detail.logoKey}?v=thumb`} alt="" width="48" height="48" class="size-12 border border-border object-cover" />}
+                  <div>
+                    <p class="font-condensed text-xl font-bold">{detail.name}</p>
+                    <p class="text-sm text-muted-foreground">
+                      {detail.kvk ? `KvK ${detail.kvk} · ` : ''}{cityName(detail.city)} ·{' '}
+                      <span class:list={detail.verified ? 'text-online' : 'text-brand'}>{detail.verified ? m.verified() : m.adm_unverified()}</span>
+                      {' · '}
+                      <a href={`/nl/agencies/${detail.slug}/`} target="_blank" class="underline underline-offset-2">/agencies/{detail.slug}</a>
+                    </p>
+                  </div>
+                </div>
+                <label class={`${btn} cursor-pointer`}>
+                  Logo…
+                  <input data-logo data-org={detail.id} type="file" accept="image/*" class="hidden" />
+                </label>
               </div>
+
               <dl class="grid max-w-md grid-cols-3 gap-px overflow-hidden border border-border bg-border text-xs">
                 {[[m.adm_orgs_members(), String(detail.members.length)], [m.state_live(), String(detail.liveCount)], [m.adm_stat_avg_complete(), `${detail.avgCompleteness}%`]].map(([k, v]) => (
                   <div class="bg-card px-2.5 py-1.5"><dt class="text-2xs uppercase tracking-wide text-muted-foreground">{k}</dt><dd class="font-medium">{v}</dd></div>
                 ))}
               </dl>
 
-              <div>
+              <form data-org-edit data-org={detail.id} class="max-w-2xl space-y-3 border border-border p-3">
+                <p class="text-2xs uppercase tracking-wide text-muted-foreground">Agency details</p>
+                <div class="grid gap-3 sm:grid-cols-2">
+                  <div><span class={label}>Name</span><input name="name" value={detail.name} class={input} /></div>
+                  <div>
+                    <span class={label}>City</span>
+                    <select name="city" class={input}>{CITIES.map((c) => <option value={c.slug} selected={c.slug === detail.city}>{c.name}</option>)}</select>
+                  </div>
+                  <div><span class={label}>Website</span><input name="siteUrl" type="url" value={detail.siteUrl ?? ''} class={input} /></div>
+                  <div><span class={label}>KvK</span><input name="kvk" value={detail.kvk ?? ''} class={input} /></div>
+                  <div><span class={label}>Contact email</span><input name="contactEmail" type="email" value={detail.contactEmail ?? ''} class={input} /></div>
+                  <div><span class={label}>Contact phone</span><input name="contactPhone" value={detail.contactPhone ?? ''} class={input} /></div>
+                </div>
+                <div><span class={label}>Description (shown on the public page)</span><textarea name="description" rows="3" class={input}>{detail.description}</textarea></div>
+                <div class="flex flex-wrap items-center gap-4 text-sm">
+                  <label class="flex items-center gap-2"><input type="checkbox" name="verified" checked={detail.verified} /> Verified</label>
+                  <label class="flex items-center gap-2"><input type="checkbox" name="crawlEnabled" checked={detail.crawlEnabled} /> Auto-crawl daily</label>
+                </div>
+                <div><span class={label}>Crawl URL (roster/homepage)</span><input name="crawlListUrl" type="url" value={detail.crawlListUrl ?? ''} class={input} /></div>
+                <div class="flex items-center gap-3">
+                  <button type="submit" class={btn}>Save</button>
+                  <span data-edit-status class="text-2xs text-muted-foreground" />
+                </div>
+              </form>
+
+              <div class="max-w-2xl space-y-3 border border-border p-3">
+                <p class="text-2xs uppercase tracking-wide text-muted-foreground">Crawler</p>
+                {detail.lastCrawledAt && (
+                  <p class="text-2xs text-muted-foreground">Last crawl {detail.lastCrawledAt.slice(0, 16).replace('T', ' ')} — {detail.lastCrawlNote ?? ''}</p>
+                )}
+                <div class="flex flex-wrap items-center gap-3">
+                  <button type="button" data-discover data-org={detail.id} class={btn}>Test discovery</button>
+                  <button type="button" data-crawl data-org={detail.id} class={btn}>Crawl now</button>
+                  <span data-crawl-status class="text-2xs text-muted-foreground" />
+                </div>
+                <div data-discover-out class="hidden space-y-1 text-xs" />
+                <div class="flex flex-wrap items-center gap-3">
+                  <input data-test-url type="url" placeholder="test one profile URL…" class={`${input} max-w-md`} />
+                  <button type="button" data-test-import class={btn}>Test import</button>
+                </div>
+                <pre data-test-out class="hidden max-h-96 overflow-auto border border-border bg-muted p-3 text-xs" />
+              </div>
+
+              {detail.jobs.length > 0 && (
+                <div class="max-w-2xl">
+                  <p class="text-2xs uppercase tracking-wide text-muted-foreground">Import jobs</p>
+                  <div class="mt-2 divide-y divide-border border border-border text-xs">
+                    {detail.jobs.map((j) => (
+                      <div class="flex items-center justify-between gap-3 px-3 py-1.5">
+                        <span class="min-w-0 truncate">
+                          <span class="font-medium">{j.profileName ?? new URL(j.sourceUrl).pathname}</span>
+                          {j.error && <span class="text-brand"> — {j.error}</span>}
+                        </span>
+                        <span class="flex flex-none items-center gap-3">
+                          <span class="text-muted-foreground">{j.createdAt.slice(5, 16).replace('T', ' ')}</span>
+                          <span class:list={['font-medium', stateClass(j.state)]}>{j.state}</span>
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div class="max-w-2xl">
                 <p class="text-2xs uppercase tracking-wide text-muted-foreground">{m.adm_orgs_roster()}</p>
                 <div class="mt-2 divide-y divide-border border border-border">
                   {detail.members.map((mmb) => (
-                    <a href={`/admin/profiles?id=${mmb.id}`} class="flex items-center justify-between gap-3 px-3 py-2 text-sm hover:bg-muted">
-                      <span class="flex items-center gap-1.5 font-medium">{mmb.name}{mmb.verified && <span class="text-online">✓</span>}</span>
-                      <span class="flex items-center gap-3 text-2xs">
+                    <div class="flex items-center justify-between gap-3 px-3 py-2 text-sm">
+                      <a href={`/admin/profiles?id=${mmb.id}`} class="flex min-w-0 items-center gap-1.5 font-medium hover:underline">
+                        {mmb.name}
+                        {mmb.verified && <span class="text-online">✓</span>}
+                      </a>
+                      <span class="flex flex-none items-center gap-3 text-2xs">
                         <span class="text-muted-foreground">{cityName(mmb.city)}</span>
                         <span class="tabular-nums text-muted-foreground">{mmb.completeness}%</span>
                         <span class:list={['font-medium', stateClass(mmb.state)]}>{mmb.state}</span>
+                        <button type="button" data-unassign data-profile={mmb.id} class="text-muted-foreground underline underline-offset-2 hover:text-brand">unassign</button>
                       </span>
-                    </a>
+                    </div>
                   ))}
+                  {detail.members.length === 0 && <p class="px-3 py-2 text-sm text-muted-foreground">No profiles yet — run a crawl or assign one below.</p>}
+                </div>
+                <div class="mt-2 flex flex-wrap items-center gap-3">
+                  <input data-assign-id placeholder="profile UUID" class={`${input} max-w-xs`} />
+                  <button type="button" data-assign data-org={detail.id} class={btn}>Assign profile</button>
+                  <span data-assign-status class="text-2xs text-muted-foreground" />
                 </div>
               </div>
             </div>
@@ -81,3 +194,159 @@ const stateClass = (s: string) =>
     )
   }
 </AdminShell>
+
+<script>
+  import { actions } from 'astro:actions';
+  import { reencode } from '@/lib/reencode';
+
+  function val(form: HTMLFormElement, name: string): string {
+    return (form.elements.namedItem(name) as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement)?.value.trim() ?? '';
+  }
+  function checked(form: HTMLFormElement, name: string): boolean {
+    return (form.elements.namedItem(name) as HTMLInputElement)?.checked ?? false;
+  }
+
+  function init() {
+    const root = document.querySelector<HTMLElement>('[data-org-create]')?.closest('body') ?? document.body;
+    if ((root as HTMLElement).dataset.orgsInit) return;
+    (root as HTMLElement).dataset.orgsInit = '1';
+
+    // Create
+    document.querySelector<HTMLFormElement>('[data-org-create]')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const form = e.currentTarget as HTMLFormElement;
+      const status = document.querySelector<HTMLElement>('[data-create-status]')!;
+      status.textContent = 'Creating…';
+      const { data, error } = await actions.admin.orgCreate({
+        name: val(form, 'name'),
+        city: val(form, 'city') as never,
+        siteUrl: val(form, 'siteUrl') || undefined,
+        crawlListUrl: val(form, 'crawlListUrl') || undefined,
+        contactEmail: val(form, 'contactEmail') || undefined,
+        contactPhone: val(form, 'contactPhone') || undefined,
+        kvk: val(form, 'kvk') || undefined,
+      });
+      if (error) status.textContent = `Error: ${error.message}`;
+      else location.href = `/admin/organizations?id=${data.id}`;
+    });
+
+    // Edit
+    document.querySelector<HTMLFormElement>('[data-org-edit]')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const form = e.currentTarget as HTMLFormElement;
+      const status = document.querySelector<HTMLElement>('[data-edit-status]')!;
+      status.textContent = 'Saving…';
+      const { error } = await actions.admin.orgUpdate({
+        id: form.dataset.org!,
+        name: val(form, 'name'),
+        city: val(form, 'city') as never,
+        siteUrl: val(form, 'siteUrl'),
+        kvk: val(form, 'kvk'),
+        contactEmail: val(form, 'contactEmail'),
+        contactPhone: val(form, 'contactPhone'),
+        description: val(form, 'description'),
+        verified: checked(form, 'verified'),
+        crawlEnabled: checked(form, 'crawlEnabled'),
+        crawlListUrl: val(form, 'crawlListUrl'),
+      });
+      status.textContent = error ? `Error: ${error.message}` : 'Saved ✓';
+    });
+
+    // Logo upload (canvas re-encode strips EXIF client-side, hard rule 2)
+    document.querySelector<HTMLInputElement>('[data-logo]')?.addEventListener('change', async (e) => {
+      const el = e.currentTarget as HTMLInputElement;
+      const file = el.files?.[0];
+      if (!file) return;
+      const dataUrl = await reencode(file, 512, 0.85);
+      const { error } = await actions.admin.orgSetLogo({ id: el.dataset.org!, dataUrl });
+      if (error) alert(`Logo error: ${error.message}`);
+      else location.reload();
+    });
+
+    // Test discovery
+    document.querySelector<HTMLButtonElement>('[data-discover]')?.addEventListener('click', async (e) => {
+      const btn = e.currentTarget as HTMLButtonElement;
+      const form = document.querySelector<HTMLFormElement>('[data-org-edit]')!;
+      const url = val(form, 'crawlListUrl');
+      const status = document.querySelector<HTMLElement>('[data-crawl-status]')!;
+      const out = document.querySelector<HTMLElement>('[data-discover-out]')!;
+      if (!url) { status.textContent = 'Set a crawl URL first (and Save).'; return; }
+      btn.disabled = true;
+      status.textContent = 'Discovering… (~30s)';
+      const { data, error } = await actions.admin.orgDiscoverPreview({ url });
+      btn.disabled = false;
+      if (error) { status.textContent = `Error: ${error.message}`; return; }
+      status.textContent = `${data.urls.length} profile URL(s) · $${data.cost.toFixed(4)}`;
+      out.classList.remove('hidden');
+      out.innerHTML = data.urls.map((u: string) => `<div class="truncate"><button type="button" data-pick-url="${u}" class="underline underline-offset-2">test</button> ${u}</div>`).join('');
+      out.querySelectorAll<HTMLButtonElement>('[data-pick-url]').forEach((b) =>
+        b.addEventListener('click', () => {
+          document.querySelector<HTMLInputElement>('[data-test-url]')!.value = b.dataset.pickUrl!;
+          document.querySelector<HTMLButtonElement>('[data-test-import]')!.click();
+        }),
+      );
+    });
+
+    // Test one profile URL
+    document.querySelector<HTMLButtonElement>('[data-test-import]')?.addEventListener('click', async (e) => {
+      const btn = e.currentTarget as HTMLButtonElement;
+      const url = document.querySelector<HTMLInputElement>('[data-test-url]')!.value.trim();
+      const out = document.querySelector<HTMLPreElement>('[data-test-out]')!;
+      if (!url) return;
+      btn.disabled = true;
+      out.classList.remove('hidden');
+      out.textContent = 'Scraping + extracting… (~1 min)';
+      const { data, error } = await actions.admin.orgImportPreview({ url });
+      btn.disabled = false;
+      out.textContent = error
+        ? `Error: ${error.message}`
+        : JSON.stringify({ name: data.name, age: data.age, photos: data.photoUrls.length, warnings: data.warnings, fields: data.fields, cost: data.cost }, null, 2);
+    });
+
+    // Crawl now → drain the queue with visible progress
+    document.querySelector<HTMLButtonElement>('[data-crawl]')?.addEventListener('click', async (e) => {
+      const btn = e.currentTarget as HTMLButtonElement;
+      const status = document.querySelector<HTMLElement>('[data-crawl-status]')!;
+      if (!confirm('Discover the roster and import every profile? New profiles land in the moderation queue.')) return;
+      btn.disabled = true;
+      status.textContent = 'Discovering…';
+      const { data, error } = await actions.admin.orgCrawl({ id: btn.dataset.org! });
+      if (error) { status.textContent = `Error: ${error.message}`; btn.disabled = false; return; }
+      let remaining = data.queuedNew + data.queuedUpdates;
+      status.textContent = `Discovered ${data.discovered} — importing ${remaining}…`;
+      let done = 0;
+      while (remaining > 0) {
+        const r = await actions.admin.orgProcessJobs({});
+        if (r.error) { status.textContent = `Error: ${r.error.message}`; break; }
+        done += r.data.processed + r.data.failed;
+        remaining = r.data.remaining;
+        status.textContent = `Importing… ${done} done, ${remaining} left`;
+        if (r.data.processed + r.data.failed === 0) break; // queue stalled/raced
+      }
+      status.textContent = 'Crawl complete ✓';
+      location.reload();
+    });
+
+    // Roster assign/unassign
+    document.querySelectorAll<HTMLButtonElement>('[data-unassign]').forEach((b) =>
+      b.addEventListener('click', async () => {
+        if (!confirm('Remove this profile from the agency?')) return;
+        const { error } = await actions.admin.orgAssignProfile({ profileId: b.dataset.profile!, orgId: null });
+        if (error) alert(error.message);
+        else location.reload();
+      }),
+    );
+    document.querySelector<HTMLButtonElement>('[data-assign]')?.addEventListener('click', async (e) => {
+      const btn = e.currentTarget as HTMLButtonElement;
+      const idEl = document.querySelector<HTMLInputElement>('[data-assign-id]')!;
+      const status = document.querySelector<HTMLElement>('[data-assign-status]')!;
+      const profileId = idEl.value.trim();
+      if (!profileId) return;
+      const { error } = await actions.admin.orgAssignProfile({ profileId, orgId: btn.dataset.org! });
+      if (error) status.textContent = `Error: ${error.message}`;
+      else location.reload();
+    });
+  }
+  init();
+  document.addEventListener('astro:page-load', init);
+</script>

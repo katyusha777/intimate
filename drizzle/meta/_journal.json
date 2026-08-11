@@ -155,6 +155,13 @@
       "when": 1786400900000,
       "tag": "0021_romantic_maestro",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1786415682335,
+      "tag": "0022_careful_iron_fist",
+      "breakpoints": true
     }
   ]
 }

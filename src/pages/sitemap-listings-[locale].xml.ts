@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import { profilesApi } from '@/app/api/profiles';
+import { listAgencies } from '@/app/api/orgs';
 import { articlesForLocale } from '@/lib/articles';
 import { isLocale } from '@/lib/i18n';
 import { CITIES, LISTING_CATEGORIES, SERVICES } from '@/lib/taxonomy';
@@ -47,6 +48,12 @@ export const GET: APIRoute = async ({ params, url }) => {
   for (const city of CITIES) {
     const lastmod = lastmodOf((p) => p.city === city.slug);
     if (lastmod) entries.push({ path: `/${locale}/${city.slug}/`, lastmod });
+  }
+
+  // Partner-agency pages (hard rule 8) — only agencies with a live roster.
+  for (const a of await listAgencies()) {
+    const lastmod = lastmodOf((p) => p.orgId === a.id);
+    if (lastmod) entries.push({ path: `/${locale}/agencies/${a.slug}/`, lastmod });
   }
 
   for (const cat of LISTING_CATEGORIES) {

@@ -984,5 +984,9 @@
   "push_ask_body": "Krijg meldingen bij nieuwe verzoeken en berichten — ook als de site dicht is.",
   "push_ask_cta": "Zet aan",
   "push_ask_later": "Niet nu",
-  "push_error": "Meldingen aanzetten is niet gelukt:"
+  "push_error": "Meldingen aanzetten is niet gelukt:",
+  "agency_eyebrow": "Partnerbureau",
+  "agency_intro": "{count} geverifieerde professionals bij {name} in {where}. Tarieven vanaf €{min}. Elk profiel op Intimate is geverifieerd.",
+  "agency_visit_site": "Bezoek website",
+  "agency_empty": "Nog geen actieve profielen — kom snel terug."
 }

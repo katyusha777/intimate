@@ -57,6 +57,7 @@ export function toProfile(
     gender: row.gender,
     city: row.city,
     unlisted: row.unlisted,
+    orgId: row.orgId ?? undefined,
     verified: row.verified,
     idVerifiedAt: iso(row.idVerifiedAt),
     photoVerifiedAt: iso(row.photoVerifiedAt),

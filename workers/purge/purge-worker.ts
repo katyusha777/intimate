@@ -22,8 +22,12 @@ interface Env {
   ORIGIN: string;
 }
 
-async function run(env: Env): Promise<string> {
-  const res = await env.SITE.fetch(`${env.ORIGIN}/api/purge`, {
+// The 5-min trigger is the agency-crawl tick (/api/crawl-tick — discovery +
+// import-queue drain, src/lib/crawl.ts); the daily one stays retention purge.
+const CRAWL_CRON = '*/5 * * * *';
+
+async function run(env: Env, endpoint: 'purge' | 'crawl-tick'): Promise<string> {
+  const res = await env.SITE.fetch(`${env.ORIGIN}/api/${endpoint}`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${env.PURGE_SECRET}`,
@@ -33,16 +37,22 @@ async function run(env: Env): Promise<string> {
     },
   });
   const body = await res.text();
-  return `purge ${res.status}: ${body}`;
+  return `${endpoint} ${res.status}: ${body}`;
 }
 
 export default {
-  async scheduled(_event: unknown, env: Env): Promise<void> {
-    console.log('[purge]', await run(env));
+  async scheduled(event: { cron?: string }, env: Env): Promise<void> {
+    if (event.cron === CRAWL_CRON) {
+      console.log('[crawl]', await run(env, 'crawl-tick'));
+    } else {
+      console.log('[purge]', await run(env, 'purge'));
+    }
   },
 
-  async fetch(_req: Request, env: Env): Promise<Response> {
-    return new Response(`${await run(env)}\n`, {
+  async fetch(req: Request, env: Env): Promise<Response> {
+    // Manual runs: /…?crawl ticks the crawler; default is the purge.
+    const endpoint = new URL(req.url).searchParams.has('crawl') ? 'crawl-tick' : 'purge';
+    return new Response(`${await run(env, endpoint)}\n`, {
       headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' },
     });
   },

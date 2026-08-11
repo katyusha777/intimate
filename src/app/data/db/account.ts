@@ -156,8 +156,9 @@ async function myProfileRow(d: Db, accountId: string) {
   )[0];
 }
 
-/** `Eva` + `amsterdam` → `eva-amsterdam`, deduped against existing slugs. */
-async function uniqueSlug(d: Db, name: string, city: string): Promise<string> {
+/** `Eva` + `amsterdam` → `eva-amsterdam`, deduped against existing slugs.
+ *  Exported for the agency crawl pipeline (src/lib/crawl.ts). */
+export async function uniqueSlug(d: Db, name: string, city: string): Promise<string> {
   const base =
     `${name}-${city}`
       .toLowerCase()
@@ -173,8 +174,9 @@ async function uniqueSlug(d: Db, name: string, city: string): Promise<string> {
   return `${base}-${Date.now().toString(36)}`;
 }
 
-/** ProfileEdit patch → profiles columns (only the keys present). */
-function profileUpdate(patch: Partial<ProfileEdit>) {
+/** ProfileEdit patch → profiles columns (only the keys present).
+ *  Exported for the agency crawl pipeline (src/lib/crawl.ts). */
+export function profileUpdate(patch: Partial<ProfileEdit>) {
   const u: Record<string, unknown> = {};
   const copy = [
     'name', 'gender', 'city', 'phone', 'whatsapp', 'telegram', 'instagram',

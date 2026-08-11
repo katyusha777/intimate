@@ -34,7 +34,7 @@ anonymous pages (RLS `state='live'` only for profiles/media).
 | Table | Owner | Public read | Purpose |
 |---|---|---|---|
 | `accounts` | auth user | no | one row per `auth.users` id; role + verification state |
-| `orgs` | agency account | name/roster | agencies (KvK, verification); a profile links via `org_id` |
+| `orgs` | agency account (placeholder, no login) | name/slug/logo/description via `/{locale}/agencies/{slug}` | partner agencies: KvK, verification, contact, crawl config (`crawl_enabled`, `crawl_list_url`, `last_crawled_at`); a profile links via `org_id` |
 | `profiles` | account | live only | the listing row — one flat, joinless row per profile |
 | `media` | profile | approved only | one row per image (R2 object key + review state) |
 | `verification_docs` | account | **never** | toxic-waste metadata (R2-backed doc; hard rule 3) |
@@ -45,7 +45,7 @@ anonymous pages (RLS `state='live'` only for profiles/media).
 | `favorites` | client | own | client × profile (was a mock array) |
 | `reports` | reporter | admin | user-filed, admin-triaged |
 | `audit_log` | — | admin | append-only admin action + sensitive-read trail |
-| `import_jobs` | — | admin | self-service scrape→extract→review pipeline |
+| `import_jobs` | — | admin | scrape→extract pipeline; agency crawl tags jobs with `org_id` (+ `profile_id` on re-crawl) — src/lib/crawl.ts |
 
 **Deliberately absent:** no `articles` table — editorial articles are
 markdown-in-git (Astro content collection, `src/content/articles/`), not the DB.

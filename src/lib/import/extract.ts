@@ -12,12 +12,17 @@ import { buildExtractPrompt } from './prompt';
 const BASE_URL = 'https://openrouter.ai/api/v1';
 const DEFAULT_MODEL = 'deepseek/deepseek-v3.2'; // cheap, strong at structured JSON
 
-/** Call the model; returns the parsed JSON object (untrusted) + the $ cost. */
-export async function llmExtract(markdown: string): Promise<{ raw: unknown; cost: number; model: string }> {
+/** Call the model; returns the parsed JSON object (untrusted) + the $ cost.
+ *  `systemPrompt` overrides the default profile-extraction contract (agency
+ *  crawl passes its own variants — discovery, agency extraction). */
+export async function llmExtract(
+  markdown: string,
+  systemPrompt?: string,
+): Promise<{ raw: unknown; cost: number; model: string }> {
   const key = (env as unknown as { OPENROUTER_API_KEY?: string }).OPENROUTER_API_KEY;
   if (!key) throw new Error('Import is not configured (missing OPENROUTER_API_KEY).');
   const model = (env as unknown as { IMPORT_MODEL?: string }).IMPORT_MODEL || DEFAULT_MODEL;
-  const system = buildExtractPrompt();
+  const system = systemPrompt ?? buildExtractPrompt();
   // Page content is DATA, never instructions (hard rule 7). Cap high enough for
   // the classic (server-rendered) pages, which run large.
   const user = markdown.slice(0, 60_000);

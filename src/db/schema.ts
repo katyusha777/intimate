@@ -173,8 +173,13 @@ export const accounts = pgTable(
 );
 
 // ---------------------------------------------------------------------------
-// Orgs (agencies, ADMIN.md §8). A profile links to at most one org via
-// profiles.org_id — no join table needed (roster = profiles where org_id = X).
+// Orgs (partner agencies, ADMIN.md §8). A profile links to at most one org via
+// profiles.org_id — no join table needed (roster = profiles where org_id = X;
+// a girl on two agency sites yields two scraped profiles anyway, one per org).
+// Agencies have NO login yet: account_id points at a placeholder `agency`-type
+// accounts row (satisfies profiles.account_id ownership; upgradeable to a real
+// auth user later). Public face: /{locale}/agencies/{slug}. Crawl config powers
+// the auto-import pipeline (src/lib/crawl.ts).
 // ---------------------------------------------------------------------------
 
 export const orgs = pgTable(
@@ -185,12 +190,26 @@ export const orgs = pgTable(
       .notNull()
       .references(() => accounts.id),
     name: text('name').notNull(),
-    kvk: text('kvk').notNull(), // Dutch Chamber of Commerce number
+    /** Public URL segment: /{locale}/agencies/{slug}. */
+    slug: text('slug').notNull(),
+    kvk: text('kvk'), // Dutch Chamber of Commerce number (nullable: unknown at onboarding)
     verified: boolean('verified').notNull().default(false),
     city: cityEnum('city').notNull(),
+    /** R2 key `org/<orgId>/<uuid>` — served via /media, shown on the partner page. */
+    logoKey: text('logo_key'),
+    siteUrl: text('site_url'),
+    contactEmail: text('contact_email'),
+    contactPhone: text('contact_phone'),
+    description: text('description').notNull().default(''),
+    /** Periodic re-crawl of crawl_list_url (roster page) by the cron tick. */
+    crawlEnabled: boolean('crawl_enabled').notNull().default(false),
+    crawlListUrl: text('crawl_list_url'),
+    lastCrawledAt: timestamp('last_crawled_at', { withTimezone: true }),
+    /** One-line summary of the last discovery run (admin display only). */
+    lastCrawlNote: text('last_crawl_note'),
     createdAt: createdAt(),
   },
-  (t) => [index('orgs_account_idx').on(t.accountId)],
+  (t) => [index('orgs_account_idx').on(t.accountId), uniqueIndex('orgs_slug_idx').on(t.slug)],
 );
 
 // ---------------------------------------------------------------------------
@@ -559,11 +578,16 @@ export const importJobs = pgTable(
     id: uuid('id').primaryKey().defaultRandom(),
     sourceUrl: text('source_url').notNull(),
     state: importJobStateEnum('state').notNull().default('queued'),
+    /** Agency auto-crawl (src/lib/crawl.ts): the org this URL was discovered for. */
+    orgId: uuid('org_id').references(() => orgs.id),
+    /** Set when the URL matched an existing profile → the job UPDATES it
+     *  instead of creating a new one (re-crawl path). */
+    profileId: uuid('profile_id').references(() => profiles.id),
     profileName: text('profile_name'),
     error: text('error'),
     createdAt: createdAt(),
   },
-  (t) => [index('import_jobs_state_idx').on(t.state)],
+  (t) => [index('import_jobs_state_idx').on(t.state), index('import_jobs_org_idx').on(t.orgId)],
 );
 
 // ---------------------------------------------------------------------------

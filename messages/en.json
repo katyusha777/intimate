@@ -984,5 +984,9 @@
   "push_ask_body": "Get notified about new requests and messages — even when the site is closed.",
   "push_ask_cta": "Turn on",
   "push_ask_later": "Not now",
-  "push_error": "Couldn't turn on notifications:"
+  "push_error": "Couldn't turn on notifications:",
+  "agency_eyebrow": "Partner agency",
+  "agency_intro": "{count} verified professionals at {name} in {where}. Rates from €{min}. Every profile on Intimate is verified.",
+  "agency_visit_site": "Visit website",
+  "agency_empty": "No live profiles yet — check back soon."
 }

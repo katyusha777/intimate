@@ -27,7 +27,7 @@ import type { APIRoute } from 'astro';
 import { env, waitUntil } from 'cloudflare:workers';
 import { and, eq } from 'drizzle-orm';
 import { requestDb } from '@/db/client';
-import { contacts, media, profiles } from '@/db/schema';
+import { contacts, media, orgs, profiles } from '@/db/schema';
 import { sessionApi } from '@/app/api/session';
 import { VARIANT_WIDTH, edgeCache, mediaCacheUrl } from '@/lib/media-keys';
 
@@ -82,7 +82,7 @@ const GONE = () => new Response(null, { status: 410, headers: { 'Cache-Control':
 
 export const GET: APIRoute = async (ctx) => {
   const key = ctx.params.key;
-  if (!key || (!key.startsWith('pub/') && !key.startsWith('priv/'))) {
+  if (!key || (!key.startsWith('pub/') && !key.startsWith('priv/') && !key.startsWith('org/'))) {
     return new Response(null, { status: 404 });
   }
 
@@ -93,6 +93,11 @@ export const GET: APIRoute = async (ctx) => {
   let ownerPreview = false;
   if (isPrivate) {
     if (!(await canViewPrivate(ctx, profileId))) return new Response(null, { status: 403 });
+  } else if (key.startsWith('org/')) {
+    // Agency logo (`org/<orgId>/<uuid>`): world-readable, cacheable. Gate = the
+    // key is a CURRENT logo_key — replacing/removing a logo kills the old URL.
+    const [row] = await db().select({ id: orgs.id }).from(orgs).where(eq(orgs.logoKey, key)).limit(1);
+    if (!row) return GONE();
   } else {
     // THE takedown gate, one round trip: the media row (missing = removed by
     // removePhoto/GDPR; 'rejected' = mediaReject) AND the profile lifecycle.

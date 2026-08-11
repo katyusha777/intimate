@@ -984,5 +984,9 @@
   "push_ask_body": "Erhalte Benachrichtigungen bei neuen Anfragen und Nachrichten — auch bei geschlossener Seite.",
   "push_ask_cta": "Aktivieren",
   "push_ask_later": "Nicht jetzt",
-  "push_error": "Benachrichtigungen konnten nicht aktiviert werden:"
+  "push_error": "Benachrichtigungen konnten nicht aktiviert werden:",
+  "agency_eyebrow": "Partneragentur",
+  "agency_intro": "{count} verifizierte Professionelle bei {name} in {where}. Preise ab €{min}. Jedes Profil auf Intimate ist verifiziert.",
+  "agency_visit_site": "Website besuchen",
+  "agency_empty": "Noch keine aktiven Profile — bald wieder vorbeischauen."
 }

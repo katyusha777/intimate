@@ -22,13 +22,19 @@ import { approveWholeSubmission, decideModeration } from './queues';
 import { setProfileState } from './entities';
 import { approveDeletion, exportAccountData } from './gdpr';
 import { retryImport } from './imports';
+import { assignProfileToOrg, createOrg, setOrgLogo, updateOrg } from './orgs';
 import { importFromUrl } from '@/lib/import';
+import { agencyImportFromUrl, discoverProfileUrls } from '@/lib/import/agency';
+import { enqueueOrgCrawl, processImportJobs } from '@/app/api/crawl';
+import { dataUrlToJpegBytes } from '@/lib/jpeg-strip';
+import { CITIES, type CitySlug } from '@/lib/taxonomy';
 import { INDEXNOW_KEY, submitIndexNow } from '@/lib/indexnow';
 import { evictMediaCache, isR2Key, mediaBucket } from '@/lib/media-keys';
 import { ADMIN_EVENTS, NOTIFY_PREFS_KEY } from '@/lib/pushover';
 import { LOCALES, type AdminAction, type ProfileState } from '@/lib/taxonomy';
 
 const adb = () => requestDb((env as unknown as { HYPERDRIVE: Hyperdrive }).HYPERDRIVE);
+const CITY_SLUG_VALUES = CITIES.map((c) => c.slug) as unknown as [CitySlug, ...CitySlug[]];
 
 /** IndexNow ping for a profile's locale URLs — new live page, or its takedown
  *  410 (SEO.md §1.6). Best-effort, never throws; awaited so workerd doesn't
@@ -342,6 +348,139 @@ export const admin = {
       } catch (e) {
         throw new ActionError({ code: 'BAD_REQUEST', message: (e as Error).message });
       }
+    },
+  }),
+
+  // --- partner agencies (§8): CRUD/crawl super, previews moderator ---
+  orgCreate: defineAction({
+    input: z.object({
+      name: z.string().min(2).max(80),
+      city: z.enum(CITY_SLUG_VALUES),
+      kvk: z.string().max(20).optional(),
+      siteUrl: z.string().url().max(300).optional(),
+      contactEmail: z.string().email().max(200).optional(),
+      contactPhone: z.string().max(30).optional(),
+      description: z.string().max(2000).optional(),
+      crawlListUrl: z.string().url().max(500).optional(),
+    }),
+    handler: async (input, context) => {
+      const session = await requireAdmin(context, ['super']);
+      const id = await createOrg(input);
+      await record(session, { action: 'create_org', entityType: 'org', entityId: id, meta: { name: input.name } });
+      return { id };
+    },
+  }),
+
+  orgUpdate: defineAction({
+    input: z.object({
+      id: z.string().uuid(),
+      name: z.string().min(2).max(80).optional(),
+      city: z.enum(CITY_SLUG_VALUES).optional(),
+      kvk: z.string().max(20).optional(),
+      verified: z.boolean().optional(),
+      siteUrl: z.string().url().max(300).or(z.literal('')).optional(),
+      contactEmail: z.string().email().max(200).or(z.literal('')).optional(),
+      contactPhone: z.string().max(30).optional(),
+      description: z.string().max(2000).optional(),
+      crawlEnabled: z.boolean().optional(),
+      crawlListUrl: z.string().url().max(500).or(z.literal('')).optional(),
+    }),
+    handler: async ({ id, ...patch }, context) => {
+      const session = await requireAdmin(context, ['super']);
+      await updateOrg(id, patch);
+      await record(session, { action: 'edit_org', entityType: 'org', entityId: id });
+      return { ok: true };
+    },
+  }),
+
+  // Logo: client-side canvas re-encode (EXIF gone) + server re-decode, same
+  // trust chain as profile photos (hard rule 2).
+  orgSetLogo: defineAction({
+    input: z.object({
+      id: z.string().uuid(),
+      dataUrl: z.string().regex(/^data:image\/jpeg;base64,/).max(900_000),
+    }),
+    handler: async ({ id, dataUrl }, context) => {
+      const session = await requireAdmin(context, ['super']);
+      let bytes: ArrayBuffer;
+      try {
+        bytes = dataUrlToJpegBytes(dataUrl);
+      } catch {
+        throw new ActionError({ code: 'BAD_REQUEST', message: 'invalid image' });
+      }
+      const key = await setOrgLogo(id, bytes);
+      await record(session, { action: 'edit_org', entityType: 'org', entityId: id, meta: { note: 'logo' } });
+      return { key };
+    },
+  }),
+
+  orgAssignProfile: defineAction({
+    input: z.object({ profileId: z.string().uuid(), orgId: z.string().uuid().nullable() }),
+    handler: async ({ profileId, orgId }, context) => {
+      const session = await requireAdmin(context, ['super']);
+      await assignProfileToOrg(profileId, orgId);
+      await record(session, {
+        action: 'edit_org',
+        entityType: 'profile',
+        entityId: profileId,
+        meta: { note: orgId ? `assigned to org ${orgId}` : 'unassigned from org' },
+      });
+      return { ok: true };
+    },
+  }),
+
+  // Crawl test tools (/admin/organizations): read-only previews, no DB writes.
+  orgDiscoverPreview: defineAction({
+    input: z.object({ url: z.string().url().max(500) }),
+    handler: async ({ url }, context) => {
+      await requireAdmin(context, ['moderator']);
+      try {
+        return await discoverProfileUrls(url);
+      } catch (e) {
+        throw new ActionError({ code: 'BAD_REQUEST', message: (e as Error).message });
+      }
+    },
+  }),
+  orgImportPreview: defineAction({
+    input: z.object({ url: z.string().url().max(500) }),
+    handler: async ({ url }, context) => {
+      await requireAdmin(context, ['moderator']);
+      try {
+        const { fields, warnings, name, age, photoUrls, raw, cost } = await agencyImportFromUrl(url);
+        return { fields, warnings, name, age, photoUrls, raw, cost };
+      } catch (e) {
+        throw new ActionError({ code: 'BAD_REQUEST', message: (e as Error).message });
+      }
+    },
+  }),
+
+  // "Crawl now": discovery + queue. The page then loops orgProcessJobs to
+  // drain the queue with visible progress (the cron tick drains it too).
+  orgCrawl: defineAction({
+    input: z.object({ id: z.string().uuid() }),
+    handler: async ({ id }, context) => {
+      const session = await requireAdmin(context, ['super']);
+      try {
+        const result = await enqueueOrgCrawl(id);
+        await record(session, {
+          action: 'crawl_org',
+          entityType: 'org',
+          entityId: id,
+          meta: { discovered: String(result.discovered), new: String(result.queuedNew), updates: String(result.queuedUpdates) },
+        });
+        return result;
+      } catch (e) {
+        throw new ActionError({ code: 'BAD_REQUEST', message: (e as Error).message });
+      }
+    },
+  }),
+  // Mechanical queue drain (one job per call — browser-loop friendly). The
+  // intent was audited by orgCrawl; per-job outcomes live on import_jobs rows.
+  orgProcessJobs: defineAction({
+    input: z.object({}).optional(),
+    handler: async (_input, context) => {
+      await requireAdmin(context, ['super']);
+      return await processImportJobs(1);
     },
   }),
 

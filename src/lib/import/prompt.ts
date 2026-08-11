@@ -11,11 +11,20 @@ import {
 
 const list = (a: readonly string[]) => a.join(', ');
 
-export function buildExtractPrompt(): string {
+export function buildExtractPrompt(opts: { agency?: boolean } = {}): string {
+  // Agency crawl (src/lib/crawl.ts): nobody types identity/photos in by hand,
+  // so the extraction must carry them. Self-service NEVER gets these keys —
+  // she owns her identity (normalize.ts header).
+  const agencyKeys = opts.agency
+    ? `
+  "name": her display/working name exactly as shown (first name or alias, no titles) or null,
+  "age": her age in years as an integer, as listed on the page, or null,
+  "photoUrls": array (max 12) of absolute URLs of HER photos on this page — pick the largest/original variants; exclude logos, icons, banners, thumbnails of OTHER people,`
+    : '';
   return `You extract ONE Dutch adult-services (escort) profile from scraped page markdown into a single JSON object for a Netherlands directory. Translate ALL free text to natural English. Map every controlled field to EXACTLY one of the allowed values below; if nothing fits, omit it (use null / []). Never invent data. Prices are integers in EUR. Output ONLY the JSON object.
 
 Output keys (use null or [] when unknown):
-{
+{${agencyKeys}
   "gender": one of [${list(GENDERS)}] or null,
   "city": the nearest Dutch city SLUG from [${list(CITIES.map((c) => c.slug))}] or null,
   "services": array (max 20) of [${list(ALL_SERVICES)}],

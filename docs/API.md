@@ -122,6 +122,7 @@ and the filter stay one dimension.
 | `api/session` | `current(ctx)` · `register` · `signIn` · `signOut` | **`data/supabase/session.ts` (Supabase Auth, @supabase/ssr cookies, getClaims)**; signup wiring = DB triggers (drizzle/0002) |
 | `api/account` | `get` · `save` · `myProfile` · `saveProfile` · `submitProfile` · `photos`/`addPhoto`/`removePhoto` · admin `all`/`byEmail`/`saveByEmail` | **`data/db/account.ts`** — accounts row + favorites/media tables; edits write `profiles` columns directly |
 | `api/messaging` | threads/messages/contacts/settings (MESSAGING.md §2) | **`data/db/messaging.ts`** (Postgres) — participation from the session, `last_message_at`+broadcast via triggers; `makeMessagingApi(db)` is unit-tested |
+| `api/orgs` | `agencyBySlug(slug)` · `listAgencies()` — PUBLIC projection only (no contact/KvK/crawl config) | direct Drizzle read of `orgs`; feeds `/{locale}/agencies/{slug}` + the sitemap. Admin CRUD/crawl stays in `actions/admin/orgs.ts` (fence) |
 
 Editorial **articles are not in this seam** — they're markdown-in-git via an
 Astro content collection (`src/content/articles/{locale}/`, config in
@@ -129,8 +130,8 @@ Astro content collection (`src/content/articles/{locale}/`, config in
 CRUD; add a backend the day non-dev editors need a CMS.
 
 `list` params: `city · gender · service · onlineOnly · featuredOnly ·
-verifiedOnly · sort (taxonomy SORT_OPTIONS) · limit · offset`. Counts via
-`list({ ..., limit: 0 }).total`.
+verifiedOnly · orgId (agency roster) · sort (taxonomy SORT_OPTIONS) · limit ·
+offset`. Counts via `list({ ..., limit: 0 }).total`.
 
 Growing the surface: add fields to the model schema + JSON, extend params —
 the homepage's needs drove v1; each new page extends this the same way.

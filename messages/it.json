@@ -984,5 +984,9 @@
   "push_ask_body": "Ricevi notifiche per nuove richieste e messaggi — anche a sito chiuso.",
   "push_ask_cta": "Attiva",
   "push_ask_later": "Non ora",
-  "push_error": "Impossibile attivare le notifiche:"
+  "push_error": "Impossibile attivare le notifiche:",
+  "agency_eyebrow": "Agenzia partner",
+  "agency_intro": "{count} professionisti verificati presso {name} a {where}. Tariffe da €{min}. Ogni profilo su Intimate è verificato.",
+  "agency_visit_site": "Visita il sito",
+  "agency_empty": "Ancora nessun profilo attivo — torna presto."
 }

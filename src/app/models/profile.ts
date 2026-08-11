@@ -108,6 +108,8 @@ export const ProfileSchema = z.object({
   city: z.enum(CITY_SLUGS),
   /** Live but hidden from listings/search/sitemap — direct URL only. */
   unlisted: z.boolean().default(false),
+  /** Partner agency (orgs.id) this profile belongs to — /{locale}/agencies/. */
+  orgId: z.string().optional(),
   verified: z.boolean(),
   /**
    * Trust-receipt dates (UX-PLAN 3.1) — the public projection of the account's
@@ -351,6 +353,8 @@ export const ProfileListParamsSchema = z.object({
   priceMin: z.number().int().min(0).optional(),
   priceMax: z.number().int().min(0).optional(),
   onlineOnly: z.boolean().default(false),
+  /** Partner-agency roster (the /{locale}/agencies/{slug} page). */
+  orgId: z.string().optional(),
   /** "Available now" filter (this file's ADD): online OR open today. */
   availableNow: z.boolean().default(false),
   featuredOnly: z.boolean().default(false),
@@ -418,6 +422,7 @@ export function applyProfileListParams(
     .filter(
       (p) =>
         (!q.q || matchesQuery(p, q.q)) &&
+        (!q.orgId || p.orgId === q.orgId) &&
         (citySet.size === 0 || citySet.has(p.city)) &&
         (q.genders.length === 0 || q.genders.includes(p.gender)) &&
         (q.services.length === 0 || q.services.some((s) => p.services.includes(s))) &&

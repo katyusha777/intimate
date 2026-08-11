@@ -1,0 +1,115 @@
+---
+/**
+ * Public agency page (/{locale}/agencies/{slug}, ADMIN.md §8) — the partner's
+ * landing page: logo, blurb, live roster. Zero JS, SSR. SEO: answer-first
+ * intro, Organization + ItemList JSON-LD, canonical + hreflang (the slug is
+ * locale-invariant). Later: agencies point their own domain here.
+ */
+import * as m from '@/paraglide/messages';
+import { agencyBySlug } from '@/app/api/orgs';
+import { profilesApi } from '@/app/api/profiles';
+import { isLocale, samePathAlternates } from '@/lib/i18n';
+import { breadcrumbJsonLd, cityName, itemListJsonLd } from '@/lib/seo';
+import ProfileCard from '@/components/organisms/profile/ProfileCard.astro';
+import Section from '@/components/molecules/Section.astro';
+import Layout from '@/layouts/Layout.astro';
+
+const { locale, slug } = Astro.params;
+if (!isLocale(locale) || !slug) return new Response(null, { status: 404 });
+const agency = await agencyBySlug(slug);
+if (!agency) return new Response(null, { status: 404 });
+
+const { items, total } = await profilesApi.list({ orgId: agency.id, limit: 60 });
+const minPrice = items.length ? Math.min(...items.map((p) => p.priceFrom)) : 0;
+const intro = m.agency_intro({
+  count: total,
+  name: agency.name,
+  where: cityName(agency.city),
+  min: minPrice,
+});
+const canonical = new URL(`/${locale}/agencies/${slug}/`, Astro.url.origin).href;
+const jsonLd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: agency.name,
+    url: canonical,
+    ...(agency.logoUrl ? { logo: new URL(agency.logoUrl, Astro.url.origin).href } : {}),
+    ...(agency.siteUrl ? { sameAs: [agency.siteUrl] } : {}),
+  },
+  itemListJsonLd(items, Astro.url.origin, locale),
+  breadcrumbJsonLd([
+    { name: 'Intimate', url: `${Astro.url.origin}/${locale}/` },
+    { name: agency.name, url: canonical },
+  ]),
+];
+---
+
+<Layout
+  title={`${agency.name} — ${m.app_name()}`}
+  description={intro}
+  {canonical}
+  alternates={samePathAlternates(Astro.url.origin, `/agencies/${slug}/`)}
+  {jsonLd}
+  image={agency.logoUrl}
+>
+  <div class="mx-auto max-w-7xl px-4 py-8 md:px-6 md:py-10">
+    <div class="flex items-center gap-4">
+      {
+        agency.logoUrl && (
+          <img
+            src={`${agency.logoUrl}?v=thumb`}
+            alt={agency.name}
+            width="64"
+            height="64"
+            class="size-16 rounded-2xl bg-card object-cover shadow-soft dark:ring-1 dark:ring-border"
+            loading="eager"
+          />
+        )
+      }
+      <div class="min-w-0">
+        <p class="eyebrow">{m.agency_eyebrow()}</p>
+        <h1 class="display flex items-center gap-2 text-3xl md:text-4xl">
+          {agency.name}
+          {
+            agency.verified && (
+              <svg class="size-5 flex-none text-online" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-label={m.verified()}>
+                <circle cx="12" cy="12" r="10" />
+                <path d="M9 12l2 2 4-4" />
+              </svg>
+            )
+          }
+        </h1>
+      </div>
+    </div>
+
+    <p class="mt-3 max-w-2xl text-sm text-muted-foreground">{intro}</p>
+    {agency.description && <p class="mt-2 max-w-2xl text-sm">{agency.description}</p>}
+    {
+      agency.siteUrl && (
+        <a
+          href={agency.siteUrl}
+          rel="nofollow noopener"
+          target="_blank"
+          class="mt-3 inline-block text-sm font-semibold underline underline-offset-4 hover:text-brand"
+        >
+          {m.agency_visit_site()}
+        </a>
+      )
+    }
+
+    <Section>
+      {
+        items.length === 0 ? (
+          <p class="text-sm text-muted-foreground">{m.agency_empty()}</p>
+        ) : (
+          <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">
+            {items.map((p, i) => (
+              <ProfileCard profile={p} loading={i < 6 ? 'eager' : 'lazy'} fetchpriority={i < 2 ? 'high' : undefined} />
+            ))}
+          </div>
+        )
+      }
+    </Section>
+  </div>
+</Layout>

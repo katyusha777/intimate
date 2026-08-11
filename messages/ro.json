@@ -984,5 +984,9 @@
   "push_ask_body": "Primește notificări pentru cereri și mesaje noi — chiar și cu site-ul închis.",
   "push_ask_cta": "Activează",
   "push_ask_later": "Nu acum",
-  "push_error": "Notificările nu au putut fi activate:"
+  "push_error": "Notificările nu au putut fi activate:",
+  "agency_eyebrow": "Agenție parteneră",
+  "agency_intro": "{count} profesioniști verificați la {name} în {where}. Tarife de la €{min}. Fiecare profil de pe Intimate e verificat.",
+  "agency_visit_site": "Vizitează site-ul",
+  "agency_empty": "Încă niciun profil activ — revino în curând."
 }

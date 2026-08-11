@@ -127,6 +127,10 @@ export const ADMIN_ACTIONS = [
   'set_notify_prefs',
   // Account-type correction (client ↔ advertiser; never admin)
   'set_account_type',
+  // Partner agencies (/admin/organizations): CRUD + roster + auto-crawl
+  'create_org',
+  'edit_org',
+  'crawl_org',
 ] as const;
 
 export const IMPORT_JOB_STATES = [
