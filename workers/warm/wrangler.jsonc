@@ -14,7 +14,9 @@
   "services": [
     { "binding": "SITE", "service": "intimate" }
   ],
-  "vars": { "ORIGIN": "https://intimate.nl" },
+  // Pre-launch window: the full site (profiles, homepages) lives on beta — warm
+  // that. Flip back to https://intimate.nl at launch (INFRASTRUCTURE §2).
+  "vars": { "ORIGIN": "https://beta.intimate.nl" },
   "observability": {
     "enabled": true
   }

@@ -51,29 +51,42 @@ export function sendEmail(opts: { to: string; subject: string; text: string }): 
   })();
 }
 
-/** Advertiser notification: profile verified & live (bilingual NL/EN). */
+/** Advertiser notification: profile verified & live (bilingual NL/EN).
+ *  Links use PUBLIC_SITE_ORIGIN (beta during the pre-launch window — apex
+ *  profile URLs dead-end in the corridor). Dynamic env import like sendEmail:
+ *  bun tests can't load cloudflare:workers; the fallback origin is fine there
+ *  because the send no-ops without SMTP secrets anyway. */
 export function emailProfileApproved(to: string, slug?: string): void {
-  const nlUrl = slug ? `https://intimate.nl/nl/profile/${slug}/` : 'https://intimate.nl/nl/account/';
-  const enUrl = slug ? `https://intimate.nl/en/profile/${slug}/` : 'https://intimate.nl/en/account/';
-  sendEmail({
-    to,
-    subject: 'Je profiel staat live · Your profile is live — Intimate',
-    text: [
-      'Goed nieuws!',
-      '',
-      'Je profiel is geverifieerd en staat nu live op Intimate.',
-      nlUrl,
-      '',
-      '—',
-      '',
-      'Good news!',
-      '',
-      'Your profile has been verified and is now live on Intimate.',
-      enUrl,
-      '',
-      '— Intimate · intimate.nl',
-    ].join('\n'),
-  });
+  void (async () => {
+    let origin = 'https://intimate.nl';
+    try {
+      const { env } = await import('cloudflare:workers');
+      origin = (env as unknown as Record<string, string | undefined>).PUBLIC_SITE_ORIGIN ?? origin;
+    } catch {
+      /* off-workerd */
+    }
+    const nlUrl = slug ? `${origin}/nl/profile/${slug}/` : `${origin}/nl/account/`;
+    const enUrl = slug ? `${origin}/en/profile/${slug}/` : `${origin}/en/account/`;
+    sendEmail({
+      to,
+      subject: 'Je profiel staat live · Your profile is live — Intimate',
+      text: [
+        'Goed nieuws!',
+        '',
+        'Je profiel is geverifieerd en staat nu live op Intimate.',
+        nlUrl,
+        '',
+        '—',
+        '',
+        'Good news!',
+        '',
+        'Your profile has been verified and is now live on Intimate.',
+        enUrl,
+        '',
+        '— Intimate · intimate.nl',
+      ].join('\n'),
+    });
+  })();
 }
 
 // New-message emails were removed 2026-08-11 (owner: too spammy) — messaging

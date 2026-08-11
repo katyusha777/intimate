@@ -169,6 +169,13 @@
       "when": 1786421011138,
       "tag": "0023_slippery_solo",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1786422112610,
+      "tag": "0024_quiet_cloak",
+      "breakpoints": true
     }
   ]
 }

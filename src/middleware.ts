@@ -102,6 +102,11 @@ export const onRequest = defineMiddleware(async (context, next) => {
   if (context.url.hostname === 'admin.intimate.nl') {
     return context.redirect(`https://intimate.nl${context.url.pathname}${context.url.search}`, 301);
   }
+  // Admin lives ONLY on the apex: the Cloudflare Access wall is scoped to the
+  // PATH intimate.nl/admin — beta answering /admin would route around it.
+  if (context.url.hostname === 'beta.intimate.nl' && context.url.pathname.startsWith('/admin')) {
+    return context.redirect(`https://intimate.nl${context.url.pathname}${context.url.search}`, 301);
+  }
   let res: Response;
   try {
     res = await handle(context, next);
@@ -113,6 +118,9 @@ export const onRequest = defineMiddleware(async (context, next) => {
   }
   try {
     for (const [k, v] of Object.entries(SECURITY_HEADERS)) res.headers.set(k, v);
+    // Pre-launch window: beta is the full site but must never enter the index
+    // (duplicate of the apex; the apex URLs return at launch).
+    if (context.url.hostname === 'beta.intimate.nl') res.headers.set('X-Robots-Tag', 'noindex');
   } catch {
     /* immutable headers (passthrough response) — serve as-is */
   }
@@ -129,6 +137,15 @@ const handle = (context: APIContext, next: MiddlewareNext) =>
       context.cookies.get('PARAGLIDE_LOCALE')?.value,
     );
     return context.redirect(`/${locale}/${context.url.search}`, 302);
+  }
+  // The short link printed in agency emails and said on calls ("intimate.nl
+  // slash agencies") — locale-negotiated like `/` (PRE-LAUNCH doc §12).
+  if (context.url.pathname === '/agencies' || context.url.pathname === '/agencies/') {
+    const locale = negotiateLocale(
+      context.request.headers.get('accept-language'),
+      context.cookies.get('PARAGLIDE_LOCALE')?.value,
+    );
+    return context.redirect(`/${locale}/agencies/`, 302);
   }
   const legacy = LEGACY_ARTICLES[context.url.pathname.replace(/^\/|\/$/g, '')];
   if (legacy) return context.redirect(`/nl/blog/${legacy}/`, 301);

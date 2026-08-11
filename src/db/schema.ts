@@ -207,9 +207,35 @@ export const orgs = pgTable(
     lastCrawledAt: timestamp('last_crawled_at', { withTimezone: true }),
     /** One-line summary of the last discovery run (admin display only). */
     lastCrawlNote: text('last_crawl_note'),
+    /** The §12.7 consent record (PRE-LAUNCH-GRANT-CARDONE.md): when the agency
+     *  submitted the public consent form, from which IP, in which locale.
+     *  contact_email holds the submitted address; the checkbox label text is
+     *  versioned in git with the form. */
+    consentAt: timestamp('consent_at', { withTimezone: true }),
+    consentIp: text('consent_ip'),
+    consentLocale: text('consent_locale'),
     createdAt: createdAt(),
   },
   (t) => [index('orgs_account_idx').on(t.accountId), uniqueIndex('orgs_slug_idx').on(t.slug)],
+);
+
+// ---------------------------------------------------------------------------
+// Pre-launch leads — professionals who pre-registered on the intimate.nl
+// landing page (no account, no auth). Server-only writes (app_server); zero
+// browser grants. Contacted manually; table retires at launch.
+// ---------------------------------------------------------------------------
+
+export const prelaunchLeads = pgTable(
+  'prelaunch_leads',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    name: text('name').notNull(),
+    email: text('email').notNull(),
+    phone: text('phone'),
+    locale: text('locale').notNull().default('nl'),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex('prelaunch_leads_email_idx').on(t.email)],
 );
 
 // ---------------------------------------------------------------------------

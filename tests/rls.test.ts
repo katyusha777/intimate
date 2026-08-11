@@ -218,7 +218,7 @@ t('favorites: own-row insert/select/delete; forging another client denied', asyn
 
 // ── no-grant tables: PostgREST roles can't touch them at all ────────────────
 
-for (const table of ['orgs', 'conversation_settings', 'contacts', 'reports', 'audit_log', 'verification_docs', 'import_jobs']) {
+for (const table of ['orgs', 'conversation_settings', 'contacts', 'reports', 'audit_log', 'verification_docs', 'import_jobs', 'prelaunch_leads']) {
   t(`${table}: zero browser access`, async () => {
     await denied(as('anon', null, () => sql.unsafe(`select * from public.${table} limit 1`)));
     await denied(as('authenticated', CLI, () => sql.unsafe(`select * from public.${table} limit 1`)));

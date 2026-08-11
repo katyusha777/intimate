@@ -71,7 +71,10 @@ export function isAnonymousRequest(cookieHeader: string | null): boolean {
 // TTL happens to lapse. Cheap: a 304 when nothing changed.
 const REVALIDATE = 'no-cache';
 
-const cacheKey = (deployId: string, gen: string, pathname: string) => `pc:${deployId}:${gen}:${pathname}`;
+// Host is part of the key: one worker serves intimate.nl AND beta.intimate.nl
+// (pre-launch window) — a pathname-only key would serve one host's HTML on the
+// other (the prelaunch landing and the full home share `/{locale}/`).
+const cacheKey = (deployId: string, gen: string, url: URL) => `pc:${deployId}:${gen}:${url.host}${url.pathname}`;
 
 export async function servedFromCache(
   kv: CacheKv | undefined,
@@ -80,7 +83,7 @@ export async function servedFromCache(
 ): Promise<Response | null> {
   if (!kv) return null;
   const { gen } = parseGen(await kv.get(GEN_KEY));
-  const html = await kv.get(cacheKey(deployId, gen, url.pathname));
+  const html = await kv.get(cacheKey(deployId, gen, url));
   if (html == null) return null;
   return new Response(html, {
     status: 200,
@@ -103,7 +106,7 @@ export async function storeInCache(
   const { gen, at } = parseGen(await kv.get(GEN_KEY));
   if (Date.now() - at < BUST_WINDOW_MS) return res;
   const html = await res.text();
-  await kv.put(cacheKey(deployId, gen, url.pathname), html, { expirationTtl: ttl });
+  await kv.put(cacheKey(deployId, gen, url), html, { expirationTtl: ttl });
   return new Response(html, {
     status: 200,
     headers: { 'content-type': ct, 'cache-control': REVALIDATE, 'x-cache': 'MISS' },
