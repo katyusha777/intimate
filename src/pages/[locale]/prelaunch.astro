@@ -147,14 +147,6 @@ const jsonLd = [websiteJsonLd(Astro.url.origin, locale), organizationJsonLd(Astr
                         </div>
                       </fieldset>
 
-                      <a
-                        href={localizePath('/agencies/')}
-                        class="flex items-center justify-center gap-2 border border-white/15 px-4 py-3 text-sm font-medium text-white/70 transition-colors hover:border-white/40 hover:text-white"
-                      >
-                        <svg class="size-4 flex-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 9h.01M9 13h.01M9 17h.01M15 9h.01M15 13h.01M15 17h.01"/></svg>
-                        {m.prelaunch_agency_link()} →
-                      </a>
-
                       <SlabField class="js-name-field" label={m.prelaunch_form_name()} name="name" required autocomplete="nickname" />
                       <SlabField label={m.prelaunch_form_email()} name="email" type="email" inputmode="email" required autocomplete="email" />
 
@@ -170,6 +162,14 @@ const jsonLd = [websiteJsonLd(Astro.url.origin, locale), organizationJsonLd(Astr
                       <Button type="submit" class="block w-full">
                         {m.prelaunch_form_submit()}
                       </Button>
+                      <p class="text-center text-sm">
+                        <a
+                          href={localizePath('/agencies/')}
+                          class="text-white/55 underline underline-offset-4 transition-colors hover:text-white"
+                        >
+                          {m.prelaunch_agency_link()} →
+                        </a>
+                      </p>
                     </form>
                     <SupportChips class="mt-6 text-white/70" />
                   </>
