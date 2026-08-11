@@ -1,23 +1,39 @@
 import { expect, test } from 'bun:test';
-import { emailSignatureHtml } from '@/lib/email-signature';
+import { emailSignatureHtml, type SignatureInput } from '@/lib/email-signature';
+
+const base: SignatureInput = { name: 'X', position: '', phone: '', email: '', whatsapp: '', telegram: '', image: '' };
 
 test('escapes user text — no HTML injection', () => {
-  const html = emailSignatureHtml({ name: 'A<b> & "c"', position: '<i>x</i>', image: '' });
+  const html = emailSignatureHtml({ ...base, name: 'A<b> & "c"', position: '<i>x</i>' });
   expect(html).not.toContain('<b>');
   expect(html).not.toContain('<i>');
   expect(html).toContain('A&lt;b&gt; &amp; &quot;c&quot;');
 });
 
-test('image cell present only with an image', () => {
-  expect(emailSignatureHtml({ name: 'X', position: '', image: '' })).not.toContain('<img');
-  expect(emailSignatureHtml({ name: 'X', position: '', image: 'https://i/x.jpg' })).toContain('src="https://i/x.jpg"');
+test('photo cell present only with an image', () => {
+  expect(emailSignatureHtml(base)).not.toContain('<img src="https://ex');
+  expect(emailSignatureHtml({ ...base, image: 'https://ex/x.jpg' })).toContain('src="https://ex/x.jpg"');
 });
 
-test('position line omitted when blank', () => {
-  expect(emailSignatureHtml({ name: 'X', position: '', image: '' })).not.toContain('#636363');
-  expect(emailSignatureHtml({ name: 'X', position: 'CEO', image: '' })).toContain('CEO');
+test('contact rows render only when filled, with correct hrefs', () => {
+  const html = emailSignatureHtml({
+    ...base,
+    phone: '+31 6 1234 5678',
+    email: 'anna@intimate.nl',
+    whatsapp: '+31 (6) 1234-5678',
+    telegram: '@anna',
+  });
+  expect(html).toContain('tel:+31612345678'); // stripped to digits + leading +
+  expect(html).toContain('mailto:anna@intimate.nl');
+  expect(html).toContain('https://wa.me/31612345678'); // digits only, no +
+  expect(html).toContain('https://t.me/anna'); // leading @ dropped in href
+  expect(html).toContain('@anna'); // …but shown with @ in the label
+});
+
+test('no contact table when nothing is filled', () => {
+  expect(emailSignatureHtml(base)).not.toContain('margin-top:10px');
 });
 
 test('blank name falls back to placeholder', () => {
-  expect(emailSignatureHtml({ name: '  ', position: '', image: '' })).toContain('Your name');
+  expect(emailSignatureHtml({ ...base, name: '  ' })).toContain('Your name');
 });

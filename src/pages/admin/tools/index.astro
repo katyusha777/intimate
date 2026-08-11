@@ -4,10 +4,11 @@
  * collapsed <details> so the page stays quiet until a tool is opened. English
  * on purpose — single-viewer internal surface, like Danger zone (ADMIN.md §1).
  *
- * Tool 1 — Email signature: name + position + image (paste a URL or upload,
- * which EXIF-strips client-side and stores in R2 under `sig/…`, served world-
- * readable via /media). Live preview + copyable, email-safe (table + inline
- * styles) HTML in the brand palette.
+ * Tool 1 — Email signature: name + position + phone/email/WhatsApp/Telegram +
+ * optional photo (paste a URL or upload, which EXIF-strips client-side and
+ * stores in R2 under `sig/…`, served world-readable via /media). Live preview +
+ * copyable, email-safe (table + inline styles) HTML with the Intimate wordmark
+ * and brand-red icon chips (public/img/signature/*.png).
  */
 import { getAdmin } from '@/actions/admin/lib';
 import AdminShell from '@/components/organisms/admin/AdminShell.astro';
@@ -48,8 +49,27 @@ const isSuper = session?.adminRole === 'super';
                   <input data-sig="position" type="text" autocomplete="off" placeholder="Head of Partnerships" class="slab-cut w-full border border-foreground/20 bg-background px-3 py-2 text-sm caret-brand outline-none focus:border-foreground/50" />
                 </label>
 
+                <div class="grid grid-cols-2 gap-3">
+                  <label class="block">
+                    <span class="mb-1 block text-xs font-medium text-muted-foreground">Phone</span>
+                    <input data-sig="phone" type="tel" autocomplete="off" placeholder="+31 6 1234 5678" class="slab-cut w-full border border-foreground/20 bg-background px-3 py-2 text-sm caret-brand outline-none focus:border-foreground/50" />
+                  </label>
+                  <label class="block">
+                    <span class="mb-1 block text-xs font-medium text-muted-foreground">Email</span>
+                    <input data-sig="email" type="email" autocomplete="off" placeholder="anna@intimate.nl" class="slab-cut w-full border border-foreground/20 bg-background px-3 py-2 text-sm caret-brand outline-none focus:border-foreground/50" />
+                  </label>
+                  <label class="block">
+                    <span class="mb-1 block text-xs font-medium text-muted-foreground">WhatsApp</span>
+                    <input data-sig="whatsapp" type="tel" autocomplete="off" placeholder="+31 6 1234 5678" class="slab-cut w-full border border-foreground/20 bg-background px-3 py-2 text-sm caret-brand outline-none focus:border-foreground/50" />
+                  </label>
+                  <label class="block">
+                    <span class="mb-1 block text-xs font-medium text-muted-foreground">Telegram</span>
+                    <input data-sig="telegram" type="text" autocomplete="off" placeholder="@anna" class="slab-cut w-full border border-foreground/20 bg-background px-3 py-2 text-sm caret-brand outline-none focus:border-foreground/50" />
+                  </label>
+                </div>
+
                 <div>
-                  <span class="mb-1 block text-xs font-medium text-muted-foreground">Image URL (or upload below)</span>
+                  <span class="mb-1 block text-xs font-medium text-muted-foreground">Photo — URL or upload (optional)</span>
                   <input data-sig="image" type="url" inputmode="url" autocomplete="off" placeholder="https://…/photo.jpg" class="slab-cut w-full border border-foreground/20 bg-background px-3 py-2 text-sm caret-brand outline-none focus:border-foreground/50" />
                   <div class="mt-2 flex items-center gap-3">
                     <label class="slab-cut inline-flex cursor-pointer items-center border border-foreground/20 bg-card px-3 py-1.5 text-xs font-semibold transition-colors hover:bg-foreground hover:text-background">
@@ -65,7 +85,7 @@ const isSuper = session?.adminRole === 'super';
               {/* Live preview (always white — that's where a signature lives) */}
               <div>
                 <span class="mb-1 block text-xs font-medium text-muted-foreground">Preview</span>
-                <div data-sig-preview class="min-h-24 border border-border bg-white p-5" />
+                <div data-sig-preview class="min-h-24 overflow-x-auto border border-border bg-white p-5" />
               </div>
             </div>
 
@@ -96,9 +116,9 @@ const isSuper = session?.adminRole === 'super';
   const root = document.querySelector<HTMLElement>('details');
   if (root) {
     const $ = <T extends HTMLElement>(sel: string) => root.querySelector<T>(sel)!;
-    const nameEl = $<HTMLInputElement>('[data-sig="name"]');
-    const posEl = $<HTMLInputElement>('[data-sig="position"]');
-    const imgEl = $<HTMLInputElement>('[data-sig="image"]');
+    const field = (k: string) => $<HTMLInputElement>(`[data-sig="${k}"]`);
+    const fields = ['name', 'position', 'phone', 'email', 'whatsapp', 'telegram', 'image'] as const;
+    const els = Object.fromEntries(fields.map((k) => [k, field(k)])) as Record<(typeof fields)[number], HTMLInputElement>;
     const fileEl = $<HTMLInputElement>('[data-sig-file]');
     const uploadStatus = $<HTMLElement>('[data-sig-upload-status]');
     const preview = $<HTMLElement>('[data-sig-preview]');
@@ -106,12 +126,20 @@ const isSuper = session?.adminRole === 'super';
     const copyBtn = $<HTMLButtonElement>('[data-sig-copy]');
 
     function render() {
-      const html = emailSignatureHtml({ name: nameEl.value, position: posEl.value, image: imgEl.value });
+      const html = emailSignatureHtml({
+        name: els.name.value,
+        position: els.position.value,
+        phone: els.phone.value,
+        email: els.email.value,
+        whatsapp: els.whatsapp.value,
+        telegram: els.telegram.value,
+        image: els.image.value,
+      });
       preview.innerHTML = html;
       code.value = html;
     }
 
-    [nameEl, posEl, imgEl].forEach((el) => el.addEventListener('input', render));
+    fields.forEach((k) => els[k].addEventListener('input', render));
 
     fileEl.addEventListener('change', async () => {
       const file = fileEl.files?.[0];
@@ -121,7 +149,7 @@ const isSuper = session?.adminRole === 'super';
         const dataUrl = await reencode(file, 512, 0.85); // canvas re-encode drops EXIF/GPS
         const { data, error } = await actions.admin.sigUploadImage({ dataUrl });
         if (error) throw error;
-        imgEl.value = data.url;
+        els.image.value = data.url;
         uploadStatus.textContent = 'Hosted ✓';
         render();
       } catch (e) {
