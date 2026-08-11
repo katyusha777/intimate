@@ -17,6 +17,9 @@ import { rateLimit } from "@/lib/rate-limit";
 import { dataUrlToJpegBytes, stripJpegDataUrl } from "@/lib/jpeg-strip";
 import { importFromUrl } from "@/lib/import";
 import { mintIceServers } from "@/lib/turn";
+import { joinFromConsent } from "@/app/api/orgs";
+import { addPrelaunchLead } from "@/app/api/prelaunch";
+import { pushoverAdmins } from "@/lib/pushover";
 import { CONVERSATION_MODES, REPORT_REASONS, REPORT_TARGETS } from "@/lib/taxonomy";
 // The one sanctioned cross-fence import: the action registry wires in admin.
 import { admin } from "@/actions/admin";
@@ -807,6 +810,65 @@ export const server = {
         const session = await requireSession(context);
         await requireUnderLimit("report-file", session.accountId, 20);
         await reportsApi.file(session, input);
+        return { ok: true };
+      },
+    }),
+  },
+
+  // Pre-launch campaign (PRE-LAUNCH-GRANT-CARDONE.md) — both are anonymous
+  // plain-HTML form posts (accept: 'form', zero JS). Owner is notified via
+  // Pushover (admin notifications are Pushover-only — lib/pushover.ts).
+  prelaunch: {
+    join: defineAction({
+      accept: "form",
+      input: z.object({
+        name: z.string().trim().min(1).max(80),
+        email: emailField,
+        phone: z.string().trim().max(30).optional(),
+        locale: z.enum(LOCALES),
+      }),
+      handler: async (input, context) => {
+        await requireUnderLimit("prelaunch-ip", clientIp(context), 10);
+        await addPrelaunchLead(input);
+        pushoverAdmins(
+          "prelaunch_lead",
+          `Pre-launch signup: ${input.name}`,
+          `${input.email}\n${input.phone || "-"} · ${input.locale}`,
+        );
+        return { ok: true };
+      },
+    }),
+  },
+
+  agencies: {
+    join: defineAction({
+      accept: "form",
+      input: z.object({
+        name: z.string().trim().min(1).max(120),
+        // Owners type "site.nl", not a URL — prefix a scheme, then validate.
+        siteUrl: z
+          .string()
+          .trim()
+          .max(300)
+          .transform((u) => (/^https?:\/\//i.test(u) ? u : `https://${u}`))
+          .pipe(z.string().url()),
+        email: emailField,
+        phone: z.string().trim().max(30).optional(),
+        // The checkbox IS the §12.7 consent record: it posts "on" only when
+        // checked, so a required string is the introspection-proof gate.
+        consent: z.string().min(1),
+        locale: z.enum(LOCALES),
+      }),
+      handler: async (input, context) => {
+        // 5/h per IP: a closer submits once, maybe twice on the phone —
+        // anything faster is a bot probing the org-creation path.
+        await requireUnderLimit("agency-join-ip", clientIp(context), 5);
+        const { existing } = await joinFromConsent({ ...input, ip: clientIp(context) });
+        pushoverAdmins(
+          "agency_consent",
+          `Founding agency${existing ? " (repeat)" : ""}: ${input.name}`,
+          `${input.siteUrl}\n${input.email}\n${input.phone || "-"} · ${input.locale}`,
+        );
         return { ok: true };
       },
     }),

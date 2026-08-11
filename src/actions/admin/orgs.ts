@@ -7,10 +7,9 @@
 import { env } from 'cloudflare:workers';
 import { count, desc, eq, sql } from 'drizzle-orm';
 import { requestDb, type Db } from '@/db/client';
-import { importJobs, accounts, orgs, profiles } from '@/db/schema';
+import { importJobs, orgs, profiles } from '@/db/schema';
 import { profilesApi } from '@/app/api/profiles';
 import { mediaBucket } from '@/lib/media-keys';
-import { slugifyBase } from '@/lib/slug';
 import type { CitySlug, ImportJobState } from '@/lib/taxonomy';
 import { completeness } from './entities';
 
@@ -130,17 +129,6 @@ export async function orgById(id: string): Promise<OrgWithRoster | null> {
   return row ? roster(d, toOrg(row)) : null;
 }
 
-/** `Elite Escorts` → `elite-escorts`, deduped against existing org slugs. */
-async function uniqueOrgSlug(d: Db, name: string): Promise<string> {
-  const base = slugifyBase(name, 'agency');
-  for (let i = 0; i < 50; i++) {
-    const candidate = i === 0 ? base : `${base}-${i + 1}`;
-    const hit = await d.select({ id: orgs.id }).from(orgs).where(eq(orgs.slug, candidate)).limit(1);
-    if (!hit.length) return candidate;
-  }
-  return `${base}-${Date.now().toString(36)}`;
-}
-
 export interface OrgPatch {
   name?: string;
   city?: CitySlug;
@@ -154,34 +142,10 @@ export interface OrgPatch {
   crawlListUrl?: string;
 }
 
-/** Create the org + its placeholder `agency` account (no login — upgradeable). */
-export async function createOrg(input: OrgPatch & { name: string; city: CitySlug }): Promise<string> {
-  const d = adb();
-  const accountId = crypto.randomUUID();
-  await d.insert(accounts).values({
-    id: accountId, // NOT an auth.users id — this account cannot log in (yet)
-    accountType: 'agency',
-    displayName: input.name,
-    email: input.contactEmail || null,
-  });
-  const [row] = await d
-    .insert(orgs)
-    .values({
-      accountId,
-      name: input.name,
-      slug: await uniqueOrgSlug(d, input.name),
-      city: input.city,
-      kvk: input.kvk || null,
-      siteUrl: input.siteUrl || null,
-      contactEmail: input.contactEmail || null,
-      contactPhone: input.contactPhone || null,
-      description: input.description ?? '',
-      crawlEnabled: input.crawlEnabled ?? false,
-      crawlListUrl: input.crawlListUrl || null,
-    })
-    .returning({ id: orgs.id });
-  return row!.id;
-}
+// Org creation moved to the shared seam (@/app/api/orgs — the public consent
+// form creates orgs too, and the admin fence is one-directional). Re-exported
+// so admin call sites keep their import.
+export { createOrg } from '@/app/api/orgs';
 
 export async function updateOrg(id: string, patch: OrgPatch): Promise<void> {
   const d = adb();
