@@ -1052,5 +1052,20 @@
   "prelaunch_done_title": "Done",
   "prelaunch_done_body": "You're on the founding list. We'll email your setup link before launch.",
   "prelaunch_form_error": "That didn't go through. Check the fields and try again.",
-  "prelaunch_agency_link": "Run an agency? Founding spots are open"
+  "prelaunch_agency_link": "Run an agency? Founding spots are open",
+  "support_prompt": "Questions? Message us",
+  "prelaunch_kind_label": "I'm joining as",
+  "prelaunch_kind_agency": "An agency",
+  "prelaunch_kind_advertiser": "An independent professional",
+  "prelaunch_kind_client": "A client (just browsing)",
+  "prelaunch_name_agency": "Agency name",
+  "prelaunch_name_client": "Your name",
+  "agencies_demo_hint": "Tap any card — it opens live, exactly as a client sees it.",
+  "agencies_app_title": "It works like an app",
+  "agencies_app_1_lead": "One tap",
+  "agencies_app_1_body": "Profiles open instantly — no page loads, no waiting.",
+  "agencies_app_2_lead": "Mobile-first",
+  "agencies_app_2_body": "Swipe, tap, done. Built for the phone, not a desktop site squeezed small.",
+  "agencies_app_3_lead": "Always live",
+  "agencies_app_3_body": "Online-now status, verified photos, current rates."
 }

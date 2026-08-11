@@ -14,6 +14,8 @@ import { organizationJsonLd, websiteJsonLd } from '@/lib/seo';
 import Button from '@/components/atoms/Button.astro';
 import SafeImage from '@/components/atoms/SafeImage.astro';
 import SlabField from '@/components/molecules/SlabField.astro';
+import SlabSelect from '@/components/molecules/SlabSelect.astro';
+import SupportChips from '@/components/molecules/SupportChips.astro';
 
 const locale = Astro.params.locale;
 if (!isLocale(locale)) return new Response(null, { status: 404 });
@@ -81,7 +83,7 @@ const jsonLd = [websiteJsonLd(Astro.url.origin, locale), organizationJsonLd(Astr
 
       <div class="relative mx-auto max-w-7xl px-4 md:px-6">
         <div class="flex min-h-dvh flex-col py-6 lg:max-w-[46%] lg:justify-center">
-          <span class="display text-lg">Intimate</span>
+          <img src="/img/logo-light.svg" alt={m.app_name()} width="1242" height="597" class="h-6 w-auto md:h-7" />
 
           <div class="flex flex-1 flex-col justify-center py-10 lg:flex-none lg:py-12">
             <p class="eyebrow flex items-center gap-2 font-condensed text-lg font-bold uppercase tracking-wide">
@@ -116,9 +118,27 @@ const jsonLd = [websiteJsonLd(Astro.url.origin, locale), organizationJsonLd(Astr
                 ) : (
                   <>
                     <h2 class="display text-2xl">{m.prelaunch_form_title()}</h2>
-                    <form method="POST" action={actions.prelaunch.join} class="mt-4 space-y-4">
+                    <form
+                      method="POST"
+                      action={actions.prelaunch.join}
+                      class="mt-4 space-y-4"
+                      data-prelaunch-form
+                      data-name-agency={m.prelaunch_name_agency()}
+                      data-name-advertiser={m.prelaunch_form_name()}
+                      data-name-client={m.prelaunch_name_client()}
+                    >
                       {result?.error && <p class="text-sm font-medium text-destructive">{m.prelaunch_form_error()}</p>}
-                      <SlabField label={m.prelaunch_form_name()} name="name" required autocomplete="nickname" />
+                      <SlabSelect
+                        label={m.prelaunch_kind_label()}
+                        name="kind"
+                        value="advertiser"
+                        options={[
+                          { value: 'agency', label: m.prelaunch_kind_agency() },
+                          { value: 'advertiser', label: m.prelaunch_kind_advertiser() },
+                          { value: 'client', label: m.prelaunch_kind_client() },
+                        ]}
+                      />
+                      <SlabField class="js-name-field" label={m.prelaunch_form_name()} name="name" required autocomplete="nickname" />
                       <SlabField label={m.prelaunch_form_email()} name="email" type="email" inputmode="email" required autocomplete="email" />
                       <SlabField label={m.prelaunch_form_phone()} name="phone" type="tel" inputmode="tel" autocomplete="tel" />
                       <input type="hidden" name="locale" value={locale} />
@@ -126,6 +146,7 @@ const jsonLd = [websiteJsonLd(Astro.url.origin, locale), organizationJsonLd(Astr
                         {m.prelaunch_form_submit()}
                       </Button>
                     </form>
+                    <SupportChips class="mt-6 text-white/70" />
                   </>
                 )
               }
@@ -144,6 +165,27 @@ const jsonLd = [websiteJsonLd(Astro.url.origin, locale), organizationJsonLd(Astr
       </div>
     </div>
   </div>
+
+  <script>
+    // The name field means a different thing per join-type — swap its label so
+    // "Working name" doesn't greet an agency or a browsing client.
+    function initKindLabel() {
+      const form = document.querySelector<HTMLFormElement>('[data-prelaunch-form]');
+      if (!form || form.dataset.kindInit) return;
+      form.dataset.kindInit = '1';
+      const sel = form.querySelector<HTMLSelectElement>('select[name="kind"]');
+      const label = form.querySelector<HTMLElement>('.js-name-field > span');
+      if (!sel || !label) return;
+      const sync = () => {
+        label.textContent =
+          sel.value === 'agency' ? form.dataset.nameAgency! : sel.value === 'client' ? form.dataset.nameClient! : form.dataset.nameAdvertiser!;
+      };
+      sel.addEventListener('change', sync);
+      sync();
+    }
+    initKindLabel();
+    document.addEventListener('astro:page-load', initKindLabel);
+  </script>
 </Layout>
 
 <style>

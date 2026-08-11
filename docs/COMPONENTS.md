@@ -36,7 +36,9 @@ Pages = `src/pages/` (compose organisms; own no reusable markup).
     one file), SafeImage (safe-mode image contract), VerifiedBadge.
 - **Molecule** — a self-contained control from atoms + markup, reusable in any
   domain: Modal, ActionSheet, Lightbox, PhotoCarousel,
-  Combobox, SlabField, BirthDateField (day/month/year dropdowns → hidden
+  Combobox, SlabField, SlabSelect (SlabField's sibling for a native <select>),
+  SupportChips (WhatsApp/Telegram from SUPPORT_CONTACT — campaign support links),
+  BirthDateField (day/month/year dropdowns → hidden
   YYYY-MM-DD; year capped at the 21+ advertising floor), FavoritesController, UserMenu,
   ThemeToggle (sun/moon switch, dark is the site default),
   SafeModeToggle (three-state safe-mode control — labelled switch in the

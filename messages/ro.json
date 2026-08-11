@@ -1052,5 +1052,20 @@
   "prelaunch_done_title": "Gata",
   "prelaunch_done_body": "Ești pe lista fondatoare. Îți trimitem linkul de configurare înainte de lansare.",
   "prelaunch_form_error": "N-a mers. Verifică datele și încearcă din nou.",
-  "prelaunch_agency_link": "Ai o agenție? Locurile de fondator sunt deschise"
+  "prelaunch_agency_link": "Ai o agenție? Locurile de fondator sunt deschise",
+  "support_prompt": "Întrebări? Scrie-ne",
+  "prelaunch_kind_label": "Mă înscriu ca",
+  "prelaunch_kind_agency": "O agenție",
+  "prelaunch_kind_advertiser": "Profesionist independent",
+  "prelaunch_kind_client": "Un client (doar mă uit)",
+  "prelaunch_name_agency": "Numele agenției",
+  "prelaunch_name_client": "Numele tău",
+  "agencies_demo_hint": "Atinge orice card — se deschide live, exact cum îl vede un client.",
+  "agencies_app_title": "Funcționează ca o aplicație",
+  "agencies_app_1_lead": "O atingere",
+  "agencies_app_1_body": "Profilurile se deschid instant — fără încărcări, fără așteptare.",
+  "agencies_app_2_lead": "Mobil în primul rând",
+  "agencies_app_2_body": "Glisezi, atingi, gata. Construit pentru telefon, nu un site de desktop înghesuit.",
+  "agencies_app_3_lead": "Mereu live",
+  "agencies_app_3_body": "Status online-acum, fotografii verificate, tarife actuale."
 }

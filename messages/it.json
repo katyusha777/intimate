@@ -1052,5 +1052,20 @@
   "prelaunch_done_title": "Fatto",
   "prelaunch_done_body": "Sei nella lista fondatrice. Ti mandiamo il link di configurazione prima del lancio.",
   "prelaunch_form_error": "Non è andata. Controlla i campi e riprova.",
-  "prelaunch_agency_link": "Gestisci un'agenzia? I posti da fondatore sono aperti"
+  "prelaunch_agency_link": "Gestisci un'agenzia? I posti da fondatore sono aperti",
+  "support_prompt": "Domande? Scrivici",
+  "prelaunch_kind_label": "Mi iscrivo come",
+  "prelaunch_kind_agency": "Un'agenzia",
+  "prelaunch_kind_advertiser": "Professionista indipendente",
+  "prelaunch_kind_client": "Un cliente (sto solo guardando)",
+  "prelaunch_name_agency": "Nome dell'agenzia",
+  "prelaunch_name_client": "Il tuo nome",
+  "agencies_demo_hint": "Tocca una scheda — si apre dal vivo, esattamente come la vede un cliente.",
+  "agencies_app_title": "Funziona come un'app",
+  "agencies_app_1_lead": "Un tocco",
+  "agencies_app_1_body": "I profili si aprono all'istante — nessun caricamento, nessuna attesa.",
+  "agencies_app_2_lead": "Prima il mobile",
+  "agencies_app_2_body": "Scorri, tocca, fatto. Costruito per il telefono, non un sito desktop compresso.",
+  "agencies_app_3_lead": "Sempre live",
+  "agencies_app_3_body": "Stato online-ora, foto verificate, tariffe aggiornate."
 }

@@ -822,17 +822,22 @@ export const server = {
     join: defineAction({
       accept: "form",
       input: z.object({
+        // Who's signing up — surfaced in the admin alert so the closer knows
+        // which pitch to open with. Not persisted: prelaunch_leads retires at
+        // launch and the per-signup Pushover is the working surface.
+        // ponytail: add a `kind` column if lead-type analytics are ever wanted.
+        kind: z.enum(["agency", "advertiser", "client"]).optional(),
         name: z.string().trim().min(1).max(80),
         email: emailField,
         phone: z.string().trim().max(30).optional(),
         locale: z.enum(LOCALES),
       }),
-      handler: async (input, context) => {
+      handler: async ({ kind, ...input }, context) => {
         await requireUnderLimit("prelaunch-ip", clientIp(context), 10);
         await addPrelaunchLead(input);
         pushoverAdmins(
           "prelaunch_lead",
-          `Pre-launch signup: ${input.name}`,
+          `Pre-launch signup: ${input.name}${kind ? ` (${kind})` : ""}`,
           `${input.email}\n${input.phone || "-"} · ${input.locale}`,
         );
         return { ok: true };

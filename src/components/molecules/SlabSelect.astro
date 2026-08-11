@@ -1,0 +1,46 @@
+---
+/**
+ * Labelled Misprint slab select (DESIGN §1.1) — the SlabField's sibling for a
+ * native <select>. Native picker on mobile (the best UX there is on a phone),
+ * the same cut-ink slab frame so it sits flush with the SlabField inputs.
+ */
+interface Option {
+  value: string;
+  label: string;
+}
+interface Props {
+  label: string;
+  name: string;
+  options: Option[];
+  value?: string;
+  required?: boolean;
+  class?: string;
+  [key: string]: unknown;
+}
+const { label, name, options, value, required, class: className, ...rest } = Astro.props;
+---
+
+<label class:list={['block space-y-2.5', className]}>
+  <span class="text-sm font-medium">{label}</span>
+  <span class="slab-field block">
+    <span class="slab-field__face relative flex h-11 items-center">
+      <select
+        {name}
+        {required}
+        class="h-full w-full appearance-none bg-transparent pl-4 pr-10 text-base text-foreground caret-brand outline-none md:text-sm"
+        {...rest}
+      >
+        {options.map((o) => <option value={o.value} selected={o.value === value}>{o.label}</option>)}
+      </select>
+      <svg
+        class="pointer-events-none absolute right-4 size-4 text-muted-foreground"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+    </span>
+  </span>
+</label>

@@ -1,0 +1,39 @@
+---
+/**
+ * Support chips: WhatsApp + Telegram, straight from the one SUPPORT_CONTACT
+ * config. Theme-adaptive (borders/text via tokens, so it reads on the dark
+ * pre-launch hero AND the light closer page). Used on the campaign surfaces so
+ * a hesitating owner is one tap from a human.
+ */
+import { SUPPORT_CONTACT } from '@/lib/contact';
+import Icon from '@/components/atoms/Icon.astro';
+import * as m from '@/paraglide/messages';
+
+interface Props {
+  /** Lead-in text; defaults to the shared support prompt. */
+  label?: string;
+  class?: string;
+}
+const { label, class: className } = Astro.props;
+const chips = [
+  { name: 'WhatsApp', icon: 'whatsapp', href: SUPPORT_CONTACT.whatsapp.href, tone: 'text-online' },
+  { name: 'Telegram', icon: 'telegram', href: SUPPORT_CONTACT.telegram.href, tone: 'text-telegram' },
+] as const;
+---
+
+<div class:list={['flex flex-wrap items-center gap-x-3 gap-y-2 text-sm', className]}>
+  <span class="text-muted-foreground">{label ?? m.support_prompt()}</span>
+  {
+    chips.map((c) => (
+      <a
+        href={c.href}
+        target="_blank"
+        rel="nofollow noopener noreferrer"
+        class="inline-flex items-center gap-2 border border-foreground/25 px-3 py-1.5 font-medium transition-colors hover:border-foreground/60"
+      >
+        <Icon name={c.icon} family="brands" class:list={['text-base', c.tone]} />
+        {c.name}
+      </a>
+    ))
+  }
+</div>

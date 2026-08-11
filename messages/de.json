@@ -1052,5 +1052,20 @@
   "prelaunch_done_title": "Fertig",
   "prelaunch_done_body": "Du stehst auf der Founding-Liste. Vor dem Start mailen wir dir deinen Setup-Link.",
   "prelaunch_form_error": "Das hat nicht geklappt. Prüfe die Felder und versuch es erneut.",
-  "prelaunch_agency_link": "Führst du eine Agentur? Founding-Plätze sind offen"
+  "prelaunch_agency_link": "Führst du eine Agentur? Founding-Plätze sind offen",
+  "support_prompt": "Fragen? Schreib uns",
+  "prelaunch_kind_label": "Ich melde mich an als",
+  "prelaunch_kind_agency": "Eine Agentur",
+  "prelaunch_kind_advertiser": "Selbstständige/r Profi",
+  "prelaunch_kind_client": "Ein Kunde (nur schauen)",
+  "prelaunch_name_agency": "Name der Agentur",
+  "prelaunch_name_client": "Dein Name",
+  "agencies_demo_hint": "Tippe auf eine Karte — sie öffnet sich live, genau wie ein Kunde sie sieht.",
+  "agencies_app_title": "Es funktioniert wie eine App",
+  "agencies_app_1_lead": "Ein Tipp",
+  "agencies_app_1_body": "Profile öffnen sofort — kein Laden, kein Warten.",
+  "agencies_app_2_lead": "Mobil zuerst",
+  "agencies_app_2_body": "Wischen, tippen, fertig. Fürs Handy gebaut, keine gequetschte Desktop-Seite.",
+  "agencies_app_3_lead": "Immer live",
+  "agencies_app_3_body": "Jetzt-online-Status, verifizierte Fotos, aktuelle Preise."
 }

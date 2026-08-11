@@ -17,6 +17,7 @@ import { isLocale, localizePath, samePathAlternates } from '@/lib/i18n';
 import ProfileCard from '@/components/organisms/profile/ProfileCard.astro';
 import Button from '@/components/atoms/Button.astro';
 import SlabField from '@/components/molecules/SlabField.astro';
+import SupportChips from '@/components/molecules/SupportChips.astro';
 import { profilesApi } from '@/app/api/profiles';
 
 const locale = Astro.params.locale;
@@ -32,6 +33,20 @@ if (demo.length < 4) demo = (await profilesApi.list({ sort: 'newest', limit: 4 }
 demo = demo.slice(0, 4);
 
 const alternates = samePathAlternates(Astro.url.origin, '/agencies/');
+
+// The "why it converts" strip — the mobile-app pitch, three beats + a mark.
+const APP_POINTS = [
+  { icon: '<path d="M13 2 3 14h9l-1 8 10-12h-9z"/>', lead: m.agencies_app_1_lead(), body: m.agencies_app_1_body() },
+  { icon: '<rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/>', lead: m.agencies_app_2_lead(), body: m.agencies_app_2_body() },
+  { icon: '<circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49M7.76 16.24a6 6 0 0 1 0-8.49M19.07 4.93a10 10 0 0 1 0 14.14M4.93 19.07a10 10 0 0 1 0-14.14"/>', lead: m.agencies_app_3_lead(), body: m.agencies_app_3_body() },
+];
+// The founding terms, each with a mark so the section scans in a glance.
+const TERMS = [
+  { icon: '<path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5"/>', lead: m.agencies_term_free_lead(), body: m.agencies_term_free_body() },
+  { icon: '<path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M8 16H3v5"/>', lead: m.agencies_term_sync_lead(), body: m.agencies_term_sync_body() },
+  { icon: '<path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3.1-8.7A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.4-1.2a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/>', lead: m.agencies_term_direct_lead(), body: m.agencies_term_direct_body() },
+  { icon: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/>', lead: m.agencies_term_leave_lead(), body: m.agencies_term_leave_body() },
+];
 ---
 
 <Layout
@@ -42,9 +57,12 @@ const alternates = samePathAlternates(Astro.url.origin, '/agencies/');
   bare
 >
   <div class="mx-auto max-w-xl px-4 pb-28">
-    <!-- Top strip: wordmark + NL⇄EN. The only chrome the corridor allows. -->
+    <!-- Top strip: logo + NL⇄EN. The only chrome the corridor allows. -->
     <div class="flex items-center justify-between pt-5">
-      <span class="display text-lg">Intimate</span>
+      <span class="flex items-center">
+        <img src="/img/logo-dark.svg" alt={m.app_name()} width="1242" height="597" class="h-6 w-auto dark:hidden md:h-7" />
+        <img src="/img/logo-light.svg" alt={m.app_name()} width="1242" height="597" class="hidden h-6 w-auto dark:block md:h-7" />
+      </span>
       <p class="text-sm font-semibold">
         <a
           href="/nl/agencies/"
@@ -58,7 +76,11 @@ const alternates = samePathAlternates(Astro.url.origin, '/agencies/');
 
     <!-- §12.1 Hero: declaration, not introduction. -->
     <header class="pt-8 md:pt-12">
-      <h1 class="display text-4xl md:text-5xl">{m.agencies_hero_title()}</h1>
+      <p class="eyebrow flex items-center gap-2 font-condensed text-sm font-bold uppercase tracking-wide text-brand">
+        <span class="size-1.5 rounded-full bg-online" aria-hidden="true"></span>
+        Amsterdam
+      </p>
+      <h1 class="display mt-3 text-4xl md:text-5xl">{m.agencies_hero_title()}</h1>
       <p class="mt-4 text-lg leading-relaxed text-muted-foreground">{m.agencies_hero_sub()}</p>
       <div class="mt-6">
         <Button as="a" href="#join">{m.agencies_hero_cta()}</Button>
@@ -71,6 +93,24 @@ const alternates = samePathAlternates(Astro.url.origin, '/agencies/');
       <div class="mt-4 grid grid-cols-2 gap-4">
         {demo.map((p, i) => <ProfileCard profile={p} loading={i < 2 ? 'eager' : 'lazy'} fetchpriority={i === 0 ? 'high' : undefined} />)}
       </div>
+      <p class="mt-4 flex items-center gap-2 text-sm font-medium text-muted-foreground">
+        <svg class="size-4 flex-none text-brand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 9 5 12 1.8-5.2L21 14Z"/><path d="M7.2 2.2 8 5.1"/><path d="m5.1 8-2.9-.8"/><path d="M14 4.1 12 6"/><path d="m6 12-1.9 2"/></svg>
+        {m.agencies_demo_hint()}
+      </p>
+
+      <!-- §12.2b Why it converts: the mobile-app pitch, three beats. -->
+      <h2 class="display mt-10 text-2xl md:mt-12">{m.agencies_app_title()}</h2>
+      <div class="mt-4 grid gap-3 sm:grid-cols-3">
+        {
+          APP_POINTS.map((pt) => (
+            <div class="border border-foreground/10 p-4">
+              <svg class="size-6 text-brand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" set:html={pt.icon} />
+              <p class="mt-3 font-condensed text-base font-bold uppercase tracking-wide">{pt.lead}</p>
+              <p class="mt-1 text-sm leading-relaxed text-muted-foreground">{pt.body}</p>
+            </div>
+          ))
+        }
+      </div>
     </section>
 
     <!-- §12.3 The shift: why now. The one experience aside lives here only. -->
@@ -79,20 +119,20 @@ const alternates = samePathAlternates(Astro.url.origin, '/agencies/');
       <p class="mt-3 leading-relaxed text-muted-foreground">{m.agencies_shift_body()}</p>
     </section>
 
-    <!-- §12.4 The founding terms. -->
+    <!-- §12.4 The founding terms — each with a mark so it scans in a glance. -->
     <section class="pt-10 md:pt-14">
       <h2 class="display text-2xl">{m.agencies_terms_title()}</h2>
-      <dl class="mt-2 divide-y divide-foreground/10">
+      <dl class="mt-3 divide-y divide-foreground/10">
         {
-          [
-            [m.agencies_term_free_lead(), m.agencies_term_free_body()],
-            [m.agencies_term_sync_lead(), m.agencies_term_sync_body()],
-            [m.agencies_term_direct_lead(), m.agencies_term_direct_body()],
-            [m.agencies_term_leave_lead(), m.agencies_term_leave_body()],
-          ].map(([lead, body]) => (
-            <div class="py-3">
-              <dt class="font-condensed text-lg font-bold uppercase tracking-wide">{lead}</dt>
-              <dd class="mt-1 leading-relaxed text-muted-foreground">{body}</dd>
+          TERMS.map((t) => (
+            <div class="flex gap-4 py-4">
+              <span class="grid size-10 flex-none place-items-center border border-foreground/15 text-brand">
+                <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" set:html={t.icon} />
+              </span>
+              <div>
+                <dt class="font-condensed text-lg font-bold uppercase tracking-wide">{t.lead}</dt>
+                <dd class="mt-1 leading-relaxed text-muted-foreground">{t.body}</dd>
+              </div>
             </div>
           ))
         }
@@ -172,13 +212,15 @@ const alternates = samePathAlternates(Astro.url.origin, '/agencies/');
           </>
         )
       }
+      <SupportChips class="mt-8" />
     </section>
   </div>
 
-  <!-- §12.8 Sticky CTA: the thumb is never more than one tap from the yes. -->
+  <!-- §12.8 Sticky CTA: one tap from the yes — but it slides away once the real
+       form is on screen, so the page never shows two competing CTAs. -->
   {
     !done && (
-      <div class="agencies-cta glass fixed inset-x-0 bottom-0 z-40 border-t px-4 pt-3">
+      <div class="agencies-cta glass fixed inset-x-0 bottom-0 z-40 border-t px-4 pt-3" data-sticky-cta>
         <div class="mx-auto max-w-xl">
           <Button as="a" href="#join" class="block w-full">
             {m.agencies_sticky_cta()}
@@ -187,6 +229,24 @@ const alternates = samePathAlternates(Astro.url.origin, '/agencies/');
       </div>
     )
   }
+
+  <script>
+    // Hide the sticky CTA once the form scrolls into view (slide down), bring it
+    // back when you scroll away (slide up) — never two CTAs fighting on screen.
+    function initStickyCta() {
+      const cta = document.querySelector<HTMLElement>('[data-sticky-cta]');
+      const join = document.getElementById('join');
+      if (!cta || !join || cta.dataset.init) return;
+      cta.dataset.init = '1';
+      if (!('IntersectionObserver' in window)) return;
+      const io = new IntersectionObserver((entries) => entries.forEach((e) => cta.classList.toggle('is-hidden', e.isIntersecting)), {
+        rootMargin: '0px 0px -30% 0px',
+      });
+      io.observe(join);
+    }
+    initStickyCta();
+    document.addEventListener('astro:page-load', initStickyCta);
+  </script>
 </Layout>
 
 <style>
@@ -198,5 +258,15 @@ const alternates = samePathAlternates(Astro.url.origin, '/agencies/');
      class lists (tests/style.test.ts), so the safe-area math lives here. */
   .agencies-cta {
     padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
+    transition: transform 0.3s ease;
+  }
+  /* Slides fully off the bottom edge when the real form is on screen. */
+  .agencies-cta.is-hidden {
+    transform: translateY(130%);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .agencies-cta {
+      transition: none;
+    }
   }
 </style>

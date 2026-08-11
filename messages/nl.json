@@ -1052,5 +1052,20 @@
   "prelaunch_done_title": "Klaar",
   "prelaunch_done_body": "Je staat op de founding-lijst. Voor de lancering mailen we je je setup-link.",
   "prelaunch_form_error": "Dat ging mis. Check de velden en probeer opnieuw.",
-  "prelaunch_agency_link": "Run je een bureau? Founding-plekken zijn open"
+  "prelaunch_agency_link": "Run je een bureau? Founding-plekken zijn open",
+  "support_prompt": "Vragen? App ons",
+  "prelaunch_kind_label": "Ik meld me aan als",
+  "prelaunch_kind_agency": "Een bureau",
+  "prelaunch_kind_advertiser": "Een zelfstandige professional",
+  "prelaunch_kind_client": "Een klant (ik kijk rond)",
+  "prelaunch_name_agency": "Naam bureau",
+  "prelaunch_name_client": "Je naam",
+  "agencies_demo_hint": "Tik op een kaart — hij opent live, precies zoals een klant hem ziet.",
+  "agencies_app_title": "Het werkt als een app",
+  "agencies_app_1_lead": "Eén tik",
+  "agencies_app_1_body": "Profielen openen direct — geen laadtijd, geen wachten.",
+  "agencies_app_2_lead": "Mobiel eerst",
+  "agencies_app_2_body": "Swipen, tikken, klaar. Gebouwd voor de telefoon, geen uitgeknepen desktopsite.",
+  "agencies_app_3_lead": "Altijd live",
+  "agencies_app_3_body": "Nu-online status, geverifieerde foto's, actuele tarieven."
 }
