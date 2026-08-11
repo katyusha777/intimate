@@ -146,6 +146,11 @@ export interface AccountApi {
   addPhoto(session: Session, input: { bytes: ArrayBuffer; isPrivate?: boolean }): Promise<void>;
   removePhoto(session: Session, input: { id: string }): Promise<void>;
 
+  // --- admin media (arbitrary profile by id — the admin editor, ADMIN.md §8) ---
+  photosById(profileId: string): Promise<MediaItem[]>;
+  addPhotoById(profileId: string, input: { bytes: ArrayBuffer; isPrivate?: boolean }): Promise<void>;
+  removePhotoById(profileId: string, input: { id: string }): Promise<void>;
+
   /** Is this phone already VERIFIED on another account? (items.md #12) */
   phoneInUse(phone: string, exceptAccountId: string): Promise<boolean>;
 

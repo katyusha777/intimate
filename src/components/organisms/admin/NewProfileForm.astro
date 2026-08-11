@@ -71,13 +71,14 @@ const label = 'block text-2xs uppercase tracking-wide text-muted-foreground';
           orgId: form.dataset.orgId || undefined,
         });
         if (error) { status.textContent = `Error: ${error.message}`; return; }
-        // Post-write reads lag Hyperdrive's cache, so don't reload into a stale
-        // list — link straight to the new profile instead (name stays data).
+        // Straight into the full editor to fill photos/rates/services — the
+        // stub only has identity. (Post-write reads lag the cache; a direct
+        // link beats reloading a list that won't show the row yet.)
         status.textContent = 'Created → ';
         const a = document.createElement('a');
         a.className = 'font-medium underline underline-offset-2';
-        a.href = `/admin/profiles?id=${encodeURIComponent(data.id)}`;
-        a.textContent = 'open profile';
+        a.href = `/admin/profiles/edit?id=${encodeURIComponent(data.id)}`;
+        a.textContent = 'open editor';
         status.append(a);
         form.reset();
       });

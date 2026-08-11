@@ -188,7 +188,8 @@ const ago = (iso: string) => {
 
               <p class="line-clamp-3 text-xs text-muted-foreground">{localizedDescription(detail.profile, 'en')}</p>
 
-              <div class="flex flex-wrap gap-2">
+              <div class="flex flex-wrap items-center gap-3">
+                <a href={`/admin/profiles/edit?id=${detail.admin.id}`} class="slab-cut bg-foreground px-3 py-1.5 text-xs font-bold uppercase text-background">Edit profile</a>
                 <a href={`/en/profile/${detail.profile.slug}/`} target="_blank" class="text-xs font-medium underline underline-offset-4">{m.adm_profiles_public_page()} ↗</a>
               </div>
 

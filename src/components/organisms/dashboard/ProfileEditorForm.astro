@@ -59,8 +59,14 @@ interface Props {
   only?: string[];
   /** Wizard drives its own per-step save — hide the editor's save button + skip its submit binding. */
   wizard?: boolean;
+  /**
+   * Admin editor (ADMIN.md §8): save THIS profile by id through the admin
+   * action instead of the session's own profile. Same fields, same form —
+   * only the save target + post-save behaviour differ.
+   */
+  adminId?: string;
 }
-const { profile: p, only, wizard = false } = Astro.props;
+const { profile: p, only, wizard = false, adminId } = Astro.props;
 const show = (k: string) => !only || only.includes(k);
 
 const selectedServices = new Set(p.services as readonly string[]);
@@ -86,7 +92,7 @@ const selPayments = setOf(p.paymentMethods ?? []);
 const selAvailableFor = setOf(p.availableFor ?? []);
 ---
 
-<form data-profile-editor data-wizard={wizard ? '' : undefined} class="max-w-2xl space-y-12">
+<form data-profile-editor data-wizard={wizard ? '' : undefined} data-admin-id={adminId} class="max-w-2xl space-y-12">
   {show('basics') && (
   <div class="grid gap-4 sm:grid-cols-2">
     <SlabField label={m.editor_name()} name="name" value={p.name} required />
@@ -579,7 +585,11 @@ const selAvailableFor = setOf(p.availableFor ?? []);
         const error = form.querySelector<HTMLElement>('[data-editor-error]')!;
         saved.classList.add('hidden');
         error.classList.add('hidden');
-        const { error: err } = await actions.account.saveProfile({ patch });
+        // Admin editor saves an arbitrary profile by id; the owner saves her own.
+        const adminId = form.dataset.adminId;
+        const { error: err } = adminId
+          ? await actions.admin.profileEdit({ profileId: adminId, patch })
+          : await actions.account.saveProfile({ patch });
         // Surface the specific reason (which field) instead of a mute generic fail.
         if (err?.message) {
           error.textContent = err.message;
@@ -588,9 +598,12 @@ const selAvailableFor = setOf(p.availableFor ?? []);
         }
         saved.classList.remove('hidden');
         toast(`${m.editor_saved()} ✓`);
-        // Take her straight to her public profile so she sees the result.
-        const lang = document.documentElement.lang || 'en';
-        setTimeout(() => (location.href = `/${lang}/account/view/`), 900);
+        // Owner is sent to her public profile to see the result; admin stays in
+        // the editor (still filling the listing).
+        if (!adminId) {
+          const lang = document.documentElement.lang || 'en';
+          setTimeout(() => (location.href = `/${lang}/account/view/`), 900);
+        }
       });
     });
   }

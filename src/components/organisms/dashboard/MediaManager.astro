@@ -12,11 +12,14 @@ import SafeImage from '@/components/atoms/SafeImage.astro';
 
 interface Props {
   photos: MediaItem[];
+  /** Admin editor (ADMIN.md §8): manage THIS profile's gallery by id via the
+   *  admin actions instead of the session's own. */
+  adminId?: string;
 }
-const { photos } = Astro.props;
+const { photos, adminId } = Astro.props;
 ---
 
-<div class="max-w-3xl space-y-5" data-media-manager>
+<div class="max-w-3xl space-y-5" data-media-manager data-admin-id={adminId}>
   <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
     {
       photos.map((photo, i) => (
@@ -69,10 +72,14 @@ const { photos } = Astro.props;
     document.querySelectorAll<HTMLElement>('[data-media-manager]').forEach((root) => {
       if (root.dataset.init) return;
       root.dataset.init = '1';
+      // Admin editor manages an arbitrary profile's gallery by id; the owner
+      // manages her own (session-scoped).
+      const adminId = root.dataset.adminId;
 
       root.querySelectorAll<HTMLElement>('[data-remove-photo]').forEach((btn) => {
         btn.addEventListener('click', async () => {
-          await actions.account.removePhoto({ id: btn.dataset.id! });
+          if (adminId) await actions.admin.profileRemovePhoto({ profileId: adminId, id: btn.dataset.id! });
+          else await actions.account.removePhoto({ id: btn.dataset.id! });
           location.reload();
         });
       });
@@ -91,7 +98,9 @@ const { photos } = Astro.props;
         for (const file of files) {
           try {
             const dataUrl = await reencode(file);
-            const { error } = await actions.account.addPhoto({ dataUrl });
+            const { error } = adminId
+              ? await actions.admin.profileAddPhoto({ profileId: adminId, dataUrl })
+              : await actions.account.addPhoto({ dataUrl });
             if (!error) uploaded++;
           } catch {
             /* skip this file, keep the rest */

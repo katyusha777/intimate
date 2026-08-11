@@ -1,0 +1,99 @@
+---
+/**
+ * Full admin profile editor (docs/ADMIN.md §8) — everything the advertiser has,
+ * for any profile by id. Reuses the exact frontend editor + photo manager
+ * (organisms/dashboard) pointed at the admin actions via their `adminId` prop,
+ * plus a data-import bar (URL → fields, no images; the importApply action).
+ * Super-only; every save/photo/import is audit-logged as edit_profile_admin.
+ */
+import { getAdmin } from '@/actions/admin/lib';
+import { profileByIdAdmin } from '@/actions/admin/entities';
+import { accountApi } from '@/app/api/account';
+import AdminShell from '@/components/organisms/admin/AdminShell.astro';
+import ProfileEditorForm from '@/components/organisms/dashboard/ProfileEditorForm.astro';
+import MediaManager from '@/components/organisms/dashboard/MediaManager.astro';
+
+const session = await getAdmin(Astro);
+const isSuper = session?.adminRole === 'super';
+const id = Astro.url.searchParams.get('id');
+const detail = session && isSuper && id ? await profileByIdAdmin(id) : null;
+const photos = detail ? await accountApi.photosById(detail.admin.id) : [];
+
+const input = 'slab-cut w-full border border-foreground/20 bg-background px-3 py-2 text-sm outline-none focus:border-foreground';
+const btn = 'slab-cut border border-foreground/20 px-4 py-2 text-sm font-semibold hover:border-foreground/60 disabled:opacity-50';
+---
+
+<AdminShell title="Edit profile" section="profiles" wide>
+  {session && !isSuper && <p class="text-sm text-muted-foreground">Editing profiles is limited to super admins.</p>}
+  {session && isSuper && !detail && (
+    <div class="space-y-3">
+      <a href="/admin/profiles" class="text-sm text-muted-foreground hover:text-foreground">← Profiles</a>
+      <p class="text-sm text-muted-foreground">Profile not found.</p>
+    </div>
+  )}
+  {
+    session && detail && (
+      <div class="space-y-10">
+        <div>
+          <a href="/admin/profiles" class="text-sm text-muted-foreground hover:text-foreground">← Profiles</a>
+          <h1 class="display mt-1 text-3xl">
+            {detail.admin.name}, {detail.admin.age}
+          </h1>
+          <p class="mt-1 text-sm text-muted-foreground">
+            {detail.admin.state} ·{' '}
+            <a href={`/admin/profiles?id=${detail.admin.id}`} class="underline underline-offset-2">moderation view</a>
+            {' · '}
+            <a href={`/en/profile/${detail.profile.slug}/`} target="_blank" class="underline underline-offset-2">public page ↗</a>
+          </p>
+        </div>
+
+        {/* Data import: URL → mapped fields (services, rates, languages,
+            appearance, hours…). Photos are NEVER imported — add them below. */}
+        <div class="max-w-2xl space-y-2 border border-border p-3">
+          <p class="text-2xs uppercase tracking-wide text-muted-foreground">Import data from another site</p>
+          <p class="text-2xs text-muted-foreground">Pulls the fields from a supported provider URL and overwrites the matching ones. Photos are never imported — add those below.</p>
+          <div class="flex flex-wrap items-center gap-3">
+            <input data-import-url type="url" placeholder="https://…/profile" class={`${input} max-w-md`} />
+            <button type="button" data-import-btn data-profile={detail.admin.id} class={btn}>Import data</button>
+            <span data-import-status class="text-2xs text-muted-foreground" />
+          </div>
+        </div>
+
+        {/* The advertiser's own editor + photo manager, pointed at the admin
+            actions by `adminId` (reuse-is-law: one component, two audiences). */}
+        <ProfileEditorForm profile={detail.profile} adminId={detail.admin.id} />
+
+        <div class="space-y-4">
+          <h2 class="font-condensed text-xl font-bold uppercase tracking-wide">Photos</h2>
+          <MediaManager photos={photos} adminId={detail.admin.id} />
+        </div>
+      </div>
+    )
+  }
+</AdminShell>
+
+<script>
+  import { actions } from 'astro:actions';
+
+  function initAdminImport() {
+    const btn = document.querySelector<HTMLButtonElement>('[data-import-btn]');
+    if (!btn || btn.dataset.init) return;
+    btn.dataset.init = '1';
+    btn.addEventListener('click', async () => {
+      const url = document.querySelector<HTMLInputElement>('[data-import-url]')!.value.trim();
+      const status = document.querySelector<HTMLElement>('[data-import-status]')!;
+      if (!url) return;
+      if (!confirm('Import data from this URL and overwrite the matching fields? Photos are not imported.')) return;
+      btn.disabled = true;
+      status.textContent = 'Importing… (~1 min)';
+      const { data, error } = await actions.admin.importApply({ profileId: btn.dataset.profile!, url });
+      btn.disabled = false;
+      if (error) { status.textContent = `Error: ${error.message}`; return; }
+      const warned = data.warnings?.length ? ` (${data.warnings.length} field(s) skipped)` : '';
+      status.textContent = `Imported ✓${warned} — reloading…`;
+      setTimeout(() => location.reload(), 800);
+    });
+  }
+  initAdminImport();
+  document.addEventListener('astro:page-load', initAdminImport);
+</script>

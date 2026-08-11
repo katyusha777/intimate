@@ -334,59 +334,61 @@ export const accountApi: AccountApi = {
     }
   },
 
+  // Her gallery = the by-id core scoped to her own profile row. Admin edits the
+  // same core by profileId (photosById/addPhotoById/removePhotoById below).
   async photos(session) {
-    const d = db();
-    const row = await myProfileRow(d, session.accountId);
-    if (!row) return [];
-    const rows = await d
-      .select()
-      .from(media)
-      .where(eq(media.profileId, row.id))
-      .orderBy(media.position);
-    return rows.map(
-      (m): MediaItem => ({ id: m.id, url: mediaUrl(m.imageKey), isPrivate: m.isPrivate, state: m.state }),
-    );
+    const row = await myProfileRow(db(), session.accountId);
+    return row ? accountApi.photosById(row.id) : [];
   },
 
-  async addPhoto(session, { bytes, isPrivate = false }) {
-    const d = db();
-    const row = await myProfileRow(d, session.accountId);
+  async addPhoto(session, input) {
+    const row = await myProfileRow(db(), session.accountId);
     // No profile row → fail loudly (the UI gates on this, but never silently
     // swallow an upload as if it worked).
     if (!row) throw new Error('no profile — save your profile before adding photos');
+    await accountApi.addPhotoById(row.id, input);
+  },
+
+  async removePhoto(session, { id }) {
+    // Scoped to HER profile — an id from another gallery deletes nothing.
+    const row = await myProfileRow(db(), session.accountId);
+    if (row) await accountApi.removePhotoById(row.id, { id });
+  },
+
+  async photosById(profileId) {
+    const rows = await db().select().from(media).where(eq(media.profileId, profileId)).orderBy(media.position);
+    return rows.map((m): MediaItem => ({ id: m.id, url: mediaUrl(m.imageKey), isPrivate: m.isPrivate, state: m.state }));
+  },
+
+  async addPhotoById(profileId, { bytes, isPrivate = false }) {
+    const d = db();
     const [agg] = await d
       .select({ n: sql<number>`count(*)::int`, next: sql<number>`coalesce(max(${media.position}), -1) + 1` })
       .from(media)
-      .where(eq(media.profileId, row.id));
+      .where(eq(media.profileId, profileId));
     if ((agg?.n ?? 0) >= 20) return; // cap: a gallery, not a dump
     // Key encodes visibility so the /media route can gate without a DB hit on
     // the hot (public) path: `pub/<profileId>/<uuid>` vs `priv/…`.
-    const key = `${isPrivate ? 'priv' : 'pub'}/${row.id}/${crypto.randomUUID()}`;
+    const key = `${isPrivate ? 'priv' : 'pub'}/${profileId}/${crypto.randomUUID()}`;
     // contentType is pinned to image/jpeg: uploads are always canvas-re-encoded,
     // EXIF-stripped JPEGs (dataUrlToJpegBytes), and pinning stops a future caller
     // smuggling image/svg+xml (script-bearing) into the public MEDIA bucket.
     await bucket().put(key, bytes, { httpMetadata: { contentType: 'image/jpeg' } });
     await d.insert(media).values({
-      profileId: row.id,
+      profileId,
       imageKey: key,
       isPrivate,
       position: agg?.next ?? 0,
-      // Advertisers are ID-verified + accountable, so their photos publish on
-      // upload (they were stuck invisible in pending_review with no approval
-      // path). Bad content is handled reactively via reports/takedown.
-      // ponytail: no pre-moderation queue — add NSFW auto-flag → pending if needed.
+      // Advertisers are ID-verified + accountable (and admin is the moderator),
+      // so photos publish on upload; bad content is handled reactively.
       state: 'approved',
     });
   },
 
-  async removePhoto(session, { id }) {
-    const d = db();
-    const row = await myProfileRow(d, session.accountId);
-    if (!row) return;
-    // Scoped to HER profile — an id from another gallery deletes nothing.
-    const [gone] = await d
+  async removePhotoById(profileId, { id }) {
+    const [gone] = await db()
       .delete(media)
-      .where(and(eq(media.id, id), eq(media.profileId, row.id)))
+      .where(and(eq(media.id, id), eq(media.profileId, profileId)))
       .returning({ key: media.imageKey });
     if (gone && isR2Key(gone.key)) {
       await bucket().delete(gone.key);

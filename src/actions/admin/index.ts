@@ -29,6 +29,7 @@ import { enqueueOrgCrawl, importAgencyProfile, processImportJobs } from '@/app/a
 import { dataUrlToJpegBytes } from '@/lib/jpeg-strip';
 import { CITY_SLUGS, GENDERS, POLICY_MIN_AGE } from '@/lib/taxonomy';
 import { profileAge } from '@/app/models/profile';
+import { ProfileEditSchema } from '@/app/models/account';
 import { INDEXNOW_KEY, submitIndexNow } from '@/lib/indexnow';
 import { evictMediaCache, isR2Key, mediaBucket } from '@/lib/media-keys';
 import { ADMIN_EVENTS, NOTIFY_PREFS_KEY } from '@/lib/pushover';
@@ -213,6 +214,54 @@ export const admin = {
         entityId: id,
         reason: unlisted ? 'unlisted' : 'listed',
       });
+      return { ok: true };
+    },
+  }),
+
+  // --- full admin editor (§8): edit any profile's content + gallery by id, the
+  // same fields the owner has. All super-gated + audit-logged edit_profile_admin.
+  // Data import (URL → fields, no images) reuses the existing importApply action.
+  profileEdit: defineAction({
+    input: z.object({ profileId: z.string().uuid(), patch: z.any() }),
+    handler: async ({ profileId, patch }, context) => {
+      const session = await requireAdmin(context, ['super']);
+      const parsed = ProfileEditSchema.partial().safeParse(patch);
+      if (!parsed.success) throw new ActionError({ code: 'BAD_REQUEST', message: parsed.error.issues[0]!.message });
+      await accountApi.saveProfileById(profileId, parsed.data);
+      await bustProfiles(sessionKv());
+      await record(session, { action: 'edit_profile_admin', entityType: 'profile', entityId: profileId, meta: { note: 'admin edit' } });
+      return { ok: true };
+    },
+  }),
+
+  profileAddPhoto: defineAction({
+    input: z.object({
+      profileId: z.string().uuid(),
+      dataUrl: z.string().regex(/^data:image\/jpeg;base64,/).max(900_000),
+      isPrivate: z.boolean().default(false),
+    }),
+    handler: async ({ profileId, dataUrl, isPrivate }, context) => {
+      const session = await requireAdmin(context, ['super']);
+      let bytes: ArrayBuffer;
+      try {
+        bytes = dataUrlToJpegBytes(dataUrl);
+      } catch {
+        throw new ActionError({ code: 'BAD_REQUEST', message: 'invalid image' });
+      }
+      await accountApi.addPhotoById(profileId, { bytes, isPrivate });
+      await bustProfiles(sessionKv());
+      await record(session, { action: 'edit_profile_admin', entityType: 'profile', entityId: profileId, meta: { note: 'add photo' } });
+      return { ok: true };
+    },
+  }),
+
+  profileRemovePhoto: defineAction({
+    input: z.object({ profileId: z.string().uuid(), id: z.string().max(60) }),
+    handler: async ({ profileId, id }, context) => {
+      const session = await requireAdmin(context, ['super']);
+      await accountApi.removePhotoById(profileId, { id });
+      await bustProfiles(sessionKv());
+      await record(session, { action: 'edit_profile_admin', entityType: 'profile', entityId: profileId, meta: { note: 'remove photo' } });
       return { ok: true };
     },
   }),
