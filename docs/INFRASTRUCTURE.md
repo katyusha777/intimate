@@ -80,11 +80,13 @@ the Cloudflare Access rule that is scoped to the `intimate.nl/admin` path
 two custom domains: `beta.intimate.nl` serves the full site (noindexed via an
 `X-Robots-Tag` middleware header); the apex serves the pre-launch landing
 (`/{locale}/` rewritten onto `pages/[locale]/prelaunch.astro`), the
-`/{locale}/agencies/` closer page, and — for a signed-in advertiser — her own
-`/{locale}/account/*` dashboard + onboarding (the prelaunch advertiser signup
-creates a real draft account and drops her into `/account/setup` to build a
-founding profile that goes live at launch). Every other apex path 302s to `/`
-(`src/lib/prelaunch.ts` corridor, unit-tested in `tests/prelaunch.test.ts`).
+`/{locale}/agencies/` closer page, and the bare pre-signup upload page
+(`/{locale}/prelaunch/build/` — after the advertiser lead form she drops her
+photos + ID there so she's ready to go live at launch; NO account, gated by the
+httponly `psl` cookie = her lead id, uploads via `/_actions` + thumbnails via
+`/api/prelaunch/media`, bytes in R2 per `src/lib/presignup-media.ts`). Every
+other apex path 302s to `/` (`src/lib/prelaunch.ts` corridor, unit-tested in
+`tests/prelaunch.test.ts`).
 The page-cache key carries `url.host` so the two homes can't poison each
 other. `PUBLIC_SITE_ORIGIN` and the warm worker `ORIGIN` point at beta.
 

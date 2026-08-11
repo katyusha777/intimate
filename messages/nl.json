@@ -1084,9 +1084,18 @@
   "prelaunch_contact_whatsapp": "WhatsApp",
   "prelaunch_contact_telegram": "Telegram",
   "prelaunch_contacts_hint": "Vul er minstens één in — zo bereiken klanten je.",
-  "prelaunch_form_password": "Wachtwoord",
-  "prelaunch_password_hint": "8+ tekens — hiermee log je later weer in om je profiel af te maken.",
-  "prelaunch_email_exists": "Dit e-mailadres heeft al een account.",
-  "prelaunch_login_link": "Log in om verder te gaan",
-  "onb_prelaunch_banner": "Je bent binnen. Maak nu je profiel af — het gaat live zodra wij lanceren."
+  "presignup_meta_title": "Voeg je foto's toe — Intimate",
+  "presignup_meta_desc": "Upload je foto's en ID zodat je profiel klaar is om live te gaan bij de lancering.",
+  "presignup_kicker": "Je bent binnen",
+  "presignup_title": "Voeg je foto's toe",
+  "presignup_sub": "We hebben je gegevens bewaard. Voeg nu je foto's en ID toe, dan staat je profiel klaar om live te gaan zodra we lanceren — geen account nodig.",
+  "presignup_photos_title": "Jouw foto's",
+  "presignup_photos_hint": "Voeg je beste foto's toe. We verwijderen automatisch locatiegegevens. Je kunt ze later aanpassen.",
+  "presignup_add": "Toevoegen",
+  "presignup_id_title": "Verifieer je leeftijd",
+  "presignup_id_hint": "Een foto van je ID. Privé en versleuteld bewaard, alleen voor verificatie — nooit op je profiel getoond.",
+  "presignup_id_add": "ID uploaden",
+  "presignup_id_done": "ID ontvangen",
+  "presignup_uploading": "Uploaden…",
+  "presignup_done_note": "Dat is alles — je kunt dit sluiten en later terugkomen op dit apparaat. We mailen je zodra we live gaan."
 }

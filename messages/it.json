@@ -1084,9 +1084,18 @@
   "prelaunch_contact_whatsapp": "WhatsApp",
   "prelaunch_contact_telegram": "Telegram",
   "prelaunch_contacts_hint": "Inseriscine almeno uno — così i clienti ti contattano.",
-  "prelaunch_form_password": "Password",
-  "prelaunch_password_hint": "8+ caratteri — ti serviranno per accedere di nuovo e completare il profilo.",
-  "prelaunch_email_exists": "Questa email ha già un account.",
-  "prelaunch_login_link": "Accedi per continuare",
-  "onb_prelaunch_banner": "Ci sei. Completa ora il tuo profilo — sarà online nel momento in cui lanciamo."
+  "presignup_meta_title": "Aggiungi le tue foto — Intimate",
+  "presignup_meta_desc": "Carica le tue foto e il documento così il tuo profilo è pronto ad andare online al lancio.",
+  "presignup_kicker": "Ci sei",
+  "presignup_title": "Aggiungi le tue foto",
+  "presignup_sub": "Abbiamo salvato i tuoi dati. Aggiungi ora le tue foto e il documento e il profilo è pronto ad andare online nel momento in cui lanciamo — nessun account da creare.",
+  "presignup_photos_title": "Le tue foto",
+  "presignup_photos_hint": "Aggiungi le tue foto migliori. Rimuoviamo automaticamente i dati di posizione. Puoi cambiarle più tardi.",
+  "presignup_add": "Aggiungi",
+  "presignup_id_title": "Verifica la tua età",
+  "presignup_id_hint": "Una foto del tuo documento. Conservata in privato e cifrata, solo per la verifica — mai mostrata sul profilo.",
+  "presignup_id_add": "Carica documento",
+  "presignup_id_done": "Documento ricevuto",
+  "presignup_uploading": "Caricamento…",
+  "presignup_done_note": "È tutto — puoi chiudere e tornare quando vuoi da questo dispositivo. Ti scriviamo nel momento in cui lanciamo."
 }

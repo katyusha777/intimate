@@ -18,7 +18,8 @@ import { dataUrlToJpegBytes, stripJpegDataUrl } from "@/lib/jpeg-strip";
 import { importFromUrl } from "@/lib/import";
 import { mintIceServers } from "@/lib/turn";
 import { joinFromConsent } from "@/app/api/orgs";
-import { addPrelaunchLead } from "@/app/api/prelaunch";
+import { addPrelaunchLead, upsertPrelaunchLeadReturningId } from "@/app/api/prelaunch";
+import { addPresignupId, addPresignupPhoto, removePresignupPhoto } from "@/lib/presignup-media";
 import { pushoverAdmins } from "@/lib/pushover";
 import { CONVERSATION_MODES, REPORT_REASONS, REPORT_TARGETS } from "@/lib/taxonomy";
 // The one sanctioned cross-fence import: the action registry wires in admin.
@@ -40,6 +41,28 @@ const turnSecret = (): string | undefined =>
 /** Best-effort client IP for rate-limit keys (Cloudflare always sets this). */
 const clientIp = (context: { request: Request }): string =>
   context.request.headers.get("cf-connecting-ip") ?? "unknown";
+
+/** Pre-signup upload capability: the lead id, carried in an httponly cookie set
+ *  when a professional joins. It's her key to her OWN photo folder (an
+ *  unguessable uuid, never exposed in URLs or client JS) — no account needed. */
+const PSL_COOKIE = "psl";
+function setPresignupCookie(
+  context: { cookies: { set(name: string, value: string, opts: Record<string, unknown>): void } },
+  leadId: string,
+): void {
+  context.cookies.set(PSL_COOKIE, leadId, {
+    httpOnly: true,
+    secure: import.meta.env.PROD,
+    sameSite: "lax",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 30, // 30 days — she can come back and add more
+  });
+}
+function requirePresignup(context: { cookies: { get(name: string): { value: string } | undefined } }): string {
+  const id = context.cookies.get(PSL_COOKIE)?.value;
+  if (!id) throw new ActionError({ code: "UNAUTHORIZED", message: "no pre-signup session" });
+  return id;
+}
 
 /** Shared spam wall for authenticated actions — throws TOO_MANY_REQUESTS.
  *  `failClosedInProd` denies (instead of the dev-friendly open) when the KV
@@ -816,11 +839,11 @@ export const server = {
   },
 
   // Pre-launch campaign (PRE-LAUNCH-GRANT-CARDONE.md) — anonymous plain-HTML
-  // form post (accept: 'form', zero JS). An ADVERTISER creates a real (draft)
-  // account HERE and is dropped into the actual onboarding, so she builds her
-  // profile now and goes live the instant we launch. A CLIENT stays a lead
-  // (nothing to browse pre-launch — the marketplace is on beta). Owner is
-  // notified via Pushover (advertiser: from sessionApi.register; client: below).
+  // form post (accept: 'form', zero JS). We keep the SAME lead form (name +
+  // email + at least one contact); an ADVERTISER is then sent to the bare
+  // upload page (/prelaunch/build) to drop her photos + ID now, so she's ready
+  // to go live at launch. NO account, NO site chrome. Her lead id is her upload
+  // capability — an httponly `psl` cookie the build page + upload actions read.
   prelaunch: {
     join: defineAction({
       accept: "form",
@@ -831,43 +854,80 @@ export const server = {
           kind: z.enum(["agency", "advertiser", "client"]).optional(),
           name: z.string().trim().min(1).max(80),
           email: emailField,
-          // Advertiser-only: the one extra field a real signup needs. Enforced
-          // (min 8) in the refine below; ignored on the client lead path.
-          password: z.string().optional(),
+          phone: z.string().trim().max(30).optional(),
+          whatsapp: z.string().trim().max(30).optional(),
+          telegram: z.string().trim().max(40).optional(),
           locale: z.enum(LOCALES),
         })
-        .refine((i) => i.kind !== "advertiser" || (i.password?.length ?? 0) >= 8, {
-          path: ["password"],
+        // An independent professional is only reachable if she leaves a handle —
+        // at least one of the three. Clients (just browsing) need none.
+        .refine((i) => i.kind !== "advertiser" || i.phone || i.whatsapp || i.telegram, {
+          path: ["phone"],
         }),
       handler: async (input, context) => {
         await requireUnderLimit("prelaunch-ip", clientIp(context), 10);
-        // Advertiser → real draft account → straight into /account/setup (photos,
-        // ID, profile details). The session cookie is set on this response, so the
-        // page-level Astro.redirect carries it. Draft profile goes live at launch.
-        if (input.kind === "advertiser" && input.password) {
-          const { emailExists, needsConfirmation } = await sessionApi.register(context, {
-            email: input.email,
-            password: input.password,
-            role: "advertiser",
-            displayName: input.name,
-          });
-          if (emailExists) return { href: null, ok: false, emailExists: true };
-          // Confirm-email is OFF (auto-login), so needsConfirmation never fires;
-          // guard anyway — a null href just re-renders the form.
-          return {
-            href: needsConfirmation ? null : `/${input.locale}/account/setup/`,
-            ok: false,
-            emailExists: false,
-          };
-        }
-        // Client (or unspecified) → lead row + admin ping.
-        await addPrelaunchLead(input);
+        const contacts = [input.phone, input.whatsapp && `wa ${input.whatsapp}`, input.telegram && `tg ${input.telegram}`]
+          .filter(Boolean)
+          .join(" · ");
         pushoverAdmins(
           "prelaunch_lead",
           `Pre-launch signup: ${input.name}${input.kind ? ` (${input.kind})` : ""}`,
-          `${input.email} · ${input.locale}`,
+          `${input.email}\n${contacts || "-"} · ${input.locale}`,
         );
-        return { href: null, ok: true, emailExists: false };
+        // Advertiser → upload page. The lead id is the upload capability; a
+        // returning professional (same email) reuses the SAME photo folder.
+        if (input.kind === "advertiser") {
+          const leadId = await upsertPrelaunchLeadReturningId(input);
+          setPresignupCookie(context, leadId);
+          return { href: `/${input.locale}/prelaunch/build/`, ok: false };
+        }
+        await addPrelaunchLead(input);
+        return { href: null, ok: true };
+      },
+    }),
+
+    // Pre-signup uploads: a professional who left her contacts drops her photos
+    // (+ ID) BEFORE she has an account. Gated by the `psl` cookie (her lead id),
+    // rate-limited per lead. Photos → MEDIA, ID → the private EU bucket.
+    addPhoto: defineAction({
+      input: z.object({ dataUrl: z.string().regex(/^data:image\/jpeg;base64,/).max(900_000) }),
+      handler: async ({ dataUrl }, context) => {
+        const leadId = requirePresignup(context);
+        await requireUnderLimit("presignup-upload", leadId, 80);
+        let bytes: ArrayBuffer;
+        try {
+          bytes = dataUrlToJpegBytes(dataUrl); // re-strip EXIF/GPS server-side (hard rule 2)
+        } catch {
+          throw new ActionError({ code: "BAD_REQUEST", message: "invalid image" });
+        }
+        const res = await addPresignupPhoto(leadId, bytes);
+        if ("error" in res) throw new ActionError({ code: "BAD_REQUEST", message: "gallery full" });
+        return { key: res.key };
+      },
+    }),
+
+    removePhoto: defineAction({
+      input: z.object({ key: z.string().max(120) }),
+      handler: async ({ key }, context) => {
+        const leadId = requirePresignup(context);
+        await removePresignupPhoto(leadId, key); // key validated against her folder inside
+        return { ok: true };
+      },
+    }),
+
+    submitId: defineAction({
+      input: z.object({ dataUrl: z.string().regex(/^data:image\/jpeg;base64,/).max(900_000) }),
+      handler: async ({ dataUrl }, context) => {
+        const leadId = requirePresignup(context);
+        await requireUnderLimit("presignup-id", leadId, 10);
+        let bytes: ArrayBuffer;
+        try {
+          bytes = dataUrlToJpegBytes(dataUrl);
+        } catch {
+          throw new ActionError({ code: "BAD_REQUEST", message: "invalid image" });
+        }
+        await addPresignupId(leadId, bytes);
+        return { ok: true };
       },
     }),
   },

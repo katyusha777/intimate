@@ -1084,9 +1084,18 @@
   "prelaunch_contact_whatsapp": "WhatsApp",
   "prelaunch_contact_telegram": "Telegram",
   "prelaunch_contacts_hint": "Mindestens eine angeben — so erreichen dich Kunden.",
-  "prelaunch_form_password": "Passwort",
-  "prelaunch_password_hint": "8+ Zeichen — damit meldest du dich später wieder an, um dein Profil fertigzustellen.",
-  "prelaunch_email_exists": "Für diese E-Mail existiert bereits ein Konto.",
-  "prelaunch_login_link": "Anmelden, um fortzufahren",
-  "onb_prelaunch_banner": "Du bist dabei. Stell jetzt dein Profil fertig — es geht live, sobald wir starten."
+  "presignup_meta_title": "Füge deine Fotos hinzu — Intimate",
+  "presignup_meta_desc": "Lade deine Fotos und deinen Ausweis hoch, damit dein Profil zum Start live gehen kann.",
+  "presignup_kicker": "Du bist dabei",
+  "presignup_title": "Füge deine Fotos hinzu",
+  "presignup_sub": "Wir haben deine Daten gespeichert. Füge jetzt deine Fotos und deinen Ausweis hinzu, dann ist dein Profil bereit, live zu gehen, sobald wir starten — kein Konto nötig.",
+  "presignup_photos_title": "Deine Fotos",
+  "presignup_photos_hint": "Füge deine besten Fotos hinzu. Standortdaten entfernen wir automatisch. Du kannst sie später ändern.",
+  "presignup_add": "Hinzufügen",
+  "presignup_id_title": "Bestätige dein Alter",
+  "presignup_id_hint": "Ein Foto deines Ausweises. Privat und verschlüsselt gespeichert, nur zur Verifizierung — nie auf deinem Profil gezeigt.",
+  "presignup_id_add": "Ausweis hochladen",
+  "presignup_id_done": "Ausweis erhalten",
+  "presignup_uploading": "Wird hochgeladen…",
+  "presignup_done_note": "Das war's — du kannst dies schließen und jederzeit auf diesem Gerät zurückkommen. Wir mailen dir, sobald wir live gehen."
 }

@@ -39,16 +39,17 @@ describe('prelaunch corridor', () => {
     }
   });
 
-  test("a signed-in advertiser's account + onboarding pass (build your profile pre-launch)", () => {
-    for (const p of ['/nl/account/', '/nl/account/setup/', '/en/account/profile/', '/nl/account/verification/', '/nl/account/photos/']) {
-      expect(kind(p)).toBe('pass');
-    }
-    // Not over-broad: only the /account subtree, not a lookalike prefix.
-    expect(kind('/nl/accounts/')).toBe('redirect');
+  test('the pre-signup upload page + its media api pass (where signup lands)', () => {
+    expect(kind('/nl/prelaunch/build/')).toBe('pass');
+    expect(kind('/en/prelaunch/build')).toBe('pass');
+    expect(kind('/api/prelaunch/media/abc123.jpg')).toBe('pass');
+    // Not over-broad — a bare /prelaunch/ or a lookalike still dead-ends.
+    expect(kind('/nl/prelaunch/')).toBe('redirect');
+    expect(kind('/nl/prelaunch/build/extra/')).toBe('redirect');
   });
 
   test('the rest of the site dead-ends', () => {
-    for (const p of ['/nl/amsterdam/', '/nl/search/', '/nl/blog/welkom-bij-intimate/', '/kitchen-sink', '/nl/stats/', '/nl/messages/']) {
+    for (const p of ['/nl/amsterdam/', '/nl/search/', '/nl/blog/welkom-bij-intimate/', '/nl/account/', '/kitchen-sink', '/nl/stats/', '/nl/messages/']) {
       expect(kind(p)).toBe('redirect');
     }
   });

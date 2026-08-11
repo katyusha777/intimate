@@ -11,7 +11,6 @@ import { accountApi } from '@/app/api/account';
 import { sessionApi } from '@/app/api/session';
 import { onboardingProgress } from '@/lib/onboarding';
 import { isLocale, localizePath } from '@/lib/i18n';
-import { PRELAUNCH_HOST } from '@/lib/prelaunch';
 import SetupShell from '@/components/organisms/onboarding/SetupShell.astro';
 import ProfileEditorForm from '@/components/organisms/dashboard/ProfileEditorForm.astro';
 import MediaManager from '@/components/organisms/dashboard/MediaManager.astro';
@@ -55,9 +54,6 @@ if (!ALL.includes(step)) step = progress.submitted ? 'done' : basicsDone ? resum
 // Once submitted, the flow is over — only the 'done' celebration is reachable.
 if (progress.submitted && step !== 'done') return Astro.redirect(localizePath('/account/'));
 
-// Pre-launch (apex host): swap the review copy for "you're in, live at launch"
-// reassurance — she's building a founding profile, not queuing behind a live site.
-const prelaunch = Astro.url.host === PRELAUNCH_HOST;
 const idx = (NUMBERED as readonly string[]).indexOf(step) + 1; // 0 for welcome/done
 const cont = 'w-full';
 const title = 'display text-2xl md:text-3xl';
@@ -65,7 +61,7 @@ const why = 'mt-2 leading-relaxed text-muted-foreground';
 ---
 
 <Layout noindex title={`${m.onb_title()} | Intimate`}>
-  <SetupShell index={idx > 0 ? idx : undefined} total={NUMBERED.length} {prelaunch}>
+  <SetupShell index={idx > 0 ? idx : undefined} total={NUMBERED.length}>
     {
       step === 'welcome' && (
         <div>

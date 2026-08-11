@@ -1,12 +1,12 @@
 /**
  * Pre-launch corridor (PRE-LAUNCH-GRANT-CARDONE.md §12.2): during the campaign
  * window the apex host serves ONLY the pre-launch landing (rewritten onto
- * /{locale}/), the /agencies closer page, and — for a signed-in advertiser —
- * her own account dashboard + onboarding under /{locale}/account (so a founding
- * advertiser builds her profile NOW and goes live the instant we launch). Every
- * other path 302s to `/`. The public marketplace still lives on beta.intimate.nl.
- * Pure function so the host logic is unit-testable (tests/prelaunch.test.ts) —
- * it can't be exercised on localhost.
+ * /{locale}/), the /agencies closer page, and the bare pre-signup upload page
+ * (/{locale}/prelaunch/build/, where a professional who just left her contacts
+ * drops her photos + ID so she's ready to go live at launch). Every other path
+ * 302s to `/`. The full site (accounts, marketplace) still lives on
+ * beta.intimate.nl. Pure function so the host logic is unit-testable
+ * (tests/prelaunch.test.ts) — it can't be exercised on localhost.
  *
  * Delete this module (and its middleware wiring) at launch — the flip-back
  * checklist lives in INFRASTRUCTURE.md §2.
@@ -19,12 +19,12 @@ const LOC = '(?:nl|en|de|ro|it)';
 const HOME = new RegExp(`^/${LOC}/?$`);
 /** The closer page + the legal pages the age gate links to. */
 const ALLOWED_PAGES = new RegExp(`^/${LOC}/(?:agencies|privacy|terms)/?$`);
-/** The signed-in advertiser's private surface — dashboard, onboarding (the real
- *  profile builder: photos, ID, details), profile editor, settings. These pages
- *  SELF-gate (anon → login, non-advertiser → bounce), so opening the PATH is
- *  safe: it exposes only the private builder, never the public marketplace. The
- *  pre-launch signup drops a new advertiser straight into /account/setup. */
-const ACCOUNT = new RegExp(`^/${LOC}/account(?:/|$)`);
+/** The pre-signup upload page: a professional who just left her contacts drops
+ *  her photos (+ ID) here so she's ready to go live at launch. Deliberately a
+ *  BARE page — no account, no site chrome — gated by the httponly `psl` cookie
+ *  set on signup. Its uploads ride /_actions and its thumbnails ride
+ *  /api/prelaunch/media (both already PASS below). */
+const PRESIGNUP = new RegExp(`^/${LOC}/prelaunch/build/?$`);
 /** ProfileSheet's fetches (X-Sheet: 1) — the §12.2 demo modal + its avail poll.
  *  Header-gated only: it's public HTML beta serves anyway; corridor = UX seal. */
 const SHEET_PROFILE = new RegExp(`^/${LOC}/profile/[^/]+/(?:avail\\.json)?$`);
@@ -41,7 +41,7 @@ export function corridor(url: URL, xSheet: boolean): Corridor {
   // action lookup rides the ?_astroAction= param — dropping it on rewrite
   // would swallow the submission.
   if (HOME.test(p)) return { kind: 'rewrite', to: `${p.replace(/\/$/, '')}/prelaunch/${url.search}` };
-  if (ALLOWED_PAGES.test(p) || ACCOUNT.test(p) || PASS.test(p)) return { kind: 'pass' };
+  if (ALLOWED_PAGES.test(p) || PRESIGNUP.test(p) || PASS.test(p)) return { kind: 'pass' };
   if (xSheet && SHEET_PROFILE.test(p)) return { kind: 'pass' };
   return { kind: 'redirect' };
 }

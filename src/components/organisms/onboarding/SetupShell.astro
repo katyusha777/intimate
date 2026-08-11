@@ -12,11 +12,8 @@ interface Props {
   /** 1-based position among the numbered steps; omit on welcome/done (no bar). */
   index?: number;
   total?: number;
-  /** Pre-launch window (apex host): reassure that she's IN and her profile goes
-   *  live the instant we launch — the whole reason to build it now. */
-  prelaunch?: boolean;
 }
-const { index, total, prelaunch } = Astro.props;
+const { index, total } = Astro.props;
 const showBar = index != null && total != null;
 const pct = showBar ? Math.round((index! / total!) * 100) : 0;
 ---
@@ -42,14 +39,6 @@ const pct = showBar ? Math.round((index! / total!) * 100) : 0;
           {m.onb_step_word()} {index} / {total}
         </p>
       </div>
-    )
-  }
-
-  {
-    prelaunch && (
-      <p class="mt-6 border-l-2 border-online bg-online/10 px-4 py-3 text-sm leading-relaxed text-foreground">
-        {m.onb_prelaunch_banner()}
-      </p>
     )
   }
 

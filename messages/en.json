@@ -1084,9 +1084,18 @@
   "prelaunch_contact_whatsapp": "WhatsApp",
   "prelaunch_contact_telegram": "Telegram",
   "prelaunch_contacts_hint": "Add at least one — this is how clients reach you.",
-  "prelaunch_form_password": "Password",
-  "prelaunch_password_hint": "8+ characters — you'll use this to log back in and finish your profile.",
-  "prelaunch_email_exists": "That email already has an account.",
-  "prelaunch_login_link": "Log in to continue",
-  "onb_prelaunch_banner": "You're in. Finish your profile now — it goes live the moment we launch."
+  "presignup_meta_title": "Add your photos — Intimate",
+  "presignup_meta_desc": "Upload your photos and ID so your profile is ready to go live at launch.",
+  "presignup_kicker": "You're in",
+  "presignup_title": "Add your photos",
+  "presignup_sub": "We saved your details. Add your photos and ID now and your profile is ready to go live the moment we launch — no account to set up.",
+  "presignup_photos_title": "Your photos",
+  "presignup_photos_hint": "Add your best photos. We remove location data automatically. You can add or swap them later.",
+  "presignup_add": "Add",
+  "presignup_id_title": "Verify your age",
+  "presignup_id_hint": "A photo of your ID. Kept private and encrypted, only for verification — never shown on your profile.",
+  "presignup_id_add": "Upload ID",
+  "presignup_id_done": "ID received",
+  "presignup_uploading": "Uploading…",
+  "presignup_done_note": "That's it — you can close this and come back anytime from this device. We'll email you the moment we launch."
 }

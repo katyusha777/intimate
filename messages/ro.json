@@ -1084,9 +1084,18 @@
   "prelaunch_contact_whatsapp": "WhatsApp",
   "prelaunch_contact_telegram": "Telegram",
   "prelaunch_contacts_hint": "Adaugă cel puțin unul — așa te contactează clienții.",
-  "prelaunch_form_password": "Parolă",
-  "prelaunch_password_hint": "8+ caractere — le folosești ca să te reconectezi și să-ți finalizezi profilul.",
-  "prelaunch_email_exists": "Acest e-mail are deja un cont.",
-  "prelaunch_login_link": "Conectează-te ca să continui",
-  "onb_prelaunch_banner": "Ești înăuntru. Finalizează-ți profilul acum — devine live în momentul lansării."
+  "presignup_meta_title": "Adaugă-ți pozele — Intimate",
+  "presignup_meta_desc": "Încarcă-ți pozele și actul de identitate ca profilul tău să fie gata de lansare.",
+  "presignup_kicker": "Ești înăuntru",
+  "presignup_title": "Adaugă-ți pozele",
+  "presignup_sub": "Ți-am salvat datele. Adaugă-ți acum pozele și actul de identitate, iar profilul tău e gata să devină live în momentul lansării — fără cont.",
+  "presignup_photos_title": "Pozele tale",
+  "presignup_photos_hint": "Adaugă-ți cele mai bune poze. Eliminăm automat datele de localizare. Le poți schimba mai târziu.",
+  "presignup_add": "Adaugă",
+  "presignup_id_title": "Verifică-ți vârsta",
+  "presignup_id_hint": "O poză a actului tău de identitate. Păstrată privat și criptat, doar pentru verificare — niciodată afișată pe profil.",
+  "presignup_id_add": "Încarcă actul",
+  "presignup_id_done": "Act primit",
+  "presignup_uploading": "Se încarcă…",
+  "presignup_done_note": "Asta e tot — poți închide și reveni oricând de pe acest dispozitiv. Îți scriem în momentul lansării."
 }
