@@ -73,7 +73,28 @@ just not forced. Same secret is the Bearer on `/api/cache/urls`.
 `workers_dev:false` + `preview_urls:false` (`wrangler.jsonc`, set 2026-08-10):
 without them, `intimate.<account>.workers.dev/admin` would reach the app around
 the Cloudflare Access rule that is scoped to the `intimate.nl/admin` path
-(ADMIN.md §1). Keep both false.
+(ADMIN.md §1). Keep both false. During the pre-launch window middleware also
+301s `beta.intimate.nl/admin/*` → the apex for the same reason.
+
+**Pre-launch window (2026-08-11, PRE-LAUNCH-GRANT-CARDONE.md).** ONE worker,
+two custom domains: `beta.intimate.nl` serves the full site (noindexed via an
+`X-Robots-Tag` middleware header); the apex serves ONLY the pre-launch landing
+(`/{locale}/` rewritten onto `pages/[locale]/prelaunch.astro`) and the
+`/{locale}/agencies/` closer page — every other apex path 302s to `/`
+(`src/lib/prelaunch.ts` corridor, unit-tested in `tests/prelaunch.test.ts`).
+The page-cache key carries `url.host` so the two homes can't poison each
+other. `PUBLIC_SITE_ORIGIN` and the warm worker `ORIGIN` point at beta.
+
+**Launch-day flip-back checklist (do in ONE pass):**
+1. Delete `src/lib/prelaunch.ts` + its middleware wiring + `tests/prelaunch.test.ts`
+   + `pages/[locale]/prelaunch.astro` (the corridor commit, reverted).
+2. `PUBLIC_SITE_ORIGIN` → `https://intimate.nl` (wrangler.jsonc) · warm worker
+   `ORIGIN` → `https://intimate.nl` + redeploy it.
+3. OneSignal dashboard Site URL → intimate.nl · Supabase redirect URLs: keep
+   both hosts until beta is retired, then drop beta.
+4. Retire the founding frame on /agencies per the doc §14.4; decide whether
+   beta.intimate.nl keeps serving (it can simply stay as a mirror or the route
+   gets removed from wrangler.jsonc).
 
 ## 3. CI (GitHub Actions)
 

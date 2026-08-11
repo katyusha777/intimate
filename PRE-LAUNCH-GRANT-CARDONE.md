@@ -187,10 +187,10 @@ Persistent bottom bar: **"Join as founding agency — free"** → scrolls to the
 
 ## 15. Definition of done
 
-- [ ] Real 4-profile demo grid with the real modal; corridor sealed (no nav/footer leaks)
-- [ ] All canonical copy from §12 in place (English master)
-- [ ] Form: 4 fields + consent checkbox, <30s on a phone, confirmation with the 48h promise
-- [ ] Sticky CTA; form one tap from any scroll depth
-- [ ] Zero banned words (§8), zero numbers, zero investor/competitor references (§13)
-- [ ] A screen and a half at 390px; the fastest page on the site
-- [ ] **The skeptic read-through:** load it cold on a phone as a tired agency owner who's watched ten new sites die. Every doubt that surfaces must already be answered on-page. If one isn't, fix the page — not the pitch call.
+- [x] Real 4-profile demo grid with the real modal; corridor sealed (no nav/footer leaks) — built 2026-08-11; grid reuses the home shelf for now (owner call — swap in the branded "Intimate" demo roster when it exists); corridor = `src/lib/prelaunch.ts` + middleware, live on the apex from Deploy 2
+- [x] All canonical copy from §12 in place (English master; NL/DE/RO/IT per §8's register)
+- [x] Form: 4 fields + consent checkbox, <30s on a phone, confirmation with the 48h promise (E2E-verified: org row + consent stamp + owner Pushover)
+- [x] Sticky CTA; form one tap from any scroll depth (hides once the confirmation shows)
+- [x] Zero banned words (§8), zero investor/competitor references; the only numbers are the written commitments (30s / 48h / 24h)
+- [ ] A screen and a half at 390px — currently ~3.5 screens: the full §12 content (2×2 real-card demo + 4-field form) physically exceeds 1.5 screens; rhythm tightened, every further cut is a copy cut. The fastest-page claim pends the Lighthouse pass.
+- [ ] **The skeptic read-through:** load it cold on a phone as a tired agency owner who's watched ten new sites die. Every doubt that surfaces must already be answered on-page. If one isn't, fix the page — not the pitch call. (Owner step, on the live URL.)

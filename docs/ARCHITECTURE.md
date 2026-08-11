@@ -115,6 +115,11 @@ before real data lands** — runbook and provisioning checklist:
 sessions stay scoped to one issue. Bun everywhere locally; CI: GitHub Actions
 running `bun install`, `bun test`, build, staging deploy on main.
 
+**Pre-launch window:** one worker, two hosts — the full site on
+`beta.intimate.nl` (noindexed), the apex reduced to the pre-launch landing +
+`/agencies` by the middleware corridor (`src/lib/prelaunch.ts`). Details +
+launch-day flip-back: INFRASTRUCTURE.md §2.
+
 ## 10. Video calls (1-on-1, WebRTC)
 
 Escorts offer paid 1-on-1 video calls to clients. Privacy is the product: **call media never touches our infrastructure** — no media servers, no recordings, and adult video stays entirely clear of Cloudflare's media ToS.
