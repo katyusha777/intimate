@@ -22,12 +22,13 @@ import { approveWholeSubmission, decideModeration } from './queues';
 import { setProfileState, setProfileUnlisted } from './entities';
 import { approveDeletion, exportAccountData } from './gdpr';
 import { retryImport } from './imports';
-import { assignProfileToOrg, createOrg, setOrgLogo, updateOrg } from './orgs';
+import { assignProfileToOrg, createManualProfile, createOrg, setOrgLogo, updateOrg } from './orgs';
 import { importFromUrl } from '@/lib/import';
 import { agencyImportFromUrl, discoverProfileUrls } from '@/lib/import/agency';
 import { enqueueOrgCrawl, importAgencyProfile, processImportJobs } from '@/app/api/crawl';
 import { dataUrlToJpegBytes } from '@/lib/jpeg-strip';
-import { CITY_SLUGS } from '@/lib/taxonomy';
+import { CITY_SLUGS, GENDERS, POLICY_MIN_AGE } from '@/lib/taxonomy';
+import { profileAge } from '@/app/models/profile';
 import { INDEXNOW_KEY, submitIndexNow } from '@/lib/indexnow';
 import { evictMediaCache, isR2Key, mediaBucket } from '@/lib/media-keys';
 import { ADMIN_EVENTS, NOTIFY_PREFS_KEY } from '@/lib/pushover';
@@ -444,6 +445,39 @@ export const admin = {
         meta: { note: orgId ? `assigned to org ${orgId}` : 'unassigned from org' },
       });
       return { ok: true };
+    },
+  }),
+
+  // Manually create a profile stub (§8) — the shared NewProfileForm on the org
+  // page (orgId set → agency roster) and the profiles directory (standalone)
+  // both call this. Lands pending_review; 21+ enforced here AND at the DB CHECK.
+  // Reuses edit_profile_admin (audit) so no admin_action enum migration.
+  profileCreate: defineAction({
+    input: z.object({
+      name: z.string().min(2).max(80),
+      birthDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      gender: z.enum(GENDERS),
+      city: z.enum(CITY_SLUGS),
+      orgId: z.string().uuid().optional(),
+    }),
+    handler: async (input, context) => {
+      const session = await requireAdmin(context, ['super']);
+      if (profileAge(input.birthDate) < POLICY_MIN_AGE)
+        throw new ActionError({ code: 'BAD_REQUEST', message: `Age must be ${POLICY_MIN_AGE}+ to advertise (NL policy).` });
+      let created: { id: string };
+      try {
+        created = await createManualProfile(input);
+      } catch (e) {
+        throw new ActionError({ code: 'BAD_REQUEST', message: (e as Error).message });
+      }
+      await bustProfiles(sessionKv());
+      await record(session, {
+        action: 'edit_profile_admin',
+        entityType: 'profile',
+        entityId: created.id,
+        meta: { note: input.orgId ? `manual create · org ${input.orgId}` : 'manual create' },
+      });
+      return created; // { id }
     },
   }),
 

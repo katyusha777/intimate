@@ -142,10 +142,10 @@ export interface OrgPatch {
   crawlListUrl?: string;
 }
 
-// Org creation moved to the shared seam (@/app/api/orgs — the public consent
-// form creates orgs too, and the admin fence is one-directional). Re-exported
-// so admin call sites keep their import.
-export { createOrg } from '@/app/api/orgs';
+// Org creation + manual profile creation live in the shared seam (@/app/api/orgs
+// — the public consent form creates orgs too, and only api/data may touch the
+// data layer). Re-exported so admin call sites keep their import.
+export { createOrg, createManualProfile } from '@/app/api/orgs';
 
 export async function updateOrg(id: string, patch: OrgPatch): Promise<void> {
   const d = adb();

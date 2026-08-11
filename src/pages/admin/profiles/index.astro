@@ -12,6 +12,7 @@ import { localizedDescription } from '@/app/models/profile';
 import { CITIES, GENDERS, PROFILE_STATES } from '@/lib/taxonomy';
 import { cityName } from '@/lib/seo';
 import AdminShell from '@/components/organisms/admin/AdminShell.astro';
+import NewProfileForm from '@/components/organisms/admin/NewProfileForm.astro';
 import Lightbox from '@/components/molecules/Lightbox.astro';
 import SideDrawer from '@/components/molecules/SideDrawer.astro';
 import * as m from '@/paraglide/messages';
@@ -63,6 +64,9 @@ const ago = (iso: string) => {
             <p class="mt-1 text-sm text-muted-foreground">{m.adm_profiles_meta({ count: rows.length })}</p>
           </div>
         </div>
+
+        {/* Create a standalone profile (same module as the org roster, §8). */}
+        {session.adminRole === 'super' && <div class="mt-4"><NewProfileForm /></div>}
 
         {/* Filter bar */}
         <form method="get" class="mt-4 flex flex-wrap items-center gap-2 text-sm">

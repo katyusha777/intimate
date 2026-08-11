@@ -47,6 +47,7 @@ Pages = `src/pages/` (compose organisms; own no reusable markup).
   handles pre-sanitized by contactLinks()),
   AdminLogin (organisms/admin — sign-in shown by /admin when there's no admin session; also drives the TOTP step-up/enroll after a correct password),
   MfaCard (organisms/admin — per-admin two-factor (TOTP) enroll/status/disable card on /admin/settings; ADMIN.md §1),
+  NewProfileForm (organisms/admin — shared "create a profile" module mounted on the org detail (roster) and the profiles directory; identity-only stub → pending_review; ADMIN.md §8),
   EssentialsTags (kinky-style icon chips of the key person attributes —
   ethnicity/height/body/hair/cup/available-for/languages — set ones only),
   RegionSheet (mobile "CITY | EN" header

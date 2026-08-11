@@ -1,0 +1,88 @@
+---
+/**
+ * Admin "create a profile" module (docs/ADMIN.md §8). Mounted BOTH on the org
+ * detail (orgId set → the listing joins that agency's roster) and the profiles
+ * directory (standalone). Identity-only stub — the DB-mandatory set (name, DOB,
+ * gender, city); it lands pending_review and the owner/moderator fills the rest.
+ * English-only like the rest of the org-management surface (single-operator).
+ */
+import { CITIES, GENDERS, POLICY_MIN_AGE } from '@/lib/taxonomy';
+
+interface Props {
+  /** Attach the new profile to this agency's roster; omit for standalone. */
+  orgId?: string;
+  /** Pre-select the city (the agency's city on the org page). */
+  defaultCity?: string;
+}
+const { orgId, defaultCity } = Astro.props;
+
+// Cap the date picker at the 21st birthday so the 21+ policy floor (hard rule 4)
+// is unreachable in the UI — the action + DB CHECK enforce it regardless.
+const now = new Date();
+const maxDob = `${now.getFullYear() - POLICY_MIN_AGE}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+const input = 'slab-cut w-full border border-foreground/20 bg-background px-3 py-2 text-sm outline-none focus:border-foreground';
+const btn = 'slab-cut border border-foreground/20 px-4 py-2 text-sm font-semibold hover:border-foreground/60 disabled:opacity-50';
+const label = 'block text-2xs uppercase tracking-wide text-muted-foreground';
+---
+
+<details class="max-w-2xl border border-border">
+  <summary class="cursor-pointer px-3 py-2 text-sm font-semibold">+ New profile</summary>
+  <form data-new-profile data-org-id={orgId} class="space-y-3 border-t border-border p-3">
+    <p class="text-2xs text-muted-foreground">
+      Creates a <b>pending-review</b> listing{orgId ? ' on this agency' : ''}. Identity only — add photos, rates and services after.
+    </p>
+    <div class="grid gap-3 sm:grid-cols-2">
+      <div><span class={label}>Name *</span><input name="name" required minlength="2" maxlength="80" class={input} /></div>
+      <div><span class={label}>Date of birth *</span><input name="birthDate" type="date" required max={maxDob} class={input} /></div>
+      <div>
+        <span class={label}>Gender *</span>
+        <select name="gender" class={input}>{GENDERS.map((g) => <option value={g}>{g.replace(/_/g, ' ')}</option>)}</select>
+      </div>
+      <div>
+        <span class={label}>City *</span>
+        <select name="city" class={input}>{CITIES.map((c) => <option value={c.slug} selected={c.slug === defaultCity}>{c.name}</option>)}</select>
+      </div>
+    </div>
+    <div class="flex items-center gap-3">
+      <button type="submit" class={btn}>Create profile</button>
+      <span data-np-status class="text-2xs text-muted-foreground"></span>
+    </div>
+  </form>
+</details>
+
+<script>
+  import { actions } from 'astro:actions';
+
+  function initNewProfile() {
+    document.querySelectorAll<HTMLFormElement>('[data-new-profile]').forEach((form) => {
+      if (form.dataset.init) return;
+      form.dataset.init = '1';
+      const status = form.querySelector<HTMLElement>('[data-np-status]')!;
+      const field = (n: string) => (form.elements.namedItem(n) as HTMLInputElement | HTMLSelectElement).value.trim();
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        status.textContent = 'Creating…';
+        const { data, error } = await actions.admin.profileCreate({
+          name: field('name'),
+          birthDate: field('birthDate'),
+          gender: field('gender') as never,
+          city: field('city') as never,
+          orgId: form.dataset.orgId || undefined,
+        });
+        if (error) { status.textContent = `Error: ${error.message}`; return; }
+        // Post-write reads lag Hyperdrive's cache, so don't reload into a stale
+        // list — link straight to the new profile instead (name stays data).
+        status.textContent = 'Created → ';
+        const a = document.createElement('a');
+        a.className = 'font-medium underline underline-offset-2';
+        a.href = `/admin/profiles?id=${encodeURIComponent(data.id)}`;
+        a.textContent = 'open profile';
+        status.append(a);
+        form.reset();
+      });
+    });
+  }
+  initNewProfile();
+  document.addEventListener('astro:page-load', initNewProfile);
+</script>

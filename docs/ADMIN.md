@@ -39,23 +39,34 @@ The admin is built from the SAME component pyramid as the public site. Consisten
 
 ## 3. Information architecture
 
+The sidebar is grouped by purpose — the SLA-bearing queues on top, then the
+directory, people, read-only logs, and system — with a header + rule per group;
+a group whose items are all role-hidden drops entirely (no empty header). Group
+headers are i18n'd (`adm_navgrp_*`); on the mobile rail they collapse to a single
+horizontal scroll (headers hidden).
+
 ```
 /admin
 ├─ Overview            live ops dashboard
 ├─ Queues
 │  ├─ Verification     identity checks
 │  ├─ Moderation       new/edited profiles + media
-│  ├─ Reports          user reports (escalations pinned)
-│  ├─ Taxonomy         unmapped import terms
+│  └─ Reports          user reports (escalations pinned)
+├─ Directory
+│  ├─ Profiles         search/filter, detail, state, completeness · + New profile
+│  ├─ Agencies         tabbed detail: Roster (+ New profile) / Crawler / Details
 │  └─ Imports          job monitor + /imports/test (paste-URL → mapping preview, apply-to-profile)
-├─ Profiles            search/filter, detail, state, completeness
-├─ Users               accounts, relations, status
-├─ Organizations       agencies, members, rosters
-├─ Messaging           platform messages + governed thread access
-├─ Calls               metadata log
-├─ Analytics           ops stats (first-party) + PostHog links
-├─ Audit log           everything, filterable
-└─ Settings            admins, taxonomy mgmt, policy text, flags
+├─ Users
+│  ├─ Accounts         every account, relations, status, GDPR (was "Users")
+│  └─ Client accounts  clients: favorites, phone, reports made (was "Clients")
+├─ Logs
+│  ├─ Messaging        platform messages + governed thread access
+│  ├─ Calls            metadata log
+│  ├─ Audit log        everything, filterable
+│  └─ Analytics        ops stats (first-party) + PostHog links
+└─ System
+   ├─ Settings         admins, taxonomy mgmt, policy text, flags
+   └─ Danger zone      owner-only raw-data tools
 ```
 
 ## 4. Overview (the live cockpit)
@@ -93,10 +104,10 @@ Server-rendered, realtime-layered (our SSR-first + broadcast pattern, reused):
 
 ## 8. Profiles, Users, Organizations (lookup surfaces)
 
-**Profiles:** filter by state/city/verification/completeness; list shows state chips + **completeness %** (SQL view scoring filled fields/photos/rates — also shown to the professional herself as "profile strength"; same view, two audiences) + quality flags (1 photo only, no rates, stale >90d). Detail (a right-edge slide-over drawer so the table runs full-width): everything + full history (audit slice) + state-machine actions with reasons + the **unlisted** visibility toggle (the same switch the owner has in her settings — out of listings/search, direct URL still resolves; `profileUnlisted` action, no 410/IndexNow) + "view public page" + admin-edit (logged, flagged `edited_by_admin`). State transitions honor lifecycle law (hard rule 6): blocked/deleted public pages → 410 + IndexNow removal.
+**Profiles:** filter by state/city/verification/completeness; list shows state chips + **completeness %** (SQL view scoring filled fields/photos/rates — also shown to the professional herself as "profile strength"; same view, two audiences) + quality flags (1 photo only, no rates, stale >90d). Super admins get **+ New profile** (the shared `NewProfileForm` organism, also mounted on the agency roster): identity-only stub — name, DOB (picker capped at the 21st birthday), gender, city — owned by a login-less placeholder `advertiser` account, landing **pending_review** (`profileCreate` action → `createManualProfile`, 21+ enforced at the action AND the DB CHECK; audit `edit_profile_admin` note=`manual create`). Photos/rates/services are filled after, by the owner or via moderation. Detail (a right-edge slide-over drawer so the table runs full-width): everything + full history (audit slice) + state-machine actions with reasons + the **unlisted** visibility toggle (the same switch the owner has in her settings — out of listings/search, direct URL still resolves; `profileUnlisted` action, no 410/IndexNow) + "view public page" + admin-edit (logged, flagged `edited_by_admin`). State transitions honor lifecycle law (hard rule 6): blocked/deleted public pages → 410 + IndexNow removal.
 **In-place moderation:** an admin session viewing any public profile page gets the `ProfileAdminBar` strip (act where you look): set live / pause / block-with-reason / unblock + single-photo takedown (`mediaReject`), all through the guarded admin actions (audit-logged, cache-busted); admins also see non-live profiles at their public URL (god view, never edge-cached).
 **Users:** search by email/phone/name; detail = **relations panel** (one recursive query view): account → profiles ↔ org ↔ org-members, threads count, reports made/received, verification attempts, favorites count, sessions (last seen, app_mode). Status actions: warn (platform message), suspend, block, soft-delete — each with reason, each notifying the user (legibility again).
-**Organizations (partner agencies):** full lifecycle lives here — agencies have **no login** (each org owns a placeholder `agency`-type account that holds its profiles; upgradeable to a real auth user later). Admin CRUD: name/city/KvK/verification, contact, description, logo (client re-encode → R2 `org/…` → `/media`), public page `/{locale}/agencies/{slug}`. **Auto-crawl** (the agency KVP: they never import anything): set a roster URL → *Test discovery* (Firecrawl + LLM → profile URLs) → *Test import* one URL (agency extraction adds name/age/photoUrls to the shared contract) → *Crawl now* queues `import_jobs` (org-tagged) and the page drains them with live progress. The cron tick (workers/purge `*/5 * * * *` → `/api/crawl-tick`) re-crawls stale `crawl_enabled` orgs daily, drains the queue continuously, and reaps jobs whose runner died mid-scrape (`claimed_at` > 15 min → `failed`, re-queued next crawl) — engine: `app/data/db/crawl.ts`. New profiles land **pending_review** with pending photos (hard rule 5 — moderation decides); **re-crawls patch fields in place and WIN over manual edits** (the agency's site is the source of truth — fix the site, not our copy; the 21+ age gate runs on every crawl, create and update). Under-21/no-age pages become `failed` jobs (with the extracted name), never rows. Agency profiles keep messaging default-OFF — nobody reads the placeholder account's inbox; contact = the profile's phone/WhatsApp buttons. Roster shows per-profile states + unassign/assign.
+**Organizations (partner agencies):** full lifecycle lives here — agencies have **no login** (each org owns a placeholder `agency`-type account that holds its profiles; upgradeable to a real auth user later). The detail is **tabbed**: **Roster** (the profiles this agency holds — per-profile states + unassign, the shared **+ New profile** module scoped to this agency, and assign-existing-by-UUID) · **Crawler** (the auto-crawl tools + import-job log) · **Details** (the agency record itself). Admin CRUD: name/city/KvK/verification, contact, description, logo (client re-encode → R2 `org/…` → `/media`), public page `/{locale}/agencies/{slug}`. **Auto-crawl** (the agency KVP: they never import anything): set a roster URL → *Test discovery* (Firecrawl + LLM → profile URLs) → *Test import* one URL (agency extraction adds name/age/photoUrls to the shared contract) → *Crawl now* queues `import_jobs` (org-tagged) and the page drains them with live progress. The cron tick (workers/purge `*/5 * * * *` → `/api/crawl-tick`) re-crawls stale `crawl_enabled` orgs daily, drains the queue continuously, and reaps jobs whose runner died mid-scrape (`claimed_at` > 15 min → `failed`, re-queued next crawl) — engine: `app/data/db/crawl.ts`. New profiles land **pending_review** with pending photos (hard rule 5 — moderation decides); **re-crawls patch fields in place and WIN over manual edits** (the agency's site is the source of truth — fix the site, not our copy; the 21+ age gate runs on every crawl, create and update). Under-21/no-age pages become `failed` jobs (with the extracted name), never rows. Agency profiles keep messaging default-OFF — nobody reads the placeholder account's inbox; contact = the profile's phone/WhatsApp buttons. Roster shows per-profile states + unassign/assign.
 
 ## 9. Messaging oversight (governed, not casual)
 

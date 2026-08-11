@@ -13,9 +13,10 @@
 import { env } from 'cloudflare:workers';
 import { eq, or } from 'drizzle-orm';
 import { requestDb, type Db } from '@/db/client';
-import { accounts, orgs } from '@/db/schema';
+import { accounts, orgs, profiles } from '@/db/schema';
+import { uniqueSlug } from '@/app/data/db/account';
 import { slugifyBase } from '@/lib/slug';
-import type { CitySlug } from '@/lib/taxonomy';
+import type { CitySlug, Gender } from '@/lib/taxonomy';
 
 export interface PublicAgency {
   id: string;
@@ -109,6 +110,52 @@ export async function createOrg(input: CreateOrgInput): Promise<string> {
     })
     .returning({ id: orgs.id });
   return row!.id;
+}
+
+export interface ManualProfileInput {
+  name: string;
+  /** ISO date (YYYY-MM-DD); the 21+ floor is enforced by the caller AND the DB CHECK. */
+  birthDate: string;
+  gender: Gender;
+  city: CitySlug;
+  /** Attach to an agency roster; omit for a standalone listing. */
+  orgId?: string;
+}
+
+/**
+ * Admin-created profile stub (docs/ADMIN.md §8) — the same module the org page
+ * and the profiles directory both mount. Lands **pending_review** (never
+ * auto-publish, hard rule 5); the owner/agency or a moderator fills the rest.
+ * Ownership mirrors the crawl path: an org's placeholder `agency` account owns
+ * an agency listing; a standalone listing gets its own login-less `advertiser`
+ * placeholder (upgradeable to a real auth user later, like agencies).
+ */
+export async function createManualProfile(input: ManualProfileInput): Promise<{ id: string }> {
+  const d = db();
+  let accountId: string;
+  if (input.orgId) {
+    const [org] = await d.select({ accountId: orgs.accountId }).from(orgs).where(eq(orgs.id, input.orgId)).limit(1);
+    if (!org) throw new Error('unknown agency');
+    accountId = org.accountId;
+  } else {
+    accountId = crypto.randomUUID(); // NOT an auth.users id — no login yet
+    await d.insert(accounts).values({ id: accountId, accountType: 'advertiser', displayName: input.name, email: null });
+  }
+  const [created] = await d
+    .insert(profiles)
+    .values({
+      accountId,
+      orgId: input.orgId ?? null,
+      slug: await uniqueSlug(d, input.name, input.city),
+      state: 'pending_review',
+      name: input.name,
+      birthDate: input.birthDate,
+      gender: input.gender,
+      city: input.city,
+    })
+    .returning({ id: profiles.id });
+  if (!created) throw new Error('profile insert returned no row');
+  return { id: created.id };
 }
 
 /**

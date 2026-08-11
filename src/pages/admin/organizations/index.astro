@@ -10,6 +10,7 @@ import { listOrgs, orgById } from '@/actions/admin/orgs';
 import { cityName } from '@/lib/seo';
 import { CITIES } from '@/lib/taxonomy';
 import AdminShell from '@/components/organisms/admin/AdminShell.astro';
+import NewProfileForm from '@/components/organisms/admin/NewProfileForm.astro';
 import * as m from '@/paraglide/messages';
 
 const session = await getAdmin(Astro);
@@ -99,96 +100,123 @@ const label = 'block text-2xs uppercase tracking-wide text-muted-foreground';
                 ))}
               </dl>
 
-              <form data-org-edit data-org={detail.id} class="max-w-2xl space-y-3 border border-border p-3">
-                <p class="text-2xs uppercase tracking-wide text-muted-foreground">Agency details</p>
-                <div class="grid gap-3 sm:grid-cols-2">
-                  <div><span class={label}>Name</span><input name="name" value={detail.name} class={input} /></div>
-                  <div>
-                    <span class={label}>City</span>
-                    <select name="city" class={input}>{CITIES.map((c) => <option value={c.slug} selected={c.slug === detail.city}>{c.name}</option>)}</select>
-                  </div>
-                  <div><span class={label}>Website</span><input name="siteUrl" type="url" value={detail.siteUrl ?? ''} class={input} /></div>
-                  <div><span class={label}>KvK</span><input name="kvk" value={detail.kvk ?? ''} class={input} /></div>
-                  <div><span class={label}>Contact email</span><input name="contactEmail" type="email" value={detail.contactEmail ?? ''} class={input} /></div>
-                  <div><span class={label}>Contact phone</span><input name="contactPhone" value={detail.contactPhone ?? ''} class={input} /></div>
-                </div>
-                <div><span class={label}>Description (shown on the public page)</span><textarea name="description" rows="3" class={input}>{detail.description}</textarea></div>
-                <div class="flex flex-wrap items-center gap-4 text-sm">
-                  <label class="flex items-center gap-2"><input type="checkbox" name="verified" checked={detail.verified} /> Verified</label>
-                  <label class="flex items-center gap-2"><input type="checkbox" name="crawlEnabled" checked={detail.crawlEnabled} /> Auto-crawl daily</label>
-                </div>
-                <div><span class={label}>Crawl URL (roster/homepage)</span><input name="crawlListUrl" type="url" value={detail.crawlListUrl ?? ''} class={input} /></div>
-                <div class="flex items-center gap-3">
-                  <button type="submit" class={btn}>Save</button>
-                  <span data-edit-status class="text-2xs text-muted-foreground" />
-                </div>
-              </form>
-
-              <div class="max-w-2xl space-y-3 border border-border p-3">
-                <p class="text-2xs uppercase tracking-wide text-muted-foreground">Crawler</p>
-                {detail.lastCrawledAt && (
-                  <p class="text-2xs text-muted-foreground">Last crawl {detail.lastCrawledAt.slice(0, 16).replace('T', ' ')} — {detail.lastCrawlNote ?? ''}</p>
-                )}
-                <div class="flex flex-wrap items-center gap-3">
-                  <button type="button" data-discover data-org={detail.id} class={btn}>Test discovery</button>
-                  <button type="button" data-crawl data-org={detail.id} class={btn}>Crawl now</button>
-                  <span data-crawl-status class="text-2xs text-muted-foreground" />
-                </div>
-                <div data-discover-out class="hidden space-y-1 text-xs" />
-                <div class="flex flex-wrap items-center gap-3">
-                  <input data-test-url type="url" placeholder="test one profile URL…" class={`${input} max-w-md`} />
-                  <button type="button" data-test-import class={btn}>Test import</button>
-                  <button type="button" data-import-create data-org={detail.id} class={btn}>Import &amp; create profile</button>
-                  <span data-test-status class="text-2xs text-muted-foreground" />
-                </div>
-                <div data-test-photos class="hidden flex-wrap gap-2" />
-                <pre data-test-out class="hidden max-h-96 overflow-auto border border-border bg-muted p-3 text-xs" />
+              {/* Tabbed detail: roster (the girls) · crawler · agency details.
+                  Panels are all SSR'd; the tab bar just show/hides them (§8). */}
+              <div role="tablist" aria-label="Agency sections" class="flex gap-1 border-b border-border">
+                {[['roster', m.adm_orgs_roster()], ['crawler', 'Crawler'], ['details', 'Details']].map(([key, tabLabel], i) => (
+                  <button
+                    type="button"
+                    role="tab"
+                    data-tab-btn={key}
+                    aria-selected={i === 0 ? 'true' : 'false'}
+                    class="-mb-px border-b-2 border-transparent px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground aria-selected:border-foreground aria-selected:text-foreground"
+                  >
+                    {tabLabel}
+                  </button>
+                ))}
               </div>
 
-              {detail.jobs.length > 0 && (
-                <div class="max-w-2xl">
-                  <p class="text-2xs uppercase tracking-wide text-muted-foreground">Import jobs</p>
-                  <div class="mt-2 divide-y divide-border border border-border text-xs">
-                    {detail.jobs.map((j) => (
-                      <div class="flex items-center justify-between gap-3 px-3 py-1.5">
-                        <span class="min-w-0 truncate">
-                          <span class="font-medium">{j.profileName ?? new URL(j.sourceUrl).pathname}</span>
-                          {j.error && <span class="text-brand"> — {j.error}</span>}
-                        </span>
-                        <span class="flex flex-none items-center gap-3">
-                          <span class="text-muted-foreground">{j.createdAt.slice(5, 16).replace('T', ' ')}</span>
-                          <span class:list={['font-medium', stateClass(j.state)]}>{j.state}</span>
+              {/* Roster — the profiles this agency holds + add/assign. */}
+              <div role="tabpanel" data-tab-panel="roster" class="max-w-2xl space-y-4">
+                <div>
+                  <div class="divide-y divide-border border border-border">
+                    {detail.members.map((mmb) => (
+                      <div class="flex items-center justify-between gap-3 px-3 py-2 text-sm">
+                        <a href={`/admin/profiles?id=${mmb.id}`} class="flex min-w-0 items-center gap-1.5 font-medium hover:underline">
+                          {mmb.name}
+                          {mmb.verified && <span class="text-online">✓</span>}
+                        </a>
+                        <span class="flex flex-none items-center gap-3 text-2xs">
+                          <span class="text-muted-foreground">{cityName(mmb.city)}</span>
+                          <span class="tabular-nums text-muted-foreground">{mmb.completeness}%</span>
+                          <span class:list={['font-medium', stateClass(mmb.state)]}>{mmb.state}</span>
+                          <button type="button" data-unassign data-profile={mmb.id} class="text-muted-foreground underline underline-offset-2 hover:text-brand">unassign</button>
                         </span>
                       </div>
                     ))}
+                    {detail.members.length === 0 && <p class="px-3 py-2 text-sm text-muted-foreground">No profiles yet — create one below, run a crawl, or assign an existing profile.</p>}
                   </div>
                 </div>
-              )}
 
-              <div class="max-w-2xl">
-                <p class="text-2xs uppercase tracking-wide text-muted-foreground">{m.adm_orgs_roster()}</p>
-                <div class="mt-2 divide-y divide-border border border-border">
-                  {detail.members.map((mmb) => (
-                    <div class="flex items-center justify-between gap-3 px-3 py-2 text-sm">
-                      <a href={`/admin/profiles?id=${mmb.id}`} class="flex min-w-0 items-center gap-1.5 font-medium hover:underline">
-                        {mmb.name}
-                        {mmb.verified && <span class="text-online">✓</span>}
-                      </a>
-                      <span class="flex flex-none items-center gap-3 text-2xs">
-                        <span class="text-muted-foreground">{cityName(mmb.city)}</span>
-                        <span class="tabular-nums text-muted-foreground">{mmb.completeness}%</span>
-                        <span class:list={['font-medium', stateClass(mmb.state)]}>{mmb.state}</span>
-                        <button type="button" data-unassign data-profile={mmb.id} class="text-muted-foreground underline underline-offset-2 hover:text-brand">unassign</button>
-                      </span>
-                    </div>
-                  ))}
-                  {detail.members.length === 0 && <p class="px-3 py-2 text-sm text-muted-foreground">No profiles yet — run a crawl or assign one below.</p>}
-                </div>
-                <div class="mt-2 flex flex-wrap items-center gap-3">
-                  <input data-assign-id placeholder="profile UUID" class={`${input} max-w-xs`} />
+                {session.adminRole === 'super' && <NewProfileForm orgId={detail.id} defaultCity={detail.city} />}
+
+                <div class="flex flex-wrap items-center gap-3">
+                  <input data-assign-id placeholder="assign existing profile UUID" class={`${input} max-w-xs`} />
                   <button type="button" data-assign data-org={detail.id} class={btn}>Assign profile</button>
                   <span data-assign-status class="text-2xs text-muted-foreground" />
                 </div>
+              </div>
+
+              {/* Crawler — discovery, test import, crawl-now + the job log. */}
+              <div role="tabpanel" data-tab-panel="crawler" hidden class="max-w-2xl space-y-6">
+                <div class="space-y-3 border border-border p-3">
+                  {detail.lastCrawledAt && (
+                    <p class="text-2xs text-muted-foreground">Last crawl {detail.lastCrawledAt.slice(0, 16).replace('T', ' ')} — {detail.lastCrawlNote ?? ''}</p>
+                  )}
+                  <p class="text-2xs text-muted-foreground">Set the crawl URL + auto-crawl in the <b>Details</b> tab, then discover/import here.</p>
+                  <div class="flex flex-wrap items-center gap-3">
+                    <button type="button" data-discover data-org={detail.id} class={btn}>Test discovery</button>
+                    <button type="button" data-crawl data-org={detail.id} class={btn}>Crawl now</button>
+                    <span data-crawl-status class="text-2xs text-muted-foreground" />
+                  </div>
+                  <div data-discover-out class="hidden space-y-1 text-xs" />
+                  <div class="flex flex-wrap items-center gap-3">
+                    <input data-test-url type="url" placeholder="test one profile URL…" class={`${input} max-w-md`} />
+                    <button type="button" data-test-import class={btn}>Test import</button>
+                    <button type="button" data-import-create data-org={detail.id} class={btn}>Import &amp; create profile</button>
+                    <span data-test-status class="text-2xs text-muted-foreground" />
+                  </div>
+                  <div data-test-photos class="hidden flex-wrap gap-2" />
+                  <pre data-test-out class="hidden max-h-96 overflow-auto border border-border bg-muted p-3 text-xs" />
+                </div>
+
+                {detail.jobs.length > 0 && (
+                  <div>
+                    <p class="text-2xs uppercase tracking-wide text-muted-foreground">Import jobs</p>
+                    <div class="mt-2 divide-y divide-border border border-border text-xs">
+                      {detail.jobs.map((j) => (
+                        <div class="flex items-center justify-between gap-3 px-3 py-1.5">
+                          <span class="min-w-0 truncate">
+                            <span class="font-medium">{j.profileName ?? new URL(j.sourceUrl).pathname}</span>
+                            {j.error && <span class="text-brand"> — {j.error}</span>}
+                          </span>
+                          <span class="flex flex-none items-center gap-3">
+                            <span class="text-muted-foreground">{j.createdAt.slice(5, 16).replace('T', ' ')}</span>
+                            <span class:list={['font-medium', stateClass(j.state)]}>{j.state}</span>
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Details — the agency record itself. */}
+              <div role="tabpanel" data-tab-panel="details" hidden>
+                <form data-org-edit data-org={detail.id} class="max-w-2xl space-y-3 border border-border p-3">
+                  <p class="text-2xs uppercase tracking-wide text-muted-foreground">Agency details</p>
+                  <div class="grid gap-3 sm:grid-cols-2">
+                    <div><span class={label}>Name</span><input name="name" value={detail.name} class={input} /></div>
+                    <div>
+                      <span class={label}>City</span>
+                      <select name="city" class={input}>{CITIES.map((c) => <option value={c.slug} selected={c.slug === detail.city}>{c.name}</option>)}</select>
+                    </div>
+                    <div><span class={label}>Website</span><input name="siteUrl" type="url" value={detail.siteUrl ?? ''} class={input} /></div>
+                    <div><span class={label}>KvK</span><input name="kvk" value={detail.kvk ?? ''} class={input} /></div>
+                    <div><span class={label}>Contact email</span><input name="contactEmail" type="email" value={detail.contactEmail ?? ''} class={input} /></div>
+                    <div><span class={label}>Contact phone</span><input name="contactPhone" value={detail.contactPhone ?? ''} class={input} /></div>
+                  </div>
+                  <div><span class={label}>Description (shown on the public page)</span><textarea name="description" rows="3" class={input}>{detail.description}</textarea></div>
+                  <div class="flex flex-wrap items-center gap-4 text-sm">
+                    <label class="flex items-center gap-2"><input type="checkbox" name="verified" checked={detail.verified} /> Verified</label>
+                    <label class="flex items-center gap-2"><input type="checkbox" name="crawlEnabled" checked={detail.crawlEnabled} /> Auto-crawl daily</label>
+                  </div>
+                  <div><span class={label}>Crawl URL (roster/homepage)</span><input name="crawlListUrl" type="url" value={detail.crawlListUrl ?? ''} class={input} /></div>
+                  <div class="flex items-center gap-3">
+                    <button type="submit" class={btn}>Save</button>
+                    <span data-edit-status class="text-2xs text-muted-foreground" />
+                  </div>
+                </form>
               </div>
             </div>
           )}
@@ -213,6 +241,18 @@ const label = 'block text-2xs uppercase tracking-wide text-muted-foreground';
     const root = document.querySelector<HTMLElement>('[data-org-create]')?.closest('body') ?? document.body;
     if ((root as HTMLElement).dataset.orgsInit) return;
     (root as HTMLElement).dataset.orgsInit = '1';
+
+    // Detail tabs (roster / crawler / details) — panels are SSR'd, just toggle.
+    const tabBtns = document.querySelectorAll<HTMLButtonElement>('[data-tab-btn]');
+    tabBtns.forEach((tb) =>
+      tb.addEventListener('click', () => {
+        const key = tb.dataset.tabBtn;
+        tabBtns.forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tabBtn === key)));
+        document.querySelectorAll<HTMLElement>('[data-tab-panel]').forEach((p) => {
+          p.hidden = p.dataset.tabPanel !== key;
+        });
+      }),
+    );
 
     // Create
     document.querySelector<HTMLFormElement>('[data-org-create]')?.addEventListener('submit', async (e) => {

@@ -34,29 +34,47 @@ const { title, section = '', wide = false } = Astro.props;
 const session = await getAdmin(Astro);
 const badges = session ? await adminBadges() : { escalations: 0, reportsOpen: 0, verificationOpen: 0 };
 
-/** Nav items with the role capability that may see them (super sees all). */
-const NAV: { key: string; label: string; href: string; roles: AdminRole[]; owner?: boolean; icon: string; badge?: number }[] = [
-  { key: 'overview', label: m.adm_nav_overview(), href: '/admin', roles: ['moderator', 'support', 'super'], icon: '<rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/>' },
-  { key: 'verification', label: m.adm_nav_verification(), href: '/admin/verification', roles: ['moderator', 'super'], icon: '<path d="M12 3l7 4v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V7z"/><path d="m9 12 2 2 4-4"/>', badge: badges.verificationOpen },
-  { key: 'moderation', label: m.adm_nav_moderation(), href: '/admin/moderation', roles: ['moderator', 'super'], icon: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>' },
-  { key: 'reports', label: m.adm_nav_reports(), href: '/admin/reports', roles: ['moderator', 'super'], icon: '<path d="M4 15V4a1 1 0 0 1 1-1h14l-3 5 3 5H5a1 1 0 0 0-1 1z"/><path d="M4 22v-7"/>', badge: badges.reportsOpen },
-  { key: 'imports', label: m.adm_nav_imports(), href: '/admin/imports', roles: ['moderator', 'super'], icon: '<path d="M12 3v12"/><path d="m8 11 4 4 4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/>' },
-  { key: 'profiles', label: m.adm_nav_profiles(), href: '/admin/profiles', roles: ['moderator', 'support', 'super'], icon: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/>' },
-  { key: 'users', label: m.adm_nav_users(), href: '/admin/users', roles: ['moderator', 'support', 'super'], icon: '<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/><circle cx="11" cy="9" r="2.5"/><path d="M6.8 15.5c.8-1.8 2.4-2.8 4.2-2.8s3.4 1 4.2 2.8"/>' },
-  { key: 'clients', label: m.adm_nav_clients(), href: '/admin/clients', roles: ['support', 'super'], icon: '<circle cx="9" cy="8" r="3.5"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M17 5a3.5 3.5 0 0 1 0 7"/>' },
-  { key: 'organizations', label: m.adm_nav_agencies(), href: '/admin/organizations', roles: ['moderator', 'support', 'super'], icon: '<path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 9h.01M9 13h.01M9 17h.01M15 9h.01M15 13h.01M15 17h.01"/>' },
-  { key: 'messaging', label: m.adm_nav_messaging(), href: '/admin/messaging', roles: ['moderator', 'support', 'super'], icon: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/>' },
-  { key: 'calls', label: m.adm_nav_calls(), href: '/admin/calls', roles: ['moderator', 'support', 'super'], icon: '<path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3.1-8.7A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.4-1.2a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/>' },
-  { key: 'analytics', label: m.adm_nav_analytics(), href: '/admin/analytics', roles: ['moderator', 'support', 'super'], icon: '<path d="M3 3v18h18"/><rect x="7" y="12" width="3" height="6"/><rect x="12" y="8" width="3" height="10"/><rect x="17" y="5" width="3" height="13"/>' },
-  { key: 'audit', label: m.adm_nav_audit(), href: '/admin/audit', roles: ['moderator', 'support', 'super'], icon: '<path d="M4 4h16v16H4z"/><path d="M8 8h8M8 12h8M8 16h5"/>' },
-  { key: 'settings', label: m.settings_title(), href: '/admin/settings', roles: ['super'], icon: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 7 19.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 3 13.6a2 2 0 1 1 0-4a1.7 1.7 0 0 0 1.6-2.3L4.5 7a2 2 0 1 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 10.4 3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0 1.2 2.9H21a2 2 0 1 1 0 4Z"/>' },
-  // Owner-only (isOwner, not a role) — destructive raw-data tools. English on
-  // purpose: single-viewer internal surface, no i18n keys (ADMIN.md §1).
-  { key: 'danger', label: 'Danger zone', href: '/admin/danger', roles: [], owner: true, icon: '<path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/>' },
+/**
+ * Nav grouped by purpose (ADMIN.md §3): the queues that carry the SLA sit up
+ * top, then the directory, then people, then the read-only logs, then system.
+ * Each group renders a header + rule; a group with no visible items (role
+ * filtering) drops entirely — no empty headers.
+ */
+type NavItem = { key: string; label: string; href: string; roles: AdminRole[]; owner?: boolean; icon: string; badge?: number };
+const NAV_GROUPS: { header?: string; items: NavItem[] }[] = [
+  { items: [
+    { key: 'overview', label: m.adm_nav_overview(), href: '/admin', roles: ['moderator', 'support', 'super'], icon: '<rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/>' },
+  ] },
+  { header: m.adm_navgrp_queues(), items: [
+    { key: 'verification', label: m.adm_nav_verification(), href: '/admin/verification', roles: ['moderator', 'super'], icon: '<path d="M12 3l7 4v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V7z"/><path d="m9 12 2 2 4-4"/>', badge: badges.verificationOpen },
+    { key: 'moderation', label: m.adm_nav_moderation(), href: '/admin/moderation', roles: ['moderator', 'super'], icon: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>' },
+    { key: 'reports', label: m.adm_nav_reports(), href: '/admin/reports', roles: ['moderator', 'super'], icon: '<path d="M4 15V4a1 1 0 0 1 1-1h14l-3 5 3 5H5a1 1 0 0 0-1 1z"/><path d="M4 22v-7"/>', badge: badges.reportsOpen },
+  ] },
+  { header: m.adm_navgrp_directory(), items: [
+    { key: 'profiles', label: m.adm_nav_profiles(), href: '/admin/profiles', roles: ['moderator', 'support', 'super'], icon: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/>' },
+    { key: 'organizations', label: m.adm_nav_agencies(), href: '/admin/organizations', roles: ['moderator', 'support', 'super'], icon: '<path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 9h.01M9 13h.01M9 17h.01M15 9h.01M15 13h.01M15 17h.01"/>' },
+    { key: 'imports', label: m.adm_nav_imports(), href: '/admin/imports', roles: ['moderator', 'super'], icon: '<path d="M12 3v12"/><path d="m8 11 4 4 4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/>' },
+  ] },
+  { header: m.adm_navgrp_users(), items: [
+    { key: 'users', label: m.adm_nav_users(), href: '/admin/users', roles: ['moderator', 'support', 'super'], icon: '<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/><circle cx="11" cy="9" r="2.5"/><path d="M6.8 15.5c.8-1.8 2.4-2.8 4.2-2.8s3.4 1 4.2 2.8"/>' },
+    { key: 'clients', label: m.adm_nav_clients(), href: '/admin/clients', roles: ['support', 'super'], icon: '<circle cx="9" cy="8" r="3.5"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M17 5a3.5 3.5 0 0 1 0 7"/>' },
+  ] },
+  { header: m.adm_navgrp_logs(), items: [
+    { key: 'messaging', label: m.adm_nav_messaging(), href: '/admin/messaging', roles: ['moderator', 'support', 'super'], icon: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/>' },
+    { key: 'calls', label: m.adm_nav_calls(), href: '/admin/calls', roles: ['moderator', 'support', 'super'], icon: '<path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3.1-8.7A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.4-1.2a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/>' },
+    { key: 'audit', label: m.adm_nav_audit(), href: '/admin/audit', roles: ['moderator', 'support', 'super'], icon: '<path d="M4 4h16v16H4z"/><path d="M8 8h8M8 12h8M8 16h5"/>' },
+    { key: 'analytics', label: m.adm_nav_analytics(), href: '/admin/analytics', roles: ['moderator', 'support', 'super'], icon: '<path d="M3 3v18h18"/><rect x="7" y="12" width="3" height="6"/><rect x="12" y="8" width="3" height="10"/><rect x="17" y="5" width="3" height="13"/>' },
+  ] },
+  { header: m.adm_navgrp_system(), items: [
+    { key: 'settings', label: m.settings_title(), href: '/admin/settings', roles: ['super'], icon: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 7 19.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 3 13.6a2 2 0 1 1 0-4a1.7 1.7 0 0 0 1.6-2.3L4.5 7a2 2 0 1 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 10.4 3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0 1.2 2.9H21a2 2 0 1 1 0 4Z"/>' },
+    // Owner-only (isOwner, not a role) — destructive raw-data tools. English on
+    // purpose: single-viewer internal surface, no i18n keys (ADMIN.md §1).
+    { key: 'danger', label: 'Danger zone', href: '/admin/danger', roles: [], owner: true, icon: '<path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/>' },
+  ] },
 ];
 const canSee = (n: { roles: AdminRole[]; owner?: boolean }) =>
   n.owner ? isOwner(session) : session && (session.adminRole === 'super' || n.roles.includes(session.adminRole!));
-const nav = NAV.filter((n) => canSee(n));
+const navGroups = NAV_GROUPS.map((g) => ({ ...g, items: g.items.filter(canSee) })).filter((g) => g.items.length > 0);
 ---
 
 <!doctype html>
@@ -99,19 +117,30 @@ const nav = NAV.filter((n) => canSee(n));
               <p class="hidden text-2xs text-muted-foreground md:mt-1 md:block">{session.email} · {session.adminRole}</p>
             </div>
             <nav class="flex gap-1 overflow-x-auto px-2 pb-2 md:flex-col md:px-2 md:pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label={m.adm_title()}>
-              {nav.map((n) => (
-                <a
-                  href={n.href}
-                  aria-current={section === n.key ? 'page' : undefined}
-                  class:list={[
-                    'flex flex-none items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition-colors',
-                    section === n.key ? 'bg-foreground text-background' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                  ]}
-                >
-                  <svg class="size-4 flex-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" set:html={n.icon} />
-                  <span>{n.label}</span>
-                  {n.badge ? <span class="ml-auto rounded-full bg-brand px-1.5 text-2xs font-bold text-white">{n.badge}</span> : null}
-                </a>
+              {navGroups.map((g, gi) => (
+                <>
+                  {/* Group header: desktop only (the mobile rail is a single
+                      horizontal scroll where headers would just eat width). */}
+                  {g.header && (
+                    <p class:list={['hidden text-2xs font-semibold uppercase tracking-wide text-muted-foreground/70 md:block md:px-3', gi === 0 ? 'md:pt-1' : 'md:mt-3 md:border-t md:border-border md:pt-3']}>
+                      {g.header}
+                    </p>
+                  )}
+                  {g.items.map((n) => (
+                    <a
+                      href={n.href}
+                      aria-current={section === n.key ? 'page' : undefined}
+                      class:list={[
+                        'flex flex-none items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                        section === n.key ? 'bg-foreground text-background' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                      ]}
+                    >
+                      <svg class="size-4 flex-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" set:html={n.icon} />
+                      <span>{n.label}</span>
+                      {n.badge ? <span class="ml-auto rounded-full bg-brand px-1.5 text-2xs font-bold text-white">{n.badge}</span> : null}
+                    </a>
+                  ))}
+                </>
               ))}
             </nav>
             <div class="hidden border-t border-border px-4 py-3 md:block">
