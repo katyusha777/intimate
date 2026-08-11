@@ -14,13 +14,19 @@ const FONT = 'Arial, Helvetica, sans-serif';
 const esc = (s: string): string =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-/** One icon+link line inside the details cell. */
+/**
+ * One contact line: icon + label in TWO middle-aligned cells so the glyph and
+ * text sit centred on the same baseline in every client (inline vertical-align
+ * is unreliable in Outlook/Gmail — two <td>s are not).
+ */
 function row(icon: string, href: string, label: string): string {
   return (
-    `        <tr><td style="padding:3px 0;">` +
-    `<a href="${esc(href)}" style="color:#0a0a0a;text-decoration:none;font-family:${FONT};font-size:13px;line-height:20px;">` +
-    `<img src="${A}/${icon}.png" alt="" width="20" height="20" style="vertical-align:middle;border:0;margin-right:8px;" />` +
-    `<span style="vertical-align:middle;">${esc(label)}</span></a></td></tr>\n`
+    `        <tr>` +
+    `<td width="30" style="vertical-align:middle;padding:5px 0;">` +
+    `<a href="${esc(href)}"><img src="${A}/${icon}.png" alt="" width="22" height="22" style="display:block;border:0;" /></a></td>` +
+    `<td style="vertical-align:middle;padding:5px 0;">` +
+    `<a href="${esc(href)}" style="color:#0a0a0a;text-decoration:none;font-family:${FONT};font-size:13px;">${esc(label)}</a></td>` +
+    `</tr>\n`
   );
 }
 

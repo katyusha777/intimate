@@ -11,7 +11,9 @@ import sharp from 'sharp';
 import { mkdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-const BRAND = '#d50323';
+// Chip disc = the app-icon tile colour (#0a0a0a, the same near-black the lips
+// mark sits on) — clean + "sexy", not the brand red. Glyphs stay white.
+const CHIP = '#0a0a0a';
 const OUT = join(import.meta.dir, '../public/img/signature');
 
 // 24×24 white glyphs (Material call/email + send paper-plane). WhatsApp comes
@@ -26,7 +28,7 @@ const GLYPHS: Record<string, string> = {
 
 /** brand-red disc + centred white glyph → crisp @4x PNG (displayed at 22px). */
 async function chip(name: string, glyphPath: string) {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 44 44"><circle cx="22" cy="22" r="22" fill="${BRAND}"/><g transform="translate(10 10)"><path d="${glyphPath}" fill="#ffffff"/></g></svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 44 44"><circle cx="22" cy="22" r="22" fill="${CHIP}"/><g transform="translate(10 10)"><path d="${glyphPath}" fill="#ffffff"/></g></svg>`;
   await sharp(Buffer.from(svg)).resize(88, 88).png().toFile(join(OUT, `${name}.png`));
 }
 
