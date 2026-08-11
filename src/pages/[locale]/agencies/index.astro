@@ -187,39 +187,47 @@ const TERMS = [
       <div class="border border-foreground/15 bg-muted p-6 md:p-8">
         {
           done ? (
-            <div id="agency-done" tabindex="-1" class="outline-none">
+            <div tabindex="-1" class="outline-none">
               <p class="display text-3xl">{m.agencies_form_done_title()}</p>
               <p class="mt-3 leading-relaxed text-muted-foreground">{m.agencies_form_done_body()}</p>
             </div>
           ) : (
             <>
-              <h2 class="display text-2xl">{m.agencies_form_title()}</h2>
-              <form method="POST" action={actions.agencies.join} class="mt-5 space-y-5">
-                {result?.error && <p class="text-sm font-medium text-destructive">{m.agencies_form_error()}</p>}
-                <SlabField label={m.agencies_form_name()} name="name" required autocomplete="organization" />
-                <SlabField
-                  label={m.agencies_form_site()}
-                  name="siteUrl"
-                  type="text"
-                  inputmode="text"
-                  placeholder="youragency.nl"
-                  required
-                  autocomplete="url"
-                />
-                <SlabField label={m.agencies_form_email()} name="email" type="email" inputmode="email" required autocomplete="email" />
-                <SlabField label={m.agencies_form_phone()} name="phone" type="tel" inputmode="tel" required autocomplete="tel" />
-                <label class="flex cursor-pointer items-start gap-3">
-                  <input type="checkbox" name="consent" required class="cbx-box mt-0.5 flex-none cursor-pointer" />
-                  <span class="text-sm leading-relaxed text-muted-foreground">{m.agencies_form_consent()}</span>
-                </label>
-                <input type="hidden" name="locale" value={locale} />
-                <div>
-                  <Button type="submit" size="lg" class="block w-full">
-                    {m.agencies_form_submit()}
-                  </Button>
-                  <p class="mt-2.5 text-center text-xs text-muted-foreground">{m.agencies_form_fine()}</p>
-                </div>
-              </form>
+              {/* Revealed in place on a JS submit — no reload, so no scroll jump.
+                  When JS is off, the native POST re-renders the `done` branch. */}
+              <div data-agency-confirm hidden tabindex="-1" class="outline-none">
+                <p class="display text-3xl">{m.agencies_form_done_title()}</p>
+                <p class="mt-3 leading-relaxed text-muted-foreground">{m.agencies_form_done_body()}</p>
+              </div>
+              <div data-agency-formwrap>
+                <h2 class="display text-2xl">{m.agencies_form_title()}</h2>
+                <form method="POST" action={actions.agencies.join} data-agency-form class="mt-5 space-y-5">
+                  <p data-agency-error class:list={['text-sm font-medium text-destructive', !result?.error && 'hidden']}>{m.agencies_form_error()}</p>
+                  <SlabField label={m.agencies_form_name()} name="name" required autocomplete="organization" />
+                  <SlabField
+                    label={m.agencies_form_site()}
+                    name="siteUrl"
+                    type="text"
+                    inputmode="text"
+                    placeholder="youragency.nl"
+                    required
+                    autocomplete="url"
+                  />
+                  <SlabField label={m.agencies_form_email()} name="email" type="email" inputmode="email" required autocomplete="email" />
+                  <SlabField label={m.agencies_form_phone()} name="phone" type="tel" inputmode="tel" required autocomplete="tel" />
+                  <label class="flex cursor-pointer items-start gap-3">
+                    <input type="checkbox" name="consent" required class="cbx-box mt-0.5 flex-none cursor-pointer" />
+                    <span class="text-sm leading-relaxed text-muted-foreground">{m.agencies_form_consent()}</span>
+                  </label>
+                  <input type="hidden" name="locale" value={locale} />
+                  <div>
+                    <Button type="submit" size="lg" class="block w-full">
+                      {m.agencies_form_submit()}
+                    </Button>
+                    <p class="mt-2.5 text-center text-xs text-muted-foreground">{m.agencies_form_fine()}</p>
+                  </div>
+                </form>
+              </div>
             </>
           )
         }
@@ -227,17 +235,6 @@ const TERMS = [
       <SupportChips class="mt-8" />
     </section>
   </div>
-
-  {/* Native POST re-renders at the top, so the confirmation is off-screen —
-      scroll it into view (and focus it for screen readers) once we're done. */}
-  {
-    done && (
-      <script
-        is:inline
-        set:html="(function(){var j=document.getElementById('join');if(!j)return;var go=function(){j.scrollIntoView();};go();addEventListener('load',go);var d=document.getElementById('agency-done');if(d)d.focus({preventScroll:true});})();"
-      />
-    )
-  }
 
   <!-- §12.8 Sticky CTA: one tap from the yes — but it slides away once the real
        form is on screen, so the page never shows two competing CTAs. -->
@@ -254,6 +251,47 @@ const TERMS = [
   }
 
   <script>
+    import { actions } from 'astro:actions';
+
+    // Progressive enhancement: submit without a page reload and reveal the
+    // confirmation in place. A native POST reloads the page (resets scroll to
+    // the top) — that's the whole reason it jumped; here nothing navigates.
+    function initAgencyForm() {
+      const form = document.querySelector<HTMLFormElement>('[data-agency-form]');
+      if (!form || form.dataset.init) return;
+      form.dataset.init = '1';
+      const err = form.querySelector<HTMLElement>('[data-agency-error]');
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (form.dataset.loading || !form.reportValidity()) return;
+        form.dataset.loading = '1';
+        err?.classList.add('hidden');
+        let ok = false;
+        try {
+          const res = await actions.agencies.join(new FormData(form));
+          ok = !res?.error;
+        } catch {
+          ok = false;
+        }
+        if (!ok) {
+          // Anything but a clean success — validation, CSRF, offline — hands off
+          // to the native POST so the submission ALWAYS goes through (the server
+          // re-render surfaces the error). Belt-and-suspenders over the no-reload UX.
+          form.submit();
+          return;
+        }
+        form.dataset.loading = '';
+        document.querySelector('[data-agency-formwrap]')?.setAttribute('hidden', '');
+        document.querySelector('[data-sticky-cta]')?.remove();
+        const confirm = document.querySelector<HTMLElement>('[data-agency-confirm]');
+        if (!confirm) return;
+        confirm.removeAttribute('hidden');
+        const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+        confirm.scrollIntoView({ block: 'center', behavior: reduce ? 'auto' : 'smooth' });
+        confirm.focus({ preventScroll: true });
+      });
+    }
+
     // Hide the sticky CTA once the form scrolls into view (slide down), bring it
     // back when you scroll away (slide up) — never two CTAs fighting on screen.
     function initStickyCta() {
@@ -267,8 +305,13 @@ const TERMS = [
       });
       io.observe(join);
     }
-    initStickyCta();
-    document.addEventListener('astro:page-load', initStickyCta);
+
+    function initAgencies() {
+      initAgencyForm();
+      initStickyCta();
+    }
+    initAgencies();
+    document.addEventListener('astro:page-load', initAgencies);
   </script>
 </Layout>
 
