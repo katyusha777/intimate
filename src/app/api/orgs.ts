@@ -84,7 +84,13 @@ export async function createOrg(input: CreateOrgInput): Promise<string> {
     id: accountId, // NOT an auth.users id — this account cannot log in (yet)
     accountType: 'agency',
     displayName: input.name,
-    email: input.contactEmail || null,
+    // NO email: a placeholder agency account has no login, so it needs no
+    // email identity — and the contact address lives on orgs.contact_email.
+    // Writing it here would squat the accounts.email UNIQUE index: the public
+    // consent form (anonymous) reaches createOrg, so an attacker could pre-seed
+    // a victim's email and block their later Supabase signup (the signup
+    // trigger's ON CONFLICT is on id, not email → unique_violation aborts it).
+    email: null,
   });
   const [row] = await d
     .insert(orgs)
@@ -108,8 +114,8 @@ export async function createOrg(input: CreateOrgInput): Promise<string> {
 /**
  * The §12.7 consent form (PRE-LAUNCH-GRANT-CARDONE.md) → org row (pending,
  * crawl off until the owner reviews) + consent record. A repeat submission
- * (same site or email) re-stamps consent on the existing row — no junk orgs,
- * and the caller still notifies (a re-submit is a buying signal).
+ * (same site or email) matches the existing row — no junk orgs, and the caller
+ * still notifies (a re-submit is a buying signal).
  */
 export async function joinFromConsent(i: {
   name: string;
@@ -122,12 +128,16 @@ export async function joinFromConsent(i: {
   const d = db();
   const consent = { consentAt: new Date(), consentIp: i.ip, consentLocale: i.locale };
   const [hit] = await d
-    .select({ id: orgs.id })
+    .select({ id: orgs.id, consentAt: orgs.consentAt })
     .from(orgs)
     .where(or(eq(orgs.siteUrl, i.siteUrl), eq(orgs.contactEmail, i.email)))
     .limit(1);
   if (hit) {
-    await d.update(orgs).set(consent).where(eq(orgs.id, hit.id));
+    // Stamp consent ONLY if the row has none yet. The dedupe key includes the
+    // PUBLIC siteUrl, so overwriting an existing consent record would let anyone
+    // forge/corrupt another agency's §12.7 consent evidence (IP, timestamp).
+    // First consent (admin-created row, or a fresh match) still records.
+    if (!hit.consentAt) await d.update(orgs).set(consent).where(eq(orgs.id, hit.id));
     return { existing: true };
   }
   const id = await createOrg({
