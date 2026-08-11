@@ -97,8 +97,8 @@ const TERMS = [
 
     <!-- The demo: a live taste of the real product (real cards + real modal).
          Title + plain explanation up top, then the grid. -->
-    <section class="pt-10 md:pt-14">
-      <h2 class="display text-2xl">{m.agencies_demo_title()}</h2>
+    <section class="pt-14 md:pt-20">
+      <h2 class="display text-3xl">{m.agencies_demo_title()}</h2>
       <p class="mt-3 flex items-start gap-2 leading-relaxed text-muted-foreground">
         <svg class="mt-1 size-4 flex-none text-brand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 9 5 12 1.8-5.2L21 14Z"/><path d="M7.2 2.2 8 5.1"/><path d="m5.1 8-2.9-.8"/><path d="M14 4.1 12 6"/><path d="m6 12-1.9 2"/></svg>
         {m.agencies_demo_frame()}
@@ -110,15 +110,18 @@ const TERMS = [
 
     <!-- Why now: the two shifts (AI-first, phone-first) as what they MEAN for
          the agency — the reason joining pays, not a feature list. -->
-    <section class="pt-10 md:pt-14">
-      <h2 class="display text-2xl">{m.agencies_why_title()}</h2>
-      <div class="mt-4 grid gap-3 sm:grid-cols-2">
+    <section class="pt-14 md:pt-20">
+      <h2 class="display text-3xl">{m.agencies_why_title()}</h2>
+      <p class="mt-3 text-lg leading-relaxed text-muted-foreground">{m.agencies_why_lead()}</p>
+      <div class="mt-6 space-y-4">
         {
           WHY.map((pt) => (
-            <div class="border border-foreground/10 p-5">
-              <svg class="size-6 text-brand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" set:html={pt.icon} />
-              <p class="mt-3 font-condensed text-base font-bold uppercase tracking-wide">{pt.lead}</p>
-              <p class="mt-1 text-sm leading-relaxed text-muted-foreground">{pt.body}</p>
+            <div class="flex gap-4 border border-foreground/10 p-6">
+              <svg class="size-7 flex-none text-brand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" set:html={pt.icon} />
+              <div>
+                <p class="font-condensed text-lg font-bold uppercase tracking-wide">{pt.lead}</p>
+                <p class="mt-1.5 leading-relaxed text-muted-foreground">{pt.body}</p>
+              </div>
             </div>
           ))
         }
@@ -126,8 +129,8 @@ const TERMS = [
     </section>
 
     <!-- The offer terms — each with a mark so the section scans in a glance. -->
-    <section class="pt-10 md:pt-14">
-      <h2 class="display text-2xl">{m.agencies_terms_title()}</h2>
+    <section class="pt-14 md:pt-20">
+      <h2 class="display text-3xl">{m.agencies_terms_title()}</h2>
       <dl class="mt-3 divide-y divide-foreground/10">
         {
           TERMS.map((t) => (
@@ -146,9 +149,9 @@ const TERMS = [
     </section>
 
     <!-- §12.5 What's the catch? Agree first, then the zero-waste close. -->
-    <section class="pt-10 md:pt-14">
+    <section class="pt-14 md:pt-20">
       <!-- No .display: its ::after period would trail the question mark. -->
-      <h2 class="font-condensed text-2xl font-bold uppercase tracking-tight">{m.agencies_catch_title()}</h2>
+      <h2 class="font-condensed text-3xl font-bold uppercase tracking-tight">{m.agencies_catch_title()}</h2>
       <p class="mt-3 leading-relaxed text-muted-foreground">{m.agencies_catch_body()}</p>
       <div class="ink-slab mt-6 bg-foreground p-6 text-background">
         <p class="font-condensed text-xl font-bold uppercase tracking-wide">{m.agencies_catch_worst_lead()}</p>
@@ -158,8 +161,8 @@ const TERMS = [
     </section>
 
     <!-- §12.6 How it works: three steps ending in control. -->
-    <section class="pt-10 md:pt-14">
-      <h2 class="display text-2xl">{m.agencies_how_title()}</h2>
+    <section class="pt-14 md:pt-20">
+      <h2 class="display text-3xl">{m.agencies_how_title()}</h2>
       <ol class="mt-2">
         {
           [
@@ -183,7 +186,7 @@ const TERMS = [
 
     <!-- The form: the consent artifact, in its own panel so the one action on
          the page reads as separate and clear. 30s, four fields, one box. -->
-    <section id="join" class="scroll-mt-6 pt-10 md:pt-14">
+    <section id="join" class="scroll-mt-6 pt-14 md:pt-20">
       <div class="border border-foreground/15 bg-muted p-6 md:p-8">
         {
           done ? (
@@ -200,7 +203,7 @@ const TERMS = [
                 <p class="mt-3 leading-relaxed text-muted-foreground">{m.agencies_form_done_body()}</p>
               </div>
               <div data-agency-formwrap>
-                <h2 class="display text-2xl">{m.agencies_form_title()}</h2>
+                <h2 class="display text-3xl">{m.agencies_form_title()}</h2>
                 <form method="POST" action={actions.agencies.join} data-agency-form class="mt-5 space-y-5">
                   <p data-agency-error class:list={['text-sm font-medium text-destructive', !result?.error && 'hidden']}>{m.agencies_form_error()}</p>
                   <SlabField label={m.agencies_form_name()} name="name" required autocomplete="organization" />
