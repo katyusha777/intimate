@@ -4,6 +4,7 @@ import { env } from 'cloudflare:workers';
 import { paraglideMiddleware } from '@/paraglide/server';
 import { withRequestDb } from '@/db/client';
 import { negotiateLocale } from '@/lib/i18n';
+import { corridor, PRELAUNCH_HOST } from '@/lib/prelaunch';
 import { HOME_TTL_S, isAnonymousRequest, isCacheableHome, isCacheableProfile, servedFromCache, storeInCache, type CacheKv } from '@/lib/page-cache';
 import { captureError } from '@/lib/sentry';
 
@@ -147,6 +148,15 @@ const handle = (context: APIContext, next: MiddlewareNext) =>
     );
     return context.redirect(`/${locale}/agencies/`, 302);
   }
+  // Pre-launch corridor (lib/prelaunch.ts): the apex serves only the landing
+  // (home rewritten onto /prelaunch/) + /agencies; everything else 302s home.
+  // Delete this block at launch (INFRASTRUCTURE.md §2 flip-back checklist).
+  let rewriteTo: string | undefined;
+  if (context.url.hostname === PRELAUNCH_HOST) {
+    const c = corridor(context.url, context.request.headers.get('x-sheet') === '1');
+    if (c.kind === 'redirect') return context.redirect('/', 302);
+    if (c.kind === 'rewrite') rewriteTo = c.to;
+  }
   const legacy = LEGACY_ARTICLES[context.url.pathname.replace(/^\/|\/$/g, '')];
   if (legacy) return context.redirect(`/nl/blog/${legacy}/`, 301);
   // /admin is locale-less — send /{locale}/admin/* to the real thing.
@@ -184,9 +194,11 @@ const handle = (context: APIContext, next: MiddlewareNext) =>
       cacheableHome && !!warmSecret && context.request.headers.get('x-warm') === warmSecret;
     const hit = forceStore ? null : await servedFromCache(kv, dep, context.url);
     if (hit) return hit;
-    const res = await paraglideMiddleware(context.request, () => next());
+    // next(path) = Astro rewrite: context.url stays the ORIGINAL request URL,
+    // so the cache key + canonical stay /{locale}/ (host-scoped per A4).
+    const res = await paraglideMiddleware(context.request, () => (rewriteTo ? next(rewriteTo) : next()));
     return storeInCache(kv, dep, context.url, res, cacheableHome ? HOME_TTL_S : undefined);
   }
 
-  return paraglideMiddleware(context.request, () => next());
+  return paraglideMiddleware(context.request, () => (rewriteTo ? next(rewriteTo) : next()));
   });
