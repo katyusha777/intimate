@@ -95,17 +95,17 @@ const TERMS = [
       </div>
     </header>
 
-    <!-- The demo: the real product, not a screenshot. Tap = the real modal.
-         The frame + hint carry the sell (assumptive: "your agency"). -->
+    <!-- The demo: a live taste of the real product (real cards + real modal).
+         Title + plain explanation up top, then the grid. -->
     <section class="pt-10 md:pt-14">
-      <p class="eyebrow font-semibold text-brand">{m.agencies_demo_frame()}</p>
-      <div class="mt-4 grid grid-cols-2 gap-4">
+      <h2 class="display text-2xl">{m.agencies_demo_title()}</h2>
+      <p class="mt-3 flex items-start gap-2 leading-relaxed text-muted-foreground">
+        <svg class="mt-1 size-4 flex-none text-brand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 9 5 12 1.8-5.2L21 14Z"/><path d="M7.2 2.2 8 5.1"/><path d="m5.1 8-2.9-.8"/><path d="M14 4.1 12 6"/><path d="m6 12-1.9 2"/></svg>
+        {m.agencies_demo_frame()}
+      </p>
+      <div class="mt-5 grid grid-cols-2 gap-4">
         {demo.map((p, i) => <ProfileCard profile={p} loading={i < 2 ? 'eager' : 'lazy'} fetchpriority={i === 0 ? 'high' : undefined} />)}
       </div>
-      <p class="mt-4 flex items-center gap-2 text-sm font-medium text-muted-foreground">
-        <svg class="size-4 flex-none text-brand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 9 5 12 1.8-5.2L21 14Z"/><path d="M7.2 2.2 8 5.1"/><path d="m5.1 8-2.9-.8"/><path d="M14 4.1 12 6"/><path d="m6 12-1.9 2"/></svg>
-        {m.agencies_demo_hint()}
-      </p>
     </section>
 
     <!-- Why now: the two shifts (AI-first, phone-first) as what they MEAN for
@@ -150,9 +150,9 @@ const TERMS = [
       <!-- No .display: its ::after period would trail the question mark. -->
       <h2 class="font-condensed text-2xl font-bold uppercase tracking-tight">{m.agencies_catch_title()}</h2>
       <p class="mt-3 leading-relaxed text-muted-foreground">{m.agencies_catch_body()}</p>
-      <div class="ink-slab dark mt-6 bg-neutral-950 p-6 text-white">
+      <div class="ink-slab mt-6 bg-foreground p-6 text-background">
         <p class="font-condensed text-xl font-bold uppercase tracking-wide">{m.agencies_catch_worst_lead()}</p>
-        <p class="mt-2 leading-relaxed text-white/80">{m.agencies_catch_worst_body()}</p>
+        <p class="mt-2 leading-relaxed text-background/80">{m.agencies_catch_worst_body()}</p>
       </div>
       <p class="mt-4 text-sm text-muted-foreground">{m.agencies_catch_small()}</p>
     </section>
@@ -181,46 +181,49 @@ const TERMS = [
       </ol>
     </section>
 
-    <!-- §12.7 The form: the consent artifact. 30 seconds, four fields, one box. -->
+    <!-- The form: the consent artifact, in its own panel so the one action on
+         the page reads as separate and clear. 30s, four fields, one box. -->
     <section id="join" class="scroll-mt-6 pt-10 md:pt-14">
-      {
-        done ? (
-          <div class="ink-slab dark bg-neutral-950 p-8 text-white">
-            <p class="display text-3xl">{m.agencies_form_done_title()}</p>
-            <p class="mt-3 leading-relaxed text-white/85">{m.agencies_form_done_body()}</p>
-          </div>
-        ) : (
-          <>
-            <h2 class="display text-2xl">{m.agencies_form_title()}</h2>
-            <form method="POST" action={actions.agencies.join} class="mt-5 space-y-5">
-              {result?.error && <p class="text-sm font-medium text-destructive">{m.agencies_form_error()}</p>}
-              <SlabField label={m.agencies_form_name()} name="name" required autocomplete="organization" />
-              <SlabField
-                label={m.agencies_form_site()}
-                name="siteUrl"
-                type="text"
-                inputmode="text"
-                placeholder="youragency.nl"
-                required
-                autocomplete="url"
-              />
-              <SlabField label={m.agencies_form_email()} name="email" type="email" inputmode="email" required autocomplete="email" />
-              <SlabField label={m.agencies_form_phone()} name="phone" type="tel" inputmode="tel" autocomplete="tel" />
-              <label class="flex items-start gap-3">
-                <input type="checkbox" name="consent" required class="cbx-box mt-0.5 flex-none" />
-                <span class="text-sm leading-relaxed text-muted-foreground">{m.agencies_form_consent()}</span>
-              </label>
-              <input type="hidden" name="locale" value={locale} />
-              <div>
-                <Button type="submit" class="block w-full">
-                  {m.agencies_form_submit()}
-                </Button>
-                <p class="mt-2.5 text-center text-xs text-muted-foreground">{m.agencies_form_fine()}</p>
-              </div>
-            </form>
-          </>
-        )
-      }
+      <div class="border border-foreground/15 bg-muted p-6 md:p-8">
+        {
+          done ? (
+            <div>
+              <p class="display text-3xl">{m.agencies_form_done_title()}</p>
+              <p class="mt-3 leading-relaxed text-muted-foreground">{m.agencies_form_done_body()}</p>
+            </div>
+          ) : (
+            <>
+              <h2 class="display text-2xl">{m.agencies_form_title()}</h2>
+              <form method="POST" action={actions.agencies.join} class="mt-5 space-y-5">
+                {result?.error && <p class="text-sm font-medium text-destructive">{m.agencies_form_error()}</p>}
+                <SlabField label={m.agencies_form_name()} name="name" required autocomplete="organization" />
+                <SlabField
+                  label={m.agencies_form_site()}
+                  name="siteUrl"
+                  type="text"
+                  inputmode="text"
+                  placeholder="youragency.nl"
+                  required
+                  autocomplete="url"
+                />
+                <SlabField label={m.agencies_form_email()} name="email" type="email" inputmode="email" required autocomplete="email" />
+                <SlabField label={m.agencies_form_phone()} name="phone" type="tel" inputmode="tel" required autocomplete="tel" />
+                <label class="flex cursor-pointer items-start gap-3">
+                  <input type="checkbox" name="consent" required class="cbx-box mt-0.5 flex-none cursor-pointer" />
+                  <span class="text-sm leading-relaxed text-muted-foreground">{m.agencies_form_consent()}</span>
+                </label>
+                <input type="hidden" name="locale" value={locale} />
+                <div>
+                  <Button type="submit" size="lg" class="block w-full">
+                    {m.agencies_form_submit()}
+                  </Button>
+                  <p class="mt-2.5 text-center text-xs text-muted-foreground">{m.agencies_form_fine()}</p>
+                </div>
+              </form>
+            </>
+          )
+        }
+      </div>
       <SupportChips class="mt-8" />
     </section>
   </div>
@@ -230,8 +233,8 @@ const TERMS = [
   {
     !done && (
       <div class="agencies-cta glass fixed inset-x-0 bottom-0 z-40 border-t px-4 pt-3" data-sticky-cta>
-        <div class="mx-auto max-w-xl">
-          <Button as="a" href="#join" class="block w-full">
+        <div class="mx-auto flex max-w-xl justify-center">
+          <Button as="a" href="#join" size="lg">
             {m.agencies_sticky_cta()}
           </Button>
         </div>
