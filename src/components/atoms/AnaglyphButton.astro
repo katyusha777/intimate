@@ -120,6 +120,8 @@ const Tag = as ?? (href ? 'a' : 'button');
 
   .ana-btn__label {
     display: inline-block;
+    /* Metric-matched fallback so the centered label doesn't re-center on swap. */
+    font-family: "Barlow", "Barlow Button Fallback", ui-sans-serif, system-ui, sans-serif;
     font-weight: 600;
     font-style: italic;
     letter-spacing: 0.05em;

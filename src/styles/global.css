@@ -157,6 +157,18 @@
   line-gap-override: 0%;
 }
 
+/* Button labels render Barlow 600 *italic uppercase* + letter-spacing — narrower
+   than Arial faux-italic, so they need their own squeeze (measured), else the
+   centered nowrap label re-centers when the font swaps in. */
+@font-face {
+  font-family: "Barlow Button Fallback";
+  src: local("Arial"), local("Roboto");
+  size-adjust: 85.5%;
+  ascent-override: 116.96%;
+  descent-override: 23.39%;
+  line-gap-override: 0%;
+}
+
 @theme inline {
   --font-sans: "Barlow", "Barlow Fallback", ui-sans-serif, system-ui, sans-serif;
   /* titles, headings, profile names — anything display-ish */
