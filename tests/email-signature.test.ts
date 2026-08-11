@@ -15,7 +15,7 @@ test('photo cell present only with an image', () => {
   expect(emailSignatureHtml({ ...base, image: 'https://ex/x.jpg' })).toContain('src="https://ex/x.jpg"');
 });
 
-test('contact rows render only when filled, with correct hrefs', () => {
+test('contact icons render only when filled, with correct hrefs', () => {
   const html = emailSignatureHtml({
     ...base,
     phone: '+31 6 1234 5678',
@@ -27,11 +27,13 @@ test('contact rows render only when filled, with correct hrefs', () => {
   expect(html).toContain('mailto:anna@intimate.nl');
   expect(html).toContain('https://wa.me/31612345678'); // digits only, no +
   expect(html).toContain('https://t.me/anna'); // leading @ dropped in href
-  expect(html).toContain('@anna'); // …but shown with @ in the label
 });
 
-test('no contact table when nothing is filled', () => {
-  expect(emailSignatureHtml(base)).not.toContain('margin-top:10px');
+test('no contact chips when nothing is filled (wordmark still present)', () => {
+  const html = emailSignatureHtml(base);
+  expect(html).not.toContain('/phone.png');
+  expect(html).not.toContain('/telegram.png');
+  expect(html).toContain('/logo.png'); // the wordmark strip always renders
 });
 
 test('blank name falls back to placeholder', () => {

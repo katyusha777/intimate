@@ -469,7 +469,7 @@ export const admin = {
       dataUrl: z.string().regex(/^data:image\/jpeg;base64,/).max(900_000),
     }),
     handler: async ({ dataUrl }, context) => {
-      const session = await requireAdmin(context, ['super']);
+      await requireAdmin(context, ['super']);
       let bytes: ArrayBuffer;
       try {
         bytes = dataUrlToJpegBytes(dataUrl);
@@ -478,7 +478,8 @@ export const admin = {
       }
       const key = `sig/${crypto.randomUUID()}`;
       await mediaBucket().put(key, bytes, { httpMetadata: { contentType: 'image/jpeg' } });
-      await record(session, { action: 'tool_sig_image', entityType: 'tool', entityId: key });
+      // No audit_log row: this is a decorative signature asset, not a governance
+      // action on user data — and 'tool_sig_image' isn't in the admin_action enum.
       // Apex, NOT PUBLIC_SITE_ORIGIN (currently beta.*) — a signature outlives
       // the beta subdomain; /media serves this key on every custom domain.
       return { url: `https://intimate.nl/media/${key}` };
