@@ -3,7 +3,7 @@
  * agency prompt contract): LLM output is data, never trusted (hard rule 7).
  */
 import { describe, expect, test } from 'bun:test';
-import { pickAgencyExtras, pickProfileUrls } from '@/lib/import/normalize';
+import { pickAgencyExtras, pickPaginationUrls, pickProfileUrls } from '@/lib/import/normalize';
 import { buildExtractPrompt } from '@/lib/import/prompt';
 
 describe('pickProfileUrls', () => {
@@ -51,6 +51,23 @@ describe('pickProfileUrls', () => {
   test('non-array / missing input → empty', () => {
     expect(pickProfileUrls(null, base)).toEqual([]);
     expect(pickProfileUrls({ profileUrls: 'nope' }, base)).toEqual([]);
+  });
+});
+
+describe('pickPaginationUrls', () => {
+  test('same-site pagination links pass; external and self are dropped', () => {
+    const urls = pickPaginationUrls(
+      { nextPageUrls: ['https://schipholescort.com/models/page/2/', '/models/?page=3', 'https://other.com/page/2', 'https://schipholescort.com/models/'] },
+      'https://schipholescort.com/models/',
+    );
+    expect(urls).toEqual([
+      'https://schipholescort.com/models/page/2/',
+      'https://schipholescort.com/models/?page=3',
+    ]);
+  });
+
+  test('missing key → empty', () => {
+    expect(pickPaginationUrls({ profileUrls: ['https://x.nl/a'] }, 'https://x.nl/')).toEqual([]);
   });
 });
 

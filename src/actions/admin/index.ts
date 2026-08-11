@@ -25,7 +25,7 @@ import { retryImport } from './imports';
 import { assignProfileToOrg, createOrg, setOrgLogo, updateOrg } from './orgs';
 import { importFromUrl } from '@/lib/import';
 import { agencyImportFromUrl, discoverProfileUrls } from '@/lib/import/agency';
-import { enqueueOrgCrawl, processImportJobs } from '@/app/api/crawl';
+import { enqueueOrgCrawl, importAgencyProfile, processImportJobs } from '@/app/api/crawl';
 import { dataUrlToJpegBytes } from '@/lib/jpeg-strip';
 import { CITIES, type CitySlug } from '@/lib/taxonomy';
 import { INDEXNOW_KEY, submitIndexNow } from '@/lib/indexnow';
@@ -448,6 +448,28 @@ export const admin = {
       try {
         const { fields, warnings, name, age, photoUrls, raw, cost } = await agencyImportFromUrl(url);
         return { fields, warnings, name, age, photoUrls, raw, cost };
+      } catch (e) {
+        throw new ActionError({ code: 'BAD_REQUEST', message: (e as Error).message });
+      }
+    },
+  }),
+
+  // "Import & create": run ONE url through the REAL crawl path — creates the
+  // pending_review profile (photos included) or patches the existing match.
+  // The test that proves the pipeline is the pipeline.
+  orgImportCreate: defineAction({
+    input: z.object({ id: z.string().uuid(), url: z.string().url().max(500) }),
+    handler: async ({ id, url }, context) => {
+      const session = await requireAdmin(context, ['super']);
+      try {
+        const r = await importAgencyProfile(id, url);
+        await record(session, {
+          action: 'crawl_org',
+          entityType: 'org',
+          entityId: id,
+          meta: { note: `import ${url} → profile ${r.profileId} (${r.created ? 'created' : 'updated'})` },
+        });
+        return r;
       } catch (e) {
         throw new ActionError({ code: 'BAD_REQUEST', message: (e as Error).message });
       }

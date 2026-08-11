@@ -6,7 +6,9 @@
 export {
   crawlTick,
   enqueueOrgCrawl,
+  importAgencyProfile,
   processImportJobs,
+  type AgencyImportApplied,
   type CrawlEnqueueResult,
   type CrawlProcessResult,
   type CrawlTickResult,

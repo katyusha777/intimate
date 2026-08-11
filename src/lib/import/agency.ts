@@ -14,7 +14,7 @@
 import { firecrawlScrape } from './firecrawl';
 import { llmExtract } from './extract';
 import { buildExtractPrompt } from './prompt';
-import { normalizeImported, pickAgencyExtras, pickProfileUrls, type ImportResult } from './normalize';
+import { normalizeImported, pickAgencyExtras, pickPaginationUrls, pickProfileUrls, type ImportResult } from './normalize';
 
 export interface AgencyImportOutcome extends ImportResult {
   name?: string;
@@ -25,14 +25,37 @@ export interface AgencyImportOutcome extends ImportResult {
   cost: number;
 }
 
-const DISCOVER_PROMPT = `You are given the scraped markdown and the link list of ONE page from a Dutch escort-agency website (its homepage or roster/"our ladies" page). Return ONLY a JSON object: {"profileUrls": [...]} — the absolute URLs of the INDIVIDUAL profile/detail pages of the people advertised on this site. Rules: one URL per person; exclude navigation, category, booking, contact, blog, rates and legal pages; exclude external sites; if the same person has several links keep the canonical detail page. Empty array if none found.`;
+const DISCOVER_PROMPT = `You are given the scraped markdown and the link list of ONE page from a Dutch escort-agency website (its homepage or roster/"our ladies" page). Return ONLY a JSON object: {"profileUrls": [...], "nextPageUrls": [...]}.
+"profileUrls": the absolute URLs of the INDIVIDUAL profile/detail pages of the people advertised on this site. Rules: one URL per person; exclude navigation, category, booking, contact, blog, rates and legal pages; exclude external sites; if the same person has several links keep the canonical detail page. Empty array if none found.
+"nextPageUrls": pagination URLs of THIS SAME roster listing (the "next" / numbered page links, e.g. ?page=2 or /models/page/2/) that show MORE people. Only real pagination of this listing — never other sections. Empty array if single-page.`;
 
-/** Roster/homepage → profile-page URLs. One Firecrawl render + one LLM pass. */
-export async function discoverProfileUrls(listUrl: string): Promise<{ urls: string[]; cost: number }> {
-  const { markdown, links } = await firecrawlScrape({ url: listUrl, onlyMainContent: false, waitFor: 2500 });
-  const user = `${markdown.slice(0, 30_000)}\n\nLINKS ON PAGE:\n${links.slice(0, 500).join('\n')}`;
-  const { raw, cost } = await llmExtract(user, DISCOVER_PROMPT);
-  return { urls: pickProfileUrls(raw, listUrl), cost };
+/** Roster pages allowed per discovery run — one Firecrawl + one LLM call each.
+ *  ponytail: 8 pages ≈ 300+ profiles, far past any real NL agency; raise if one
+ *  ever paginates deeper. */
+const MAX_ROSTER_PAGES = 8;
+
+/** Roster/homepage → profile-page URLs, following the listing's pagination. */
+export async function discoverProfileUrls(
+  listUrl: string,
+): Promise<{ urls: string[]; cost: number; pages: number }> {
+  const urls: string[] = [];
+  const queue = [listUrl];
+  const visited = new Set<string>();
+  let cost = 0;
+  let pages = 0;
+  while (queue.length && pages < MAX_ROSTER_PAGES) {
+    const pageUrl = queue.shift()!;
+    if (visited.has(pageUrl)) continue;
+    visited.add(pageUrl);
+    pages++;
+    const { markdown, links } = await firecrawlScrape({ url: pageUrl, onlyMainContent: false, waitFor: 2500 });
+    const user = `${markdown.slice(0, 30_000)}\n\nLINKS ON PAGE:\n${links.slice(0, 500).join('\n')}`;
+    const { raw, cost: c } = await llmExtract(user, DISCOVER_PROMPT);
+    cost += c;
+    for (const u of pickProfileUrls(raw, pageUrl)) if (!urls.includes(u)) urls.push(u);
+    for (const p of pickPaginationUrls(raw, pageUrl)) if (!visited.has(p) && !queue.includes(p)) queue.push(p);
+  }
+  return { urls, cost, pages };
 }
 
 /** One agency profile page → normalized fields + identity + photo URLs. */

@@ -162,9 +162,9 @@ export function normalizeImported(raw: unknown): ImportResult {
 // boundary: LLM output in, validated values out.
 // ---------------------------------------------------------------------------
 
-/** Untrusted {profileUrls} from discovery → clean absolute same-site URLs. */
-export function pickProfileUrls(raw: unknown, baseUrl: string): string[] {
-  const arr = (raw as { profileUrls?: unknown })?.profileUrls;
+/** Untrusted URL list → clean absolute same-site URLs (subdomains allowed,
+ *  base page excluded) — the LLM must not send us elsewhere. */
+function sameSiteUrls(arr: unknown, baseUrl: string, cap: number): string[] {
   if (!Array.isArray(arr)) return [];
   const base = new URL(baseUrl);
   const apex = base.hostname.split('.').slice(-2).join('.');
@@ -178,15 +178,24 @@ export function pickProfileUrls(raw: unknown, baseUrl: string): string[] {
       continue;
     }
     if (u.protocol !== 'https:' && u.protocol !== 'http:') continue;
-    // Same site only (subdomains allowed) — the LLM must not send us elsewhere.
     if (u.hostname !== base.hostname && !u.hostname.endsWith(`.${apex}`) && u.hostname !== apex) continue;
     u.hash = '';
     const href = u.href;
     if (href === base.href || out.includes(href)) continue;
     out.push(href);
-    if (out.length >= 100) break;
+    if (out.length >= cap) break;
   }
   return out;
+}
+
+/** Untrusted {profileUrls} from discovery → clean absolute same-site URLs. */
+export function pickProfileUrls(raw: unknown, baseUrl: string): string[] {
+  return sameSiteUrls((raw as { profileUrls?: unknown })?.profileUrls, baseUrl, 100);
+}
+
+/** Untrusted {nextPageUrls} (roster pagination) → same-site URLs, small cap. */
+export function pickPaginationUrls(raw: unknown, baseUrl: string): string[] {
+  return sameSiteUrls((raw as { nextPageUrls?: unknown })?.nextPageUrls, baseUrl, 10);
 }
 
 /** Untrusted agency-extraction extras → validated identity + photo URLs. */

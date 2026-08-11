@@ -138,7 +138,10 @@ const label = 'block text-2xs uppercase tracking-wide text-muted-foreground';
                 <div class="flex flex-wrap items-center gap-3">
                   <input data-test-url type="url" placeholder="test one profile URL…" class={`${input} max-w-md`} />
                   <button type="button" data-test-import class={btn}>Test import</button>
+                  <button type="button" data-import-create data-org={detail.id} class={btn}>Import &amp; create profile</button>
+                  <span data-test-status class="text-2xs text-muted-foreground" />
                 </div>
+                <div data-test-photos class="hidden flex-wrap gap-2" />
                 <pre data-test-out class="hidden max-h-96 overflow-auto border border-border bg-muted p-3 text-xs" />
               </div>
 
@@ -276,7 +279,7 @@ const label = 'block text-2xs uppercase tracking-wide text-muted-foreground';
       const { data, error } = await actions.admin.orgDiscoverPreview({ url });
       btn.disabled = false;
       if (error) { status.textContent = `Error: ${error.message}`; return; }
-      status.textContent = `${data.urls.length} profile URL(s) · $${data.cost.toFixed(4)}`;
+      status.textContent = `${data.urls.length} profile URL(s) across ${data.pages} page(s) · $${data.cost.toFixed(4)}`;
       out.classList.remove('hidden');
       out.innerHTML = data.urls.map((u: string) => `<div class="truncate"><button type="button" data-pick-url="${u}" class="underline underline-offset-2">test</button> ${u}</div>`).join('');
       out.querySelectorAll<HTMLButtonElement>('[data-pick-url]').forEach((b) =>
@@ -287,20 +290,49 @@ const label = 'block text-2xs uppercase tracking-wide text-muted-foreground';
       );
     });
 
-    // Test one profile URL
+    // Test one profile URL — dry run, shows the photos it WOULD import.
     document.querySelector<HTMLButtonElement>('[data-test-import]')?.addEventListener('click', async (e) => {
       const btn = e.currentTarget as HTMLButtonElement;
       const url = document.querySelector<HTMLInputElement>('[data-test-url]')!.value.trim();
       const out = document.querySelector<HTMLPreElement>('[data-test-out]')!;
+      const photos = document.querySelector<HTMLElement>('[data-test-photos]')!;
       if (!url) return;
       btn.disabled = true;
+      photos.classList.add('hidden');
       out.classList.remove('hidden');
       out.textContent = 'Scraping + extracting… (~1 min)';
       const { data, error } = await actions.admin.orgImportPreview({ url });
       btn.disabled = false;
-      out.textContent = error
-        ? `Error: ${error.message}`
-        : JSON.stringify({ name: data.name, age: data.age, photos: data.photoUrls.length, warnings: data.warnings, fields: data.fields, cost: data.cost }, null, 2);
+      if (error) { out.textContent = `Error: ${error.message}`; return; }
+      if (data.photoUrls.length) {
+        photos.classList.remove('hidden');
+        photos.classList.add('flex');
+        // Hotlinked straight from the agency's site — preview only; the real
+        // import re-encodes into R2.
+        photos.innerHTML = data.photoUrls
+          .map((u: string) => `<img src="${u}" referrerpolicy="no-referrer" loading="lazy" class="h-28 w-auto border border-border object-cover" />`)
+          .join('');
+      }
+      out.textContent = JSON.stringify(
+        { name: data.name, age: data.age, photoUrls: data.photoUrls, warnings: data.warnings, fields: data.fields, cost: data.cost },
+        null,
+        2,
+      );
+    });
+
+    // Import & create — the REAL pipeline for one URL; lands in moderation.
+    document.querySelector<HTMLButtonElement>('[data-import-create]')?.addEventListener('click', async (e) => {
+      const btn = e.currentTarget as HTMLButtonElement;
+      const url = document.querySelector<HTMLInputElement>('[data-test-url]')!.value.trim();
+      const status = document.querySelector<HTMLElement>('[data-test-status]')!;
+      if (!url) { status.textContent = 'Enter a profile URL first.'; return; }
+      if (!confirm('Import this URL and create/update the profile (photos included)?')) return;
+      btn.disabled = true;
+      status.textContent = 'Importing… (~1 min)';
+      const { data, error } = await actions.admin.orgImportCreate({ id: btn.dataset.org!, url });
+      btn.disabled = false;
+      if (error) { status.textContent = `Error: ${error.message}`; return; }
+      status.innerHTML = `${data.created ? 'Created' : 'Updated'} ${data.name ?? 'profile'} · ${data.photosStored} photo(s) → <a class="underline underline-offset-2" href="/admin/profiles?id=${data.profileId}">open profile</a>`;
     });
 
     // Crawl now → drain the queue with visible progress

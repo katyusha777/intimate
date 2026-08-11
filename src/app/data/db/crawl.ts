@@ -47,7 +47,7 @@ export async function enqueueOrgCrawl(orgId: string): Promise<CrawlEnqueueResult
   const listUrl = org.crawlListUrl?.trim();
   if (!listUrl) throw new Error('no crawl URL configured for this agency');
 
-  const { urls } = await discoverProfileUrls(listUrl);
+  const { urls, pages } = await discoverProfileUrls(listUrl);
 
   // URL already ours → update job; unseen → create job; open job → skip.
   const existing = await d
@@ -71,7 +71,7 @@ export async function enqueueOrgCrawl(orgId: string): Promise<CrawlEnqueueResult
     else queuedNew++;
   }
 
-  const note = `discovered ${urls.length} · queued ${queuedNew} new + ${queuedUpdates} update(s)`;
+  const note = `discovered ${urls.length} across ${pages} page(s) · queued ${queuedNew} new + ${queuedUpdates} update(s)`;
   await d.update(orgs).set({ lastCrawledAt: sql`now()`, lastCrawlNote: note }).where(eq(orgs.id, orgId));
   return { discovered: urls.length, queuedNew, queuedUpdates };
 }
@@ -133,27 +133,57 @@ export async function processImportJobs(limit = 2): Promise<CrawlProcessResult> 
 type Job = typeof importJobs.$inferSelect;
 
 async function runAgencyJob(d: Db, job: Job): Promise<void> {
-  const { fields, name, age, photoUrls } = await agencyImportFromUrl(job.sourceUrl);
-  await d
-    .update(importJobs)
-    .set({ state: 'extracting', profileName: name ?? null })
-    .where(eq(importJobs.id, job.id));
+  const r = await importAgencyProfile(job.orgId!, job.sourceUrl, {
+    existingProfileId: job.profileId ?? undefined,
+  });
+  await d.update(importJobs).set({ profileName: r.name ?? null }).where(eq(importJobs.id, job.id));
+}
 
-  if (job.profileId) {
+export interface AgencyImportApplied {
+  profileId: string;
+  created: boolean;
+  name?: string;
+  photosStored: number;
+}
+
+/**
+ * Import ONE agency profile URL: patch the matching profile (by explicit id, or
+ * imported_from_url within the org) or create a new `pending_review` one with
+ * photos. Shared by the job runner and the admin "Import & create" test action
+ * — the test path IS the real path.
+ */
+export async function importAgencyProfile(
+  orgId: string,
+  url: string,
+  opts: { existingProfileId?: string } = {},
+): Promise<AgencyImportApplied> {
+  const d = db();
+  const { fields, name, age, photoUrls } = await agencyImportFromUrl(url);
+
+  let profileId = opts.existingProfileId;
+  if (!profileId) {
+    const [hit] = await d
+      .select({ id: profiles.id })
+      .from(profiles)
+      .where(and(eq(profiles.orgId, orgId), eq(profiles.importedFromUrl, url)))
+      .limit(1);
+    profileId = hit?.id;
+  }
+  if (profileId) {
     // Re-crawl: the agency's site is the source of truth for its own roster —
     // patch mapped fields (and the working name) in place.
     const update = { ...profileUpdate(fields), ...(name ? { name } : {}) };
     if (Object.keys(update).length) {
-      await d.update(profiles).set(update).where(eq(profiles.id, job.profileId));
+      await d.update(profiles).set(update).where(eq(profiles.id, profileId));
     }
-    return;
+    return { profileId, created: false, name, photosStored: 0 };
   }
 
   // New profile — identity + the 21+ policy floor are non-negotiable.
   if (!name) throw new Error('no name found on the page');
   if (!age) throw new Error('no age listed on the page — cannot verify the 21+ policy');
   if (age < POLICY_MIN_AGE) throw new Error(`listed age ${age} is below the policy minimum ${POLICY_MIN_AGE}`);
-  const [org] = await d.select().from(orgs).where(eq(orgs.id, job.orgId!)).limit(1);
+  const [org] = await d.select().from(orgs).where(eq(orgs.id, orgId)).limit(1);
   if (!org) throw new Error('agency no longer exists');
 
   const city = fields.city ?? org.city;
@@ -171,16 +201,15 @@ async function runAgencyJob(d: Db, job: Job): Promise<void> {
       birthDate: birthDateForAge(age),
       gender: fields.gender ?? 'female',
       city,
-      importedFromUrl: job.sourceUrl,
+      importedFromUrl: url,
     })
     .returning({ id: profiles.id });
+  if (!created) throw new Error('profile insert returned no row');
 
-  if (created && photoUrls.length) {
-    await d.update(importJobs).set({ state: 'processing_images' }).where(eq(importJobs.id, job.id));
-    await importPhotos(d, created.id, photoUrls);
-  }
+  const photosStored = photoUrls.length ? await importPhotos(d, created.id, photoUrls) : 0;
   // ponytail: re-crawls never refresh photos (initial import only) — add
   // source-URL tracking on media rows when agencies rotate galleries.
+  return { profileId: created.id, created: true, name, photosStored };
 }
 
 /** Fetch → re-encode (EXIF stripped) → R2 → `media` row (pending_review). */
