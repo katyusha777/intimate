@@ -26,6 +26,11 @@ import '@fontsource/barlow-condensed/500.css';
 import '@fontsource/barlow-condensed/600.css';
 import '@fontsource/barlow-condensed/700.css';
 import '@/styles/global.css';
+// Preload the two first-paint faces (condensed 700 = the display H1, sans 400 =
+// body) so the real font usually wins the swap race; the metric-matched
+// fallbacks in global.css guarantee no reflow even when it doesn't.
+import barlowCondensed700 from '@fontsource/barlow-condensed/files/barlow-condensed-latin-700-normal.woff2?url';
+import barlow400 from '@fontsource/barlow/files/barlow-latin-400-normal.woff2?url';
 
 interface Props {
   title?: string;
@@ -137,6 +142,8 @@ const unread = session && bare !== true ? await messagingApi.unreadCount(session
     <meta name="twitter:image" content={ogImage} />
     <meta name="twitter:image:alt" content={m.app_name()} />
     <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="preload" as="font" type="font/woff2" href={barlowCondensed700} crossorigin="anonymous" />
+    <link rel="preload" as="font" type="font/woff2" href={barlow400} crossorigin="anonymous" />
     <!-- Font Awesome 8 Pro (kit: thin + brands), self-hosted from public/fa/.
          Loaded ASYNC (print→all swap): 41KB of icon CSS was the biggest
          render-blocker (~1.3s on slow 4G) and icons aren't first-paint

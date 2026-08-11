@@ -132,10 +132,35 @@
   --shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.25);
 }
 
+/* Metric-matched fallbacks: local Arial/Roboto pre-scaled to Barlow's exact box
+   so the webfont swap (font-display: swap) reflows nothing — kills the FOUT
+   page-jump platform-wide. size-adjust/overrides computed from the font files
+   with fonttools; the 82% condensed size-adjust is what stops the hero heading
+   snapping from two lines to one when Barlow Condensed loads. */
+@font-face {
+  font-family: "Barlow Fallback";
+  src: local("Arial"), local("Roboto");
+  size-adjust: 100.89%;
+  ascent-override: 99.12%;
+  descent-override: 19.82%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: "Barlow Condensed Fallback";
+  src: local("Arial"), local("Roboto");
+  /* Tuned to the display headings (bold + uppercase + tracking-tight — the
+     visible hero jump), measured against real Barlow Condensed, not the raw
+     mixed-case average (which under-squeezes all-caps and still wrapped a line). */
+  size-adjust: 67.88%;
+  ascent-override: 147.32%;
+  descent-override: 29.46%;
+  line-gap-override: 0%;
+}
+
 @theme inline {
-  --font-sans: "Barlow", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Barlow", "Barlow Fallback", ui-sans-serif, system-ui, sans-serif;
   /* titles, headings, profile names — anything display-ish */
-  --font-condensed: "Barlow Condensed", "Barlow", ui-sans-serif, system-ui, sans-serif;
+  --font-condensed: "Barlow Condensed", "Barlow Condensed Fallback", "Barlow", ui-sans-serif, system-ui, sans-serif;
   /* micro-label size + the one sanctioned wide tracking (style test bans arbitrary values) */
   --text-2xs: 0.6875rem;
   --text-2xs--line-height: 0.875rem;
