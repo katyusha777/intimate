@@ -20,7 +20,12 @@ const locale = Astro.params.locale;
 if (!isLocale(locale)) return new Response(null, { status: 404 });
 
 const result = Astro.getActionResult(actions.prelaunch.join);
-const done = result && !result.error;
+// Advertiser signup returns an href — she's a real (draft) account now, so send
+// her into the onboarding builder. The session cookie the action set rides this
+// same redirect response (supabaseServer writes through Astro.cookies).
+if (result?.data?.href) return Astro.redirect(result.data.href);
+const done = !!result?.data?.ok; // client lead: show the "you're on the list" card
+const emailExists = !!result?.data?.emailExists;
 
 /* Canonical is the HOME URL — this template answers /{locale}/ on the apex;
  * the /prelaunch path itself is an internal address, never the public one. */
@@ -124,9 +129,16 @@ const jsonLd = [websiteJsonLd(Astro.url.origin, locale), organizationJsonLd(Astr
                       data-prelaunch-form
                       data-name-advertiser={m.prelaunch_form_name()}
                       data-name-client={m.prelaunch_name_client()}
-                      data-contacts-hint={m.prelaunch_contacts_hint()}
                     >
                       {result?.error && <p class="text-sm font-medium text-destructive">{m.prelaunch_form_error()}</p>}
+                      {emailExists && (
+                        <p class="text-sm font-medium text-white/85">
+                          {m.prelaunch_email_exists()}{' '}
+                          <a href={localizePath('/account/')} class="text-brand underline underline-offset-4">
+                            {m.prelaunch_login_link()} →
+                          </a>
+                        </p>
+                      )}
 
                       {/* Pick FIRST — two equal cards, no default (a deliberate
                           tap). Agencies get the richer /agencies/ flow, linked below. */}
@@ -150,12 +162,12 @@ const jsonLd = [websiteJsonLd(Astro.url.origin, locale), organizationJsonLd(Astr
                       <SlabField class="js-name-field" label={m.prelaunch_form_name()} name="name" required autocomplete="nickname" />
                       <SlabField label={m.prelaunch_form_email()} name="email" type="email" inputmode="email" required autocomplete="email" />
 
-                      {/* Contacts — advertiser only (CSS-revealed below), at least one. */}
-                      <div data-contacts class="space-y-4">
-                        <SlabField label={m.prelaunch_contact_phone()} name="phone" type="tel" inputmode="tel" autocomplete="tel" />
-                        <SlabField label={m.prelaunch_contact_whatsapp()} name="whatsapp" type="tel" inputmode="tel" />
-                        <SlabField label={m.prelaunch_contact_telegram()} name="telegram" placeholder="@username" />
-                        <p class="text-xs text-white/50">{m.prelaunch_contacts_hint()}</p>
+                      {/* Advertiser only (CSS-revealed below): the one extra field a
+                          real signup needs. `required` is toggled in JS so a hidden
+                          client field never blocks submit; the server enforces it too. */}
+                      <div data-adv-only>
+                        <SlabField label={m.prelaunch_form_password()} name="password" type="password" autocomplete="new-password" />
+                        <p class="mt-1.5 text-xs text-white/50">{m.prelaunch_password_hint()}</p>
                       </div>
 
                       <input type="hidden" name="locale" value={locale} />
@@ -184,28 +196,24 @@ const jsonLd = [websiteJsonLd(Astro.url.origin, locale), organizationJsonLd(Astr
 
   <script>
     // The name field means a different thing per join-type — swap its label so
-    // "Working name" doesn't greet a browsing client. Also enforce the
-    // advertiser "at least one contact" rule client-side (server is the real gate).
+    // "Working name" doesn't greet a browsing client. And require the password
+    // only for the advertiser path (server is the real gate).
     function initKindLabel() {
       const form = document.querySelector<HTMLFormElement>('[data-prelaunch-form]');
       if (!form || form.dataset.kindInit) return;
       form.dataset.kindInit = '1';
       const label = form.querySelector<HTMLElement>('.js-name-field > span');
       const radios = form.querySelectorAll<HTMLInputElement>('input[name="kind"]');
-      const contacts = ['phone', 'whatsapp', 'telegram'].map((n) => form.querySelector<HTMLInputElement>(`[name="${n}"]`));
+      const password = form.querySelector<HTMLInputElement>('input[name="password"]');
       const checked = () => form.querySelector<HTMLInputElement>('input[name="kind"]:checked')?.value;
       const sync = () => {
         const kind = checked();
         if (label && kind) label.textContent = kind === 'client' ? form.dataset.nameClient! : form.dataset.nameAdvertiser!;
+        // Password is revealed by CSS for the advertiser choice; keep `required`
+        // in step so a hidden field never blocks the client submit.
+        if (password) password.required = kind === 'advertiser';
       };
       radios.forEach((r) => r.addEventListener('change', sync));
-      contacts.forEach((c) => c?.addEventListener('input', () => contacts.forEach((x) => x?.setCustomValidity(''))));
-      form.addEventListener('submit', (e) => {
-        if (checked() !== 'advertiser' || contacts.some((c) => c?.value.trim())) return;
-        e.preventDefault();
-        contacts[0]?.setCustomValidity(form.dataset.contactsHint || '');
-        contacts[0]?.reportValidity();
-      });
       sync();
     }
     initKindLabel();
@@ -221,12 +229,12 @@ const jsonLd = [websiteJsonLd(Astro.url.origin, locale), organizationJsonLd(Astr
   .ink-slab {
     clip-path: polygon(0 6px, 100% 0, 100% calc(100% - 6px), 0 100%);
   }
-  /* Contacts belong to the independent professional — revealed by the card
-     choice, zero JS. Clients (just browsing) never see them. */
-  [data-contacts] {
+  /* The password field belongs to the advertiser signup — revealed by the card
+     choice, zero JS. Clients (just browsing) leave a lead, no account. */
+  [data-adv-only] {
     display: none;
   }
-  form:has(input[name='kind'][value='advertiser']:checked) [data-contacts] {
+  form:has(input[name='kind'][value='advertiser']:checked) [data-adv-only] {
     display: block;
   }
 </style>

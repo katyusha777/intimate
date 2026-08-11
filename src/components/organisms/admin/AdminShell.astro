@@ -68,6 +68,8 @@ const NAV_GROUPS: { header?: string; items: NavItem[] }[] = [
   ] },
   { header: m.adm_navgrp_system(), items: [
     { key: 'settings', label: m.settings_title(), href: '/admin/settings', roles: ['super'], icon: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 7 19.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 3 13.6a2 2 0 1 1 0-4a1.7 1.7 0 0 0 1.6-2.3L4.5 7a2 2 0 1 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 10.4 3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0 1.2 2.9H21a2 2 0 1 1 0 4Z"/>' },
+    // Internal utilities (English, like Danger zone) — currently the email-signature builder.
+    { key: 'tools', label: 'Tools', href: '/admin/tools', roles: ['super'], icon: '<path d="M14.7 6.3a4 4 0 0 0-5.2 5.2L3 18v3h3l6.5-6.5a4 4 0 0 0 5.2-5.2l-2.7 2.7-2.5-2.5z"/>' },
     // Owner-only (isOwner, not a role) — destructive raw-data tools. English on
     // purpose: single-viewer internal surface, no i18n keys (ADMIN.md §1).
     { key: 'danger', label: 'Danger zone', href: '/admin/danger', roles: [], owner: true, icon: '<path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/>' },

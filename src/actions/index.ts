@@ -815,41 +815,59 @@ export const server = {
     }),
   },
 
-  // Pre-launch campaign (PRE-LAUNCH-GRANT-CARDONE.md) — both are anonymous
-  // plain-HTML form posts (accept: 'form', zero JS). Owner is notified via
-  // Pushover (admin notifications are Pushover-only — lib/pushover.ts).
+  // Pre-launch campaign (PRE-LAUNCH-GRANT-CARDONE.md) — anonymous plain-HTML
+  // form post (accept: 'form', zero JS). An ADVERTISER creates a real (draft)
+  // account HERE and is dropped into the actual onboarding, so she builds her
+  // profile now and goes live the instant we launch. A CLIENT stays a lead
+  // (nothing to browse pre-launch — the marketplace is on beta). Owner is
+  // notified via Pushover (advertiser: from sessionApi.register; client: below).
   prelaunch: {
     join: defineAction({
       accept: "form",
       input: z
         .object({
-          // Who's signing up — steers the closer's pitch and gates the contact
-          // rule below. Persisted so the admin pre-signups tab can split them.
+          // Who's signing up — steers the branch below and, for a client, which
+          // pitch the admin pre-signups tab opens with.
           kind: z.enum(["agency", "advertiser", "client"]).optional(),
           name: z.string().trim().min(1).max(80),
           email: emailField,
-          phone: z.string().trim().max(30).optional(),
-          whatsapp: z.string().trim().max(30).optional(),
-          telegram: z.string().trim().max(40).optional(),
+          // Advertiser-only: the one extra field a real signup needs. Enforced
+          // (min 8) in the refine below; ignored on the client lead path.
+          password: z.string().optional(),
           locale: z.enum(LOCALES),
         })
-        // An independent professional is only reachable if they leave a handle —
-        // at least one of the three. Clients (just browsing) need none.
-        .refine((i) => i.kind !== "advertiser" || i.phone || i.whatsapp || i.telegram, {
-          path: ["phone"],
+        .refine((i) => i.kind !== "advertiser" || (i.password?.length ?? 0) >= 8, {
+          path: ["password"],
         }),
       handler: async (input, context) => {
         await requireUnderLimit("prelaunch-ip", clientIp(context), 10);
+        // Advertiser → real draft account → straight into /account/setup (photos,
+        // ID, profile details). The session cookie is set on this response, so the
+        // page-level Astro.redirect carries it. Draft profile goes live at launch.
+        if (input.kind === "advertiser" && input.password) {
+          const { emailExists, needsConfirmation } = await sessionApi.register(context, {
+            email: input.email,
+            password: input.password,
+            role: "advertiser",
+            displayName: input.name,
+          });
+          if (emailExists) return { href: null, ok: false, emailExists: true };
+          // Confirm-email is OFF (auto-login), so needsConfirmation never fires;
+          // guard anyway — a null href just re-renders the form.
+          return {
+            href: needsConfirmation ? null : `/${input.locale}/account/setup/`,
+            ok: false,
+            emailExists: false,
+          };
+        }
+        // Client (or unspecified) → lead row + admin ping.
         await addPrelaunchLead(input);
-        const contacts = [input.phone, input.whatsapp && `wa ${input.whatsapp}`, input.telegram && `tg ${input.telegram}`]
-          .filter(Boolean)
-          .join(" · ");
         pushoverAdmins(
           "prelaunch_lead",
           `Pre-launch signup: ${input.name}${input.kind ? ` (${input.kind})` : ""}`,
-          `${input.email}\n${contacts || "-"} · ${input.locale}`,
+          `${input.email} · ${input.locale}`,
         );
-        return { ok: true };
+        return { href: null, ok: true, emailExists: false };
       },
     }),
   },

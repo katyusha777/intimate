@@ -1,0 +1,147 @@
+---
+/**
+ * Admin Tools (System → Tools): internal one-off utilities, each in its own
+ * collapsed <details> so the page stays quiet until a tool is opened. English
+ * on purpose — single-viewer internal surface, like Danger zone (ADMIN.md §1).
+ *
+ * Tool 1 — Email signature: name + position + image (paste a URL or upload,
+ * which EXIF-strips client-side and stores in R2 under `sig/…`, served world-
+ * readable via /media). Live preview + copyable, email-safe (table + inline
+ * styles) HTML in the brand palette.
+ */
+import { getAdmin } from '@/actions/admin/lib';
+import AdminShell from '@/components/organisms/admin/AdminShell.astro';
+import * as m from '@/paraglide/messages';
+
+const session = await getAdmin(Astro);
+const isSuper = session?.adminRole === 'super';
+---
+
+<AdminShell title="Tools" section="tools">
+  {
+    session && (
+      <div class="space-y-8">
+        <h1 class="display text-3xl">Tools</h1>
+
+        {!isSuper && <p class="text-sm text-muted-foreground" set:html={m.adm_settings_super_only()} />}
+
+        {isSuper && (
+          <details class="max-w-3xl border border-border">
+            <summary class="flex cursor-pointer items-center gap-2 px-4 py-3 text-sm font-semibold">
+              <svg class="size-4 flex-none text-brand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="3" y="5" width="18" height="14" rx="2" />
+                <path d="m3 7 9 6 9-6" />
+              </svg>
+              Email signature
+            </summary>
+
+            <div class="grid gap-6 border-t border-border p-4 md:grid-cols-2">
+              {/* Inputs */}
+              <div class="space-y-4">
+                <label class="block">
+                  <span class="mb-1 block text-xs font-medium text-muted-foreground">Name</span>
+                  <input data-sig="name" type="text" autocomplete="off" placeholder="Anna de Vries" class="slab-cut w-full border border-foreground/20 bg-background px-3 py-2 text-sm caret-brand outline-none focus:border-foreground/50" />
+                </label>
+
+                <label class="block">
+                  <span class="mb-1 block text-xs font-medium text-muted-foreground">Position</span>
+                  <input data-sig="position" type="text" autocomplete="off" placeholder="Head of Partnerships" class="slab-cut w-full border border-foreground/20 bg-background px-3 py-2 text-sm caret-brand outline-none focus:border-foreground/50" />
+                </label>
+
+                <div>
+                  <span class="mb-1 block text-xs font-medium text-muted-foreground">Image URL (or upload below)</span>
+                  <input data-sig="image" type="url" inputmode="url" autocomplete="off" placeholder="https://…/photo.jpg" class="slab-cut w-full border border-foreground/20 bg-background px-3 py-2 text-sm caret-brand outline-none focus:border-foreground/50" />
+                  <div class="mt-2 flex items-center gap-3">
+                    <label class="slab-cut inline-flex cursor-pointer items-center border border-foreground/20 bg-card px-3 py-1.5 text-xs font-semibold transition-colors hover:bg-foreground hover:text-background">
+                      Upload to Cloudflare
+                      <input data-sig-file type="file" accept="image/*" class="hidden" />
+                    </label>
+                    <span data-sig-upload-status class="text-xs text-muted-foreground" aria-live="polite" />
+                  </div>
+                  <p class="mt-1 text-2xs text-muted-foreground">Upload strips EXIF/GPS and hosts on intimate.nl — no external URL needed.</p>
+                </div>
+              </div>
+
+              {/* Live preview (always white — that's where a signature lives) */}
+              <div>
+                <span class="mb-1 block text-xs font-medium text-muted-foreground">Preview</span>
+                <div data-sig-preview class="min-h-24 border border-border bg-white p-5" />
+              </div>
+            </div>
+
+            {/* Generated HTML */}
+            {isSuper && (
+              <div class="space-y-2 border-t border-border p-4">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-medium text-muted-foreground">HTML — paste into your email client's signature editor</span>
+                  <button type="button" data-sig-copy class="slab-cut cursor-pointer border border-foreground/20 bg-card px-3 py-1.5 text-xs font-semibold transition-colors hover:bg-foreground hover:text-background">
+                    Copy
+                  </button>
+                </div>
+                <textarea data-sig-code readonly rows="12" spellcheck="false" class="w-full resize-y border border-border bg-muted px-3 py-2 font-mono text-2xs leading-relaxed outline-none" />
+              </div>
+            )}
+          </details>
+        )}
+      </div>
+    )
+  }
+</AdminShell>
+
+<script>
+  import { actions } from 'astro:actions';
+  import { reencode } from '@/lib/reencode';
+  import { emailSignatureHtml } from '@/lib/email-signature';
+
+  const root = document.querySelector<HTMLElement>('details');
+  if (root) {
+    const $ = <T extends HTMLElement>(sel: string) => root.querySelector<T>(sel)!;
+    const nameEl = $<HTMLInputElement>('[data-sig="name"]');
+    const posEl = $<HTMLInputElement>('[data-sig="position"]');
+    const imgEl = $<HTMLInputElement>('[data-sig="image"]');
+    const fileEl = $<HTMLInputElement>('[data-sig-file]');
+    const uploadStatus = $<HTMLElement>('[data-sig-upload-status]');
+    const preview = $<HTMLElement>('[data-sig-preview]');
+    const code = $<HTMLTextAreaElement>('[data-sig-code]');
+    const copyBtn = $<HTMLButtonElement>('[data-sig-copy]');
+
+    function render() {
+      const html = emailSignatureHtml({ name: nameEl.value, position: posEl.value, image: imgEl.value });
+      preview.innerHTML = html;
+      code.value = html;
+    }
+
+    [nameEl, posEl, imgEl].forEach((el) => el.addEventListener('input', render));
+
+    fileEl.addEventListener('change', async () => {
+      const file = fileEl.files?.[0];
+      if (!file) return;
+      uploadStatus.textContent = 'Uploading…';
+      try {
+        const dataUrl = await reencode(file, 512, 0.85); // canvas re-encode drops EXIF/GPS
+        const { data, error } = await actions.admin.sigUploadImage({ dataUrl });
+        if (error) throw error;
+        imgEl.value = data.url;
+        uploadStatus.textContent = 'Hosted ✓';
+        render();
+      } catch (e) {
+        uploadStatus.textContent = `Failed: ${(e as Error).message}`;
+      } finally {
+        fileEl.value = ''; // allow re-picking the same file
+      }
+    });
+
+    copyBtn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(code.value);
+        copyBtn.textContent = 'Copied ✓';
+      } catch {
+        code.select();
+        copyBtn.textContent = 'Select + ⌘C';
+      }
+      setTimeout(() => (copyBtn.textContent = 'Copy'), 1500);
+    });
+
+    render();
+  }
+</script>

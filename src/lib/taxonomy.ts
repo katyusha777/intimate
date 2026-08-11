@@ -131,6 +131,8 @@ export const ADMIN_ACTIONS = [
   'create_org',
   'edit_org',
   'crawl_org',
+  // Admin Tools (/admin/tools): email-signature image upload
+  'tool_sig_image',
 ] as const;
 
 export const IMPORT_JOB_STATES = [

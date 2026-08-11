@@ -459,6 +459,32 @@ export const admin = {
     },
   }),
 
+  // --- Admin Tools (System → Tools) ---
+  // Email-signature image: same EXIF-safe chain as org logos (client canvas
+  // re-encode → server re-decode), stored under `sig/…` and served world-
+  // readable via /media so it hotlinks from any email client. Returns the
+  // absolute production URL to drop straight into the signature `src`.
+  sigUploadImage: defineAction({
+    input: z.object({
+      dataUrl: z.string().regex(/^data:image\/jpeg;base64,/).max(900_000),
+    }),
+    handler: async ({ dataUrl }, context) => {
+      const session = await requireAdmin(context, ['super']);
+      let bytes: ArrayBuffer;
+      try {
+        bytes = dataUrlToJpegBytes(dataUrl);
+      } catch {
+        throw new ActionError({ code: 'BAD_REQUEST', message: 'invalid image' });
+      }
+      const key = `sig/${crypto.randomUUID()}`;
+      await mediaBucket().put(key, bytes, { httpMetadata: { contentType: 'image/jpeg' } });
+      await record(session, { action: 'tool_sig_image', entityType: 'tool', entityId: key });
+      // Apex, NOT PUBLIC_SITE_ORIGIN (currently beta.*) — a signature outlives
+      // the beta subdomain; /media serves this key on every custom domain.
+      return { url: `https://intimate.nl/media/${key}` };
+    },
+  }),
+
   orgAssignProfile: defineAction({
     input: z.object({ profileId: z.string().uuid(), orgId: z.string().uuid().nullable() }),
     handler: async ({ profileId, orgId }, context) => {

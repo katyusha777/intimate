@@ -1083,5 +1083,10 @@
   "prelaunch_contact_phone": "Telefon",
   "prelaunch_contact_whatsapp": "WhatsApp",
   "prelaunch_contact_telegram": "Telegram",
-  "prelaunch_contacts_hint": "Adaugă cel puțin unul — așa te contactează clienții."
+  "prelaunch_contacts_hint": "Adaugă cel puțin unul — așa te contactează clienții.",
+  "prelaunch_form_password": "Parolă",
+  "prelaunch_password_hint": "8+ caractere — le folosești ca să te reconectezi și să-ți finalizezi profilul.",
+  "prelaunch_email_exists": "Acest e-mail are deja un cont.",
+  "prelaunch_login_link": "Conectează-te ca să continui",
+  "onb_prelaunch_banner": "Ești înăuntru. Finalizează-ți profilul acum — devine live în momentul lansării."
 }

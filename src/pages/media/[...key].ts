@@ -82,7 +82,13 @@ const GONE = () => new Response(null, { status: 410, headers: { 'Cache-Control':
 
 export const GET: APIRoute = async (ctx) => {
   const key = ctx.params.key;
-  if (!key || (!key.startsWith('pub/') && !key.startsWith('priv/') && !key.startsWith('org/'))) {
+  if (
+    !key ||
+    (!key.startsWith('pub/') &&
+      !key.startsWith('priv/') &&
+      !key.startsWith('org/') &&
+      !key.startsWith('sig/'))
+  ) {
     return new Response(null, { status: 404 });
   }
 
@@ -98,6 +104,11 @@ export const GET: APIRoute = async (ctx) => {
     // key is a CURRENT logo_key — replacing/removing a logo kills the old URL.
     const [row] = await db().select({ id: orgs.id }).from(orgs).where(eq(orgs.logoKey, key)).limit(1);
     if (!row) return GONE();
+  } else if (key.startsWith('sig/')) {
+    // Email-signature asset (`sig/<uuid>`, admin Tools): admin-curated and
+    // deliberately public — it has to hotlink from any email client forever —
+    // so there's no DB row to gate on. World-readable + edge-cached like a
+    // static logo. Only super-admins can write here (actions.admin.sigUploadImage).
   } else {
     // THE takedown gate, one round trip: the media row (missing = removed by
     // removePhoto/GDPR; 'rejected' = mediaReject) AND the profile lifecycle.

@@ -1083,5 +1083,10 @@
   "prelaunch_contact_phone": "Telefoon",
   "prelaunch_contact_whatsapp": "WhatsApp",
   "prelaunch_contact_telegram": "Telegram",
-  "prelaunch_contacts_hint": "Vul er minstens één in — zo bereiken klanten je."
+  "prelaunch_contacts_hint": "Vul er minstens één in — zo bereiken klanten je.",
+  "prelaunch_form_password": "Wachtwoord",
+  "prelaunch_password_hint": "8+ tekens — hiermee log je later weer in om je profiel af te maken.",
+  "prelaunch_email_exists": "Dit e-mailadres heeft al een account.",
+  "prelaunch_login_link": "Log in om verder te gaan",
+  "onb_prelaunch_banner": "Je bent binnen. Maak nu je profiel af — het gaat live zodra wij lanceren."
 }

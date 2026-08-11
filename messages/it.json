@@ -1083,5 +1083,10 @@
   "prelaunch_contact_phone": "Telefono",
   "prelaunch_contact_whatsapp": "WhatsApp",
   "prelaunch_contact_telegram": "Telegram",
-  "prelaunch_contacts_hint": "Inseriscine almeno uno — così i clienti ti contattano."
+  "prelaunch_contacts_hint": "Inseriscine almeno uno — così i clienti ti contattano.",
+  "prelaunch_form_password": "Password",
+  "prelaunch_password_hint": "8+ caratteri — ti serviranno per accedere di nuovo e completare il profilo.",
+  "prelaunch_email_exists": "Questa email ha già un account.",
+  "prelaunch_login_link": "Accedi per continuare",
+  "onb_prelaunch_banner": "Ci sei. Completa ora il tuo profilo — sarà online nel momento in cui lanciamo."
 }

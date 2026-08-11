@@ -69,7 +69,7 @@ export interface SessionApi {
    */
   register(
     ctx: AuthCtx,
-    input: { email: string; password: string; role: 'advertiser' | 'client' },
+    input: { email: string; password: string; role: 'advertiser' | 'client'; displayName?: string },
   ): Promise<{ session: Session | null; needsConfirmation: boolean; emailExists?: boolean }>;
   /** Change the signed-in user's email — sends a confirmation to the NEW address;
    *  the change only takes effect once that link is clicked. */

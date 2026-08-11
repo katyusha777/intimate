@@ -110,7 +110,7 @@ export const sessionApi: SessionApi = {
     return session;
   },
 
-  async register(ctx, { email, password, role }) {
+  async register(ctx, { email, password, role, displayName }) {
     const supabase = supabaseServer(ctx);
     const origin = new URL(ctx.request.url).origin;
     const { data, error } = await supabase.auth.signUp({
@@ -118,8 +118,10 @@ export const sessionApi: SessionApi = {
       password,
       options: {
         // The 0002 trigger whitelists + copies this into app_metadata and
-        // creates the accounts row — no service key in the signup path.
-        data: { account_type: role },
+        // creates the accounts row — no service key in the signup path. It also
+        // reads display_name here (falls back to the email local-part), so the
+        // pre-launch "working name" seeds accounts.display_name.
+        data: { account_type: role, ...(displayName ? { display_name: displayName } : {}) },
         emailRedirectTo: `${origin}/auth/confirm`,
       },
     });
