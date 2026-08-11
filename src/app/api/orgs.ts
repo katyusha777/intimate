@@ -11,7 +11,7 @@
  * imports from admin.
  */
 import { env } from 'cloudflare:workers';
-import { eq, or } from 'drizzle-orm';
+import { eq, or, isNotNull, desc } from 'drizzle-orm';
 import { requestDb, type Db } from '@/db/client';
 import { accounts, orgs, profiles } from '@/db/schema';
 import { uniqueSlug } from '@/app/data/db/account';
@@ -52,6 +52,34 @@ export async function agencyBySlug(slug: string): Promise<PublicAgency | null> {
 /** All agencies (sitemap + any future index page). */
 export async function listAgencies(): Promise<PublicAgency[]> {
   return (await db().select().from(orgs)).map(toPublic);
+}
+
+/** Admin read (Pre-signups surface): agencies that submitted the §12.7 consent
+ *  form, newest first. Server-only — contact fields are projected for the closer
+ *  (the public `toPublic` deliberately never is). Retires at launch with the
+ *  founding campaign. */
+export interface AgencyConsent {
+  name: string;
+  email: string | null;
+  phone: string | null;
+  siteUrl: string | null;
+  locale: string | null;
+  consentAt: string;
+}
+export async function listAgencyConsents(): Promise<AgencyConsent[]> {
+  const rows = await db()
+    .select({
+      name: orgs.name,
+      email: orgs.contactEmail,
+      phone: orgs.contactPhone,
+      siteUrl: orgs.siteUrl,
+      locale: orgs.consentLocale,
+      consentAt: orgs.consentAt,
+    })
+    .from(orgs)
+    .where(isNotNull(orgs.consentAt))
+    .orderBy(desc(orgs.consentAt));
+  return rows.map((r) => ({ ...r, consentAt: r.consentAt!.toISOString() }));
 }
 
 /** `Elite Escorts` → `elite-escorts`, deduped against existing org slugs. */

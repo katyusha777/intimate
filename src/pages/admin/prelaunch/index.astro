@@ -7,10 +7,36 @@
  */
 import { getAdmin } from '@/actions/admin/lib';
 import { listPrelaunchLeads } from '@/app/api/prelaunch';
+import { listAgencyConsents } from '@/app/api/orgs';
 import AdminShell from '@/components/organisms/admin/AdminShell.astro';
 
 const session = await getAdmin(Astro);
-const leads = session ? await listPrelaunchLeads() : [];
+
+// One chronological list of every pre-launch inbound: landing leads AND the
+// /agencies consent-form signups (they also live under Agencies, but the closer
+// wants them here too). Agency rows carry their site; leads carry WA/TG.
+type Row = {
+  name: string;
+  kind: string | null;
+  email: string | null;
+  phone: string | null;
+  whatsapp: string | null;
+  telegram: string | null;
+  siteUrl: string | null;
+  locale: string | null;
+  at: string;
+};
+const [leads, agencies] = session ? await Promise.all([listPrelaunchLeads(), listAgencyConsents()]) : [[], []];
+const rows: Row[] = [
+  ...leads.map((l) => ({
+    name: l.name, kind: l.kind, email: l.email, phone: l.phone, whatsapp: l.whatsapp, telegram: l.telegram,
+    siteUrl: null, locale: l.locale, at: new Date(l.createdAt).toISOString(),
+  })),
+  ...agencies.map((a) => ({
+    name: a.name, kind: 'agency', email: a.email, phone: a.phone, whatsapp: null, telegram: null,
+    siteUrl: a.siteUrl, locale: a.locale, at: a.consentAt,
+  })),
+].sort((x, y) => (x.at < y.at ? 1 : -1));
 
 const fmt = new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeStyle: 'short' });
 const waLink = (n: string) => `https://wa.me/${n.replace(/[^\d]/g, '')}`;
@@ -22,7 +48,7 @@ const tgLink = (n: string) => `https://t.me/${n.replace(/^@/, '')}`;
     session && (
       <div>
         <h1 class="display text-3xl">Pre-signups</h1>
-        <p class="mt-1 text-sm text-muted-foreground">{leads.length} pre-launch {leads.length === 1 ? 'lead' : 'leads'} · newest first</p>
+        <p class="mt-1 text-sm text-muted-foreground">{rows.length} pre-launch {rows.length === 1 ? 'signup' : 'signups'} · landing leads + agency consents · newest first</p>
 
         <div class="mt-5 overflow-x-auto border border-border">
           <table class="w-full min-w-[720px] text-left text-sm">
@@ -37,10 +63,10 @@ const tgLink = (n: string) => `https://t.me/${n.replace(/^@/, '')}`;
               </tr>
             </thead>
             <tbody class="divide-y divide-border">
-              {leads.length === 0 ? (
+              {rows.length === 0 ? (
                 <tr><td colspan="6" class="px-3 py-10 text-center text-muted-foreground">No pre-signups yet.</td></tr>
               ) : (
-                leads.map((l) => (
+                rows.map((l) => (
                   <tr class="align-top transition-colors hover:bg-muted">
                     <td class="px-3 py-2 font-medium">{l.name}</td>
                     <td class="px-3 py-2">
@@ -51,11 +77,16 @@ const tgLink = (n: string) => `https://t.me/${n.replace(/^@/, '')}`;
                       )}
                     </td>
                     <td class="px-3 py-2">
-                      <a href={`mailto:${l.email}`} class="text-brand hover:underline">{l.email}</a>
+                      {l.email ? (
+                        <a href={`mailto:${l.email}`} class="text-brand hover:underline">{l.email}</a>
+                      ) : (
+                        <span class="text-muted-foreground">—</span>
+                      )}
                     </td>
                     <td class="px-3 py-2 text-xs">
-                      {l.phone || l.whatsapp || l.telegram ? (
+                      {l.phone || l.whatsapp || l.telegram || l.siteUrl ? (
                         <div class="space-y-0.5">
+                          {l.siteUrl && <div><a href={l.siteUrl} target="_blank" rel="noopener" class="text-brand hover:underline">{l.siteUrl.replace(/^https?:\/\//, '')}</a></div>}
                           {l.phone && <div><a href={`tel:${l.phone}`} class="hover:underline">{l.phone}</a></div>}
                           {l.whatsapp && <div>WA <a href={waLink(l.whatsapp)} target="_blank" rel="noopener" class="text-brand hover:underline">{l.whatsapp}</a></div>}
                           {l.telegram && <div>TG <a href={tgLink(l.telegram)} target="_blank" rel="noopener" class="text-brand hover:underline">{l.telegram}</a></div>}
@@ -65,7 +96,7 @@ const tgLink = (n: string) => `https://t.me/${n.replace(/^@/, '')}`;
                       )}
                     </td>
                     <td class="px-3 py-2 uppercase text-muted-foreground">{l.locale}</td>
-                    <td class="px-3 py-2 whitespace-nowrap text-xs text-muted-foreground">{fmt.format(new Date(l.createdAt))}</td>
+                    <td class="px-3 py-2 whitespace-nowrap text-xs text-muted-foreground">{fmt.format(new Date(l.at))}</td>
                   </tr>
                 ))
               )}
