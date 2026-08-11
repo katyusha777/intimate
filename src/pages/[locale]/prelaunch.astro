@@ -36,6 +36,26 @@ const jsonLd = [websiteJsonLd(Astro.url.origin, locale), organizationJsonLd(Astr
   bare
   preloadImage="/video/hero-poster.jpg"
 >
+  <script is:inline>
+    // Build-in-public switch: `localStorage['safe-mode'] = 'true'` flips this
+    // page to the anime skin (the existing `dev` safe-mode — SafeImage's
+    // data-dev + the hero video hidden). This page is `bare`, so there's no
+    // safe-mode toggle here; the flag IS the switch. Runs before Layout's
+    // end-of-body swap script, so it just primes the cookie + dev unlock and the
+    // shared machinery does the actual swap (images, video, tab chrome).
+    (function () {
+      try {
+        var v = localStorage.getItem('safe-mode');
+        if (v === 'true') {
+          localStorage.setItem('dev', '1'); // unlock the anime state (operator-only)
+          document.cookie = 'safe_mode=dev; path=/; max-age=31536000; samesite=lax';
+          document.documentElement.classList.add('safe-on'); // blur pre-swap → no sharp flash
+        } else if (v === 'false' && /safe_mode=dev/.test(document.cookie)) {
+          document.cookie = 'safe_mode=off; path=/; max-age=31536000; samesite=lax';
+        }
+      } catch (e) {}
+    })();
+  </script>
   <div class="dark min-h-dvh bg-neutral-950 text-white">
     <div class="relative overflow-hidden lg:min-h-dvh">
       <!-- Cinematic media: right half on desktop (the home hero's language),
