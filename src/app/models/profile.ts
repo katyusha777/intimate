@@ -13,6 +13,7 @@ import {
   BODY_TYPES,
   BREAST_TYPES,
   CITIES,
+  CITY_SLUGS,
   CUP_SIZES,
   DAYS,
   DRINKING,
@@ -53,7 +54,6 @@ export type DayHours = z.infer<typeof DayHoursSchema>;
 export const OpeningHoursSchema = z.partialRecord(z.enum(DAYS), DayHoursSchema);
 export type OpeningHours = z.infer<typeof OpeningHoursSchema>;
 
-const CITY_SLUGS = CITIES.map((c) => c.slug) as unknown as [CitySlug, ...CitySlug[]];
 const SERVICE_VALUES = ALL_SERVICES as unknown as [Service, ...Service[]];
 
 /**
@@ -211,7 +211,10 @@ export function profileAge(birthDate: string, now: Date = new Date()): number {
 
 /** DOB for someone who is exactly `age` today — used to seed/mock data. */
 export function birthDateForAge(age: number, now: Date = new Date()): string {
-  return `${now.getFullYear() - age}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  // Feb 29 minus N years is usually not a real date — clamp to the 28th so the
+  // derived DOB is always valid (agency crawl fabricates these daily).
+  const day = now.getMonth() === 1 && now.getDate() === 29 ? 28 : now.getDate();
+  return `${now.getFullYear() - age}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
 /** Description in the current locale, falling back to the original text. */
@@ -459,8 +462,12 @@ export interface ProfilesApi {
   /** Every profile regardless of state — the god-view + moderation queues. */
   listAll(): Promise<Profile[]>;
   byId(id: string): Promise<Profile | null>;
+  /** An agency's whole roster, every state — bulk (2 queries), not per-id. */
+  byOrg(orgId: string): Promise<Profile[]>;
   /** Lifecycle transition (approve/pause/block/delete). Soft states only. */
   setState(id: string, state: ProfileState): Promise<void>;
+  /** Visibility flag (out of search/listings, direct URL still resolves). */
+  setUnlisted(id: string, unlisted: boolean): Promise<void>;
 }
 
 /**

@@ -3,7 +3,7 @@
  * owns ALL cron seams) POSTs here every 5 minutes with the shared secret, same
  * seam as /api/purge: the work runs with the main worker's DB/R2/Images
  * bindings. One tick = re-crawl at most one stale crawl-enabled agency +
- * process up to two queued import jobs (src/lib/crawl.ts bounds the work).
+ * process up to two queued import jobs (app/data/db/crawl.ts bounds the work).
  * Secret-guarded, fails closed when unset; never cached.
  */
 import type { APIRoute } from 'astro';

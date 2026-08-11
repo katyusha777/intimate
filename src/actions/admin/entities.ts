@@ -17,6 +17,9 @@ import type { ProfileState } from '@/lib/taxonomy';
 export async function setProfileState(id: string, state: ProfileState, _by: string, _reason?: string): Promise<void> {
   await profilesApi.setState(id, state);
 }
+export async function setProfileUnlisted(id: string, unlisted: boolean): Promise<void> {
+  await profilesApi.setUnlisted(id, unlisted);
+}
 
 // --- completeness + quality flags -----------------------------------------
 export function completeness(p: Profile): number {
@@ -52,6 +55,7 @@ export interface AdminProfile {
   verified: boolean;
   online: boolean;
   featured: boolean;
+  unlisted: boolean;
   priceFrom: number;
   photos: string[];
   servicesCount: number;
@@ -73,6 +77,7 @@ async function enrich(profiles: Profile[]): Promise<AdminProfile[]> {
     verified: p.verified,
     online: p.online,
     featured: p.featured,
+    unlisted: p.unlisted,
     priceFrom: p.priceFrom,
     photos: p.photos,
     servicesCount: p.services.length,

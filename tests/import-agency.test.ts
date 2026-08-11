@@ -52,6 +52,14 @@ describe('pickProfileUrls', () => {
     expect(pickProfileUrls(null, base)).toEqual([]);
     expect(pickProfileUrls({ profileUrls: 'nope' }, base)).toEqual([]);
   });
+
+  test('multi-part public suffix does not fail open (.co.uk base rejects apex siblings)', () => {
+    const urls = pickProfileUrls(
+      { profileUrls: ['https://evil.co.uk/girls/a', 'https://elite.co.uk/girls/eva', 'https://www.elite.co.uk/girls/mia'] },
+      'https://elite.co.uk/girls',
+    );
+    expect(urls).toEqual(['https://elite.co.uk/girls/eva', 'https://www.elite.co.uk/girls/mia']);
+  });
 });
 
 describe('pickPaginationUrls', () => {

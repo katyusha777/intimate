@@ -8,11 +8,10 @@
  * images-only (ADMIN.md §6).
  */
 import { z } from 'zod';
-import { ALL_SERVICES, AMENITIES, APPEARANCES, AVAILABLE_FOR, BODY_TYPES, BREAST_TYPES, CITIES, CUP_SIZES, DRINKING, EYE_COLORS, GENDERS, HAIR_COLORS, HAIR_LENGTHS, INCALL_LOCATIONS, LANGUAGES, MEDIA_STATES, MEETING_TYPES, NUMERIC_RANGES, PAYMENT_METHODS, PIERCINGS, POLICY_MIN_AGE, PUBIC_HAIR, SMOKING, TATTOOS, VERIFICATION_STATES, type AccountType, type AdminRole, type CitySlug, type Service } from '@/lib/taxonomy';
+import { ALL_SERVICES, AMENITIES, APPEARANCES, AVAILABLE_FOR, BODY_TYPES, BREAST_TYPES, CITY_SLUGS, CUP_SIZES, DRINKING, EYE_COLORS, GENDERS, HAIR_COLORS, HAIR_LENGTHS, INCALL_LOCATIONS, LANGUAGES, MEDIA_STATES, MEETING_TYPES, NUMERIC_RANGES, PAYMENT_METHODS, PIERCINGS, POLICY_MIN_AGE, PUBIC_HAIR, SMOKING, TATTOOS, VERIFICATION_STATES, type AccountType, type AdminRole, type CitySlug, type Service } from '@/lib/taxonomy';
 import { OpeningHoursSchema, RateRowSchema, profileAge, type Profile } from '@/app/models/profile';
 import type { Session } from '@/app/models/session';
 
-const CITY_SLUGS = CITIES.map((c) => c.slug) as unknown as [CitySlug, ...CitySlug[]];
 const SERVICE_VALUES = ALL_SERVICES as unknown as [Service, ...Service[]];
 
 /** The fields an advertiser may edit herself (taxonomy-constrained). */

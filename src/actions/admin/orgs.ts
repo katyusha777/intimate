@@ -5,11 +5,12 @@
  * crawled profiles; the crawl pipeline (src/lib/crawl.ts) fills the roster.
  */
 import { env } from 'cloudflare:workers';
-import { desc, eq } from 'drizzle-orm';
+import { count, desc, eq, sql } from 'drizzle-orm';
 import { requestDb, type Db } from '@/db/client';
 import { importJobs, accounts, orgs, profiles } from '@/db/schema';
 import { profilesApi } from '@/app/api/profiles';
 import { mediaBucket } from '@/lib/media-keys';
+import { slugifyBase } from '@/lib/slug';
 import type { CitySlug, ImportJobState } from '@/lib/taxonomy';
 import { completeness } from './entities';
 
@@ -49,6 +50,11 @@ export interface OrgJob {
   error?: string;
   createdAt: string;
 }
+/** The sidebar list needs counts, not rosters — keep it two queries total. */
+export interface OrgSummary extends Org {
+  memberCount: number;
+  liveCount: number;
+}
 export interface OrgWithRoster extends Org {
   members: OrgMember[];
   avgCompleteness: number;
@@ -56,13 +62,11 @@ export interface OrgWithRoster extends Org {
   jobs: OrgJob[];
 }
 
+/** Full roster for ONE org: bulk via profilesApi.byOrg (2 queries) + jobs. */
 async function roster(d: Db, org: Org): Promise<OrgWithRoster> {
-  const ids = (await d.select({ id: profiles.id }).from(profiles).where(eq(profiles.orgId, org.id))).map((r) => r.id);
-  const members: OrgMember[] = [];
-  for (const id of ids) {
-    const p = await profilesApi.byId(id); // full projection → completeness
-    if (p) members.push({ id: p.id, slug: p.slug, name: p.name, city: p.city, state: p.state, verified: p.verified, completeness: completeness(p) });
-  }
+  const members = (await profilesApi.byOrg(org.id)).map(
+    (p): OrgMember => ({ id: p.id, slug: p.slug, name: p.name, city: p.city, state: p.state, verified: p.verified, completeness: completeness(p) }),
+  );
   const avg = members.length ? Math.round(members.reduce((s, m) => s + m.completeness, 0) / members.length) : 0;
   const jobRows = await d
     .select()
@@ -101,10 +105,24 @@ const toOrg = (r: typeof orgs.$inferSelect): Org => ({
   lastCrawlNote: r.lastCrawlNote ?? undefined,
 });
 
-export async function listOrgs(): Promise<OrgWithRoster[]> {
+export async function listOrgs(): Promise<OrgSummary[]> {
   const d = adb();
   const rows = await d.select().from(orgs);
-  return Promise.all(rows.map((r) => roster(d, toOrg(r))));
+  // One grouped pass over profiles for every org's counts (was N×members
+  // full-projection fetches — multi-second admin loads once rosters filled).
+  const counts = await d
+    .select({
+      orgId: profiles.orgId,
+      n: count(),
+      live: sql<number>`count(*) filter (where ${profiles.state} = 'live')::int`,
+    })
+    .from(profiles)
+    .groupBy(profiles.orgId);
+  const byOrg = new Map(counts.map((c) => [c.orgId, c]));
+  return rows.map((r) => {
+    const c = byOrg.get(r.id);
+    return { ...toOrg(r), memberCount: c?.n ?? 0, liveCount: c?.live ?? 0 };
+  });
 }
 export async function orgById(id: string): Promise<OrgWithRoster | null> {
   const d = adb();
@@ -114,13 +132,7 @@ export async function orgById(id: string): Promise<OrgWithRoster | null> {
 
 /** `Elite Escorts` → `elite-escorts`, deduped against existing org slugs. */
 async function uniqueOrgSlug(d: Db, name: string): Promise<string> {
-  const base =
-    name
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[̀-ͯ]/g, '')
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-|-$/g, '') || 'agency';
+  const base = slugifyBase(name, 'agency');
   for (let i = 0; i < 50; i++) {
     const candidate = i === 0 ? base : `${base}-${i + 1}`;
     const hit = await d.select({ id: orgs.id }).from(orgs).where(eq(orgs.slug, candidate)).limit(1);

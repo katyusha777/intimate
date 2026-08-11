@@ -57,14 +57,15 @@ export async function firecrawlScrape(opts: ScrapeInput): Promise<ScrapeResult> 
     return { ok: res.ok, status: res.status, body: json };
   };
 
-  // The site's reveal actions (dismiss consent, show phone) are BEST-EFFORT — a
-  // missing button must not fail the whole scrape (site markup changes, e.g.
-  // beta.kinky.nl). So if the action pass fails, retry once with no actions.
+  // Two renders max. Pass 1 uses the site's reveal actions when configured
+  // (dismiss consent, show phone — BEST-EFFORT: a missing button must not fail
+  // the scrape). Pass 2 is a plain retry that clears both broken actions AND
+  // transient flakiness (4xx/5xx, empty mid-render captures — e.g. sites with
+  // an auto-translate overlay). 402 (out of credits) never retries.
+  const failed = (r: Awaited<ReturnType<typeof attempt>>) =>
+    !r.ok || !r.body.success || !r.body.data?.markdown?.trim();
   let r = await attempt(opts.actions);
-  if ((!r.ok || !r.body.success) && opts.actions?.length) r = await attempt(undefined);
-  // Firecrawl renders are flaky (transient 4xx/5xx, empty mid-render captures —
-  // e.g. sites with an auto-translate overlay) — one plain retry clears most.
-  if (!r.ok || !r.body.success || !r.body.data?.markdown?.trim()) r = await attempt(undefined);
+  if (failed(r) && r.status !== 402) r = await attempt(undefined);
 
   if (!r.ok || !r.body.success) {
     if (r.status === 402) throw new Error('Import is temporarily unavailable (out of scraping credits). Try again later.');

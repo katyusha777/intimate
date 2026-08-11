@@ -62,7 +62,7 @@ const label = 'block text-2xs uppercase tracking-wide text-muted-foreground';
                       {o.verified && <svg class="size-3 flex-none text-online" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/><path d="M9 12l2 2 4-4"/></svg>}
                       {o.crawlEnabled && <span class="text-2xs text-muted-foreground" title="auto-crawl on">⟳</span>}
                     </span>
-                    <span class="block text-2xs text-muted-foreground">{cityName(o.city)} · {m.adm_orgs_members_count({ count: o.members.length })}</span>
+                    <span class="block text-2xs text-muted-foreground">{cityName(o.city)} · {m.adm_orgs_members_count({ count: o.memberCount })}</span>
                   </span>
                   <span class="flex-none text-2xs text-muted-foreground">{m.adm_orgs_live_count({ count: o.liveCount })}</span>
                 </a>
@@ -314,7 +314,7 @@ const label = 'block text-2xs uppercase tracking-wide text-muted-foreground';
           .join('');
       }
       out.textContent = JSON.stringify(
-        { name: data.name, age: data.age, photoUrls: data.photoUrls, warnings: data.warnings, fields: data.fields, cost: data.cost },
+        { name: data.name, age: data.age, photoUrls: data.photoUrls, warnings: data.warnings, fields: data.fields, cost: data.cost, raw: data.raw },
         null,
         2,
       );
@@ -332,31 +332,49 @@ const label = 'block text-2xs uppercase tracking-wide text-muted-foreground';
       const { data, error } = await actions.admin.orgImportCreate({ id: btn.dataset.org!, url });
       btn.disabled = false;
       if (error) { status.textContent = `Error: ${error.message}`; return; }
-      status.innerHTML = `${data.created ? 'Created' : 'Updated'} ${data.name ?? 'profile'} · ${data.photosStored} photo(s) → <a class="underline underline-offset-2" href="/admin/profiles?id=${data.profileId}">open profile</a>`;
+      // textContent + a DOM-built anchor — `name` is LLM-extracted from a
+      // scraped page and MUST stay data, never markup (hard rule 7).
+      status.textContent = `${data.created ? 'Created' : 'Updated'} ${data.name ?? 'profile'} · ${data.photosStored}/${data.photosAttempted} photo(s) → `;
+      const link = document.createElement('a');
+      link.className = 'underline underline-offset-2';
+      link.href = `/admin/profiles?id=${encodeURIComponent(data.profileId)}`;
+      link.textContent = 'open profile';
+      status.append(link);
     });
 
-    // Crawl now → drain the queue with visible progress
+    // Crawl now → drain THIS org's queue with visible, honest progress: an
+    // error or a stall keeps its message on screen (no reload over it); only a
+    // fully drained queue announces success.
     document.querySelector<HTMLButtonElement>('[data-crawl]')?.addEventListener('click', async (e) => {
       const btn = e.currentTarget as HTMLButtonElement;
+      const orgId = btn.dataset.org!;
       const status = document.querySelector<HTMLElement>('[data-crawl-status]')!;
       if (!confirm('Discover the roster and import every profile? New profiles land in the moderation queue.')) return;
       btn.disabled = true;
       status.textContent = 'Discovering…';
-      const { data, error } = await actions.admin.orgCrawl({ id: btn.dataset.org! });
+      const { data, error } = await actions.admin.orgCrawl({ id: orgId });
       if (error) { status.textContent = `Error: ${error.message}`; btn.disabled = false; return; }
       let remaining = data.queuedNew + data.queuedUpdates;
       status.textContent = `Discovered ${data.discovered} — importing ${remaining}…`;
       let done = 0;
+      let failed = 0;
       while (remaining > 0) {
-        const r = await actions.admin.orgProcessJobs({});
-        if (r.error) { status.textContent = `Error: ${r.error.message}`; break; }
+        const r = await actions.admin.orgProcessJobs({ orgId });
+        if (r.error) { status.textContent = `Error: ${r.error.message} — ${remaining} job(s) still queued (the cron keeps draining them)`; btn.disabled = false; return; }
         done += r.data.processed + r.data.failed;
+        failed += r.data.failed;
         remaining = r.data.remaining;
-        status.textContent = `Importing… ${done} done, ${remaining} left`;
-        if (r.data.processed + r.data.failed === 0) break; // queue stalled/raced
+        status.textContent = `Importing… ${done} done${failed ? ` (${failed} failed)` : ''}, ${remaining} left`;
+        if (r.data.processed + r.data.failed === 0 && remaining > 0) {
+          // Claim races resolve themselves (the engine retries the next row);
+          // reaching here means the queue genuinely isn't moving from this tab.
+          status.textContent = `Stopped with ${remaining} queued — the 5-min cron continues in the background; refresh to see progress.`;
+          btn.disabled = false;
+          return;
+        }
       }
-      status.textContent = 'Crawl complete ✓';
-      location.reload();
+      status.textContent = failed ? `Crawl finished — ${done - failed} imported, ${failed} failed (see the job list)` : 'Crawl complete ✓';
+      setTimeout(() => location.reload(), failed ? 2500 : 800);
     });
 
     // Roster assign/unassign

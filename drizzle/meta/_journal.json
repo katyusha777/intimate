@@ -162,6 +162,13 @@
       "when": 1786415682335,
       "tag": "0022_careful_iron_fist",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1786421011138,
+      "tag": "0023_slippery_solo",
+      "breakpoints": true
     }
   ]
 }

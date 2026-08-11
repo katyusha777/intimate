@@ -175,7 +175,7 @@ export const accounts = pgTable(
 // ---------------------------------------------------------------------------
 // Orgs (partner agencies, ADMIN.md §8). A profile links to at most one org via
 // profiles.org_id — no join table needed (roster = profiles where org_id = X;
-// a girl on two agency sites yields two scraped profiles anyway, one per org).
+// a professional on two agency sites yields two scraped profiles, one per org).
 // Agencies have NO login yet: account_id points at a placeholder `agency`-type
 // accounts row (satisfies profiles.account_id ownership; upgradeable to a real
 // auth user later). Public face: /{locale}/agencies/{slug}. Crawl config powers
@@ -583,6 +583,10 @@ export const importJobs = pgTable(
     /** Set when the URL matched an existing profile → the job UPDATES it
      *  instead of creating a new one (re-crawl path). */
     profileId: uuid('profile_id').references(() => profiles.id),
+    /** Stamped by the claim (queued→scraping). The crawl-tick reaper fails any
+     *  job claimed >15 min ago whose runner died mid-scrape — without this,
+     *  a wedged 'scraping' row blocks its URL from re-enqueue forever. */
+    claimedAt: timestamp('claimed_at', { withTimezone: true }),
     profileName: text('profile_name'),
     error: text('error'),
     createdAt: createdAt(),

@@ -9,7 +9,7 @@
  * Pure (no env / no I/O) so it's unit-testable against a fixture.
  */
 import {
-  ALL_SERVICES, AMENITIES, APPEARANCES, AVAILABLE_FOR, BODY_TYPES, BREAST_TYPES, CITIES, CUP_SIZES,
+  ALL_SERVICES, AMENITIES, APPEARANCES, AVAILABLE_FOR, BODY_TYPES, BREAST_TYPES, CITY_SLUGS, CUP_SIZES,
   DAYS, DRINKING, EYE_COLORS, GENDERS, HAIR_COLORS, HAIR_LENGTHS, INCALL_LOCATIONS, LANGUAGES,
   MEETING_TYPES, NUMERIC_RANGES, PAYMENT_METHODS, PIERCINGS, PUBIC_HAIR, RATE_DURATIONS, SMOKING,
   TATTOOS,
@@ -21,7 +21,6 @@ export interface ImportResult {
   warnings: string[];
 }
 
-const CITY_SLUGS = CITIES.map((c) => c.slug) as readonly string[];
 
 export function normalizeImported(raw: unknown): ImportResult {
   const warnings: string[] = [];
@@ -162,12 +161,15 @@ export function normalizeImported(raw: unknown): ImportResult {
 // boundary: LLM output in, validated values out.
 // ---------------------------------------------------------------------------
 
-/** Untrusted URL list → clean absolute same-site URLs (subdomains allowed,
- *  base page excluded) — the LLM must not send us elsewhere. */
+/** Untrusted URL list → clean absolute same-site URLs (subdomains of the base
+ *  host allowed, base page excluded) — the LLM must not send us elsewhere.
+ *  "Same site" anchors on the base HOSTNAME (minus a leading www.), never on a
+ *  guessed apex: slicing the last two labels would make a .co.uk base accept
+ *  every domain under co.uk. */
 function sameSiteUrls(arr: unknown, baseUrl: string, cap: number): string[] {
   if (!Array.isArray(arr)) return [];
   const base = new URL(baseUrl);
-  const apex = base.hostname.split('.').slice(-2).join('.');
+  const site = base.hostname.replace(/^www\./, '');
   const out: string[] = [];
   for (const item of arr.slice(0, 200)) {
     if (typeof item !== 'string') continue;
@@ -178,7 +180,7 @@ function sameSiteUrls(arr: unknown, baseUrl: string, cap: number): string[] {
       continue;
     }
     if (u.protocol !== 'https:' && u.protocol !== 'http:') continue;
-    if (u.hostname !== base.hostname && !u.hostname.endsWith(`.${apex}`) && u.hostname !== apex) continue;
+    if (u.hostname !== site && !u.hostname.endsWith(`.${site}`)) continue;
     u.hash = '';
     const href = u.href;
     if (href === base.href || out.includes(href)) continue;

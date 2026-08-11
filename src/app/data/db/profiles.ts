@@ -108,17 +108,17 @@ export function toProfile(
 /** Request-memoized: the promise is cached, so the home page's three
  *  concurrent list() calls share ONE catalog fetch (2 queries instead of 6).
  *  requestMemo() is undefined outside a request → tests/scripts stay uncached. */
-function liveProfiles(db: Db, now: Date, slug?: string, city?: string): Promise<Profile[]> {
+function liveProfiles(db: Db, now: Date, slug?: string, city?: string, orgId?: string): Promise<Profile[]> {
   const memo = requestMemo();
-  const key = `live-profiles:${slug ?? ''}|${city ?? ''}`;
+  const key = `live-profiles:${slug ?? ''}|${city ?? ''}|${orgId ?? ''}`;
   const hit = memo?.get(key) as Promise<Profile[]> | undefined;
   if (hit) return hit;
-  const fresh = fetchLiveProfiles(db, now, slug, city);
+  const fresh = fetchLiveProfiles(db, now, slug, city, orgId);
   memo?.set(key, fresh);
   return fresh;
 }
 
-async function fetchLiveProfiles(db: Db, now: Date, slug?: string, city?: string): Promise<Profile[]> {
+async function fetchLiveProfiles(db: Db, now: Date, slug?: string, city?: string, orgId?: string): Promise<Profile[]> {
   const rows = await db.query.profiles
     .findMany({
       where: (p, { and, eq }) =>
@@ -127,6 +127,8 @@ async function fetchLiveProfiles(db: Db, now: Date, slug?: string, city?: string
           // Unlisted: excluded from every listing, reachable by direct slug.
           slug === undefined ? eq(p.unlisted, false) : eq(p.slug, slug),
           city === undefined ? undefined : eq(p.city, city as (typeof p.city)['_']['data']),
+          // Agency pages: don't drag the whole catalog for one roster.
+          orgId === undefined ? undefined : eq(p.orgId, orgId),
         ),
     })
     .catch((e: unknown) => {
@@ -143,9 +145,10 @@ async function fetchLiveProfiles(db: Db, now: Date, slug?: string, city?: string
 }
 
 /** Every profile, any state (admin surfaces) — with all media states. */
-async function allProfiles(db: Db, now: Date, id?: string): Promise<Profile[]> {
+async function allProfiles(db: Db, now: Date, filter: { id?: string; orgId?: string } = {}): Promise<Profile[]> {
   const rows = await db.query.profiles.findMany({
-    where: id === undefined ? undefined : (p, { eq }) => eq(p.id, id),
+    where: (p, { eq }) =>
+      filter.id !== undefined ? eq(p.id, filter.id) : filter.orgId !== undefined ? eq(p.orgId, filter.orgId) : undefined,
   });
   if (rows.length === 0) return [];
   const mediaRows = await db
@@ -165,7 +168,7 @@ export function makeProfilesApi(db: Db): ProfilesApi {
       // sidebar cities-union needs the full set (applyProfileListParams then
       // filters identically either way — same results as the json backend).
       const cityPush = params.cities?.length ? undefined : params.city;
-      return applyProfileListParams(await liveProfiles(db, now, undefined, cityPush), params, now);
+      return applyProfileListParams(await liveProfiles(db, now, undefined, cityPush, params.orgId), params, now);
     },
     async bySlug(slug) {
       return (await liveProfiles(db, new Date(), slug))[0] ?? null;
@@ -174,11 +177,17 @@ export function makeProfilesApi(db: Db): ProfilesApi {
       return allProfiles(db, new Date());
     },
     async byId(id) {
-      return (await allProfiles(db, new Date(), id))[0] ?? null;
+      return (await allProfiles(db, new Date(), { id }))[0] ?? null;
+    },
+    async byOrg(orgId) {
+      return allProfiles(db, new Date(), { orgId });
     },
     async setState(id, state) {
       // state_changed_at is stamped by the DB trigger (0001_security).
       await db.update(profiles).set({ state }).where(eq(profiles.id, id));
+    },
+    async setUnlisted(id, unlisted) {
+      await db.update(profiles).set({ unlisted }).where(eq(profiles.id, id));
     },
   };
 }
@@ -199,6 +208,8 @@ export function profilesDbApi(binding: () => Pick<Hyperdrive, 'connectionString'
     bySlug: (s) => api().bySlug(s),
     listAll: () => api().listAll(),
     byId: (id) => api().byId(id),
+    byOrg: (orgId) => api().byOrg(orgId),
     setState: (id, state) => api().setState(id, state),
+    setUnlisted: (id, unlisted) => api().setUnlisted(id, unlisted),
   };
 }

@@ -22,9 +22,11 @@ interface Env {
   ORIGIN: string;
 }
 
-// The 5-min trigger is the agency-crawl tick (/api/crawl-tick — discovery +
-// import-queue drain, src/lib/crawl.ts); the daily one stays retention purge.
-const CRAWL_CRON = '*/5 * * * *';
+// Dispatch keys on the DAILY purge expression (must match wrangler.jsonc
+// verbatim); every OTHER trigger is the agency-crawl tick (/api/crawl-tick).
+// Keyed this way round because the crawl cadence is the tunable one — retuning
+// it can't silently turn the crawler into a 5-minute purge.
+const PURGE_CRON = '17 3 * * *';
 
 async function run(env: Env, endpoint: 'purge' | 'crawl-tick'): Promise<string> {
   const res = await env.SITE.fetch(`${env.ORIGIN}/api/${endpoint}`, {
@@ -42,10 +44,10 @@ async function run(env: Env, endpoint: 'purge' | 'crawl-tick'): Promise<string> 
 
 export default {
   async scheduled(event: { cron?: string }, env: Env): Promise<void> {
-    if (event.cron === CRAWL_CRON) {
-      console.log('[crawl]', await run(env, 'crawl-tick'));
-    } else {
+    if (event.cron === PURGE_CRON) {
       console.log('[purge]', await run(env, 'purge'));
+    } else {
+      console.log('[crawl]', await run(env, 'crawl-tick'));
     }
   },
 

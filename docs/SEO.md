@@ -28,6 +28,7 @@
   - `/{locale}/{category-slug}/{city}/` — category × city, localized slugs (nl: prive-ontvangst, en: private-visit, de: privatempfang, etc.)
   - Category slugs map to the tab presets (tabs are filters over one pool; these pages ARE the tabs, indexable).
 - Profiles: `/{locale}/profile/{slug}/`.
+- Partner agencies: `/{locale}/agencies/{slug}/` (slug locale-invariant) — logo + answer-first roster intro + Organization/ItemList JSON-LD; in the sitemap only while the agency has live profiles (ADMIN.md §8).
 - **301 map from the real old-site URLs** (traffic-proven, must survive cutover intact): `/` · `/advertenties/` → new listing index · `/advertenties/{name}/` → profile or city fallback · `/vrouwen/` and `/vrouwen/escort/` → category pages · `/producten/*` and `/marketplace` → nearest equivalent or home · `/auth/` → new auth. Ship the map in the same deploy as cutover; verify with curl before DNS flips.
 
 ## 3. Answer-first page templates

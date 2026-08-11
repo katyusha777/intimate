@@ -556,6 +556,8 @@ export type ContactChannel = (typeof CONTACT_CHANNELS)[number];
 export type ServiceCategory = (typeof SERVICE_CATEGORIES)[number];
 export type Service = (typeof SERVICES)[ServiceCategory][number];
 export type CitySlug = (typeof CITIES)[number]['slug'];
+/** The slug list as a z.enum-ready tuple — the ONE copy (was cast in 4 files). */
+export const CITY_SLUGS = CITIES.map((c) => c.slug) as unknown as [CitySlug, ...CitySlug[]];
 export type Province = (typeof PROVINCES)[number];
 export type SortOption = (typeof SORT_OPTIONS)[number];
 export type ListingCategory = (typeof LISTING_CATEGORIES)[number];

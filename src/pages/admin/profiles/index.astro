@@ -13,6 +13,7 @@ import { CITIES, GENDERS, PROFILE_STATES } from '@/lib/taxonomy';
 import { cityName } from '@/lib/seo';
 import AdminShell from '@/components/organisms/admin/AdminShell.astro';
 import Lightbox from '@/components/molecules/Lightbox.astro';
+import Modal from '@/components/molecules/Modal.astro';
 import * as m from '@/paraglide/messages';
 
 const session = await getAdmin(Astro);
@@ -84,9 +85,8 @@ const ago = (iso: string) => {
           <a href="/admin/profiles" class="px-2 py-1.5 text-muted-foreground hover:text-foreground">{m.filter_reset()}</a>
         </form>
 
-        <div class="mt-5 grid gap-6 xl:grid-cols-[1fr_24rem]">
-          {/* Table */}
-          <div class="overflow-x-auto border border-border">
+        {/* Table — full width; the detail is now a modal overlay (opens on ?id=). */}
+        <div class="mt-5 overflow-x-auto border border-border">
             <table class="w-full min-w-[860px] text-left text-sm">
               <thead class="border-b border-border bg-muted text-2xs uppercase tracking-wide text-muted-foreground">
                 <tr>
@@ -136,11 +136,14 @@ const ago = (iso: string) => {
                 ))}
               </tbody>
             </table>
-          </div>
+        </div>
 
-          {/* Detail drawer */}
+        {/* Detail modal — SSR-rendered from ?id=, auto-opened client-side so the
+            table can run full-width. Closing navigates back to the clean list. */}
+        <Modal id="profile-detail" class="max-w-2xl max-h-[90dvh] overflow-y-auto">
           {detail && (
-            <aside data-profile-detail data-id={detail.admin.id} class="space-y-4 border border-border p-4">
+            <aside data-profile-detail data-id={detail.admin.id} class="relative space-y-4 p-5">
+              <button type="button" data-modal-close aria-label={m.filter_reset()} class="absolute right-3 top-3 grid size-8 place-items-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground">✕</button>
               <div class="flex items-center gap-3">
                 {detail.profile.photos[0] ? (
                   <img src={detail.profile.photos[0]} alt={detail.admin.name} class="size-12 flex-none rounded-full object-cover" />
@@ -220,6 +223,19 @@ const ago = (iso: string) => {
                 </div>
               )}
 
+              {/* Visibility — the same "unlisted" switch the owner has in her
+                  own settings: out of search/listings, direct link still works. */}
+              <div class="flex items-center justify-between gap-3 border-t border-border pt-3">
+                <div class="min-w-0">
+                  <p class="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">{m.settings_unlisted()}</p>
+                  <p class="mt-0.5 text-2xs text-muted-foreground">{m.settings_unlisted_note()}</p>
+                </div>
+                <label class="flex cursor-pointer items-center">
+                  <input type="checkbox" data-unlisted checked={detail.admin.unlisted} class="sr-only" />
+                  <span class="switch-track" aria-hidden="true" />
+                </label>
+              </div>
+
               {/* Lifecycle actions */}
               <div class="space-y-2 border-t border-border pt-3">
                 <input data-reason placeholder={m.adm_profiles_reason_ph()} class="w-full slab-cut border border-foreground/20 bg-background px-2.5 py-1.5 text-xs outline-none focus:border-foreground" />
@@ -236,7 +252,7 @@ const ago = (iso: string) => {
               </div>
             </aside>
           )}
-        </div>
+        </Modal>
       </div>
     )
   }
@@ -262,6 +278,30 @@ const ago = (iso: string) => {
     if (!d || d.dataset.init) return;
     d.dataset.init = '1';
     const id = d.dataset.id!;
+
+    // The detail is SSR'd from ?id= — pop it open as a modal, and closing
+    // (Esc / backdrop / ✕) returns to the list with filters intact but no ?id.
+    const dlg = document.getElementById('profile-detail') as HTMLDialogElement | null;
+    if (dlg && !dlg.open) {
+      dlg.showModal();
+      document.documentElement.toggleAttribute('data-modal-open', true);
+      dlg.addEventListener('close', () => {
+        const back = new URL(location.href);
+        back.searchParams.delete('id');
+        location.href = back.pathname + back.search;
+      });
+    }
+
+    // Unlisted toggle — same visibility switch the owner has (settings.astro).
+    const unlisted = d.querySelector<HTMLInputElement>('[data-unlisted]');
+    unlisted?.addEventListener('change', async () => {
+      const value = unlisted.checked;
+      unlisted.disabled = true;
+      const { error } = await actions.admin.profileUnlisted({ id, unlisted: value });
+      unlisted.disabled = false;
+      if (error) unlisted.checked = !value; // revert on failure
+    });
+
     d.querySelectorAll<HTMLElement>('[data-reveal]').forEach((b) => b.addEventListener('click', () => b.classList.toggle('shown')));
     const reason = d.querySelector('[data-reason]') as unknown as HTMLInputElement;
     d.querySelectorAll<HTMLButtonElement>('[data-act]').forEach((b) =>

@@ -8,7 +8,8 @@
   "main": "purge-worker.ts",
   "compatibility_date": "2026-07-01",
   // Daily at 03:17 (off the hour to avoid contention with the warm sweeps) +
-  // the agency-crawl tick every 5 min (branches on event.cron in the worker).
+  // the agency-crawl tick every 5 min. The worker routes by matching the DAILY
+  // expression (PURGE_CRON in purge-worker.ts) — keep the two strings in sync.
   "triggers": {
     "crons": ["17 3 * * *", "*/5 * * * *"]
   },

@@ -19,7 +19,7 @@ import { and, eq, isNotNull } from 'drizzle-orm';
 import { requestDb } from '@/db/client';
 import { accounts, media, profiles } from '@/db/schema';
 import { approveWholeSubmission, decideModeration } from './queues';
-import { setProfileState } from './entities';
+import { setProfileState, setProfileUnlisted } from './entities';
 import { approveDeletion, exportAccountData } from './gdpr';
 import { retryImport } from './imports';
 import { assignProfileToOrg, createOrg, setOrgLogo, updateOrg } from './orgs';
@@ -27,14 +27,13 @@ import { importFromUrl } from '@/lib/import';
 import { agencyImportFromUrl, discoverProfileUrls } from '@/lib/import/agency';
 import { enqueueOrgCrawl, importAgencyProfile, processImportJobs } from '@/app/api/crawl';
 import { dataUrlToJpegBytes } from '@/lib/jpeg-strip';
-import { CITIES, type CitySlug } from '@/lib/taxonomy';
+import { CITY_SLUGS } from '@/lib/taxonomy';
 import { INDEXNOW_KEY, submitIndexNow } from '@/lib/indexnow';
 import { evictMediaCache, isR2Key, mediaBucket } from '@/lib/media-keys';
 import { ADMIN_EVENTS, NOTIFY_PREFS_KEY } from '@/lib/pushover';
 import { LOCALES, type AdminAction, type ProfileState } from '@/lib/taxonomy';
 
 const adb = () => requestDb((env as unknown as { HYPERDRIVE: Hyperdrive }).HYPERDRIVE);
-const CITY_SLUG_VALUES = CITIES.map((c) => c.slug) as unknown as [CitySlug, ...CitySlug[]];
 
 /** IndexNow ping for a profile's locale URLs — new live page, or its takedown
  *  410 (SEO.md §1.6). Best-effort, never throws; awaited so workerd doesn't
@@ -198,6 +197,25 @@ export const admin = {
     },
   }),
 
+  // --- visibility flag (§8): same "unlisted" switch the owner has in settings.
+  // Out of search/listings, direct URL still resolves — no lifecycle change,
+  // no 410/IndexNow (the page isn't dead), just an edge-cache bust. ---
+  profileUnlisted: defineAction({
+    input: z.object({ id: z.string().max(60), unlisted: z.boolean() }),
+    handler: async ({ id, unlisted }, context) => {
+      const session = await requireAdmin(context, ['moderator']);
+      await setProfileUnlisted(id, unlisted);
+      await bustProfiles(sessionKv());
+      await record(session, {
+        action: 'edit_profile_admin',
+        entityType: 'profile',
+        entityId: id,
+        reason: unlisted ? 'unlisted' : 'listed',
+      });
+      return { ok: true };
+    },
+  }),
+
   // --- single-photo takedown (in-place moderation from the public page, §8) ---
   mediaReject: defineAction({
     input: z.object({
@@ -355,7 +373,7 @@ export const admin = {
   orgCreate: defineAction({
     input: z.object({
       name: z.string().min(2).max(80),
-      city: z.enum(CITY_SLUG_VALUES),
+      city: z.enum(CITY_SLUGS),
       kvk: z.string().max(20).optional(),
       siteUrl: z.string().url().max(300).optional(),
       contactEmail: z.string().email().max(200).optional(),
@@ -375,7 +393,7 @@ export const admin = {
     input: z.object({
       id: z.string().uuid(),
       name: z.string().min(2).max(80).optional(),
-      city: z.enum(CITY_SLUG_VALUES).optional(),
+      city: z.enum(CITY_SLUGS).optional(),
       kvk: z.string().max(20).optional(),
       verified: z.boolean().optional(),
       siteUrl: z.string().url().max(300).or(z.literal('')).optional(),
@@ -496,13 +514,24 @@ export const admin = {
       }
     },
   }),
-  // Mechanical queue drain (one job per call — browser-loop friendly). The
-  // intent was audited by orgCrawl; per-job outcomes live on import_jobs rows.
+  // Queue drain, one job per call (browser-loop friendly), scoped to the org
+  // being crawled — the loop must not steal other agencies' cron work or count
+  // their queue as its own. Each call that did work leaves an audit row (hard
+  // rule 6: the drain mutates profiles).
   orgProcessJobs: defineAction({
-    input: z.object({}).optional(),
-    handler: async (_input, context) => {
-      await requireAdmin(context, ['super']);
-      return await processImportJobs(1);
+    input: z.object({ orgId: z.string().uuid() }),
+    handler: async ({ orgId }, context) => {
+      const session = await requireAdmin(context, ['super']);
+      const r = await processImportJobs(1, orgId);
+      if (r.processed + r.failed > 0) {
+        await record(session, {
+          action: 'crawl_org',
+          entityType: 'org',
+          entityId: orgId,
+          meta: { note: `processed ${r.processed} + ${r.failed} failed · ${r.remaining} left` },
+        });
+      }
+      return r;
     },
   }),
 

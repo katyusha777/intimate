@@ -9,29 +9,46 @@
  *    their photos land `pending_review` — the normal moderation queue decides.
  *  · Re-crawl of a profile we already imported (matched by imported_from_url)
  *    patches its mapped fields in place — same publish-immediately rule as
- *    advertiser edits.
+ *    advertiser edits. The agency's site wins over manual edits by design.
+ *  · Age gate (hard rule 4) runs on EVERY crawl, create AND re-crawl: a page
+ *    now listing under-21 fails the job and touches nothing.
  *  · Photos are re-encoded through the Images binding (metadata incl. EXIF GPS
  *    stripped — hard rule 2) before they touch R2; no binding → no photo import.
- *  · Age gate (hard rule 4): no listed age or age < POLICY_MIN_AGE → the job
- *    fails with a reason; no profile row is ever created.
- *  · Under-21/no-name pages, dead URLs etc. surface as `failed` jobs in the
- *    admin panel — nothing is silently dropped.
+ *  · Nothing is silently dropped: gate failures and dead URLs become `failed`
+ *    jobs (with the extracted name when we got one); a created profile whose
+ *    photos ALL failed carries a note on its confirmed job; a job whose runner
+ *    died mid-scrape is reaped to `failed` by the next cron tick (claimed_at).
  */
 import { env } from 'cloudflare:workers';
-import { and, count, eq, inArray, isNotNull, sql } from 'drizzle-orm';
+import { and, count, eq, inArray, isNotNull, lt, sql } from 'drizzle-orm';
 import { requestDb, type Db } from '@/db/client';
 import { importJobs, media, orgs, profiles } from '@/db/schema';
 import { agencyImportFromUrl, discoverProfileUrls } from '@/lib/import/agency';
 import { profileUpdate, uniqueSlug } from './account';
 import { birthDateForAge } from '@/app/models/profile';
+import { fetchExternalImage, transformImage } from '@/lib/fetch-image';
 import { mediaBucket } from '@/lib/media-keys';
 import { POLICY_MIN_AGE } from '@/lib/taxonomy';
 
 const db = (): Db => requestDb((env as unknown as { HYPERDRIVE: Hyperdrive }).HYPERDRIVE);
-const images = () => (env as unknown as { IMAGES?: ImagesBinding }).IMAGES;
 
-const OPEN_STATES = ['queued', 'scraping', 'extracting', 'processing_images'] as const;
+/** The real machine is queued → scraping → confirmed|failed ('extracting' &
+ *  'processing_images' exist in the enum but nothing sets them). */
+const OPEN_STATES = ['queued', 'scraping'] as const;
 const MAX_PHOTOS = 8;
+/** A legit scrape+extract runs ~1–2 min; past this the runner is dead. */
+const STALE_CLAIM_MINUTES = 15;
+
+/** Import failure that still knows WHO the page was about — the job row keeps
+ *  the name so the admin can tell who was rejected without re-scraping. */
+class AgencyImportError extends Error {
+  constructor(
+    message: string,
+    public profileName?: string,
+  ) {
+    super(message);
+  }
+}
 
 export interface CrawlEnqueueResult {
   discovered: number;
@@ -61,15 +78,12 @@ export async function enqueueOrgCrawl(orgId: string): Promise<CrawlEnqueueResult
     .where(and(eq(importJobs.orgId, orgId), inArray(importJobs.state, [...OPEN_STATES])));
   const openSet = new Set(open.map((r) => r.url));
 
-  let queuedNew = 0;
-  let queuedUpdates = 0;
-  for (const url of urls) {
-    if (openSet.has(url)) continue;
-    const profileId = byUrl.get(url);
-    await d.insert(importJobs).values({ sourceUrl: url, orgId, profileId });
-    if (profileId) queuedUpdates++;
-    else queuedNew++;
-  }
+  const rows = urls
+    .filter((url) => !openSet.has(url))
+    .map((url) => ({ sourceUrl: url, orgId, profileId: byUrl.get(url) }));
+  if (rows.length) await d.insert(importJobs).values(rows);
+  const queuedUpdates = rows.filter((r) => r.profileId).length;
+  const queuedNew = rows.length - queuedUpdates;
 
   const note = `discovered ${urls.length} across ${pages} page(s) · queued ${queuedNew} new + ${queuedUpdates} update(s)`;
   await d.update(orgs).set({ lastCrawledAt: sql`now()`, lastCrawlNote: note }).where(eq(orgs.id, orgId));
@@ -82,67 +96,78 @@ export interface CrawlProcessResult {
   remaining: number;
 }
 
-/** Work the queue: scrape+extract+persist up to `limit` agency jobs. */
-export async function processImportJobs(limit = 2): Promise<CrawlProcessResult> {
+/** Work the queue: scrape+extract+persist up to `limit` agency jobs.
+ *  `orgId` scopes claiming AND the remaining count — the admin drain loop
+ *  works one agency; the cron tick (no orgId) works the whole queue. */
+export async function processImportJobs(limit = 2, orgId?: string): Promise<CrawlProcessResult> {
   const d = db();
+  const jobScope = (state: (typeof OPEN_STATES)[number]) =>
+    and(
+      eq(importJobs.state, state),
+      isNotNull(importJobs.orgId),
+      orgId === undefined ? undefined : eq(importJobs.orgId, orgId),
+    );
   let processed = 0;
   let failed = 0;
   for (let i = 0; i < limit; i++) {
     // Claim: flip queued → scraping guarded by the state check, so a concurrent
-    // tick re-evaluating the same row loses the race.
+    // tick re-evaluating the same row loses the race (its UPDATE matches 0
+    // rows) — and the loser just tries the NEXT row, it doesn't give up.
     // ponytail: single-claimer via WHERE state='queued'; move to
     // FOR UPDATE SKIP LOCKED if we ever run many ticks in parallel.
     const [job] = await d
       .update(importJobs)
-      .set({ state: 'scraping', error: null })
+      .set({ state: 'scraping', error: null, claimedAt: sql`now()` })
       .where(
         and(
           eq(importJobs.state, 'queued'),
           inArray(
             importJobs.id,
-            d
-              .select({ id: importJobs.id })
-              .from(importJobs)
-              .where(and(eq(importJobs.state, 'queued'), isNotNull(importJobs.orgId)))
-              .orderBy(importJobs.createdAt)
-              .limit(1),
+            d.select({ id: importJobs.id }).from(importJobs).where(jobScope('queued')).orderBy(importJobs.createdAt).limit(1),
           ),
         ),
       )
       .returning();
-    if (!job) break;
+    if (!job) {
+      // Nothing claimed: either the queue is empty (stop) or a concurrent
+      // claimer stole this row (try the next).
+      const [q] = await d.select({ n: count() }).from(importJobs).where(jobScope('queued'));
+      if (!q?.n) break;
+      continue;
+    }
     try {
-      await runAgencyJob(d, job);
-      await d.update(importJobs).set({ state: 'confirmed' }).where(eq(importJobs.id, job.id));
+      const r = await importAgencyProfile(job.orgId!, job.sourceUrl, {
+        existingProfileId: job.profileId ?? undefined,
+      });
+      // A created profile with zero stored photos is legal but worth a note —
+      // hotlink protection / dead CDN would otherwise be invisible.
+      const note = r.created && r.photosAttempted > 0 && r.photosStored === 0 ? `0/${r.photosAttempted} photos imported` : null;
+      await d
+        .update(importJobs)
+        .set({ state: 'confirmed', profileName: r.name ?? null, error: note })
+        .where(eq(importJobs.id, job.id));
       processed++;
     } catch (e) {
       await d
         .update(importJobs)
-        .set({ state: 'failed', error: String((e as Error).message ?? e).slice(0, 500) })
+        .set({
+          state: 'failed',
+          error: String((e as Error).message ?? e).slice(0, 500),
+          profileName: e instanceof AgencyImportError ? (e.profileName ?? null) : null,
+        })
         .where(eq(importJobs.id, job.id));
       failed++;
     }
   }
-  const [agg] = await d
-    .select({ n: count() })
-    .from(importJobs)
-    .where(and(eq(importJobs.state, 'queued'), isNotNull(importJobs.orgId)));
+  const [agg] = await d.select({ n: count() }).from(importJobs).where(jobScope('queued'));
   return { processed, failed, remaining: agg?.n ?? 0 };
-}
-
-type Job = typeof importJobs.$inferSelect;
-
-async function runAgencyJob(d: Db, job: Job): Promise<void> {
-  const r = await importAgencyProfile(job.orgId!, job.sourceUrl, {
-    existingProfileId: job.profileId ?? undefined,
-  });
-  await d.update(importJobs).set({ profileName: r.name ?? null }).where(eq(importJobs.id, job.id));
 }
 
 export interface AgencyImportApplied {
   profileId: string;
   created: boolean;
   name?: string;
+  photosAttempted: number;
   photosStored: number;
 }
 
@@ -160,6 +185,12 @@ export async function importAgencyProfile(
   const d = db();
   const { fields, name, age, photoUrls } = await agencyImportFromUrl(url);
 
+  // The 21+ floor (hard rule 4) holds on EVERY crawl — agencies reuse URLs, so
+  // a re-crawled page may now show a different, younger person.
+  if (age !== undefined && age < POLICY_MIN_AGE) {
+    throw new AgencyImportError(`listed age ${age} is below the policy minimum ${POLICY_MIN_AGE}`, name);
+  }
+
   let profileId = opts.existingProfileId;
   if (!profileId) {
     const [hit] = await d
@@ -171,20 +202,24 @@ export async function importAgencyProfile(
   }
   if (profileId) {
     // Re-crawl: the agency's site is the source of truth for its own roster —
-    // patch mapped fields (and the working name) in place.
-    const update = { ...profileUpdate(fields), ...(name ? { name } : {}) };
+    // patch mapped fields (+ name, + refreshed DOB so the displayed age tracks
+    // the listed age instead of drifting +1 every year) in place.
+    const update = {
+      ...profileUpdate(fields),
+      ...(name ? { name } : {}),
+      ...(age !== undefined ? { birthDate: birthDateForAge(age) } : {}),
+    };
     if (Object.keys(update).length) {
       await d.update(profiles).set(update).where(eq(profiles.id, profileId));
     }
-    return { profileId, created: false, name, photosStored: 0 };
+    return { profileId, created: false, name, photosAttempted: 0, photosStored: 0 };
   }
 
   // New profile — identity + the 21+ policy floor are non-negotiable.
-  if (!name) throw new Error('no name found on the page');
-  if (!age) throw new Error('no age listed on the page — cannot verify the 21+ policy');
-  if (age < POLICY_MIN_AGE) throw new Error(`listed age ${age} is below the policy minimum ${POLICY_MIN_AGE}`);
+  if (!name) throw new AgencyImportError('no name found on the page');
+  if (!age) throw new AgencyImportError('no age listed on the page — cannot verify the 21+ policy', name);
   const [org] = await d.select().from(orgs).where(eq(orgs.id, orgId)).limit(1);
-  if (!org) throw new Error('agency no longer exists');
+  if (!org) throw new AgencyImportError('agency no longer exists', name);
 
   const city = fields.city ?? org.city;
   const [created] = await d
@@ -204,59 +239,68 @@ export async function importAgencyProfile(
       importedFromUrl: url,
     })
     .returning({ id: profiles.id });
-  if (!created) throw new Error('profile insert returned no row');
+  if (!created) throw new AgencyImportError('profile insert returned no row', name);
 
   const photosStored = photoUrls.length ? await importPhotos(d, created.id, photoUrls) : 0;
   // ponytail: re-crawls never refresh photos (initial import only) — add
   // source-URL tracking on media rows when agencies rotate galleries.
-  return { profileId: created.id, created: true, name, photosStored };
+  return { profileId: created.id, created: true, name, photosAttempted: photoUrls.length, photosStored };
 }
 
-/** Fetch → re-encode (EXIF stripped) → R2 → `media` row (pending_review). */
+/** Fetch → re-encode (EXIF stripped) → R2 → `media` row (pending_review).
+ *  Fetch+transform+store run concurrently (bounded by MAX_PHOTOS); rows are
+ *  inserted in original order so the gallery matches the source page. */
 async function importPhotos(d: Db, profileId: string, urls: string[]): Promise<number> {
-  const IMAGES = images();
-  // No transform binding → no metadata strip → no photo import (hard rule 2).
-  if (!IMAGES) return 0;
   const bucket = mediaBucket();
-  let stored = 0;
-  for (const u of urls) {
-    if (stored >= MAX_PHOTOS) break;
-    try {
-      const url = new URL(u);
-      if (url.protocol !== 'https:' && url.protocol !== 'http:') continue;
-      // Workers egress can't reach private nets, but keep the guard explicit.
-      if (/^(localhost$|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(url.hostname)) continue;
-      const res = await fetch(url.href, { headers: { accept: 'image/*' } });
-      if (!res.ok || !(res.headers.get('content-type') ?? '').startsWith('image/')) continue;
-      const src = await res.arrayBuffer();
-      if (src.byteLength < 10_000 || src.byteLength > 15_000_000) continue; // icons / abuse
-      // Re-encode through the Images binding: strips ALL metadata (EXIF GPS —
-      // hard rule 2) and normalizes to JPEG like every other upload.
-      const out = await IMAGES.input(new Response(src).body!)
-        .transform({ width: 1600 })
-        .output({ format: 'image/jpeg', quality: 85 });
-      const bytes = await out.response().arrayBuffer();
+  const keys = await Promise.all(
+    urls.slice(0, MAX_PHOTOS).map(async (u): Promise<string | null> => {
+      const img = await fetchExternalImage(u);
+      if (!img || img.bytes.byteLength < 10_000) return null; // icons/trackers
+      // No transform binding → no metadata strip → no photo import (hard rule 2).
+      const bytes = await transformImage(img.bytes, { width: 1600, format: 'image/jpeg', quality: 85 });
+      if (!bytes) return null;
       const key = `pub/${profileId}/${crypto.randomUUID()}`;
-      await bucket.put(key, bytes, { httpMetadata: { contentType: 'image/jpeg' } });
-      await d.insert(media).values({ profileId, imageKey: key, position: stored, state: 'pending_review' });
-      stored++;
-    } catch {
-      /* one broken image never kills the crawl */
-    }
+      try {
+        await bucket.put(key, bytes, { httpMetadata: { contentType: 'image/jpeg' } });
+        return key;
+      } catch {
+        return null; // one broken upload never kills the crawl
+      }
+    }),
+  );
+  const stored = keys.filter((k): k is string => k !== null);
+  if (stored.length) {
+    await d.insert(media).values(stored.map((imageKey, i) => ({ profileId, imageKey, position: i, state: 'pending_review' as const })));
   }
-  return stored;
+  return stored.length;
 }
 
 export interface CrawlTickResult extends CrawlProcessResult {
   enqueuedFor?: string;
   enqueued?: CrawlEnqueueResult;
+  reaped: number;
 }
 
-/** The cron entry: re-crawl at most ONE stale org, then work the queue. */
+/** The cron entry: reap dead runners, re-crawl at most ONE stale org, then
+ *  work the queue. */
 export async function crawlTick(): Promise<CrawlTickResult> {
   const d = db();
-  // One org per tick — a discovery run is one Firecrawl + one LLM call, and the
-  // 5-min cadence spreads a multi-agency fleet over the day on its own.
+  // Reap jobs whose runner died mid-scrape (deploy, eviction, CPU k/o): a row
+  // stuck in 'scraping' would otherwise never be re-claimed AND block its URL
+  // from re-enqueue forever (openSet). Failed jobs are retryable + re-crawlable.
+  const dead = await d
+    .update(importJobs)
+    .set({ state: 'failed', error: 'stalled — runner died mid-import; will re-queue on the next crawl' })
+    .where(
+      and(
+        eq(importJobs.state, 'scraping'),
+        lt(importJobs.claimedAt, sql`now() - interval '${sql.raw(String(STALE_CLAIM_MINUTES))} minutes'`),
+      ),
+    )
+    .returning({ id: importJobs.id });
+
+  // One org per tick — a discovery run is one Firecrawl + one LLM call per
+  // roster page, and the 5-min cadence spreads a fleet over the day on its own.
   const [due] = await d
     .select({ id: orgs.id, name: orgs.name })
     .from(orgs)
@@ -281,5 +325,5 @@ export async function crawlTick(): Promise<CrawlTickResult> {
     }
   }
   const p = await processImportJobs(2);
-  return { ...p, enqueuedFor: due?.name, enqueued };
+  return { ...p, enqueuedFor: due?.name, enqueued, reaped: dead.length };
 }

@@ -22,6 +22,7 @@ import {
 import { ProfileSchema, birthDateForAge, priceFromRates, type Profile } from '@/app/models/profile';
 import { mediaUrl, toProfile } from '@/app/data/db/profiles';
 import { CITIES, POLICY_MIN_AGE } from '@/lib/taxonomy';
+import { slugifyBase } from '@/lib/slug';
 import { evictMediaCache, isR2Key, mediaBucket as bucket } from '@/lib/media-keys';
 import { pushoverAdmins } from '@/lib/pushover';
 import { rateLimit } from '@/lib/rate-limit';
@@ -157,15 +158,9 @@ async function myProfileRow(d: Db, accountId: string) {
 }
 
 /** `Eva` + `amsterdam` → `eva-amsterdam`, deduped against existing slugs.
- *  Exported for the agency crawl pipeline (src/lib/crawl.ts). */
+ *  Exported for the agency crawl pipeline (app/data/db/crawl.ts). */
 export async function uniqueSlug(d: Db, name: string, city: string): Promise<string> {
-  const base =
-    `${name}-${city}`
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[̀-ͯ]/g, '')
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-|-$/g, '') || 'profile';
+  const base = slugifyBase(`${name}-${city}`, 'profile');
   for (let i = 0; i < 50; i++) {
     const candidate = i === 0 ? base : `${base}-${i + 1}`;
     const hit = await d.select({ id: profiles.id }).from(profiles).where(eq(profiles.slug, candidate)).limit(1);
