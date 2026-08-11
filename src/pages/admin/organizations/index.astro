@@ -307,10 +307,10 @@ const label = 'block text-2xs uppercase tracking-wide text-muted-foreground';
       if (data.photoUrls.length) {
         photos.classList.remove('hidden');
         photos.classList.add('flex');
-        // Hotlinked straight from the agency's site — preview only; the real
-        // import re-encodes into R2.
+        // Via /admin/imgproxy — agency sites send CORP: same-origin, so
+        // hotlinking is browser-blocked; the proxy fetches server-side.
         photos.innerHTML = data.photoUrls
-          .map((u: string) => `<img src="${u}" referrerpolicy="no-referrer" loading="lazy" class="h-28 w-auto border border-border object-cover" />`)
+          .map((u: string) => `<img src="/admin/imgproxy?u=${encodeURIComponent(u)}" loading="lazy" class="h-28 w-auto border border-border object-cover" />`)
           .join('');
       }
       out.textContent = JSON.stringify(
