@@ -34,13 +34,21 @@ demo = demo.slice(0, 4);
 
 const alternates = samePathAlternates(Astro.url.origin, '/agencies/');
 
-// The "why it converts" strip — the mobile-app pitch, three beats + a mark.
-const APP_POINTS = [
-  { icon: '<path d="M13 2 3 14h9l-1 8 10-12h-9z"/>', lead: m.agencies_app_1_lead(), body: m.agencies_app_1_body() },
-  { icon: '<rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/>', lead: m.agencies_app_2_lead(), body: m.agencies_app_2_body() },
-  { icon: '<circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49M7.76 16.24a6 6 0 0 1 0-8.49M19.07 4.93a10 10 0 0 1 0 14.14M4.93 19.07a10 10 0 0 1 0-14.14"/>', lead: m.agencies_app_3_lead(), body: m.agencies_app_3_body() },
+// Why we built it — the two shifts (AI-first, phone-first) framed as what they
+// MEAN for the agency, never as features. Two beats, each with a mark.
+const WHY = [
+  {
+    icon: '<path d="m12 3 1.9 5.8L20 10l-6.1 1.2L12 17l-1.9-5.8L4 10l6.1-1.2z"/><path d="M18 3v3.5M19.75 4.75h-3.5"/>',
+    lead: m.agencies_why_ai_lead(),
+    body: m.agencies_why_ai_body(),
+  },
+  {
+    icon: '<rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/>',
+    lead: m.agencies_why_mobile_lead(),
+    body: m.agencies_why_mobile_body(),
+  },
 ];
-// The founding terms, each with a mark so the section scans in a glance.
+// The offer terms, each with a mark so the section scans in a glance.
 const TERMS = [
   { icon: '<path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5"/>', lead: m.agencies_term_free_lead(), body: m.agencies_term_free_body() },
   { icon: '<path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M8 16H3v5"/>', lead: m.agencies_term_sync_lead(), body: m.agencies_term_sync_body() },
@@ -74,11 +82,11 @@ const TERMS = [
       </p>
     </div>
 
-    <!-- §12.1 Hero: declaration, not introduction. -->
+    <!-- Hero: the plain offer + early-mover scarcity. Declaration, not intro. -->
     <header class="pt-8 md:pt-12">
       <p class="eyebrow flex items-center gap-2 font-condensed text-sm font-bold uppercase tracking-wide text-brand">
         <span class="size-1.5 rounded-full bg-online" aria-hidden="true"></span>
-        Amsterdam
+        {m.agencies_hero_eyebrow()}
       </p>
       <h1 class="display mt-3 text-4xl md:text-5xl">{m.agencies_hero_title()}</h1>
       <p class="mt-4 text-lg leading-relaxed text-muted-foreground">{m.agencies_hero_sub()}</p>
@@ -87,7 +95,8 @@ const TERMS = [
       </div>
     </header>
 
-    <!-- §12.2 The demo: the real product, not a screenshot. Tap = real modal. -->
+    <!-- The demo: the real product, not a screenshot. Tap = the real modal.
+         The frame + hint carry the sell (assumptive: "your agency"). -->
     <section class="pt-10 md:pt-14">
       <p class="eyebrow font-semibold text-brand">{m.agencies_demo_frame()}</p>
       <div class="mt-4 grid grid-cols-2 gap-4">
@@ -97,13 +106,16 @@ const TERMS = [
         <svg class="size-4 flex-none text-brand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 9 5 12 1.8-5.2L21 14Z"/><path d="M7.2 2.2 8 5.1"/><path d="m5.1 8-2.9-.8"/><path d="M14 4.1 12 6"/><path d="m6 12-1.9 2"/></svg>
         {m.agencies_demo_hint()}
       </p>
+    </section>
 
-      <!-- §12.2b Why it converts: the mobile-app pitch, three beats. -->
-      <h2 class="display mt-10 text-2xl md:mt-12">{m.agencies_app_title()}</h2>
-      <div class="mt-4 grid gap-3 sm:grid-cols-3">
+    <!-- Why now: the two shifts (AI-first, phone-first) as what they MEAN for
+         the agency — the reason joining pays, not a feature list. -->
+    <section class="pt-10 md:pt-14">
+      <h2 class="display text-2xl">{m.agencies_why_title()}</h2>
+      <div class="mt-4 grid gap-3 sm:grid-cols-2">
         {
-          APP_POINTS.map((pt) => (
-            <div class="border border-foreground/10 p-4">
+          WHY.map((pt) => (
+            <div class="border border-foreground/10 p-5">
               <svg class="size-6 text-brand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" set:html={pt.icon} />
               <p class="mt-3 font-condensed text-base font-bold uppercase tracking-wide">{pt.lead}</p>
               <p class="mt-1 text-sm leading-relaxed text-muted-foreground">{pt.body}</p>
@@ -113,13 +125,7 @@ const TERMS = [
       </div>
     </section>
 
-    <!-- §12.3 The shift: why now. The one experience aside lives here only. -->
-    <section class="pt-10 md:pt-14">
-      <h2 class="display text-2xl">{m.agencies_shift_title()}</h2>
-      <p class="mt-3 leading-relaxed text-muted-foreground">{m.agencies_shift_body()}</p>
-    </section>
-
-    <!-- §12.4 The founding terms — each with a mark so it scans in a glance. -->
+    <!-- The offer terms — each with a mark so the section scans in a glance. -->
     <section class="pt-10 md:pt-14">
       <h2 class="display text-2xl">{m.agencies_terms_title()}</h2>
       <dl class="mt-3 divide-y divide-foreground/10">
@@ -205,9 +211,12 @@ const TERMS = [
                 <span class="text-sm leading-relaxed text-muted-foreground">{m.agencies_form_consent()}</span>
               </label>
               <input type="hidden" name="locale" value={locale} />
-              <Button type="submit" class="block w-full">
-                {m.agencies_form_submit()}
-              </Button>
+              <div>
+                <Button type="submit" class="block w-full">
+                  {m.agencies_form_submit()}
+                </Button>
+                <p class="mt-2.5 text-center text-xs text-muted-foreground">{m.agencies_form_fine()}</p>
+              </div>
             </form>
           </>
         )
