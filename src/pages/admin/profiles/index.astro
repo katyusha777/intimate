@@ -13,7 +13,7 @@ import { CITIES, GENDERS, PROFILE_STATES } from '@/lib/taxonomy';
 import { cityName } from '@/lib/seo';
 import AdminShell from '@/components/organisms/admin/AdminShell.astro';
 import Lightbox from '@/components/molecules/Lightbox.astro';
-import Modal from '@/components/molecules/Modal.astro';
+import SideDrawer from '@/components/molecules/SideDrawer.astro';
 import * as m from '@/paraglide/messages';
 
 const session = await getAdmin(Astro);
@@ -53,7 +53,7 @@ const ago = (iso: string) => {
 };
 ---
 
-<AdminShell title={m.adm_nav_profiles()} section="profiles">
+<AdminShell title={m.adm_nav_profiles()} section="profiles" wide>
   {
     session && (
       <div>
@@ -138,13 +138,12 @@ const ago = (iso: string) => {
             </table>
         </div>
 
-        {/* Detail modal — SSR-rendered from ?id=, auto-opened client-side so the
-            table can run full-width. Closing navigates back to the clean list. */}
-        <Modal id="profile-detail" class="max-w-2xl max-h-[90dvh] overflow-y-auto">
+        {/* Detail drawer — SSR-rendered from ?id=, slides in from the right so
+            the table runs full-width. Closing navigates back to the clean list. */}
+        <SideDrawer id="profile-detail" label={m.adm_nav_profiles()} class="max-w-md">
           {detail && (
-            <aside data-profile-detail data-id={detail.admin.id} class="relative space-y-4 p-5">
-              <button type="button" data-modal-close aria-label={m.filter_reset()} class="absolute right-3 top-3 grid size-8 place-items-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground">✕</button>
-              <div class="flex items-center gap-3">
+            <aside data-profile-detail data-id={detail.admin.id} class="space-y-4 p-5">
+              <div class="flex items-center gap-3 pr-12">
                 {detail.profile.photos[0] ? (
                   <img src={detail.profile.photos[0]} alt={detail.admin.name} class="size-12 flex-none rounded-full object-cover" />
                 ) : (
@@ -252,7 +251,7 @@ const ago = (iso: string) => {
               </div>
             </aside>
           )}
-        </Modal>
+        </SideDrawer>
       </div>
     )
   }
@@ -279,13 +278,14 @@ const ago = (iso: string) => {
     d.dataset.init = '1';
     const id = d.dataset.id!;
 
-    // The detail is SSR'd from ?id= — pop it open as a modal, and closing
-    // (Esc / backdrop / ✕) returns to the list with filters intact but no ?id.
-    const dlg = document.getElementById('profile-detail') as HTMLDialogElement | null;
-    if (dlg && !dlg.open) {
-      dlg.showModal();
-      document.documentElement.toggleAttribute('data-modal-open', true);
-      dlg.addEventListener('close', () => {
+    // The detail is SSR'd from ?id= — slide the right-edge drawer open, and
+    // closing (✕ / backdrop / Esc) returns to the list, filters intact, no ?id.
+    const dlg = document.getElementById('profile-detail') as (HTMLDialogElement & { openSheet?(): void; closeSheet?(): void }) | null;
+    if (dlg) {
+      // rAF so SideDrawer's own init (which attaches openSheet) has run first.
+      requestAnimationFrame(() => dlg.openSheet?.());
+      dlg.querySelector('[data-sheet-close]')?.addEventListener('click', () => dlg.closeSheet?.());
+      dlg.addEventListener('sheet:closed', () => {
         const back = new URL(location.href);
         back.searchParams.delete('id');
         location.href = back.pathname + back.search;

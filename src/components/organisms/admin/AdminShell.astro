@@ -26,8 +26,10 @@ interface Props {
   title: string;
   /** Current section key for nav highlight. */
   section?: string;
+  /** Drop the max-width cap — data tables that want the whole screen. */
+  wide?: boolean;
 }
-const { title, section = '' } = Astro.props;
+const { title, section = '', wide = false } = Astro.props;
 
 const session = await getAdmin(Astro);
 const badges = session ? await adminBadges() : { escalations: 0, reportsOpen: 0, verificationOpen: 0 };
@@ -134,7 +136,7 @@ const nav = NAV.filter((n) => canSee(n));
           {/* Main — priority-report banner removed until the reports flow is
               real; the count still lives on the Reports nav badge. */}
           <div class="min-w-0 flex-1">
-            <main class="mx-auto max-w-6xl px-4 py-6 md:px-8 md:py-8">
+            <main class:list={['mx-auto px-4 py-6 md:px-8 md:py-8', wide ? 'max-w-none' : 'max-w-6xl']}>
               <slot />
             </main>
           </div>
