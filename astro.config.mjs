@@ -8,6 +8,12 @@ export default defineConfig({
   output: 'server',
   adapter: cloudflare(),
   devToolbar: { enabled: false },
+  // The verification + moderation queues merged into one Profile approval queue
+  // (docs/ADMIN.md §5, 2026-08-11) — keep old bookmarks/deep-links alive.
+  redirects: {
+    '/admin/verification': '/admin/approvals',
+    '/admin/moderation': '/admin/approvals',
+  },
   // ~20 KB of CSS was two render-blocking requests (~730 ms on slow 4G);
   // HTML is edge-cached, so inlining is cheaper than the round trips.
   build: { inlineStylesheets: 'always' },

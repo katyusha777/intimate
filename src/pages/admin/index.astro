@@ -45,8 +45,7 @@ function breach(iso: string | null): boolean {
 
 const queues = ov
   ? [
-      { key: 'verification', label: m.adm_nav_verification(), href: '/admin/verification', depth: ov.queues.verification, oldest: ov.oldest.verification },
-      { key: 'moderation', label: m.adm_nav_moderation(), href: '/admin/moderation', depth: ov.queues.moderation, oldest: ov.oldest.moderation },
+      { key: 'approvals', label: m.adm_nav_approvals(), href: '/admin/approvals', depth: ov.queues.approvals, oldest: ov.oldest.approvals },
       { key: 'reports', label: m.adm_nav_reports(), href: '/admin/reports', depth: ov.queues.reports, oldest: ov.oldest.reports },
     ]
   : [];
@@ -69,7 +68,7 @@ const counters = ov
         <h1 class="display text-3xl">{m.adm_nav_overview()}</h1>
         <p class="mt-1 text-sm text-muted-foreground">{m.adm_overview_sla({ hours: SLA_H })}</p>
 
-        <section class="mt-6 grid gap-3 sm:grid-cols-3">
+        <section class="mt-6 grid gap-3 sm:grid-cols-2">
           {queues.map((q) => (
             <a href={q.href} class="slab-cut border border-border bg-card p-4 transition-colors hover:border-foreground/40">
               <p class="eyebrow text-2xs text-muted-foreground">{q.label}</p>

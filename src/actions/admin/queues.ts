@@ -5,7 +5,7 @@
  * live in ./index.ts. In prod these become Postgres views/functions (§13).
  */
 import { env } from 'cloudflare:workers';
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { requestDb, type Db } from '@/db/client';
 import { accounts, media, profiles } from '@/db/schema';
 import { accountApi } from '@/app/api/account';
@@ -13,52 +13,23 @@ import { reportsApi } from '@/app/api/reports';
 import { profilesApi } from '@/app/api/profiles';
 import { getClaims } from './lib';
 import { emailProfileApproved } from '@/lib/email';
-import type { ModerationItem, Overview, ReportItem, VerificationItem } from './types';
+import type { RejectionReason } from '@/lib/taxonomy';
+import type { Profile } from '@/app/models/profile';
+import type { ApprovalItem, Overview, ReportItem } from './types';
 
 const adb = (): Db => requestDb((env as unknown as { HYPERDRIVE: Hyperdrive }).HYPERDRIVE);
 
 const CITY_TARGET = 10; // supply goal per city
 
-// --- Verification queue (§5) ----------------------------------------------
-export async function verificationQueue(): Promise<VerificationItem[]> {
-  const [accounts, allProfiles, claims] = await Promise.all([
+// --- Profile approval queue (§5) — the merged queue ------------------------
+// One item per pending submission, unioned from three signals: a pending ID
+// document, a profile awaiting first publish, and pending photos. Keyed by
+// profile (or account, for an ID with no profile yet) so a new professional —
+// who trips all three at once — surfaces as ONE row, reviewed and decided in
+// one place. Claims live under `approve:<key>`.
+export async function approvalQueue(): Promise<ApprovalItem[]> {
+  const [accts, allProfiles, pendingMedia, claims] = await Promise.all([
     accountApi.all(),
-    profilesApi.listAll(),
-    getClaims(),
-  ]);
-  const bySlug = new Map(allProfiles.map((p) => [p.slug, p]));
-  return accounts
-    .filter((a) => a.idVerification === 'pending')
-    .map((a) => {
-      const p = a.profileSlug ? bySlug.get(a.profileSlug) : undefined; // real link, no heuristic
-      return {
-        email: a.email,
-        profileId: p?.id,
-        profileName: p?.name ?? a.displayName ?? a.email,
-        profileSlug: p?.slug,
-        submittedAt: a.verificationSubmittedAt ?? '',
-        phoneVerified: Boolean(a.phoneVerifiedAt),
-        state: a.idVerification,
-        claim: claims[`verify:${a.email.toLowerCase()}`] ?? null,
-      } satisfies VerificationItem;
-    })
-    .sort((x, y) => x.submittedAt.localeCompare(y.submittedAt)); // oldest first
-}
-
-// --- Reports queue (§7) ---------------------------------------------------
-export async function reportsQueue(): Promise<ReportItem[]> {
-  const [reports, claims] = await Promise.all([reportsApi.list(), getClaims()]);
-  return reports
-    .filter((r) => r.state === 'open')
-    .map((r) => ({ ...r, claim: claims[`report:${r.id}`] ?? null }))
-    .sort((a, b) => Number(b.escalated) - Number(a.escalated) || a.createdAt.localeCompare(b.createdAt));
-}
-
-// --- Moderation queue (§6) — DERIVED from real pending data ----------------
-// New profiles awaiting first approval + media awaiting review. Text edits
-// publish immediately (no edit-review), so there is no profile_edit kind.
-export async function moderationQueue(): Promise<ModerationItem[]> {
-  const [allProfiles, pendingMedia, claims] = await Promise.all([
     profilesApi.listAll(),
     adb()
       .select({
@@ -75,64 +46,64 @@ export async function moderationQueue(): Promise<ModerationItem[]> {
       .where(eq(media.state, 'pending_review')),
     getClaims(),
   ]);
+  const bySlug = new Map(allProfiles.map((p) => [p.slug, p]));
 
-  const items: ModerationItem[] = [];
+  const items = new Map<string, ApprovalItem>();
+  const touch = (key: string, name: string): ApprovalItem => {
+    let it = items.get(key);
+    if (!it) {
+      it = { key, email: null, profileName: name, phoneVerified: false, submittedAt: '', idPending: false, profilePending: false, media: [], claim: null };
+      items.set(key, it);
+    }
+    return it;
+  };
+  const earlier = (a: string, b: string) => (!a ? b : !b ? a : a < b ? a : b);
+  const attach = (it: ApprovalItem, p: Profile) => {
+    it.profileId = p.id;
+    it.profileName = p.name;
+    it.profileSlug = p.slug;
+    it.birthDate = p.birthDate;
+    it.city = p.city;
+  };
+
+  // 1) Accounts with a pending ID document.
+  for (const a of accts.filter((a) => a.idVerification === 'pending')) {
+    const p = a.profileSlug ? bySlug.get(a.profileSlug) : undefined; // real link, no heuristic
+    const it = touch(p ? `profile:${p.id}` : `acct:${a.email}`, a.displayName ?? a.email);
+    it.email = a.email;
+    it.idPending = true;
+    it.phoneVerified = Boolean(a.phoneVerifiedAt);
+    it.submittedAt = earlier(it.submittedAt, a.verificationSubmittedAt ?? '');
+    if (p) attach(it, p);
+  }
+  // 2) Profiles awaiting their first publish.
   for (const p of allProfiles.filter((p) => p.state === 'pending_review')) {
-    items.push({
-      id: `profile:${p.id}`,
-      kind: 'new_profile',
-      profileId: p.id,
-      profileName: p.name,
-      profileSlug: p.slug,
-      submittedAt: p.createdAt,
-      diff: [],
-      media: [],
-      claim: claims[`mod:profile:${p.id}`] ?? null,
-    });
+    const it = touch(`profile:${p.id}`, p.name);
+    it.profilePending = true;
+    attach(it, p);
+    it.submittedAt = earlier(it.submittedAt, p.createdAt);
   }
-  // Group pending media by profile → one 'media' item per profile.
-  const byProfile = new Map<string, ModerationItem>();
-  for (const m of pendingMedia) {
-    const item =
-      byProfile.get(m.profileId) ??
-      byProfile
-        .set(m.profileId, {
-          id: `media:${m.profileId}`,
-          kind: 'media',
-          profileId: m.profileId,
-          profileName: m.profileName,
-          profileSlug: m.profileSlug,
-          submittedAt: m.createdAt.toISOString(),
-          diff: [],
-          media: [],
-          claim: claims[`mod:media:${m.profileId}`] ?? null,
-        })
-        .get(m.profileId)!;
-    item.media.push({ id: m.mediaId, imageKey: m.imageKey, nsfwScore: m.nsfwScore ?? 0 });
+  // 3) Photos awaiting review (grouped per profile).
+  for (const md of pendingMedia) {
+    const it = touch(`profile:${md.profileId}`, md.profileName);
+    it.profileId = md.profileId;
+    it.profileName = md.profileName;
+    it.profileSlug = md.profileSlug;
+    it.media.push({ id: md.mediaId, imageKey: md.imageKey, nsfwScore: md.nsfwScore ?? 0 });
+    it.submittedAt = earlier(it.submittedAt, md.createdAt.toISOString());
   }
-  items.push(...byProfile.values());
-  return items.sort((a, b) => a.submittedAt.localeCompare(b.submittedAt));
+
+  for (const it of items.values()) it.claim = claims[`approve:${it.key}`] ?? null;
+  return [...items.values()].sort((a, b) => a.submittedAt.localeCompare(b.submittedAt)); // oldest first
 }
 
-/**
- * Act on a moderation item: approve/reject the underlying entity.
- * `profile:<id>` → live | draft (resubmit); `media:<id>` →
- * approve/reject all that profile's pending media.
- */
-export async function decideModeration(id: string, approve: boolean): Promise<void> {
-  const [kind, entityId] = id.split(':');
-  if (!entityId) return;
-  if (kind === 'profile') {
-    await profilesApi.setState(entityId, approve ? 'live' : 'draft');
-    // One submission, one approval: publishing a profile also clears its ID
-    // verification + its pending photos (the "approve everything at once" merge).
-    if (approve) await approveWholeSubmission({ profileId: entityId });
-  } else if (kind === 'media') {
-    await adb()
-      .update(media)
-      .set({ state: approve ? 'approved' : 'rejected' })
-      .where(and(eq(media.profileId, entityId), eq(media.state, 'pending_review')));
-  }
+// --- Reports queue (§7) ---------------------------------------------------
+export async function reportsQueue(): Promise<ReportItem[]> {
+  const [reports, claims] = await Promise.all([reportsApi.list(), getClaims()]);
+  return reports
+    .filter((r) => r.state === 'open')
+    .map((r) => ({ ...r, claim: claims[`report:${r.id}`] ?? null }))
+    .sort((a, b) => Number(b.escalated) - Number(a.escalated) || a.createdAt.localeCompare(b.createdAt));
 }
 
 /**
@@ -186,21 +157,53 @@ export async function approveWholeSubmission(by: { email?: string; profileId?: s
   }
 }
 
-/** Light badges for the shell (nav counts) — no heavy builds. */
-export async function adminBadges(): Promise<{ escalations: number; reportsOpen: number; verificationOpen: number }> {
-  const [escalations, reportsOpen, verifyRows] = await Promise.all([
+/**
+ * The mirror of approveWholeSubmission: one rejection with one reason sends the
+ * whole submission back — ID → rejected (reason shown to her verbatim), profile
+ * → draft (resubmit), pending photos → rejected. Each step is state-guarded, so
+ * rejecting a live profile's newly-added photos never un-publishes the profile.
+ */
+export async function rejectWholeSubmission(by: { email?: string; profileId?: string }, reason: RejectionReason): Promise<void> {
+  const d = adb();
+  let accountId: string | undefined;
+  let profileId = by.profileId;
+  if (by.email) {
+    const [acc] = await d.select({ id: accounts.id }).from(accounts).where(eq(accounts.email, by.email));
+    accountId = acc?.id;
+    if (accountId && !profileId) {
+      const [p] = await d.select({ id: profiles.id }).from(profiles).where(eq(profiles.accountId, accountId));
+      profileId = p?.id;
+    }
+  } else if (profileId) {
+    const [p] = await d.select({ accountId: profiles.accountId }).from(profiles).where(eq(profiles.id, profileId));
+    accountId = p?.accountId ?? undefined;
+  }
+  if (accountId) {
+    await d
+      .update(accounts)
+      .set({ idVerification: 'rejected', verificationReason: reason })
+      .where(and(eq(accounts.id, accountId), eq(accounts.idVerification, 'pending')));
+  }
+  if (profileId) {
+    await d.update(profiles).set({ state: 'draft' }).where(and(eq(profiles.id, profileId), eq(profiles.state, 'pending_review')));
+    await d.update(media).set({ state: 'rejected' }).where(and(eq(media.profileId, profileId), eq(media.state, 'pending_review')));
+  }
+}
+
+/** Light badges for the shell (nav counts). */
+export async function adminBadges(): Promise<{ escalations: number; reportsOpen: number; approvalsOpen: number }> {
+  const [escalations, reportsOpen, approvals] = await Promise.all([
     reportsApi.escalationCount(),
     reportsApi.openCount(),
-    adb().select({ n: sql<number>`count(*)::int` }).from(accounts).where(eq(accounts.idVerification, 'pending')),
+    approvalQueue(),
   ]);
-  return { escalations, reportsOpen, verificationOpen: verifyRows[0]?.n ?? 0 };
+  return { escalations, reportsOpen, approvalsOpen: approvals.length };
 }
 
 // --- Overview cockpit (§4) ------------------------------------------------
 export async function overview(): Promise<Overview> {
-  const [verification, moderation, reports, accounts, allProfiles, escalations] = await Promise.all([
-    verificationQueue(),
-    moderationQueue(),
+  const [approvals, reports, accounts, allProfiles, escalations] = await Promise.all([
+    approvalQueue(),
     reportsQueue(),
     accountApi.all(),
     profilesApi.listAll(),
@@ -213,15 +216,14 @@ export async function overview(): Promise<Overview> {
     .sort((a, b) => b.live - a.live)
     .slice(0, 8);
   return {
-    queues: { verification: verification.length, moderation: moderation.length, reports: reports.length },
+    queues: { approvals: approvals.length, reports: reports.length },
     oldest: {
-      verification: verification[0]?.submittedAt ?? null,
-      moderation: moderation[0]?.submittedAt ?? null,
+      approvals: approvals[0]?.submittedAt ?? null,
       reports: reports[0]?.createdAt ?? null,
     },
     today: {
       registrations: accounts.length,
-      submitted: verification.length,
+      submitted: approvals.length,
       published: allProfiles.filter((p) => p.state === 'live').length,
       reports: reports.length,
     },

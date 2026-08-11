@@ -2,7 +2,7 @@
  * Admin domain types (docs/ADMIN.md). Lives inside the admin fence
  * (src/actions/admin/**) — imported only by admin pages/actions/components.
  */
-import type { AdminAction, AdminRole, VerificationState } from '@/lib/taxonomy';
+import type { AdminAction, AdminRole } from '@/lib/taxonomy';
 import type { Report } from '@/app/models/report';
 
 /** One immutable audit-log line (ADMIN.md §0.3 — every action + sensitive read). */
@@ -24,34 +24,26 @@ export interface Claim {
   at: string;
 }
 
-/** Verification queue row (§5) — derived from accounts in `pending`. */
-export interface VerificationItem {
-  email: string;
+/**
+ * Profile approval queue row (§5) — one item per pending submission, unifying
+ * what used to be two queues: the ID document (`idPending`), the profile's
+ * first publish (`profilePending`), and its pending photos (`media`). Keyed by
+ * `profile:<id>` when a profile exists, else `acct:<email>` (ID with no profile
+ * yet). One review, one decision — an admin never approves the same person
+ * twice.
+ */
+export interface ApprovalItem {
+  key: string;
+  email: string | null;
   profileId?: string;
   profileName: string;
   profileSlug?: string;
-  submittedAt: string;
+  birthDate?: string | null;
+  city?: string | null;
   phoneVerified: boolean;
-  state: VerificationState;
-  claim: Claim | null;
-}
-
-/** A field-level change for the moderation diff view (§6). */
-export interface FieldDiff {
-  field: string;
-  before: string;
-  after: string;
-}
-
-/** Moderation queue row (§6) — new/edited profiles + flagged media. */
-export interface ModerationItem {
-  id: string;
-  kind: 'new_profile' | 'profile_edit' | 'media';
-  profileId: string;
-  profileName: string;
-  profileSlug: string;
   submittedAt: string;
-  diff: FieldDiff[];
+  idPending: boolean;
+  profilePending: boolean;
   media: { id: string; imageKey: string; nsfwScore: number }[];
   claim: Claim | null;
 }
@@ -63,8 +55,8 @@ export interface ReportItem extends Report {
 
 /** Overview cockpit payload (§4). */
 export interface Overview {
-  queues: { verification: number; moderation: number; reports: number };
-  oldest: { verification: string | null; moderation: string | null; reports: string | null };
+  queues: { approvals: number; reports: number };
+  oldest: { approvals: string | null; reports: string | null };
   today: { registrations: number; submitted: number; published: number; reports: number };
   escalations: number;
   onlineNow: number;

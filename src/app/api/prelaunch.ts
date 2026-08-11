@@ -4,7 +4,7 @@
  * grants. The table (and this module) retires at launch.
  */
 import { env } from 'cloudflare:workers';
-import { desc } from 'drizzle-orm';
+import { desc, eq } from 'drizzle-orm';
 import { requestDb } from '@/db/client';
 import { prelaunchLeads } from '@/db/schema';
 
@@ -40,4 +40,18 @@ export async function addPrelaunchLead(i: {
 /** Admin read: newest first. Server-only surface (admin page). */
 export async function listPrelaunchLeads(): Promise<PrelaunchLead[]> {
   return db().select().from(prelaunchLeads).orderBy(desc(prelaunchLeads.createdAt));
+}
+
+/** Admin: remove a landing lead (Pre-signups cleanup). */
+export async function deletePrelaunchLead(id: string): Promise<void> {
+  await db().delete(prelaunchLeads).where(eq(prelaunchLeads.id, id));
+}
+
+/** Admin: fix a landing lead's contact info (Pre-signups edit). */
+export async function updatePrelaunchLead(id: string, patch: { name?: string; email?: string; phone?: string }): Promise<void> {
+  const u: Partial<typeof prelaunchLeads.$inferInsert> = {};
+  if (patch.name !== undefined) u.name = patch.name;
+  if (patch.email !== undefined) u.email = patch.email;
+  if (patch.phone !== undefined) u.phone = patch.phone || null;
+  if (Object.keys(u).length) await db().update(prelaunchLeads).set(u).where(eq(prelaunchLeads.id, id));
 }

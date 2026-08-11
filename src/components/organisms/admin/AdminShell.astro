@@ -32,7 +32,7 @@ interface Props {
 const { title, section = '', wide = false } = Astro.props;
 
 const session = await getAdmin(Astro);
-const badges = session ? await adminBadges() : { escalations: 0, reportsOpen: 0, verificationOpen: 0 };
+const badges = session ? await adminBadges() : { escalations: 0, reportsOpen: 0, approvalsOpen: 0 };
 
 /**
  * Nav grouped by purpose (ADMIN.md §3): the queues that carry the SLA sit up
@@ -46,8 +46,7 @@ const NAV_GROUPS: { header?: string; items: NavItem[] }[] = [
     { key: 'overview', label: m.adm_nav_overview(), href: '/admin', roles: ['moderator', 'support', 'super'], icon: '<rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/>' },
   ] },
   { header: m.adm_navgrp_queues(), items: [
-    { key: 'verification', label: m.adm_nav_verification(), href: '/admin/verification', roles: ['moderator', 'super'], icon: '<path d="M12 3l7 4v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V7z"/><path d="m9 12 2 2 4-4"/>', badge: badges.verificationOpen },
-    { key: 'moderation', label: m.adm_nav_moderation(), href: '/admin/moderation', roles: ['moderator', 'super'], icon: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>' },
+    { key: 'approvals', label: m.adm_nav_approvals(), href: '/admin/approvals', roles: ['moderator', 'super'], icon: '<path d="M12 3l7 4v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V7z"/><path d="m9 12 2 2 4-4"/>', badge: badges.approvalsOpen },
     { key: 'reports', label: m.adm_nav_reports(), href: '/admin/reports', roles: ['moderator', 'super'], icon: '<path d="M4 15V4a1 1 0 0 1 1-1h14l-3 5 3 5H5a1 1 0 0 0-1 1z"/><path d="M4 22v-7"/>', badge: badges.reportsOpen },
   ] },
   { header: m.adm_navgrp_directory(), items: [

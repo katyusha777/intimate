@@ -7,7 +7,7 @@
 import { env } from 'cloudflare:workers';
 import { count, desc, eq, sql } from 'drizzle-orm';
 import { requestDb, type Db } from '@/db/client';
-import { importJobs, orgs, profiles } from '@/db/schema';
+import { accounts, importJobs, orgs, profiles } from '@/db/schema';
 import { profilesApi } from '@/app/api/profiles';
 import { mediaBucket } from '@/lib/media-keys';
 import type { CitySlug, ImportJobState } from '@/lib/taxonomy';
@@ -178,4 +178,23 @@ export async function setOrgLogo(id: string, bytes: ArrayBuffer): Promise<string
 /** Move a profile into (or out of, orgId=null) an agency's roster. */
 export async function assignProfileToOrg(profileId: string, orgId: string | null): Promise<void> {
   await adb().update(profiles).set({ orgId }).where(eq(profiles.id, profileId));
+}
+
+/**
+ * Delete an org (Pre-signups cleanup for a consent signup that never became a
+ * real roster). REFUSES if the org already owns profiles — a real agency is
+ * managed under /admin/organizations, not deleted from a lead list. Otherwise
+ * drops its import jobs, the org, and its login-less placeholder `agency`
+ * account (created together in createOrg; nothing else references it once the
+ * profile guard passes).
+ */
+export async function deleteOrg(id: string): Promise<void> {
+  const d = adb();
+  const [org] = await d.select({ accountId: orgs.accountId }).from(orgs).where(eq(orgs.id, id)).limit(1);
+  if (!org) return; // already gone — idempotent
+  const [{ n }] = await d.select({ n: count() }).from(profiles).where(eq(profiles.orgId, id));
+  if (n > 0) throw new Error('This agency already has profiles — manage it under Agencies instead of deleting it here.');
+  await d.delete(importJobs).where(eq(importJobs.orgId, id));
+  await d.delete(orgs).where(eq(orgs.id, id));
+  if (org.accountId) await d.delete(accounts).where(eq(accounts.id, org.accountId));
 }

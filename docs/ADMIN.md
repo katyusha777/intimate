@@ -8,7 +8,7 @@ Lives inside the main Astro app at `/admin` (same repo, same design system, same
 
 ## 0. Principles
 
-1. **Queue-driven, not page-driven.** Admins live in queues (verification, moderation, reports, taxonomy, imports). Everything else is lookup.
+1. **Queue-driven, not page-driven.** Admins live in queues (profile approval, reports, taxonomy, imports). Everything else is lookup.
 2. **Every decision carries a reason** from taxonomy (`REJECTION_REASONS` etc. — added to `src/lib/taxonomy.ts` like every controlled vocabulary, taxonomy = law) + optional note. Reasons are shown to the affected user verbatim — the anti-"arbitrary moderation" commitment made concrete.
 3. **Every admin action → `audit_log`. Every sensitive READ → `audit_log`** (verification docs, message threads — hard rule 6). Access without traces does not exist here.
 4. **Realtime, not refresh.** Queues update live (Supabase Realtime) — new items appear, claimed items show who's on them.
@@ -49,8 +49,7 @@ horizontal scroll (headers hidden).
 /admin
 ├─ Overview            live ops dashboard
 ├─ Queues
-│  ├─ Verification     identity checks
-│  ├─ Moderation       new/edited profiles + media
+│  ├─ Profile approval ID doc + new profiles + media — one review, one decision
 │  └─ Reports          user reports (escalations pinned)
 ├─ Directory
 │  ├─ Profiles         search/filter, detail, state, completeness · + New profile
@@ -77,23 +76,25 @@ Server-rendered, realtime-layered (our SSR-first + broadcast pattern, reused):
 - Escalation banner: any open `underage_suspicion`/`coercion_suspicion` report renders a red, un-dismissable banner site-wide in admin until handled
 - Supply map: live profiles per city vs target (the city-by-city strategy, measured)
 
-## 5. Verification queue (the crown jewel — build first)
+## 5. Profile approval queue (the crown jewel — build first)
 
-**Flow:** oldest-first list → claim (broadcast "Anna is reviewing", prevents double-work) → review screen:
-- Left: submitted doc(s) via **short-TTL presigned GETs (≤5 min) from the dedicated private R2 bucket** (hard rule 3 / ARCHITECTURE §11 — R2, NOT Supabase Storage); our admin action is the only issuer, so issuance AND render both land in audit (`verification_doc_viewed`); overlay watermark "ADMIN VIEW · {admin} · {ts}" on the doc viewer (screenshot deterrent)
-- Right: profile summary (claimed name/birth date vs doc), account info incl. **SMS verification state** (docs/VERIFICATION.md — both gates must pass before `live`), prior attempts, org membership
-- Actions: **Approve** (sets verified, publishes if profile otherwise ready, schedules doc purge per retention policy, notifies) · **Reject** with taxonomy reason → user sees exactly why + how to fix · **Escalate** to super
+**One queue, one decision** (merged 2026-08-11 — was two, "Verification" + "Moderation"; splitting the ID review from the profile review surfaced every new professional in BOTH and made an admin approve the same person twice — bad design, gone). A pending submission is ONE item — keyed by profile (or by account, for an ID with no profile yet) — carrying whatever is pending: the ID document, the profile's first publish, and its pending photos. The engine is `approvalQueue()` / `approveWholeSubmission()` / `rejectWholeSubmission()` in `actions/admin/queues.ts`; the page is `pages/admin/approvals/`.
+
+**Flow:** oldest-first list → claim (broadcast "Anna is reviewing", prevents double-work) → one review screen showing everything pending side by side:
+- **ID document** (only when one is pending) via **short-TTL presigned GETs (≤5 min) from the dedicated private R2 bucket** (hard rule 3 / ARCHITECTURE §11 — R2, NOT Supabase Storage); our admin action is the only issuer, so issuance AND render both land in audit (`verification_doc_viewed`); overlay watermark "ADMIN VIEW · {admin} · {ts}" on the doc viewer (screenshot deterrent)
+- **Profile summary** — claimed name/birth date (vs the doc), city, **SMS verification state** (docs/VERIFICATION.md — both gates must pass before `live`), plus a **"View full profile ↗"** link to the public page (admins see non-live profiles at their public URL, §8) so the whole listing is one click away
+- **Media strip** (when photos are pending) with NSFW-triage scores (OpenRouter vision pass, pre-computed by the import/upload pipeline) sorting riskiest first; cover-photo rule check (tiered explicitness policy); blurred-by-default per-item reveal (§2)
+- Actions — **one** for the whole submission: **Approve** (verifies the ID, publishes the profile if ready, approves its pending photos, schedules the doc purge per retention policy, notifies — each step state-guarded so a re-click or a photo-only item is safe) · **Reject** with taxonomy reason → ID → rejected, profile → draft, photos → rejected; user sees exactly why + how to fix · **Escalate** to super (when there's an account)
 - Keyboard-first: `a`/`r`/`e`, arrows between items — throughput matters
+
+**Text edits to live profiles publish immediately** (decided 2026-08-03): no edit-review queue, no revision layer — human moderation is images-only; an AI text-moderation pass can be layered later. Reports remain the recourse for bad text. (So the queue's non-new items are photos added to already-live profiles.)
+
 **SLA target surfaced in UI:** oldest pending age; goal <24h (a brand promise — "verified fast").
 **Retention machinery visible:** each approved item shows its purge date; the purge job (Workers Cron sweeping R2 against the retention window, hard rule 3) reports last-run status on this page — the toxic-waste policy, observable.
 
-## 6. Moderation queue (new profiles + media)
+## 6. (folded into §5)
 
-- Items: new submissions (the first `pending_review → live` approval) and media — every uploaded image is a `media` row reviewed individually.
-- **Text edits to live profiles publish immediately** (decided 2026-08-03): no edit-review queue, no revision layer — human moderation is images-only; an AI text-moderation pass can be layered later. Reports remain the recourse for bad text.
-- Media strip with NSFW-triage scores (OpenRouter vision pass, pre-computed by the import/upload pipeline) sorting riskiest first; per-photo approve/reject; cover-photo rule check (tiered explicitness policy) called out explicitly. Blurred-by-default per §2.
-- Approve → live + cache purge + IndexNow ping · Reject → taxonomy reason + note → user notified with specifics.
-- Claim + keyboard flow identical to §5 (one interaction model across all queues — enforced by shared components, §2).
+The old separate Moderation queue merged into **§5 Profile approval** on 2026-08-11 — new-profile approval and media review are the same review now. Section number kept so §7+ cross-references stay valid.
 
 ## 7. Reports queue
 
@@ -162,13 +163,12 @@ Admin phase 1 presumes **real Supabase auth + Postgres** — it does not get bui
 
 Bulk operations (multi-select approve/state-change) · canned-response macros · trust scores (verification + tenure + report history composite) · duplicate detection (photo phash + phone match queue) · ML triage tuning UI (adjust NSFW thresholds) · admin push notifications (escalations to phone) · legal-hold mechanism (freeze purges for a flagged account under a real legal request) · per-admin performance dashboards · public transparency report generator (annual: reports received/actioned — a trust-brand asset).
 
-## 16. Definition of done (phase 1: Overview + Verification + Moderation + Reports + Users + Audit)
+## 16. Definition of done (phase 1: Overview + Profile approval + Reports + Users + Audit)
 
 - [ ] Boundary CI live: ESLint admin-import rule + service-role grep pass, added in the same PR as the folders
 - [ ] Cloudflare Access active on /admin/* in prod; Supabase MFA enforced (aal2 middleware test)
 - [ ] Role matrix enforced in server actions (tests per role per action, not just UI hiding)
-- [ ] Verification flow end-to-end: claim broadcast visible to a second admin · doc URL TTL ≤5min · every doc issuance AND render in audit_log · approve schedules purge · reject reason reaches the user's dashboard verbatim
-- [ ] Moderation queue: new-profile approval works; media triage ordering works; media blurred-by-default with per-item reveal
+- [ ] Profile approval flow end-to-end: one item unifies ID doc + profile + photos · claim broadcast visible to a second admin · doc URL TTL ≤5min · every doc issuance AND render in audit_log · one approve verifies the ID + publishes the profile + approves its photos and schedules the doc purge · reject reason reaches the user's dashboard verbatim · media triage ordering + blurred-by-default per-item reveal
 - [ ] Escalation reports pin + site-wide admin banner via realtime (test: insert escalation → banner within 2s)
 - [ ] Thread access governance: support role denied · report-scoped default · full-open requires reason · audit entry created (asserted)
 - [ ] Platform messages: distinct Platform identity in the user's inbox · replies land in Support inbox · template versions logged

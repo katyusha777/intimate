@@ -325,7 +325,7 @@ export const accountApi: AccountApi = {
         .set({ idVerification: 'pending', verificationSubmittedAt: new Date() })
         .where(eq(accounts.id, session.accountId));
       // Verification waiting in the queue → ping the admin team (fire-and-forget).
-      pushoverAdmins('verification_pending', 'Verification pending', `account ${session.accountId} submitted documents — review at intimate.nl/admin/verification`);
+      pushoverAdmins('verification_pending', 'Verification pending', `account ${session.accountId} submitted documents — review at intimate.nl/admin/approvals`);
     } catch (e) {
       // Never leave orphaned toxic-waste objects if the DB write fails — they'd
       // escape the retention/purge accounting (hard rule 3).

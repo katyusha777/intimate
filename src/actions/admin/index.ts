@@ -18,11 +18,12 @@ const sessionKv = () => (env as unknown as Record<string, unknown>).SESSION as C
 import { and, eq, isNotNull } from 'drizzle-orm';
 import { requestDb } from '@/db/client';
 import { accounts, media, profiles } from '@/db/schema';
-import { approveWholeSubmission, decideModeration } from './queues';
+import { approveWholeSubmission, rejectWholeSubmission } from './queues';
 import { setProfileState, setProfileUnlisted } from './entities';
 import { approveDeletion, exportAccountData } from './gdpr';
 import { retryImport } from './imports';
-import { assignProfileToOrg, createManualProfile, createOrg, setOrgLogo, updateOrg } from './orgs';
+import { assignProfileToOrg, createManualProfile, createOrg, deleteOrg, setOrgLogo, updateOrg } from './orgs';
+import { deletePrelaunchLead, updatePrelaunchLead } from '@/app/api/prelaunch';
 import { importFromUrl } from '@/lib/import';
 import { agencyImportFromUrl, discoverProfileUrls } from '@/lib/import/agency';
 import { enqueueOrgCrawl, importAgencyProfile, processImportJobs } from '@/app/api/crawl';
@@ -90,57 +91,33 @@ export const admin = {
     },
   }),
 
-  // --- verification (§5): moderator/super ---
-  // NB: the doc READ itself is audited at the serve route (src/pages/admin/vdoc/[id].ts),
-  // not via a client action — so there's no verificationDocViewed action here.
-  verificationDecision: defineAction({
+  // --- profile approval (§5): moderator/super ---
+  // The merged queue's one decision. `key` is `profile:<id>` or `acct:<email>`;
+  // approve/reject flow through the whole-submission helpers (ID + profile +
+  // photos, each state-guarded). The doc READ itself is audited at the serve
+  // route (src/pages/admin/vdoc/[id].ts), not here.
+  approvalDecision: defineAction({
     input: z.object({
-      email: z.string().email(),
+      key: z.string().max(200),
       decision: z.enum(['approve', 'reject']),
       reason: z.enum(REJECTION_REASONS).optional(),
       note: z.string().max(500).optional(),
     }),
-    handler: async ({ email, decision, reason, note }, context) => {
+    handler: async ({ key, decision, reason, note }, context) => {
       const session = await requireAdmin(context, ['moderator']);
-      if (decision === 'reject' && !reason) throw new ActionError({ code: 'BAD_REQUEST', message: 'reason required' });
+      const sep = key.indexOf(':');
+      const kind = key.slice(0, sep);
+      const rest = key.slice(sep + 1);
+      const by = kind === 'profile' ? { profileId: rest } : { email: rest };
       if (decision === 'approve') {
-        await accountApi.saveByEmail(email, { idVerification: 'approved', verificationReason: undefined });
-        // Merge: approving the ID also publishes their submitted profile + photos.
-        await approveWholeSubmission({ email });
-        await record(session, { action: 'approve_verification', entityType: 'account', entityId: email });
+        await approveWholeSubmission(by);
+        await record(session, { action: 'approve_profile', entityType: 'approval', entityId: key });
       } else {
-        await accountApi.saveByEmail(email, { idVerification: 'rejected', verificationReason: reason });
-        await record(session, {
-          action: 'reject_verification',
-          entityType: 'account',
-          entityId: email,
-          reason,
-          meta: note ? { note } : undefined,
-        });
+        if (!reason) throw new ActionError({ code: 'BAD_REQUEST', message: 'reason required' });
+        await rejectWholeSubmission(by, reason);
+        await record(session, { action: 'reject_profile', entityType: 'approval', entityId: key, reason, meta: note ? { note } : undefined });
       }
-      await releaseItem(session, `verify:${email.toLowerCase()}`);
-      return { ok: true };
-    },
-  }),
-
-  // --- moderation (§6): moderator/super ---
-  moderationDecision: defineAction({
-    input: z.object({
-      id: z.string().max(120),
-      decision: z.enum(['approve', 'reject']),
-      reason: z.enum(REJECTION_REASONS).optional(),
-    }),
-    handler: async ({ id, decision, reason }, context) => {
-      const session = await requireAdmin(context, ['moderator']);
-      if (decision === 'reject' && !reason) throw new ActionError({ code: 'BAD_REQUEST', message: 'reason required' });
-      await decideModeration(id, decision === 'approve');
-      await record(session, {
-        action: decision === 'approve' ? 'approve_profile' : 'reject_profile',
-        entityType: 'moderation',
-        entityId: id,
-        reason,
-      });
-      await releaseItem(session, `mod:${id}`);
+      await releaseItem(session, `approve:${key}`);
       return { ok: true };
     },
   }),
@@ -615,6 +592,49 @@ export const admin = {
         });
       }
       return r;
+    },
+  }),
+
+  // --- Pre-signups edit/delete (super-only). Two sources behind one list:
+  // landing leads (prelaunch_leads) and agency consents (orgs). Audit reuses
+  // existing enum values (add_note / edit_org) — no admin_action migration. ---
+  presignupDelete: defineAction({
+    input: z.object({ source: z.enum(['lead', 'agency']), id: z.string().max(60) }),
+    handler: async ({ source, id }, context) => {
+      const session = await requireAdmin(context, ['super']);
+      if (source === 'lead') {
+        await deletePrelaunchLead(id);
+        await record(session, { action: 'add_note', entityType: 'prelaunch', entityId: id, meta: { note: 'delete pre-signup lead' } });
+      } else {
+        try {
+          await deleteOrg(id);
+        } catch (e) {
+          throw new ActionError({ code: 'BAD_REQUEST', message: (e as Error).message });
+        }
+        await record(session, { action: 'add_note', entityType: 'org', entityId: id, meta: { note: 'delete pre-signup agency' } });
+      }
+      return { ok: true };
+    },
+  }),
+  presignupUpdate: defineAction({
+    input: z.object({
+      source: z.enum(['lead', 'agency']),
+      id: z.string().max(60),
+      name: z.string().trim().min(1).max(120),
+      email: z.string().trim().max(200),
+      phone: z.string().trim().max(30),
+      siteUrl: z.string().trim().max(300).optional(),
+    }),
+    handler: async ({ source, id, name, email, phone, siteUrl }, context) => {
+      const session = await requireAdmin(context, ['super']);
+      if (source === 'lead') {
+        await updatePrelaunchLead(id, { name, email, phone });
+        await record(session, { action: 'add_note', entityType: 'prelaunch', entityId: id, meta: { note: 'edit pre-signup lead' } });
+      } else {
+        await updateOrg(id, { name, contactEmail: email, contactPhone: phone, siteUrl });
+        await record(session, { action: 'edit_org', entityType: 'org', entityId: id });
+      }
+      return { ok: true };
     },
   }),
 

@@ -59,6 +59,7 @@ export async function listAgencies(): Promise<PublicAgency[]> {
  *  (the public `toPublic` deliberately never is). Retires at launch with the
  *  founding campaign. */
 export interface AgencyConsent {
+  id: string;
   name: string;
   email: string | null;
   phone: string | null;
@@ -69,6 +70,7 @@ export interface AgencyConsent {
 export async function listAgencyConsents(): Promise<AgencyConsent[]> {
   const rows = await db()
     .select({
+      id: orgs.id,
       name: orgs.name,
       email: orgs.contactEmail,
       phone: orgs.contactPhone,
