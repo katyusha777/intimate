@@ -231,7 +231,14 @@ export const prelaunchLeads = pgTable(
     id: uuid('id').primaryKey().defaultRandom(),
     name: text('name').notNull(),
     email: text('email').notNull(),
+    // Contact handles — advertisers fill at least one (phone/whatsapp/telegram),
+    // clients none. Stored raw; the closer reaches out on whichever's given.
     phone: text('phone'),
+    whatsapp: text('whatsapp'),
+    telegram: text('telegram'),
+    // 'advertiser' | 'client' — which pitch to open with. Agencies never land
+    // here (their card routes to the dedicated /agencies/ consent flow).
+    kind: text('kind'),
     locale: text('locale').notNull().default('nl'),
     createdAt: createdAt(),
   },

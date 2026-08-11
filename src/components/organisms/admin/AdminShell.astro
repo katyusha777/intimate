@@ -54,6 +54,8 @@ const NAV_GROUPS: { header?: string; items: NavItem[] }[] = [
     { key: 'profiles', label: m.adm_nav_profiles(), href: '/admin/profiles', roles: ['moderator', 'support', 'super'], icon: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/>' },
     { key: 'organizations', label: m.adm_nav_agencies(), href: '/admin/organizations', roles: ['moderator', 'support', 'super'], icon: '<path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 9h.01M9 13h.01M9 17h.01M15 9h.01M15 13h.01M15 17h.01"/>' },
     { key: 'imports', label: m.adm_nav_imports(), href: '/admin/imports', roles: ['moderator', 'super'], icon: '<path d="M12 3v12"/><path d="m8 11 4 4 4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/>' },
+    // Pre-launch leads — English label (temporary surface, retires at launch, like Danger zone).
+    { key: 'prelaunch', label: 'Pre-signups', href: '/admin/prelaunch', roles: ['support', 'super'], icon: '<path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/>' },
   ] },
   { header: m.adm_navgrp_users(), items: [
     { key: 'users', label: m.adm_nav_users(), href: '/admin/users', roles: ['moderator', 'support', 'super'], icon: '<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/><circle cx="11" cy="9" r="2.5"/><path d="M6.8 15.5c.8-1.8 2.4-2.8 4.2-2.8s3.4 1 4.2 2.8"/>' },

@@ -1,0 +1,78 @@
+---
+/**
+ * Pre-signups (docs/ADMIN.md) — the pre-launch landing leads (`prelaunch_leads`).
+ * Read-only closer surface: who registered, how to reach them, which pitch.
+ * English-only (temporary, internal, retires at launch — like Danger zone).
+ * Server-only read; the table has zero browser grants.
+ */
+import { getAdmin } from '@/actions/admin/lib';
+import { listPrelaunchLeads } from '@/app/api/prelaunch';
+import AdminShell from '@/components/organisms/admin/AdminShell.astro';
+
+const session = await getAdmin(Astro);
+const leads = session ? await listPrelaunchLeads() : [];
+
+const fmt = new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeStyle: 'short' });
+const waLink = (n: string) => `https://wa.me/${n.replace(/[^\d]/g, '')}`;
+const tgLink = (n: string) => `https://t.me/${n.replace(/^@/, '')}`;
+---
+
+<AdminShell title="Pre-signups" section="prelaunch" wide>
+  {
+    session && (
+      <div>
+        <h1 class="display text-3xl">Pre-signups</h1>
+        <p class="mt-1 text-sm text-muted-foreground">{leads.length} pre-launch {leads.length === 1 ? 'lead' : 'leads'} · newest first</p>
+
+        <div class="mt-5 overflow-x-auto border border-border">
+          <table class="w-full min-w-[720px] text-left text-sm">
+            <thead class="border-b border-border bg-muted text-2xs uppercase tracking-wide text-muted-foreground">
+              <tr>
+                <th class="px-3 py-2 font-semibold">Name</th>
+                <th class="px-3 py-2 font-semibold">Type</th>
+                <th class="px-3 py-2 font-semibold">Email</th>
+                <th class="px-3 py-2 font-semibold">Contacts</th>
+                <th class="px-3 py-2 font-semibold">Locale</th>
+                <th class="px-3 py-2 font-semibold">Registered</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-border">
+              {leads.length === 0 ? (
+                <tr><td colspan="6" class="px-3 py-10 text-center text-muted-foreground">No pre-signups yet.</td></tr>
+              ) : (
+                leads.map((l) => (
+                  <tr class="align-top transition-colors hover:bg-muted">
+                    <td class="px-3 py-2 font-medium">{l.name}</td>
+                    <td class="px-3 py-2">
+                      {l.kind ? (
+                        <span class="inline-block border border-border px-1.5 py-0.5 text-2xs uppercase tracking-wide text-muted-foreground">{l.kind}</span>
+                      ) : (
+                        <span class="text-muted-foreground">—</span>
+                      )}
+                    </td>
+                    <td class="px-3 py-2">
+                      <a href={`mailto:${l.email}`} class="text-brand hover:underline">{l.email}</a>
+                    </td>
+                    <td class="px-3 py-2 text-xs">
+                      {l.phone || l.whatsapp || l.telegram ? (
+                        <div class="space-y-0.5">
+                          {l.phone && <div><a href={`tel:${l.phone}`} class="hover:underline">{l.phone}</a></div>}
+                          {l.whatsapp && <div>WA <a href={waLink(l.whatsapp)} target="_blank" rel="noopener" class="text-brand hover:underline">{l.whatsapp}</a></div>}
+                          {l.telegram && <div>TG <a href={tgLink(l.telegram)} target="_blank" rel="noopener" class="text-brand hover:underline">{l.telegram}</a></div>}
+                        </div>
+                      ) : (
+                        <span class="text-muted-foreground">—</span>
+                      )}
+                    </td>
+                    <td class="px-3 py-2 uppercase text-muted-foreground">{l.locale}</td>
+                    <td class="px-3 py-2 whitespace-nowrap text-xs text-muted-foreground">{fmt.format(new Date(l.createdAt))}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    )
+  }
+</AdminShell>

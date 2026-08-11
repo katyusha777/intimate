@@ -123,7 +123,7 @@ and the filter stay one dimension.
 | `api/account` | `get` · `save` · `myProfile` · `saveProfile` · `submitProfile` · `photos`/`addPhoto`/`removePhoto` · admin `all`/`byEmail`/`saveByEmail` | **`data/db/account.ts`** — accounts row + favorites/media tables; edits write `profiles` columns directly |
 | `api/messaging` | threads/messages/contacts/settings (MESSAGING.md §2) | **`data/db/messaging.ts`** (Postgres) — participation from the session, `last_message_at`+broadcast via triggers; `makeMessagingApi(db)` is unit-tested |
 | `api/orgs` | `agencyBySlug(slug)` · `listAgencies()` — PUBLIC projection only (no contact/KvK/crawl config) · `createOrg(input)` · `joinFromConsent(input)` (the /agencies consent form: dedupe by site/email, consent stamp) | direct Drizzle on `orgs`; feeds `/{locale}/agencies/…` + the sitemap. Creation lives HERE (public form + admin both call it — the fence is one-directional); admin roster/crawl stays in `actions/admin/orgs.ts` |
-| `api/prelaunch` | `addPrelaunchLead(input)` — pre-launch professional pre-registrations, idempotent on email | direct Drizzle on `prelaunch_leads` (zero browser grants); table + module retire at launch |
+| `api/prelaunch` | `addPrelaunchLead(input)` — pre-launch pre-registrations (kind + phone/whatsapp/telegram), idempotent on email · `listPrelaunchLeads()` — admin pre-signups tab, newest first | direct Drizzle on `prelaunch_leads` (zero browser grants); table + module retire at launch |
 
 Editorial **articles are not in this seam** — they're markdown-in-git via an
 Astro content collection (`src/content/articles/{locale}/`, config in

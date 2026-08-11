@@ -14,7 +14,6 @@ import { organizationJsonLd, websiteJsonLd } from '@/lib/seo';
 import Button from '@/components/atoms/Button.astro';
 import SafeImage from '@/components/atoms/SafeImage.astro';
 import SlabField from '@/components/molecules/SlabField.astro';
-import SlabSelect from '@/components/molecules/SlabSelect.astro';
 import SupportChips from '@/components/molecules/SupportChips.astro';
 
 const locale = Astro.params.locale;
@@ -123,24 +122,50 @@ const jsonLd = [websiteJsonLd(Astro.url.origin, locale), organizationJsonLd(Astr
                       action={actions.prelaunch.join}
                       class="mt-4 space-y-4"
                       data-prelaunch-form
-                      data-name-agency={m.prelaunch_name_agency()}
                       data-name-advertiser={m.prelaunch_form_name()}
                       data-name-client={m.prelaunch_name_client()}
+                      data-contacts-hint={m.prelaunch_contacts_hint()}
                     >
                       {result?.error && <p class="text-sm font-medium text-destructive">{m.prelaunch_form_error()}</p>}
-                      <SlabSelect
-                        label={m.prelaunch_kind_label()}
-                        name="kind"
-                        value="advertiser"
-                        options={[
-                          { value: 'agency', label: m.prelaunch_kind_agency() },
-                          { value: 'advertiser', label: m.prelaunch_kind_advertiser() },
-                          { value: 'client', label: m.prelaunch_kind_client() },
-                        ]}
-                      />
+
+                      {/* Pick FIRST — two equal cards, no default (a deliberate
+                          tap). Agencies get the richer /agencies/ flow, linked below. */}
+                      <fieldset>
+                        <legend class="text-sm font-medium">{m.prelaunch_kind_label()}</legend>
+                        <div class="mt-2.5 grid grid-cols-2 gap-3">
+                          {[
+                            { value: 'advertiser', title: m.role_advertiser(), desc: m.role_advertiser_desc(), icon: '<path d="M4 8h3l2-2h6l2 2h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>' },
+                            { value: 'client', title: m.role_client(), desc: m.role_client_desc(), icon: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/>' },
+                          ].map((o) => (
+                            <label class="group flex cursor-pointer flex-col items-center gap-2 border border-white/20 p-5 text-center transition-colors hover:border-white/50 has-[:checked]:border-white has-[:checked]:bg-white has-[:checked]:text-neutral-950">
+                              <input type="radio" name="kind" value={o.value} required class="sr-only" />
+                              <svg class="size-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" set:html={o.icon} />
+                              <span class="font-condensed text-base font-bold uppercase tracking-wide">{o.title}</span>
+                              <span class="text-xs text-white/60 group-has-[:checked]:text-neutral-950/70">{o.desc}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </fieldset>
+
+                      <a
+                        href={localizePath('/agencies/')}
+                        class="flex items-center justify-center gap-2 border border-white/15 px-4 py-3 text-sm font-medium text-white/70 transition-colors hover:border-white/40 hover:text-white"
+                      >
+                        <svg class="size-4 flex-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 9h.01M9 13h.01M9 17h.01M15 9h.01M15 13h.01M15 17h.01"/></svg>
+                        {m.prelaunch_agency_link()} →
+                      </a>
+
                       <SlabField class="js-name-field" label={m.prelaunch_form_name()} name="name" required autocomplete="nickname" />
                       <SlabField label={m.prelaunch_form_email()} name="email" type="email" inputmode="email" required autocomplete="email" />
-                      <SlabField label={m.prelaunch_form_phone()} name="phone" type="tel" inputmode="tel" autocomplete="tel" />
+
+                      {/* Contacts — advertiser only (CSS-revealed below), at least one. */}
+                      <div data-contacts class="space-y-4">
+                        <SlabField label={m.prelaunch_contact_phone()} name="phone" type="tel" inputmode="tel" autocomplete="tel" />
+                        <SlabField label={m.prelaunch_contact_whatsapp()} name="whatsapp" type="tel" inputmode="tel" />
+                        <SlabField label={m.prelaunch_contact_telegram()} name="telegram" placeholder="@username" />
+                        <p class="text-xs text-white/50">{m.prelaunch_contacts_hint()}</p>
+                      </div>
+
                       <input type="hidden" name="locale" value={locale} />
                       <Button type="submit" class="block w-full">
                         {m.prelaunch_form_submit()}
@@ -151,15 +176,6 @@ const jsonLd = [websiteJsonLd(Astro.url.origin, locale), organizationJsonLd(Astr
                 )
               }
             </div>
-
-            <p class="mt-10 text-sm">
-              <a
-                href={localizePath('/agencies/')}
-                class="text-white/60 underline underline-offset-4 transition-colors hover:text-white"
-              >
-                {m.prelaunch_agency_link()} →
-              </a>
-            </p>
           </div>
         </div>
       </div>
@@ -168,19 +184,28 @@ const jsonLd = [websiteJsonLd(Astro.url.origin, locale), organizationJsonLd(Astr
 
   <script>
     // The name field means a different thing per join-type — swap its label so
-    // "Working name" doesn't greet an agency or a browsing client.
+    // "Working name" doesn't greet a browsing client. Also enforce the
+    // advertiser "at least one contact" rule client-side (server is the real gate).
     function initKindLabel() {
       const form = document.querySelector<HTMLFormElement>('[data-prelaunch-form]');
       if (!form || form.dataset.kindInit) return;
       form.dataset.kindInit = '1';
-      const sel = form.querySelector<HTMLSelectElement>('select[name="kind"]');
       const label = form.querySelector<HTMLElement>('.js-name-field > span');
-      if (!sel || !label) return;
+      const radios = form.querySelectorAll<HTMLInputElement>('input[name="kind"]');
+      const contacts = ['phone', 'whatsapp', 'telegram'].map((n) => form.querySelector<HTMLInputElement>(`[name="${n}"]`));
+      const checked = () => form.querySelector<HTMLInputElement>('input[name="kind"]:checked')?.value;
       const sync = () => {
-        label.textContent =
-          sel.value === 'agency' ? form.dataset.nameAgency! : sel.value === 'client' ? form.dataset.nameClient! : form.dataset.nameAdvertiser!;
+        const kind = checked();
+        if (label && kind) label.textContent = kind === 'client' ? form.dataset.nameClient! : form.dataset.nameAdvertiser!;
       };
-      sel.addEventListener('change', sync);
+      radios.forEach((r) => r.addEventListener('change', sync));
+      contacts.forEach((c) => c?.addEventListener('input', () => contacts.forEach((x) => x?.setCustomValidity(''))));
+      form.addEventListener('submit', (e) => {
+        if (checked() !== 'advertiser' || contacts.some((c) => c?.value.trim())) return;
+        e.preventDefault();
+        contacts[0]?.setCustomValidity(form.dataset.contactsHint || '');
+        contacts[0]?.reportValidity();
+      });
       sync();
     }
     initKindLabel();
@@ -195,5 +220,13 @@ const jsonLd = [websiteJsonLd(Astro.url.origin, locale), organizationJsonLd(Astr
   }
   .ink-slab {
     clip-path: polygon(0 6px, 100% 0, 100% calc(100% - 6px), 0 100%);
+  }
+  /* Contacts belong to the independent professional — revealed by the card
+     choice, zero JS. Clients (just browsing) never see them. */
+  [data-contacts] {
+    display: none;
+  }
+  form:has(input[name='kind'][value='advertiser']:checked) [data-contacts] {
+    display: block;
   }
 </style>
