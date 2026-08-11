@@ -318,10 +318,10 @@ Blocking from any surface lands here.
 
 - **In-app:** realtime badge counts on the Messages surface (both roles) + inbox
   ordering.
-- **Email fallback for professionals (Phase A, day one):** "You have a new
-  message" — no content, just the fact + a deep link; throttled (≤1 per thread
-  per hour). The reliable channel until push exists. (Needs the email provider
-  from `INFRASTRUCTURE.md` §7 — adult-policy check first.)
+- **No email for messages (owner decision 2026-08-11):** the "new message"
+  email fallback shipped, proved too spammy, and was removed — web push is the
+  only out-of-app channel for messages/requests. Transactional email remains
+  for profile-approved only (`lib/email.ts`).
 - **Web push (SHIPPED 2026-08-08, OneSignal):** signed-in only (SDK mounted by
   `organisms/push/PushManager.astro`, piggybacked on `/sw.js`). Send seam =
   `src/lib/push.ts` (the only provider-touching file; content-free localized

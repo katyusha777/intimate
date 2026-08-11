@@ -76,26 +76,8 @@ export function emailProfileApproved(to: string, slug?: string): void {
   });
 }
 
-/** Professional notification: a client message/request is waiting (NL/EN).
- *  Throttled by the caller to the start of an unread burst — never per message. */
-export function emailNewMessage(to: string, threadId: string): void {
-  sendEmail({
-    to,
-    subject: 'Nieuw bericht op Intimate · New message on Intimate',
-    text: [
-      'Je hebt een nieuw bericht op Intimate.',
-      `Lezen en beantwoorden: https://intimate.nl/nl/messages/${threadId}/`,
-      '',
-      '—',
-      '',
-      'You have a new message on Intimate.',
-      `Read and reply: https://intimate.nl/en/messages/${threadId}/`,
-      '',
-      '— Intimate · intimate.nl',
-    ].join('\n'),
-  });
-}
-
+// New-message emails were removed 2026-08-11 (owner: too spammy) — messaging
+// notifies via web push only (lib/push.ts).
 // Admin-event notifications live in lib/pushover.ts (pushoverAdmins) —
 // admin EMAILS for registration/verification were turned off 2026-08-10
 // (owner decision); this module is user-facing mail only.

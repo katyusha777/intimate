@@ -24,7 +24,6 @@ import {
   threads,
 } from '@/db/schema';
 import { sendPush } from '@/lib/push';
-import { emailNewMessage } from '@/lib/email';
 import { pushoverAdmins } from '@/lib/pushover';
 import {
   ConversationSettingsSchema,
@@ -478,11 +477,6 @@ export function makeMessagingApi(db: () => Db): MessagingApi {
       });
     }
     sendPush({ accountId: profile.accountId, category: 'requests', path: `/messages/${thread.id}/` });
-    // A new request is the money moment — always email her (push is best-effort).
-    {
-      const [acc] = await d.select({ email: accounts.email }).from(accounts).where(eq(accounts.id, profile.accountId));
-      if (acc?.email) emailNewMessage(acc.email, thread.id);
-    }
     // IDs only to the US processor (SECURITY.md) — no client email; the slug is public.
     pushoverAdmins('client_message', 'New request', `client ${session.accountId} → ${profileSlug}`);
     return (await loadThreads(d, eq(threads.id, thread.id)))[0]!;
@@ -532,8 +526,8 @@ export function makeMessagingApi(db: () => Db): MessagingApi {
     if (kind === 'text' && !clean) return null;
     if (kind === 'photo' && !photo) return null;
 
-    // Email throttle: she gets a mail only when this message STARTS an unread
-    // burst (no unread client messages before it) — not one mail per message.
+    // Admin ping only at the start of an unread burst (no unread client
+    // messages before this one) — not one ping per message.
     const firstUnread =
       party === 'client' &&
       (
@@ -557,17 +551,11 @@ export function makeMessagingApi(db: () => Db): MessagingApi {
     const to = party === 'client' ? await profileOwnerAccount(d, t.profileId) : await threadClientAccount(d, threadId);
     if (row && to) {
       sendPush({ accountId: to, category: 'messages', path: `/messages/${threadId}/`, collapseId: threadId });
-      // Push is best-effort (few subscribe) — a new unread burst also emails
-      // her. ponytail: also fires when push DID land; gate on OneSignal
-      // subscription state if double-notifying ever annoys.
-      if (firstUnread) {
-        const [acc] = await d.select({ email: accounts.email }).from(accounts).where(eq(accounts.id, to));
-        if (acc?.email) emailNewMessage(acc.email, threadId);
-        // The event is "client messages a professional" — her replies must not
-        // ping the admin team.
-        if (party === 'client')
-          pushoverAdmins('client_message', 'New message', `new message in thread ${threadId}`);
-      }
+      // New-message EMAILS turned off 2026-08-11 (owner: too spammy) — push only.
+      // The event is "client messages a professional" — her replies must not
+      // ping the admin team.
+      if (firstUnread && party === 'client')
+        pushoverAdmins('client_message', 'New message', `new message in thread ${threadId}`);
     }
     return row ? toMessage(row) : null;
   },
