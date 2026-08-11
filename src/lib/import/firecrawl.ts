@@ -32,7 +32,7 @@ export interface ScrapeResult {
   links: string[];
 }
 
-type ScrapeResponse = { success?: boolean; data?: { markdown?: string; links?: string[] } };
+type ScrapeResponse = { success?: boolean; error?: string; data?: { markdown?: string; links?: string[] } };
 
 /** Scrape one page to markdown. Throws on a Firecrawl error or empty content. */
 export async function firecrawlScrape(opts: ScrapeInput): Promise<ScrapeResult> {
@@ -62,12 +62,18 @@ export async function firecrawlScrape(opts: ScrapeInput): Promise<ScrapeResult> 
   // beta.kinky.nl). So if the action pass fails, retry once with no actions.
   let r = await attempt(opts.actions);
   if ((!r.ok || !r.body.success) && opts.actions?.length) r = await attempt(undefined);
+  // Firecrawl renders are flaky (transient 4xx/5xx, empty mid-render captures —
+  // e.g. sites with an auto-translate overlay) — one plain retry clears most.
+  if (!r.ok || !r.body.success || !r.body.data?.markdown?.trim()) r = await attempt(undefined);
 
   if (!r.ok || !r.body.success) {
     if (r.status === 402) throw new Error('Import is temporarily unavailable (out of scraping credits). Try again later.');
-    throw new Error('Could not read that page — check the link is a public profile.');
+    // Surface the upstream cause (status + Firecrawl's error string, truncated)
+    // — "check the link" alone made real outages undiagnosable from the admin.
+    const detail = (r.body.error ?? '').slice(0, 140);
+    throw new Error(`Could not read that page (scraper ${r.status}${detail ? `: ${detail}` : ''}) — retry, or check the link is public.`);
   }
   const md = r.body.data?.markdown?.trim();
-  if (!md) throw new Error('Could not read that page — check the link is a public profile.');
+  if (!md) throw new Error('Could not read that page (empty render) — retry, or check the link is public.');
   return { markdown: md, links: r.body.data?.links ?? [] };
 }
