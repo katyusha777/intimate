@@ -28,7 +28,10 @@ export type Corridor = { kind: 'pass' } | { kind: 'redirect' } | { kind: 'rewrit
 
 export function corridor(url: URL, xSheet: boolean): Corridor {
   const p = url.pathname;
-  if (HOME.test(p)) return { kind: 'rewrite', to: `${p.replace(/\/$/, '')}/prelaunch/` };
+  // Keep the query: the landing's form POSTs back to /{locale}/ and Astro's
+  // action lookup rides the ?_astroAction= param — dropping it on rewrite
+  // would swallow the submission.
+  if (HOME.test(p)) return { kind: 'rewrite', to: `${p.replace(/\/$/, '')}/prelaunch/${url.search}` };
   if (ALLOWED_PAGES.test(p) || PASS.test(p)) return { kind: 'pass' };
   if (xSheet && SHEET_PROFILE.test(p)) return { kind: 'pass' };
   return { kind: 'redirect' };

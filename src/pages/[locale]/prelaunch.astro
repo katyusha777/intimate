@@ -1,0 +1,137 @@
+---
+/**
+ * The pre-launch landing — served at `/{locale}/` on the apex during the
+ * campaign window (middleware rewrite via lib/prelaunch.ts; the full home
+ * stays untouched for beta). One job: a professional pre-registers in under a
+ * minute. Deliberately dark and cinematic (the brand's ink language), bare
+ * chrome, zero islands. Dies at launch together with the corridor.
+ */
+import { actions } from 'astro:actions';
+import Layout from '@/layouts/Layout.astro';
+import * as m from '@/paraglide/messages';
+import { isLocale, localizePath, samePathAlternates } from '@/lib/i18n';
+import { organizationJsonLd, websiteJsonLd } from '@/lib/seo';
+import Button from '@/components/atoms/Button.astro';
+import SafeImage from '@/components/atoms/SafeImage.astro';
+import SlabField from '@/components/molecules/SlabField.astro';
+
+const locale = Astro.params.locale;
+if (!isLocale(locale)) return new Response(null, { status: 404 });
+
+const result = Astro.getActionResult(actions.prelaunch.join);
+const done = result && !result.error;
+
+/* Canonical is the HOME URL — this template answers /{locale}/ on the apex;
+ * the /prelaunch path itself is an internal address, never the public one. */
+const alternates = samePathAlternates(Astro.url.origin, '/');
+const jsonLd = [websiteJsonLd(Astro.url.origin, locale), organizationJsonLd(Astro.url.origin)];
+---
+
+<Layout
+  title={m.prelaunch_meta_title()}
+  description={m.prelaunch_meta_desc()}
+  canonical={new URL(`/${locale}/`, Astro.url.origin).href}
+  {alternates}
+  {jsonLd}
+  bare
+  preloadImage="/video/hero-poster.jpg"
+>
+  <div class="dark min-h-dvh bg-neutral-950 text-white">
+    <div class="relative overflow-hidden lg:min-h-dvh">
+      <!-- Cinematic media: right half on desktop (the home hero's language),
+           full-bleed dimmed backdrop on mobile. One asset, already shipped. -->
+      <div class="absolute inset-0 lg:inset-y-0 lg:left-auto lg:right-0 lg:w-1/2" data-safe-video-wrap>
+        <video
+          class="hidden h-full w-full object-cover"
+          data-safe-video
+          muted
+          loop
+          playsinline
+          preload="none"
+          data-poster="/video/hero-poster.jpg"
+        >
+          <source src="/video/hero.webm" type="video/webm" />
+          <source src="/video/hero.mp4" type="video/mp4" />
+        </video>
+        <SafeImage imageKey="hero-video" src="/video/hero-poster.jpg" alt="" class="h-full w-full" loading="eager" />
+        <!-- Mobile scrim so the type always wins; desktop keeps the media clean. -->
+        <div class="absolute inset-0 bg-neutral-950/75 lg:hidden" aria-hidden="true"></div>
+      </div>
+      <div class="hero-panel absolute inset-y-0 left-0 hidden w-[58%] bg-neutral-950 lg:block" aria-hidden="true"></div>
+
+      <div class="relative mx-auto max-w-7xl px-4 md:px-6">
+        <div class="flex min-h-dvh flex-col py-6 lg:max-w-[46%] lg:justify-center">
+          <span class="display text-lg">Intimate</span>
+
+          <div class="flex flex-1 flex-col justify-center py-10 lg:flex-none lg:py-12">
+            <p class="eyebrow flex items-center gap-2 font-condensed text-lg font-bold uppercase tracking-wide">
+              <span class="size-1.5 rounded-full bg-online" aria-hidden="true"></span>
+              Amsterdam
+            </p>
+            <h1 class="display mt-3 text-4xl md:text-5xl">{m.prelaunch_title()}</h1>
+            <p class="mt-4 max-w-md text-lg leading-relaxed text-white/75">{m.prelaunch_sub()}</p>
+
+            <dl class="mt-8 max-w-md space-y-3">
+              {
+                [
+                  [m.prelaunch_point_1_lead(), m.prelaunch_point_1_body()],
+                  [m.prelaunch_point_2_lead(), m.prelaunch_point_2_body()],
+                  [m.prelaunch_point_3_lead(), m.prelaunch_point_3_body()],
+                ].map(([lead, body]) => (
+                  <div class="flex items-baseline gap-2">
+                    <dt class="flex-none whitespace-nowrap font-condensed font-bold uppercase tracking-wide text-brand">{lead}</dt>
+                    <dd class="text-sm leading-relaxed text-white/70">{body}</dd>
+                  </div>
+                ))
+              }
+            </dl>
+
+            <div id="join" class="mt-10 max-w-md scroll-mt-6">
+              {
+                done ? (
+                  <div class="ink-slab bg-white p-6 text-neutral-950">
+                    <p class="display text-2xl">{m.prelaunch_done_title()}</p>
+                    <p class="mt-2 leading-relaxed text-neutral-700">{m.prelaunch_done_body()}</p>
+                  </div>
+                ) : (
+                  <>
+                    <h2 class="display text-2xl">{m.prelaunch_form_title()}</h2>
+                    <form method="POST" action={actions.prelaunch.join} class="mt-4 space-y-4">
+                      {result?.error && <p class="text-sm font-medium text-destructive">{m.prelaunch_form_error()}</p>}
+                      <SlabField label={m.prelaunch_form_name()} name="name" required autocomplete="nickname" />
+                      <SlabField label={m.prelaunch_form_email()} name="email" type="email" inputmode="email" required autocomplete="email" />
+                      <SlabField label={m.prelaunch_form_phone()} name="phone" type="tel" inputmode="tel" autocomplete="tel" />
+                      <input type="hidden" name="locale" value={locale} />
+                      <Button type="submit" class="block w-full">
+                        {m.prelaunch_form_submit()}
+                      </Button>
+                    </form>
+                  </>
+                )
+              }
+            </div>
+
+            <p class="mt-10 text-sm">
+              <a
+                href={localizePath('/agencies/')}
+                class="text-white/60 underline underline-offset-4 transition-colors hover:text-white"
+              >
+                {m.prelaunch_agency_link()} →
+              </a>
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</Layout>
+
+<style>
+  /* The home hero's jagged ink seam — one brand, one cut. */
+  .hero-panel {
+    clip-path: polygon(0 0, 100% 0, 91% 32%, 97% 58%, 87% 100%, 0 100%);
+  }
+  .ink-slab {
+    clip-path: polygon(0 6px, 100% 0, 100% calc(100% - 6px), 0 100%);
+  }
+</style>

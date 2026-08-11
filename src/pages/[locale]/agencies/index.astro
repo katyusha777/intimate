@@ -1,0 +1,202 @@
+---
+/**
+ * The /agencies closer page (PRE-LAUNCH-GRANT-CARDONE.md §12) — the campaign's
+ * one conversion surface: an agency owner, on a phone, mid-call, submits the
+ * consent form. Bare layout (corridor rule §12.2: no nav into the site; the
+ * pre-launch host allow-list in lib/prelaunch.ts seals the dead-ends). The
+ * demo grid is the REAL product: live ProfileCards + the real ProfileSheet
+ * modal that Layout always ships. Zero islands; the form is a plain HTML POST.
+ *
+ * Editing rules live in the doc §14: every copy change runs the §8 four-question
+ * test; friction only goes down; the page never grows.
+ */
+import { actions } from 'astro:actions';
+import Layout from '@/layouts/Layout.astro';
+import * as m from '@/paraglide/messages';
+import { isLocale, localizePath, samePathAlternates } from '@/lib/i18n';
+import ProfileCard from '@/components/organisms/profile/ProfileCard.astro';
+import Button from '@/components/atoms/Button.astro';
+import SlabField from '@/components/molecules/SlabField.astro';
+import { profilesApi } from '@/app/api/profiles';
+
+const locale = Astro.params.locale;
+if (!isLocale(locale)) return new Response(null, { status: 404 });
+
+const result = Astro.getActionResult(actions.agencies.join);
+const done = result && !result.error;
+
+/* The demo grid: the same real profiles the home leads with (owner decision:
+ * reuse the shelf for now; a branded demo roster can replace it later). */
+let { items: demo } = await profilesApi.list({ featuredOnly: true, limit: 4 });
+if (demo.length < 4) demo = (await profilesApi.list({ sort: 'newest', limit: 4 })).items;
+demo = demo.slice(0, 4);
+
+const alternates = samePathAlternates(Astro.url.origin, '/agencies/');
+---
+
+<Layout
+  title={m.agencies_meta_title()}
+  description={m.agencies_meta_desc()}
+  canonical={new URL(`/${locale}/agencies/`, Astro.url.origin).href}
+  {alternates}
+  bare
+>
+  <div class="mx-auto max-w-xl px-4 pb-28">
+    <!-- Top strip: wordmark + NL⇄EN. The only chrome the corridor allows. -->
+    <div class="flex items-center justify-between pt-5">
+      <span class="display text-lg">Intimate</span>
+      <p class="text-sm font-semibold">
+        <a
+          href="/nl/agencies/"
+          class={locale === 'nl' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}>NL</a
+        ><span class="px-1.5 text-foreground/30" aria-hidden="true">/</span><a
+          href="/en/agencies/"
+          class={locale === 'en' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}>EN</a
+        >
+      </p>
+    </div>
+
+    <!-- §12.1 Hero: declaration, not introduction. -->
+    <header class="pt-8 md:pt-12">
+      <h1 class="display text-4xl md:text-5xl">{m.agencies_hero_title()}</h1>
+      <p class="mt-4 text-lg leading-relaxed text-muted-foreground">{m.agencies_hero_sub()}</p>
+      <div class="mt-6">
+        <Button as="a" href="#join">{m.agencies_hero_cta()}</Button>
+      </div>
+    </header>
+
+    <!-- §12.2 The demo: the real product, not a screenshot. Tap = real modal. -->
+    <section class="pt-10 md:pt-14">
+      <p class="eyebrow font-semibold text-brand">{m.agencies_demo_frame()}</p>
+      <div class="mt-4 grid grid-cols-2 gap-4">
+        {demo.map((p, i) => <ProfileCard profile={p} loading={i < 2 ? 'eager' : 'lazy'} fetchpriority={i === 0 ? 'high' : undefined} />)}
+      </div>
+    </section>
+
+    <!-- §12.3 The shift: why now. The one experience aside lives here only. -->
+    <section class="pt-10 md:pt-14">
+      <h2 class="display text-2xl">{m.agencies_shift_title()}</h2>
+      <p class="mt-3 leading-relaxed text-muted-foreground">{m.agencies_shift_body()}</p>
+    </section>
+
+    <!-- §12.4 The founding terms. -->
+    <section class="pt-10 md:pt-14">
+      <h2 class="display text-2xl">{m.agencies_terms_title()}</h2>
+      <dl class="mt-2 divide-y divide-foreground/10">
+        {
+          [
+            [m.agencies_term_free_lead(), m.agencies_term_free_body()],
+            [m.agencies_term_sync_lead(), m.agencies_term_sync_body()],
+            [m.agencies_term_direct_lead(), m.agencies_term_direct_body()],
+            [m.agencies_term_leave_lead(), m.agencies_term_leave_body()],
+          ].map(([lead, body]) => (
+            <div class="py-3">
+              <dt class="font-condensed text-lg font-bold uppercase tracking-wide">{lead}</dt>
+              <dd class="mt-1 leading-relaxed text-muted-foreground">{body}</dd>
+            </div>
+          ))
+        }
+      </dl>
+    </section>
+
+    <!-- §12.5 What's the catch? Agree first, then the zero-waste close. -->
+    <section class="pt-10 md:pt-14">
+      <!-- No .display: its ::after period would trail the question mark. -->
+      <h2 class="font-condensed text-2xl font-bold uppercase tracking-tight">{m.agencies_catch_title()}</h2>
+      <p class="mt-3 leading-relaxed text-muted-foreground">{m.agencies_catch_body()}</p>
+      <div class="ink-slab dark mt-6 bg-neutral-950 p-6 text-white">
+        <p class="font-condensed text-xl font-bold uppercase tracking-wide">{m.agencies_catch_worst_lead()}</p>
+        <p class="mt-2 leading-relaxed text-white/80">{m.agencies_catch_worst_body()}</p>
+      </div>
+      <p class="mt-4 text-sm text-muted-foreground">{m.agencies_catch_small()}</p>
+    </section>
+
+    <!-- §12.6 How it works: three steps ending in control. -->
+    <section class="pt-10 md:pt-14">
+      <h2 class="display text-2xl">{m.agencies_how_title()}</h2>
+      <ol class="mt-2">
+        {
+          [
+            [m.agencies_how_1_lead(), m.agencies_how_1_body()],
+            [m.agencies_how_2_lead(), m.agencies_how_2_body()],
+            [m.agencies_how_3_lead(), m.agencies_how_3_body()],
+          ].map(([lead, body], i) => (
+            <li class="flex gap-4 py-3">
+              <span class="display text-3xl text-brand" aria-hidden="true">
+                {i + 1}
+              </span>
+              <div>
+                <p class="font-condensed text-lg font-bold uppercase tracking-wide">{lead}</p>
+                <p class="mt-1 leading-relaxed text-muted-foreground">{body}</p>
+              </div>
+            </li>
+          ))
+        }
+      </ol>
+    </section>
+
+    <!-- §12.7 The form: the consent artifact. 30 seconds, four fields, one box. -->
+    <section id="join" class="scroll-mt-6 pt-10 md:pt-14">
+      {
+        done ? (
+          <div class="ink-slab dark bg-neutral-950 p-8 text-white">
+            <p class="display text-3xl">{m.agencies_form_done_title()}</p>
+            <p class="mt-3 leading-relaxed text-white/85">{m.agencies_form_done_body()}</p>
+          </div>
+        ) : (
+          <>
+            <h2 class="display text-2xl">{m.agencies_form_title()}</h2>
+            <form method="POST" action={actions.agencies.join} class="mt-5 space-y-5">
+              {result?.error && <p class="text-sm font-medium text-destructive">{m.agencies_form_error()}</p>}
+              <SlabField label={m.agencies_form_name()} name="name" required autocomplete="organization" />
+              <SlabField
+                label={m.agencies_form_site()}
+                name="siteUrl"
+                type="text"
+                inputmode="text"
+                placeholder="youragency.nl"
+                required
+                autocomplete="url"
+              />
+              <SlabField label={m.agencies_form_email()} name="email" type="email" inputmode="email" required autocomplete="email" />
+              <SlabField label={m.agencies_form_phone()} name="phone" type="tel" inputmode="tel" autocomplete="tel" />
+              <label class="flex items-start gap-3">
+                <input type="checkbox" name="consent" required class="cbx-box mt-0.5 flex-none" />
+                <span class="text-sm leading-relaxed text-muted-foreground">{m.agencies_form_consent()}</span>
+              </label>
+              <input type="hidden" name="locale" value={locale} />
+              <Button type="submit" class="block w-full">
+                {m.agencies_form_submit()}
+              </Button>
+            </form>
+          </>
+        )
+      }
+    </section>
+  </div>
+
+  <!-- §12.8 Sticky CTA: the thumb is never more than one tap from the yes. -->
+  {
+    !done && (
+      <div class="agencies-cta glass fixed inset-x-0 bottom-0 z-40 border-t px-4 pt-3">
+        <div class="mx-auto max-w-xl">
+          <Button as="a" href="#join" class="block w-full">
+            {m.agencies_sticky_cta()}
+          </Button>
+        </div>
+      </div>
+    )
+  }
+</Layout>
+
+<style>
+  /* The brand slab shear (DESIGN §1.1) on the two ink blocks. */
+  .ink-slab {
+    clip-path: polygon(0 6px, 100% 0, 100% calc(100% - 6px), 0 100%);
+  }
+  /* Fixed bar rides the home-indicator inset; bracket paddings are banned in
+     class lists (tests/style.test.ts), so the safe-area math lives here. */
+  .agencies-cta {
+    padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
+  }
+</style>
