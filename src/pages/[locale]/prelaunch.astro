@@ -100,7 +100,7 @@ const jsonLd = [websiteJsonLd(Astro.url.origin, locale), organizationJsonLd(Astr
           <div class="flex flex-1 flex-col justify-center py-10 lg:flex-none lg:py-12">
             <p class="eyebrow flex items-center gap-2 font-condensed text-lg font-bold uppercase tracking-wide">
               <span class="size-1.5 rounded-full bg-online" aria-hidden="true"></span>
-              Amsterdam
+              {m.prelaunch_eyebrow()}
             </p>
             <h1 class="display mt-3 text-4xl md:text-5xl">{m.prelaunch_title()}</h1>
             <p class="mt-4 max-w-md text-lg leading-relaxed text-white/75">{m.prelaunch_sub()}</p>
@@ -119,6 +119,29 @@ const jsonLd = [websiteJsonLd(Astro.url.origin, locale), organizationJsonLd(Astr
                 ))
               }
             </dl>
+
+            {/* Why Intimate — the two shifts (AI-first, phone-first) lifted from
+                the /agencies closer, tuned for the solo professional. The real
+                reason to claim a spot, before the ask. */}
+            <section class="mt-10 max-w-md">
+              <h2 class="font-condensed text-xl font-bold uppercase tracking-tight">{m.prelaunch_why_title()}</h2>
+              <div class="mt-4 space-y-3">
+                {
+                  [
+                    { icon: '<path d="m12 3 1.9 5.8L20 10l-6.1 1.2L12 17l-1.9-5.8L4 10l6.1-1.2z"/><path d="M18 3v3.5M19.75 4.75h-3.5"/>', lead: m.prelaunch_why_ai_lead(), body: m.prelaunch_why_ai_body() },
+                    { icon: '<rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/>', lead: m.prelaunch_why_mobile_lead(), body: m.prelaunch_why_mobile_body() },
+                  ].map((pt) => (
+                    <div class="flex gap-3 border border-white/15 p-4">
+                      <svg class="size-6 flex-none text-brand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" set:html={pt.icon} />
+                      <div>
+                        <p class="font-condensed text-base font-bold uppercase tracking-wide">{pt.lead}</p>
+                        <p class="mt-1 text-sm leading-relaxed text-white/70">{pt.body}</p>
+                      </div>
+                    </div>
+                  ))
+                }
+              </div>
+            </section>
 
             <div id="join" class="mt-10 max-w-md scroll-mt-6">
               {
