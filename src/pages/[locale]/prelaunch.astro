@@ -123,10 +123,13 @@ const jsonLd = [websiteJsonLd(Astro.url.origin, locale), organizationJsonLd(Astr
             <div id="join" class="mt-10 max-w-md scroll-mt-6">
               {
                 joined === 'submitted' ? (
-                  <div class="ink-slab bg-white p-6 text-neutral-950">
-                    <p class="display text-2xl">{m.prelaunch_joined_title()}</p>
-                    <p class="mt-2 leading-relaxed text-neutral-700">{m.prelaunch_joined_body()}</p>
-                  </div>
+                  <>
+                    <div class="ink-slab bg-white p-6 text-neutral-950">
+                      <p class="display text-2xl">{m.prelaunch_joined_title()}</p>
+                      <p class="mt-2 leading-relaxed text-neutral-700">{m.prelaunch_joined_body()}</p>
+                    </div>
+                    <SupportChips class="mt-6 text-white/70" />
+                  </>
                 ) : joined === 'building' ? (
                   <div class="ink-slab bg-white p-6 text-neutral-950">
                     <p class="display text-2xl">{m.prelaunch_building_title()}</p>
