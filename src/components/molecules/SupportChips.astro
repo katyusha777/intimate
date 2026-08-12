@@ -1,6 +1,6 @@
 ---
 /**
- * Support chips: WhatsApp + Telegram, straight from the one SUPPORT_CONTACT
+ * Support chips: WhatsApp + Telegram + phone + email, straight from the one SUPPORT_CONTACT
  * config. Theme-adaptive (borders/text via tokens, so it reads on the dark
  * pre-launch hero AND the light closer page). Used on the campaign surfaces so
  * a hesitating owner is one tap from a human.
@@ -16,8 +16,10 @@ interface Props {
 }
 const { label, class: className } = Astro.props;
 const chips = [
-  { name: 'WhatsApp', icon: 'whatsapp', href: SUPPORT_CONTACT.whatsapp.href, tone: 'text-online' },
-  { name: 'Telegram', icon: 'telegram', href: SUPPORT_CONTACT.telegram.href, tone: 'text-telegram' },
+  { name: 'WhatsApp', icon: 'whatsapp', family: 'brands', href: SUPPORT_CONTACT.whatsapp.href, tone: 'text-online' },
+  { name: 'Telegram', icon: 'telegram', family: 'brands', href: SUPPORT_CONTACT.telegram.href, tone: 'text-telegram' },
+  { name: SUPPORT_CONTACT.phone.display, icon: 'phone', family: 'thin', href: SUPPORT_CONTACT.phone.href, tone: 'text-brand' },
+  { name: SUPPORT_CONTACT.email.display, icon: 'envelope', family: 'thin', href: SUPPORT_CONTACT.email.href, tone: 'text-brand' },
 ] as const;
 ---
 
@@ -31,7 +33,7 @@ const chips = [
         rel="nofollow noopener noreferrer"
         class="inline-flex items-center gap-2 border border-foreground/25 px-3 py-1.5 font-medium transition-colors hover:border-foreground/60"
       >
-        <Icon name={c.icon} family="brands" class:list={['text-base', c.tone]} />
+        <Icon name={c.icon} family={c.family} class:list={['text-base', c.tone]} />
         {c.name}
       </a>
     ))
