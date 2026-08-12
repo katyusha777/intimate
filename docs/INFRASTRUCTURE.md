@@ -80,19 +80,23 @@ the Cloudflare Access rule that is scoped to the `intimate.nl/admin` path
 two custom domains: `beta.intimate.nl` serves the full site (noindexed via an
 `X-Robots-Tag` middleware header); the apex serves the pre-launch landing
 (`/{locale}/` rewritten onto `pages/[locale]/prelaunch.astro`), the
-`/{locale}/agencies/` closer page, and the bare pre-signup upload page
-(`/{locale}/prelaunch/build/` — after the advertiser lead form she drops her
-photos + ID there so she's ready to go live at launch; NO account, gated by the
-httponly `psl` cookie = her lead id, uploads via `/_actions` + thumbnails via
-`/api/prelaunch/media`, bytes in R2 per `src/lib/presignup-media.ts`). Every
-other apex path 302s to `/` (`src/lib/prelaunch.ts` corridor, unit-tested in
-`tests/prelaunch.test.ts`).
+`/{locale}/agencies/` closer page, and — for a professional who just joined —
+her own `/{locale}/account/*` builder (the advertiser lead form registers a real
+but PASSWORDLESS draft account and drops her into the actual onboarding + editor,
+so her profile goes live at launch; she gets a set-password link then). Those
+account pages render BARE on the apex (middleware sets `locals.prelaunch`, Layout
+drops the marketplace chrome). Every other apex path 302s to `/`
+(`src/lib/prelaunch.ts` corridor, unit-tested in `tests/prelaunch.test.ts`).
 The page-cache key carries `url.host` so the two homes can't poison each
 other. `PUBLIC_SITE_ORIGIN` and the warm worker `ORIGIN` point at beta.
 
 **Launch-day flip-back checklist (do in ONE pass):**
-1. Delete `src/lib/prelaunch.ts` + its middleware wiring + `tests/prelaunch.test.ts`
-   + `pages/[locale]/prelaunch.astro` (the corridor commit, reverted).
+1. Delete `src/lib/prelaunch.ts` + its middleware wiring (incl. the
+   `locals.prelaunch` set) + `tests/prelaunch.test.ts` + `pages/[locale]/prelaunch.astro`
+   (the corridor commit, reverted). Also drop the `chromeBare` line in
+   `layouts/Layout.astro` (revert to `bare`) + the `App.Locals.prelaunch` type in
+   `env.d.ts`, and the passwordless-advertiser branch in `actions/prelaunch.join`
+   (+ `profilesForLeadEmails` in `app/api/prelaunch.ts` and its admin link).
 2. `PUBLIC_SITE_ORIGIN` → `https://intimate.nl` (wrangler.jsonc) · warm worker
    `ORIGIN` → `https://intimate.nl` + redeploy it.
 3. OneSignal dashboard Site URL → intimate.nl · Supabase redirect URLs: keep

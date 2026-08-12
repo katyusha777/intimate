@@ -20,9 +20,9 @@ const locale = Astro.params.locale;
 if (!isLocale(locale)) return new Response(null, { status: 404 });
 
 const result = Astro.getActionResult(actions.prelaunch.join);
-// Advertiser → the bare upload page (/prelaunch/build): drop your photos now,
-// go live at launch. The `psl` capability cookie the action set rides this same
-// redirect response (Astro applies the cookie jar to redirects too).
+// Advertiser → her real (passwordless) draft profile in /account/setup, built now
+// so it goes live at launch. The auth session cookie register() set rides this
+// same redirect response (Astro applies the cookie jar to redirects too).
 if (result?.data?.href) return Astro.redirect(result.data.href);
 const done = !!result?.data?.ok; // client lead: show the "you're on the list" card
 

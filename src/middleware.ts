@@ -153,6 +153,9 @@ const handle = (context: APIContext, next: MiddlewareNext) =>
   // Delete this block at launch (INFRASTRUCTURE.md §2 flip-back checklist).
   let rewriteTo: string | undefined;
   if (context.url.hostname === PRELAUNCH_HOST) {
+    // In the corridor: reused pages (account/onboarding) render BARE (Layout
+    // reads this) — the marketplace chrome would only 302 home here.
+    context.locals.prelaunch = true;
     const c = corridor(context.url, context.request.headers.get('x-sheet') === '1');
     if (c.kind === 'redirect') return context.redirect('/', 302);
     if (c.kind === 'rewrite') rewriteTo = c.to;

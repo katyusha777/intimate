@@ -4,9 +4,9 @@
  * grants. The table (and this module) retires at launch.
  */
 import { env } from 'cloudflare:workers';
-import { desc, eq } from 'drizzle-orm';
+import { desc, eq, inArray } from 'drizzle-orm';
 import { requestDb } from '@/db/client';
-import { prelaunchLeads } from '@/db/schema';
+import { accounts, prelaunchLeads, profiles } from '@/db/schema';
 
 const db = () => requestDb((env as unknown as { HYPERDRIVE: Hyperdrive }).HYPERDRIVE);
 
@@ -37,43 +37,21 @@ export async function addPrelaunchLead(i: {
     .onConflictDoNothing();
 }
 
-/** Upsert a landing lead and return its id. The id doubles as the pre-signup
- *  UPLOAD capability (httponly `psl` cookie), so a returning professional (same
- *  email) keeps the SAME photo folder instead of starting a second one. */
-export async function upsertPrelaunchLeadReturningId(i: {
-  name: string;
-  email: string;
-  phone?: string;
-  whatsapp?: string;
-  telegram?: string;
-  kind?: string;
-  locale: string;
-}): Promise<string> {
-  const [row] = await db()
-    .insert(prelaunchLeads)
-    .values({
-      name: i.name,
-      email: i.email,
-      phone: i.phone || null,
-      whatsapp: i.whatsapp || null,
-      telegram: i.telegram || null,
-      kind: i.kind || null,
-      locale: i.locale,
-    })
-    // Re-submit (she may add a handle) refreshes the contacts and returns the id.
-    .onConflictDoUpdate({
-      target: prelaunchLeads.email,
-      set: {
-        name: i.name,
-        phone: i.phone || null,
-        whatsapp: i.whatsapp || null,
-        telegram: i.telegram || null,
-        kind: i.kind || null,
-        locale: i.locale,
-      },
-    })
-    .returning({ id: prelaunchLeads.id });
-  return row.id;
+/** Admin Pre-signups: which landing leads have already become a (draft) profile.
+ *  An advertiser's passwordless join creates an account (same email) + her
+ *  profile; match lead.email → account.email → profile so the closer can open it
+ *  in the admin editor — and SEE who started building before launch (drafts
+ *  don't reach the approval queue). Returns email → { id, state }. */
+export async function profilesForLeadEmails(
+  emails: string[],
+): Promise<Map<string, { id: string; state: string }>> {
+  if (emails.length === 0) return new Map();
+  const rows = await db()
+    .select({ email: accounts.email, id: profiles.id, state: profiles.state })
+    .from(accounts)
+    .innerJoin(profiles, eq(profiles.accountId, accounts.id))
+    .where(inArray(accounts.email, emails));
+  return new Map(rows.flatMap((r) => (r.email ? [[r.email, { id: r.id, state: r.state }] as const] : [])));
 }
 
 /** Admin read: newest first. Server-only surface (admin page). */

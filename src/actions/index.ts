@@ -18,8 +18,7 @@ import { dataUrlToJpegBytes, stripJpegDataUrl } from "@/lib/jpeg-strip";
 import { importFromUrl } from "@/lib/import";
 import { mintIceServers } from "@/lib/turn";
 import { joinFromConsent } from "@/app/api/orgs";
-import { addPrelaunchLead, upsertPrelaunchLeadReturningId } from "@/app/api/prelaunch";
-import { addPresignupId, addPresignupPhoto, removePresignupPhoto } from "@/lib/presignup-media";
+import { addPrelaunchLead } from "@/app/api/prelaunch";
 import { pushoverAdmins } from "@/lib/pushover";
 import { CONVERSATION_MODES, REPORT_REASONS, REPORT_TARGETS } from "@/lib/taxonomy";
 // The one sanctioned cross-fence import: the action registry wires in admin.
@@ -42,26 +41,12 @@ const turnSecret = (): string | undefined =>
 const clientIp = (context: { request: Request }): string =>
   context.request.headers.get("cf-connecting-ip") ?? "unknown";
 
-/** Pre-signup upload capability: the lead id, carried in an httponly cookie set
- *  when a professional joins. It's her key to her OWN photo folder (an
- *  unguessable uuid, never exposed in URLs or client JS) — no account needed. */
-const PSL_COOKIE = "psl";
-function setPresignupCookie(
-  context: { cookies: { set(name: string, value: string, opts: Record<string, unknown>): void } },
-  leadId: string,
-): void {
-  context.cookies.set(PSL_COOKIE, leadId, {
-    httpOnly: true,
-    secure: import.meta.env.PROD,
-    sameSite: "lax",
-    path: "/",
-    maxAge: 60 * 60 * 24 * 30, // 30 days — she can come back and add more
-  });
-}
-function requirePresignup(context: { cookies: { get(name: string): { value: string } | undefined } }): string {
-  const id = context.cookies.get(PSL_COOKIE)?.value;
-  if (!id) throw new ActionError({ code: "UNAUTHORIZED", message: "no pre-signup session" });
-  return id;
+/** A strong random password for a pre-signup account she NEVER types — the
+ *  passwordless join creates a real (draft) advertiser account so she can build
+ *  her profile now, and we email her a set-password link at launch. Guarantees
+ *  upper/lower/digit/symbol + ~244 bits, under bcrypt's 72-byte ceiling. */
+function randomPassword(): string {
+  return `Aa1!${crypto.randomUUID()}${crypto.randomUUID()}`.slice(0, 64);
 }
 
 /** Shared spam wall for authenticated actions — throws TOO_MANY_REQUESTS.
@@ -839,18 +824,17 @@ export const server = {
   },
 
   // Pre-launch campaign (PRE-LAUNCH-GRANT-CARDONE.md) — anonymous plain-HTML
-  // form post (accept: 'form', zero JS). We keep the SAME lead form (name +
-  // email + at least one contact); an ADVERTISER is then sent to the bare
-  // upload page (/prelaunch/build) to drop her photos + ID now, so she's ready
-  // to go live at launch. NO account, NO site chrome. Her lead id is her upload
-  // capability — an httponly `psl` cookie the build page + upload actions read.
+  // form post (accept: 'form', zero JS). Keep the SAME lead form (name + email +
+  // a contact). An ADVERTISER becomes a REAL but PASSWORDLESS draft profile: we
+  // register her with a random password she never sees, so she builds her
+  // profile in the actual onboarding (basics → photos → ID → import/details) and
+  // it goes live at launch. The onboarding renders BARE on the apex (no site
+  // chrome). At launch we email her a set-password link. A CLIENT stays a lead.
   prelaunch: {
     join: defineAction({
       accept: "form",
       input: z
         .object({
-          // Who's signing up — steers the branch below and, for a client, which
-          // pitch the admin pre-signups tab opens with.
           kind: z.enum(["agency", "advertiser", "client"]).optional(),
           name: z.string().trim().min(1).max(80),
           email: emailField,
@@ -866,6 +850,10 @@ export const server = {
         }),
       handler: async (input, context) => {
         await requireUnderLimit("prelaunch-ip", clientIp(context), 10);
+        // Keep the lead either way — it's the admin Pre-signups row + her
+        // contacts (the account carries no phone/wa/tg), matched to her profile
+        // by email so admin can open the profile from Pre-signups.
+        await addPrelaunchLead(input);
         const contacts = [input.phone, input.whatsapp && `wa ${input.whatsapp}`, input.telegram && `tg ${input.telegram}`]
           .filter(Boolean)
           .join(" · ");
@@ -874,60 +862,19 @@ export const server = {
           `Pre-launch signup: ${input.name}${input.kind ? ` (${input.kind})` : ""}`,
           `${input.email}\n${contacts || "-"} · ${input.locale}`,
         );
-        // Advertiser → upload page. The lead id is the upload capability; a
-        // returning professional (same email) reuses the SAME photo folder.
+        // Advertiser → real passwordless account (Confirm-email OFF ⇒ a session
+        // exists on this response; the page-level Astro.redirect carries its
+        // cookie into the bare onboarding). Already registered → send her to
+        // sign in rather than error.
         if (input.kind === "advertiser") {
-          const leadId = await upsertPrelaunchLeadReturningId(input);
-          setPresignupCookie(context, leadId);
-          return { href: `/${input.locale}/prelaunch/build/`, ok: false };
+          const { emailExists } = await sessionApi.register(context, {
+            email: input.email,
+            password: randomPassword(),
+            role: "advertiser",
+          });
+          return { href: `/${input.locale}/account/${emailExists ? "" : "setup/"}`, ok: false };
         }
-        await addPrelaunchLead(input);
         return { href: null, ok: true };
-      },
-    }),
-
-    // Pre-signup uploads: a professional who left her contacts drops her photos
-    // (+ ID) BEFORE she has an account. Gated by the `psl` cookie (her lead id),
-    // rate-limited per lead. Photos → MEDIA, ID → the private EU bucket.
-    addPhoto: defineAction({
-      input: z.object({ dataUrl: z.string().regex(/^data:image\/jpeg;base64,/).max(900_000) }),
-      handler: async ({ dataUrl }, context) => {
-        const leadId = requirePresignup(context);
-        await requireUnderLimit("presignup-upload", leadId, 80);
-        let bytes: ArrayBuffer;
-        try {
-          bytes = dataUrlToJpegBytes(dataUrl); // re-strip EXIF/GPS server-side (hard rule 2)
-        } catch {
-          throw new ActionError({ code: "BAD_REQUEST", message: "invalid image" });
-        }
-        const res = await addPresignupPhoto(leadId, bytes);
-        if ("error" in res) throw new ActionError({ code: "BAD_REQUEST", message: "gallery full" });
-        return { key: res.key };
-      },
-    }),
-
-    removePhoto: defineAction({
-      input: z.object({ key: z.string().max(120) }),
-      handler: async ({ key }, context) => {
-        const leadId = requirePresignup(context);
-        await removePresignupPhoto(leadId, key); // key validated against her folder inside
-        return { ok: true };
-      },
-    }),
-
-    submitId: defineAction({
-      input: z.object({ dataUrl: z.string().regex(/^data:image\/jpeg;base64,/).max(900_000) }),
-      handler: async ({ dataUrl }, context) => {
-        const leadId = requirePresignup(context);
-        await requireUnderLimit("presignup-id", leadId, 10);
-        let bytes: ArrayBuffer;
-        try {
-          bytes = dataUrlToJpegBytes(dataUrl);
-        } catch {
-          throw new ActionError({ code: "BAD_REQUEST", message: "invalid image" });
-        }
-        await addPresignupId(leadId, bytes);
-        return { ok: true };
       },
     }),
   },

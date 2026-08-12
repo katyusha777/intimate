@@ -7,7 +7,7 @@
  * English-only (temporary, internal, retires at launch — like Danger zone).
  */
 import { getAdmin } from '@/actions/admin/lib';
-import { listPrelaunchLeads } from '@/app/api/prelaunch';
+import { listPrelaunchLeads, profilesForLeadEmails } from '@/app/api/prelaunch';
 import { listAgencyConsents } from '@/app/api/orgs';
 import AdminShell from '@/components/organisms/admin/AdminShell.astro';
 
@@ -28,16 +28,21 @@ type Row = {
   siteUrl: string | null;
   locale: string | null;
   at: string;
+  /** Draft-profile id if an advertiser lead already started building (passwordless join). */
+  profileId: string | null;
 };
 const [leads, agencies] = session ? await Promise.all([listPrelaunchLeads(), listAgencyConsents()]) : [[], []];
+// Which advertiser leads have become a draft profile — a one-click jump for the
+// closer, and the campaign's "who actually started building" signal.
+const draftByEmail = session ? await profilesForLeadEmails(leads.map((l) => l.email)) : new Map();
 const rows: Row[] = [
   ...leads.map((l): Row => ({
     id: l.id, source: 'lead', name: l.name, kind: l.kind, email: l.email, phone: l.phone, whatsapp: l.whatsapp, telegram: l.telegram,
-    siteUrl: null, locale: l.locale, at: new Date(l.createdAt).toISOString(),
+    siteUrl: null, locale: l.locale, at: new Date(l.createdAt).toISOString(), profileId: draftByEmail.get(l.email)?.id ?? null,
   })),
   ...agencies.map((a): Row => ({
     id: a.id, source: 'agency', name: a.name, kind: 'agency', email: a.email, phone: a.phone, whatsapp: null, telegram: null,
-    siteUrl: a.siteUrl, locale: a.locale, at: a.consentAt,
+    siteUrl: a.siteUrl, locale: a.locale, at: a.consentAt, profileId: null,
   })),
 ].sort((x, y) => (x.at < y.at ? 1 : -1));
 
@@ -102,6 +107,9 @@ const tgLink = (n: string) => `https://t.me/${n.replace(/^@/, '')}`;
                     <td class="px-3 py-2 uppercase text-muted-foreground">{l.locale}</td>
                     <td class="px-3 py-2 whitespace-nowrap text-xs text-muted-foreground">{fmt.format(new Date(l.at))}</td>
                     <td class="px-3 py-2 whitespace-nowrap text-right text-xs">
+                      {l.profileId && (
+                        <a href={`/admin/profiles/edit?id=${l.profileId}`} class="mr-3 font-medium text-brand hover:underline">Profile</a>
+                      )}
                       <button
                         type="button"
                         data-ps-edit

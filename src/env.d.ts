@@ -11,3 +11,12 @@ interface ImportMeta {
 
 // Bindings (HYPERDRIVE, ASSETS, …) are accessed via `import { env } from 'cloudflare:workers'`;
 // their types come from worker-configuration.d.ts (`bun run cf-typegen`).
+
+declare namespace App {
+  interface Locals {
+    /** Pre-launch corridor (lib/prelaunch.ts): middleware sets this on the apex
+     *  so Layout renders reused pages (account/onboarding) BARE — no marketplace
+     *  Header/BottomTabBar that would 302 home. Dies with the corridor at launch. */
+    prelaunch?: boolean;
+  }
+}

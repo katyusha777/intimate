@@ -1,7 +1,8 @@
 /**
- * Pre-launch corridor (lib/prelaunch.ts): the apex host serves only the
- * pre-launch landing + /agencies; everything else redirects. Pure-function
- * tests — the hostname branch can't be exercised against localhost.
+ * Pre-launch corridor (lib/prelaunch.ts): the apex host serves the pre-launch
+ * landing + /agencies + the just-joined professional's /account builder;
+ * everything else redirects. Pure-function tests — the hostname branch can't be
+ * exercised against localhost.
  */
 import { describe, expect, test } from 'bun:test';
 import { corridor } from '../src/lib/prelaunch';
@@ -39,17 +40,19 @@ describe('prelaunch corridor', () => {
     }
   });
 
-  test('the pre-signup upload page + its media api pass (where signup lands)', () => {
-    expect(kind('/nl/prelaunch/build/')).toBe('pass');
-    expect(kind('/en/prelaunch/build')).toBe('pass');
-    expect(kind('/api/prelaunch/media/abc123.jpg')).toBe('pass');
-    // Not over-broad — a bare /prelaunch/ or a lookalike still dead-ends.
+  test('the pre-signup professional builds her profile under /account (passes)', () => {
+    // Advertiser join creates a passwordless draft account; she builds in the
+    // real onboarding + editor, rendered BARE on the apex.
+    expect(kind('/nl/account/')).toBe('pass');
+    expect(kind('/nl/account/setup/')).toBe('pass');
+    expect(kind('/en/account/profile/')).toBe('pass');
+    // The old bare upload page is gone — it dead-ends like any other path now.
+    expect(kind('/nl/prelaunch/build/')).toBe('redirect');
     expect(kind('/nl/prelaunch/')).toBe('redirect');
-    expect(kind('/nl/prelaunch/build/extra/')).toBe('redirect');
   });
 
   test('the rest of the site dead-ends', () => {
-    for (const p of ['/nl/amsterdam/', '/nl/search/', '/nl/blog/welkom-bij-intimate/', '/nl/account/', '/kitchen-sink', '/nl/stats/', '/nl/messages/']) {
+    for (const p of ['/nl/amsterdam/', '/nl/search/', '/nl/blog/welkom-bij-intimate/', '/kitchen-sink', '/nl/stats/', '/nl/messages/']) {
       expect(kind(p)).toBe('redirect');
     }
   });
