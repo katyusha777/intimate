@@ -283,9 +283,11 @@
   /* iOS Safari vertically centers an appearance:none <select>'s text by its
      line-height, not by the flex parent — so a 24px line box in the 44px control
      sat low and the value's baseline clipped against the slab cut. Pin the
-     line-height to the face height (h-11) so it's centered on every engine. */
+     line-height to the face height (h-11) so it's centered on every engine.
+     !important: Tailwind's `text-base` utility ships its own line-height (1.5rem)
+     from the utilities layer, which otherwise wins over this components rule. */
   .slab-field__face select {
-    line-height: 2.75rem;
+    line-height: 2.75rem !important;
   }
   /* Focus = the anaglyph split, like the Button (drop-shadow follows the clip). */
   .slab-field:focus-within {
