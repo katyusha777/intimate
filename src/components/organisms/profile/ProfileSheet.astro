@@ -185,6 +185,20 @@ import SideDrawer from '@/components/molecules/SideDrawer.astro';
         const doc = new DOMParser().parseFromString(await res.text(), 'text/html');
         const root = doc.querySelector('[data-profile-root]');
         if (!root) throw new Error();
+        // Warm + decode the above-the-fold photos BEFORE dropping the skeleton,
+        // so the strip never flashes black in the gap between "skeleton gone"
+        // and "img painted". The seed already shows the first photo, so this
+        // just holds that clean frame a beat, then swaps to a painted strip.
+        // 3 covers the desktop strip (2 visible cells) + the mobile hero.
+        const warm = [...root.querySelectorAll('img[src]')].slice(0, 3).map((img) => {
+          const src = img.getAttribute('src');
+          if (!src) return Promise.resolve();
+          const pre = new Image();
+          pre.src = src;
+          return pre.decode().catch(() => {});
+        });
+        // ponytail: 700ms cap — a slow/broken image must never hang the open.
+        await Promise.race([Promise.all(warm), new Promise((r) => setTimeout(r, 700))]);
         b.innerHTML = '';
         b.appendChild(root);
         // The injected profile carries its own component <script> tags, but
