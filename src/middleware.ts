@@ -156,7 +156,10 @@ const handle = (context: APIContext, next: MiddlewareNext) =>
     // In the corridor: reused pages (account/onboarding) render BARE (Layout
     // reads this) — the marketplace chrome would only 302 home here.
     context.locals.prelaunch = true;
-    const c = corridor(context.url, context.request.headers.get('x-sheet') === '1');
+    // Authenticated views (admin god-view, owner preview) reach the real profile
+    // page; anonymous visitors stay bounced to the landing.
+    const authed = !isAnonymousRequest(context.request.headers.get('cookie'));
+    const c = corridor(context.url, context.request.headers.get('x-sheet') === '1', authed);
     if (c.kind === 'redirect') return context.redirect('/', 302);
     if (c.kind === 'rewrite') rewriteTo = c.to;
   }

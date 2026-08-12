@@ -8,7 +8,7 @@ import { describe, expect, test } from 'bun:test';
 import { corridor } from '../src/lib/prelaunch';
 
 const u = (path: string) => new URL(`https://intimate.nl${path}`);
-const kind = (path: string, xSheet = false) => corridor(u(path), xSheet).kind;
+const kind = (path: string, xSheet = false, authed = false) => corridor(u(path), xSheet, authed).kind;
 
 describe('prelaunch corridor', () => {
   test('locale home rewrites to the prelaunch page', () => {
@@ -27,9 +27,12 @@ describe('prelaunch corridor', () => {
     expect(kind('/nl/agencies/elite-escorts/')).toBe('redirect');
   });
 
-  test('profile pages pass only for the ProfileSheet fetch (X-Sheet)', () => {
+  test('profile pages pass for the ProfileSheet fetch (X-Sheet) or an authed view', () => {
     expect(kind('/nl/profile/alice/', true)).toBe('pass');
     expect(kind('/nl/profile/alice/avail.json', true)).toBe('pass');
+    // Admin god-view / owner preview: a full-page nav with a session cookie.
+    expect(kind('/nl/profile/alice/', false, true)).toBe('pass');
+    // Anonymous full-page nav stays bounced.
     expect(kind('/nl/profile/alice/')).toBe('redirect');
     expect(kind('/nl/profile/alice/extra/', true)).toBe('redirect');
   });

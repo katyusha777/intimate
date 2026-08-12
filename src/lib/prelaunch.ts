@@ -25,8 +25,11 @@ const ALLOWED_PAGES = new RegExp(`^/${LOC}/(?:agencies|privacy|terms)/?$`);
  *  non-advertiser → bounce) AND render BARE on the apex (no site chrome), so
  *  opening the PATH exposes only her private builder, never the marketplace. */
 const ACCOUNT = new RegExp(`^/${LOC}/account(?:/|$)`);
-/** ProfileSheet's fetches (X-Sheet: 1) — the §12.2 demo modal + its avail poll.
- *  Header-gated only: it's public HTML beta serves anyway; corridor = UX seal. */
+/** Profile pages — the §12.2 demo-modal fetch (X-Sheet: 1) OR any authenticated
+ *  view (admin god-view, owner preview): both need the real page, not the home
+ *  bounce. Anonymous prelaunch visitors stay sealed. Gate is UX only: it's the
+ *  same public HTML beta serves, and the page itself surfaces non-live states to
+ *  admin/owner alone — a signed-in non-owner still gets a 404 for a draft. */
 const SHEET_PROFILE = new RegExp(`^/${LOC}/profile/[^/]+/(?:avail\\.json)?$`);
 /** Non-page infrastructure that must keep working on the apex: admin console
  *  (Cloudflare Access is scoped to intimate.nl/admin), auth callbacks, API,
@@ -35,13 +38,13 @@ const PASS = /^\/(?:admin|auth|api|_actions|media|sitemap)/;
 
 export type Corridor = { kind: 'pass' } | { kind: 'redirect' } | { kind: 'rewrite'; to: string };
 
-export function corridor(url: URL, xSheet: boolean): Corridor {
+export function corridor(url: URL, xSheet: boolean, authed = false): Corridor {
   const p = url.pathname;
   // Keep the query: the landing's form POSTs back to /{locale}/ and Astro's
   // action lookup rides the ?_astroAction= param — dropping it on rewrite
   // would swallow the submission.
   if (HOME.test(p)) return { kind: 'rewrite', to: `${p.replace(/\/$/, '')}/prelaunch/${url.search}` };
   if (ALLOWED_PAGES.test(p) || ACCOUNT.test(p) || PASS.test(p)) return { kind: 'pass' };
-  if (xSheet && SHEET_PROFILE.test(p)) return { kind: 'pass' };
+  if ((xSheet || authed) && SHEET_PROFILE.test(p)) return { kind: 'pass' };
   return { kind: 'redirect' };
 }
