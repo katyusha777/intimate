@@ -9,6 +9,8 @@
 import { actions } from 'astro:actions';
 import Layout from '@/layouts/Layout.astro';
 import * as m from '@/paraglide/messages';
+import { sessionApi } from '@/app/api/session';
+import { accountApi } from '@/app/api/account';
 import { isLocale, localizePath, samePathAlternates } from '@/lib/i18n';
 import { organizationJsonLd, websiteJsonLd } from '@/lib/seo';
 import Button from '@/components/atoms/Button.astro';
@@ -25,6 +27,13 @@ const result = Astro.getActionResult(actions.prelaunch.join);
 // same redirect response (Astro applies the cookie jar to redirects too).
 if (result?.data?.href) return Astro.redirect(result.data.href);
 const done = !!result?.data?.ok; // client lead: show the "you're on the list" card
+
+// A professional who already joined lands back here (the setup wordmark links to
+// `/`, or she revisits) — greet her with her status, not the form again. Session
+// read is memoized (Layout already called it); anon returns null and stays cached.
+const session = await sessionApi.current(Astro);
+const myProfile = session?.role === 'advertiser' ? await accountApi.myProfile(session) : null;
+const joined = myProfile ? (myProfile.state === 'draft' ? 'building' : 'submitted') : null;
 
 /* Canonical is the HOME URL — this template answers /{locale}/ on the apex;
  * the /prelaunch path itself is an internal address, never the public one. */
@@ -113,7 +122,18 @@ const jsonLd = [websiteJsonLd(Astro.url.origin, locale), organizationJsonLd(Astr
 
             <div id="join" class="mt-10 max-w-md scroll-mt-6">
               {
-                done ? (
+                joined === 'submitted' ? (
+                  <div class="ink-slab bg-white p-6 text-neutral-950">
+                    <p class="display text-2xl">{m.prelaunch_joined_title()}</p>
+                    <p class="mt-2 leading-relaxed text-neutral-700">{m.prelaunch_joined_body()}</p>
+                  </div>
+                ) : joined === 'building' ? (
+                  <div class="ink-slab bg-white p-6 text-neutral-950">
+                    <p class="display text-2xl">{m.prelaunch_building_title()}</p>
+                    <p class="mt-2 leading-relaxed text-neutral-700">{m.prelaunch_building_body()}</p>
+                    <Button as="a" href={localizePath('/account/setup/')} class="mt-4 block w-full">{m.prelaunch_building_cta()}</Button>
+                  </div>
+                ) : done ? (
                   <div class="ink-slab bg-white p-6 text-neutral-950">
                     <p class="display text-2xl">{m.prelaunch_done_title()}</p>
                     <p class="mt-2 leading-relaxed text-neutral-700">{m.prelaunch_done_body()}</p>

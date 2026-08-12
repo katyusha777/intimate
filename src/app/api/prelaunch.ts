@@ -54,6 +54,20 @@ export async function profilesForLeadEmails(
   return new Map(rows.flatMap((r) => (r.email ? [[r.email, { id: r.id, state: r.state }] as const] : [])));
 }
 
+/** Onboarding prefill: the contacts she already gave on the landing lead form,
+ *  so the setup contact step arrives pre-filled instead of blank (she typed them
+ *  once — don't ask twice). Matched by her account email. Null if no lead. */
+export async function leadContactsByEmail(
+  email: string,
+): Promise<{ phone: string | null; whatsapp: string | null; telegram: string | null } | null> {
+  const [row] = await db()
+    .select({ phone: prelaunchLeads.phone, whatsapp: prelaunchLeads.whatsapp, telegram: prelaunchLeads.telegram })
+    .from(prelaunchLeads)
+    .where(eq(prelaunchLeads.email, email))
+    .limit(1);
+  return row ?? null;
+}
+
 /** Admin read: newest first. Server-only surface (admin page). */
 export async function listPrelaunchLeads(): Promise<PrelaunchLead[]> {
   return db().select().from(prelaunchLeads).orderBy(desc(prelaunchLeads.createdAt));

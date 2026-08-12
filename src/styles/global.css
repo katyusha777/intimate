@@ -280,6 +280,13 @@
     clip-path: polygon(0.6% 2.5%, 99.9% 0, 99.4% 97.5%, 0.1% 100%);
     background: var(--background);
   }
+  /* iOS Safari vertically centers an appearance:none <select>'s text by its
+     line-height, not by the flex parent — so a 24px line box in the 44px control
+     sat low and the value's baseline clipped against the slab cut. Pin the
+     line-height to the face height (h-11) so it's centered on every engine. */
+  .slab-field__face select {
+    line-height: 2.75rem;
+  }
   /* Focus = the anaglyph split, like the Button (drop-shadow follows the clip). */
   .slab-field:focus-within {
     filter: drop-shadow(-2px 1px 0 var(--brand)) drop-shadow(2px -1px 0 #00e5ff);
@@ -557,6 +564,15 @@
      (items.md #9) — dim it; real (blurred or sharp) photos stay untouched. */
   .dark img[data-showing='dev'] {
     filter: brightness(0.62) saturate(0.85);
+  }
+  /* The /agencies "see intimate for yourself" demo is a marketing showcase — a
+     live taste of the real product for a prospective agency, pinned by the
+     owner. It stays sharp even when the viewer has safe mode on: blurring the
+     one section whose whole job is to show the polish defeats it. */
+  .demo-unblur img.safe-img {
+    filter: none !important;
+    transform: none !important;
+    clip-path: none !important;
   }
 
   :root {

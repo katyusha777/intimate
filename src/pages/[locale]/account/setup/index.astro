@@ -9,6 +9,7 @@
 import * as m from '@/paraglide/messages';
 import { accountApi } from '@/app/api/account';
 import { sessionApi } from '@/app/api/session';
+import { leadContactsByEmail } from '@/app/api/prelaunch';
 import { onboardingProgress } from '@/lib/onboarding';
 import { isLocale, localizePath } from '@/lib/i18n';
 import SetupShell from '@/components/organisms/onboarding/SetupShell.astro';
@@ -28,6 +29,17 @@ if (session.role !== 'advertiser') return Astro.redirect(localizePath('/account/
 
 const account = await accountApi.get(session);
 const profile = await accountApi.myProfile(session);
+// Prefill the contact step from the landing lead she already filled in (she
+// typed phone/WhatsApp/Telegram once on the pre-register form). Only when the
+// profile has none yet, so we never clobber an edit. Retires with the corridor.
+if (profile && !(profile.phone || profile.whatsapp || profile.telegram)) {
+  const lead = await leadContactsByEmail(session.email);
+  if (lead) {
+    profile.phone = lead.phone;
+    profile.whatsapp = lead.whatsapp;
+    profile.telegram = lead.telegram;
+  }
+}
 const progress = onboardingProgress(profile!, account);
 const photos = progress.steps.find((s) => s.key === 'basics')?.done ? await accountApi.photos(session) : [];
 

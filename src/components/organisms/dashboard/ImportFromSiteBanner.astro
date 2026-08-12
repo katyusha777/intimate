@@ -175,7 +175,6 @@ import Modal from '@/components/molecules/Modal.astro';
       // Stamp the source URL on her profile (best-effort — provenance only).
       if (lastUrl) void actions.account.recordImportSource({ url: lastUrl });
       // Saved — toast + straight to her profile so she sees the imported result.
-      localStorage.removeItem(HIDE_KEY);
       toast(`${m.editor_saved()} ✓`);
       const lang = document.documentElement.lang || 'en';
       setTimeout(() => (location.href = `/${lang}/account/view/`), 700);
