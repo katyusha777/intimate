@@ -316,9 +316,11 @@ const verifiedPill =
         }
       };
 
-      // Auto-submit the moment a file is chosen in the wizard — "upload → continue"
-      // with no button. On the dashboard tab the explicit button stays the trigger.
-      doc?.addEventListener('change', () => { sync(); if (wizardFinish) void submitIdFlow(); });
+      // Choosing a file only STAGES it (shows ✓ filename) — it must NOT submit
+      // the whole profile on its own: that skipped the optional phone step (she
+      // hadn't entered/verified her number yet). The explicit Submit button is
+      // the single trigger, on the wizard AND the dashboard tab.
+      doc?.addEventListener('change', () => sync());
       submit?.addEventListener('click', () => void submitIdFlow());
     });
   }

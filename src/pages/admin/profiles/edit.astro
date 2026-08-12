@@ -6,6 +6,7 @@
  * plus a data-import bar (URL → fields, no images; the importApply action).
  * Super-only; every save/photo/import is audit-logged as edit_profile_admin.
  */
+import { env } from 'cloudflare:workers';
 import { getAdmin } from '@/actions/admin/lib';
 import { profileByIdAdmin } from '@/actions/admin/entities';
 import { accountApi } from '@/app/api/account';
@@ -18,6 +19,10 @@ const isSuper = session?.adminRole === 'super';
 const id = Astro.url.searchParams.get('id');
 const detail = session && isSuper && id ? await profileByIdAdmin(id) : null;
 const photos = detail ? await accountApi.photosById(detail.admin.id) : [];
+// The public site lives on PUBLIC_SITE_ORIGIN (beta during the pre-launch
+// window — the apex corridor 302s profile pages home, so a relative link is
+// dead for admin). At launch it becomes the apex and this still resolves.
+const publicOrigin = (env as unknown as { PUBLIC_SITE_ORIGIN?: string }).PUBLIC_SITE_ORIGIN ?? Astro.url.origin;
 
 const input = 'slab-cut w-full border border-foreground/20 bg-background px-3 py-2 text-sm outline-none focus:border-foreground';
 const btn = 'slab-cut border border-foreground/20 px-4 py-2 text-sm font-semibold hover:border-foreground/60 disabled:opacity-50';
@@ -43,7 +48,7 @@ const btn = 'slab-cut border border-foreground/20 px-4 py-2 text-sm font-semibol
             {detail.admin.state} ·{' '}
             <a href={`/admin/profiles?id=${detail.admin.id}`} class="underline underline-offset-2">moderation view</a>
             {' · '}
-            <a href={`/en/profile/${detail.profile.slug}/`} target="_blank" class="underline underline-offset-2">public page ↗</a>
+            <a href={`${publicOrigin}/en/profile/${detail.profile.slug}/`} target="_blank" rel="noopener" class="underline underline-offset-2">public page ↗</a>
           </p>
         </div>
 

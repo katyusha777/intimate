@@ -69,7 +69,9 @@ export interface SessionApi {
    */
   register(
     ctx: AuthCtx,
-    input: { email: string; password: string; role: 'advertiser' | 'client' },
+    // notify defaults true; the prelaunch flow sets it false — it sends its own
+    // named admin ping, so the generic "account <uuid> registered" is just noise.
+    input: { email: string; password: string; role: 'advertiser' | 'client'; notify?: boolean },
   ): Promise<{ session: Session | null; needsConfirmation: boolean; emailExists?: boolean }>;
   /** Change the signed-in user's email — sends a confirmation to the NEW address;
    *  the change only takes effect once that link is clicked. */

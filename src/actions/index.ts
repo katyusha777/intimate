@@ -871,6 +871,7 @@ export const server = {
             email: input.email,
             password: randomPassword(),
             role: "advertiser",
+            notify: false, // prelaunch already sent a named admin ping above
           });
           return { href: `/${input.locale}/account/${emailExists ? "" : "setup/"}`, ok: false };
         }

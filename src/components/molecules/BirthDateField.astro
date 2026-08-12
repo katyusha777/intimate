@@ -26,8 +26,10 @@ const thisYear = new Date().getFullYear();
 const maxYear = thisYear - minAge; // youngest year allowed to advertise
 const years = Array.from({ length: maxYear - (thisYear - 80) + 1 }, (_, i) => maxYear - i);
 const months = Array.from({ length: 12 }, (_, i) => ({
+  // Short names ("Aug") — a full month ("August") can't fit a third-width field
+  // next to day and year, so it clipped ("Janua…"). The value is unambiguous.
   n: i + 1,
-  label: new Intl.DateTimeFormat(locale, { month: 'long' }).format(new Date(2000, i, 1)),
+  label: new Intl.DateTimeFormat(locale, { month: 'short' }).format(new Date(2000, i, 1)),
 }));
 const days = Array.from({ length: 31 }, (_, i) => i + 1);
 ---

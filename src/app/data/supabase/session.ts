@@ -110,7 +110,7 @@ export const sessionApi: SessionApi = {
     return session;
   },
 
-  async register(ctx, { email, password, role }) {
+  async register(ctx, { email, password, role, notify = true }) {
     const supabase = supabaseServer(ctx);
     const origin = new URL(ctx.request.url).origin;
     const { data, error } = await supabase.auth.signUp({
@@ -139,8 +139,10 @@ export const sessionApi: SessionApi = {
     if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
       return { session: null, needsConfirmation: false, emailExists: true };
     }
-    // New account on the platform → ping the admin team (fire-and-forget).
-    if (data.user) {
+    // New account on the platform → ping the admin team (fire-and-forget). The
+    // prelaunch flow suppresses this (notify=false): it sends its own named ping,
+    // so this generic "account <uuid> registered" would just double up as noise.
+    if (data.user && notify) {
       // IDs only to Pushover (US processor, SECURITY.md) — never the email.
       if (role === 'advertiser') pushoverAdmins('advertiser_registered', 'New advertiser 🎉', `account ${data.user.id} registered as advertiser`);
       else pushoverAdmins('client_registered', 'New client', `account ${data.user.id} registered as client`);
