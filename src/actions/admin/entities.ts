@@ -56,6 +56,7 @@ export interface AdminProfile {
   online: boolean;
   featured: boolean;
   unlisted: boolean;
+  orgId?: string;
   priceFrom: number;
   photos: string[];
   servicesCount: number;
@@ -78,6 +79,7 @@ async function enrich(profiles: Profile[]): Promise<AdminProfile[]> {
     online: p.online,
     featured: p.featured,
     unlisted: p.unlisted,
+    orgId: p.orgId,
     priceFrom: p.priceFrom,
     photos: p.photos,
     servicesCount: p.services.length,

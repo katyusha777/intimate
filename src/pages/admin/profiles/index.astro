@@ -8,6 +8,7 @@
 import { getAdmin, listAudit } from '@/actions/admin/lib';
 import { listProfilesAdmin, profileByIdAdmin } from '@/actions/admin/entities';
 import { reportsApi } from '@/app/api/reports';
+import { listAgencies } from '@/app/api/orgs';
 import { localizedDescription } from '@/app/models/profile';
 import { CITIES, GENDERS, PROFILE_STATES } from '@/lib/taxonomy';
 import { cityName } from '@/lib/seo';
@@ -28,6 +29,8 @@ const f = {
   verifiedOnly: sp.has('verified'),
 };
 const rows = session ? await listProfilesAdmin(f) : [];
+// orgId → agency, so each row/detail can name (and link to) its agency.
+const agencyById = new Map((session ? await listAgencies() : []).map((a) => [a.id, a]));
 const id = sp.get('id');
 const detail = session && id ? await profileByIdAdmin(id) : null;
 const reportsAgainst = detail
@@ -96,6 +99,7 @@ const ago = (iso: string) => {
                 <tr>
                   <th class="px-3 py-2 font-semibold">{m.adm_th_profile()}</th>
                   <th class="px-3 py-2 font-semibold">{m.filter_city()}</th>
+                  <th class="px-3 py-2 font-semibold">Agency</th>
                   <th class="px-3 py-2 font-semibold">{m.adm_th_state()}</th>
                   <th class="px-3 py-2 font-semibold">Created</th>
                   <th class="px-3 py-2 font-semibold">{m.request_card_price()}</th>
@@ -124,6 +128,13 @@ const ago = (iso: string) => {
                       </a>
                     </td>
                     <td class="px-3 py-2 text-muted-foreground">{cityName(r.city)}</td>
+                    <td class="px-3 py-2 text-2xs">
+                      {r.orgId && agencyById.has(r.orgId) ? (
+                        <a href={`/admin/organizations?id=${r.orgId}`} class="text-foreground underline underline-offset-2 hover:text-brand">{agencyById.get(r.orgId)!.name}</a>
+                      ) : (
+                        <span class="text-muted-foreground">—</span>
+                      )}
+                    </td>
                     <td class:list={['px-3 py-2 font-medium', stateClass(r.state)]}>{r.state}</td>
                     <td class="whitespace-nowrap px-3 py-2 text-2xs text-muted-foreground">
                       {fmtDate(r.createdAt)} <span class="opacity-70">· {ago(r.createdAt)}</span>
@@ -174,6 +185,9 @@ const ago = (iso: string) => {
               <dl class="grid grid-cols-2 gap-px overflow-hidden border border-border bg-border text-xs">
                 {[
                   [m.filter_city(), cityName(detail.profile.city)],
+                  ['Agency', detail.admin.orgId && agencyById.has(detail.admin.orgId)
+                    ? <a href={`/admin/organizations?id=${detail.admin.orgId}`} class="underline underline-offset-2 hover:text-brand">{agencyById.get(detail.admin.orgId)!.name}</a>
+                    : '—'],
                   [m.filter_gender(), detail.profile.gender],
                   [m.request_card_price(), `€${detail.profile.priceFrom}`],
                   [m.filter_services(), String(detail.profile.services.length)],

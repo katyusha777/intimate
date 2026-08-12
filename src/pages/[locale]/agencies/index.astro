@@ -26,10 +26,11 @@ if (!isLocale(locale)) return new Response(null, { status: 404 });
 const result = Astro.getActionResult(actions.agencies.join);
 const done = result && !result.error;
 
-/* The demo grid: the same real profiles the home leads with (owner decision:
- * reuse the shelf for now; a branded demo roster can replace it later). */
-let { items: demo } = await profilesApi.list({ featuredOnly: true, limit: 4 });
-if (demo.length < 4) demo = (await profilesApi.list({ sort: 'newest', limit: 4 })).items;
+/* The demo grid: one founding agency's live roster (owner decision: pin this
+ * agency's girls as the closer instead of the whole shelf). */
+const DEMO_ORG = 'c2033565-f593-4e59-9436-82b53cc0003f';
+let { items: demo } = await profilesApi.list({ orgId: DEMO_ORG, featuredOnly: true, limit: 4 });
+if (demo.length < 4) demo = (await profilesApi.list({ orgId: DEMO_ORG, sort: 'newest', limit: 4 })).items;
 demo = demo.slice(0, 4);
 
 const alternates = samePathAlternates(Astro.url.origin, '/agencies/');
@@ -165,7 +166,7 @@ const TERMS = [
         <svg class="mt-1 size-4 flex-none text-brand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 9 5 12 1.8-5.2L21 14Z"/><path d="M7.2 2.2 8 5.1"/><path d="m5.1 8-2.9-.8"/><path d="M14 4.1 12 6"/><path d="m6 12-1.9 2"/></svg>
         {m.agencies_demo_frame()}
       </p>
-      <div class="mt-5 grid grid-cols-2 gap-4">
+      <div class="demo-unblur mt-5 grid grid-cols-2 gap-4">
         {demo.map((p, i) => <ProfileCard profile={p} loading={i < 2 ? 'eager' : 'lazy'} fetchpriority={i === 0 ? 'high' : undefined} />)}
       </div>
     </section>
