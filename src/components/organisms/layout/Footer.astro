@@ -1,7 +1,7 @@
 ---
 import * as m from '@/paraglide/messages';
 import type { Session } from '@/app/models/session';
-import { localizePath } from '@/lib/i18n';
+import { localizePath, homeHref } from '@/lib/i18n';
 import { SUPPORT_CONTACT } from '@/lib/contact';
 import Icon from '@/components/atoms/Icon.astro';
 import SafeModeToggle from '@/components/molecules/SafeModeToggle.astro';
@@ -27,7 +27,7 @@ const { session = null } = Astro.props;
         <p class="display mt-5 text-3xl md:text-5xl">{m.foot_tagline()}</p>
       </div>
       <div class="space-y-3 lg:text-right">
-        <a href={localizePath('/')} class="inline-block lg:ml-auto" aria-label={m.app_name()}>
+        <a href={homeHref()} class="inline-block lg:ml-auto" aria-label={m.app_name()}>
           <img src="/img/logo-light.svg" alt={m.app_name()} class="h-10 w-auto md:h-14" />
         </a>
         <p class="max-w-xs text-sm text-white/50 lg:ml-auto">

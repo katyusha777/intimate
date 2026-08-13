@@ -55,6 +55,12 @@ export function homeUrl(origin: string, locale: Locale): string {
 export function homeAlternates(origin: string): Record<Locale, string> {
   return Object.fromEntries(LOCALES.map((l) => [l, homeUrl(origin, l)])) as Record<Locale, string>;
 }
+/** Nav/logo home link — the path form of homeUrl: nl → `/`, others → `/{locale}/`.
+ *  Use for real "go home" hrefs so they hit the canonical URL, NOT for base
+ *  prefixes that append a slug (those must keep `/{locale}/`). */
+export function homeHref(locale: Locale = getLocale() as Locale): string {
+  return locale === 'nl' ? '/' : `/${locale}/`;
+}
 
 /** Same path in every locale (pages without localized slugs). */
 export function samePathAlternates(origin: string, path: string): Record<Locale, string> {

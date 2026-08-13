@@ -10,7 +10,7 @@ import UserMenu from '@/components/molecules/UserMenu.astro';
 import ThemeToggle from '@/components/molecules/ThemeToggle.astro';
 import { getLocale } from '@/paraglide/runtime';
 import { listingCategoryLabel } from '@/lib/labels';
-import { localizePath } from '@/lib/i18n';
+import { localizePath, homeHref } from '@/lib/i18n';
 import { GENDER_FILTERS, type GenderFilter } from '@/app/models/profile';
 import { CITIES, LISTING_CATEGORIES, type Locale } from '@/lib/taxonomy';
 
@@ -89,7 +89,7 @@ const genderTabs = (Object.keys(GENDER_FILTERS) as GenderFilter[]).map((g) => ({
 
     <!-- Logo: dead-center on mobile (absolute), left on md+. -->
     <a
-      href={localizePath("/")}
+      href={homeHref()}
       aria-label={m.app_name()}
       class="absolute left-1/2 flex -translate-x-1/2 items-center md:static md:left-auto md:flex-none md:translate-x-0"
     >

@@ -6,7 +6,7 @@
  * escape that costs nothing. One job per screen lives in the slot.
  */
 import * as m from '@/paraglide/messages';
-import { localizePath } from '@/lib/i18n';
+import { localizePath, homeHref } from '@/lib/i18n';
 
 interface Props {
   /** 1-based position among the numbered steps; omit on welcome/done (no bar). */
@@ -20,7 +20,7 @@ const pct = showBar ? Math.round((index! / total!) * 100) : 0;
 
 <div class="mx-auto min-h-dvh max-w-xl px-4 py-6 md:py-10">
   <div class="flex items-center justify-between gap-4">
-    <a href={localizePath('/')} class="font-condensed text-lg font-bold tracking-tight">Intimate</a>
+    <a href={homeHref()} class="font-condensed text-lg font-bold tracking-tight">Intimate</a>
     <a
       href={`${localizePath('/account/')}?later=1`}
       class="text-sm text-muted-foreground underline-offset-2 transition-colors hover:text-foreground hover:underline"
