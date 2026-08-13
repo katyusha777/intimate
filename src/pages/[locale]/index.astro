@@ -1,7 +1,7 @@
 ---
 import Layout from '@/layouts/Layout.astro';
 import * as m from '@/paraglide/messages';
-import { isLocale, localizePath, samePathAlternates } from '@/lib/i18n';
+import { isLocale, localizePath, homeAlternates, homeUrl } from '@/lib/i18n';
 import { organizationJsonLd, websiteJsonLd } from '@/lib/seo';
 import ProfileCard from '@/components/organisms/profile/ProfileCard.astro';
 import Section from '@/components/molecules/Section.astro';
@@ -30,7 +30,7 @@ const setupAccount = setupProfile ? await accountApi.get(session!) : null;
 const showSetupBanner =
   setupProfile && setupAccount ? !onboardingProgress(setupProfile, setupAccount).submitted : false;
 
-const alternates = samePathAlternates(Astro.url.origin, '/');
+const alternates = homeAlternates(Astro.url.origin);
 const jsonLd = [websiteJsonLd(Astro.url.origin, locale), organizationJsonLd(Astro.url.origin)];
 
 /* The home is the NATIONAL shelf — never a city page. A chosen city has its
@@ -61,7 +61,7 @@ const moreArticles = articles.filter((a) => a !== featuredArticle).slice(0, 3);
 
 <Layout
   description={m.home_meta_desc()}
-  canonical={new URL(`/${locale}/`, Astro.url.origin).href}
+  canonical={homeUrl(Astro.url.origin, locale)}
   {alternates}
   {jsonLd}
   preloadImage={lcpImage}

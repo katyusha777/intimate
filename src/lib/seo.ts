@@ -22,7 +22,9 @@ export function websiteJsonLd(origin: string, locale: string) {
     '@context': 'https://schema.org',
     '@type': 'WebSite',
     name: BRAND,
-    url: `${origin}/${locale}/`,
+    // nl's home is the root `/` (its canonical) — keep JSON-LD in step so the
+    // WebSite url matches the page's canonical; other locales stay `/{locale}/`.
+    url: locale === 'nl' ? `${origin}/` : `${origin}/${locale}/`,
     potentialAction: {
       '@type': 'SearchAction',
       target: `${origin}/${locale}/search/?q={search_term_string}`,

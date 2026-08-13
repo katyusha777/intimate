@@ -11,7 +11,7 @@ import Layout from '@/layouts/Layout.astro';
 import * as m from '@/paraglide/messages';
 import { sessionApi } from '@/app/api/session';
 import { accountApi } from '@/app/api/account';
-import { isLocale, localizePath, samePathAlternates } from '@/lib/i18n';
+import { isLocale, localizePath, homeAlternates, homeUrl } from '@/lib/i18n';
 import { organizationJsonLd, websiteJsonLd } from '@/lib/seo';
 import Button from '@/components/atoms/Button.astro';
 import SafeImage from '@/components/atoms/SafeImage.astro';
@@ -37,14 +37,14 @@ const joined = myProfile ? (myProfile.state === 'draft' ? 'building' : 'submitte
 
 /* Canonical is the HOME URL — this template answers /{locale}/ on the apex;
  * the /prelaunch path itself is an internal address, never the public one. */
-const alternates = samePathAlternates(Astro.url.origin, '/');
+const alternates = homeAlternates(Astro.url.origin);
 const jsonLd = [websiteJsonLd(Astro.url.origin, locale), organizationJsonLd(Astro.url.origin)];
 ---
 
 <Layout
   title={m.prelaunch_meta_title()}
   description={m.prelaunch_meta_desc()}
-  canonical={new URL(`/${locale}/`, Astro.url.origin).href}
+  canonical={homeUrl(Astro.url.origin, locale)}
   {alternates}
   {jsonLd}
   bare

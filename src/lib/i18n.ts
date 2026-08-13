@@ -42,6 +42,20 @@ export function alternatesFor(
   ) as Record<Locale, string>;
 }
 
+/**
+ * The homepage is the ONE URL where nl lives at the root `/` (not `/nl/`): the
+ * apex is the strongest URL, so it's the canonical Dutch home + x-default, while
+ * de/en/… keep their `/{locale}/`. Used for BOTH canonical and hreflang so they
+ * always agree (a mismatch de-consolidates the root). `/nl/` still renders, but
+ * canonical'd here to `/` it consolidates onto the root instead of competing.
+ */
+export function homeUrl(origin: string, locale: Locale): string {
+  return new URL(locale === 'nl' ? '/' : `/${locale}/`, origin).href;
+}
+export function homeAlternates(origin: string): Record<Locale, string> {
+  return Object.fromEntries(LOCALES.map((l) => [l, homeUrl(origin, l)])) as Record<Locale, string>;
+}
+
 /** Same path in every locale (pages without localized slugs). */
 export function samePathAlternates(origin: string, path: string): Record<Locale, string> {
   return alternatesFor(
