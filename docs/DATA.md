@@ -78,6 +78,9 @@ Appearance/physical columns (`body_type`, `hair_color`, …, `height_cm`,
 sort/filter. `opening_hours` + `availability_dates` + `description_translations`
 are JSONB — weekly hours plus per-date overrides (agency-style calendars); a
 date entry beats the weekday for that day, weekly is the fallback.
+`age_display` (nullable text) is a source-verbatim prose age ("midden twintig")
+shown via `profileAgeLabel()` instead of the computed years — never a guessed
+number; `birth_date` stays required and 21+-checked.
 - **Not stored:** `online` — it comes from realtime presence (SUPABASE.md §5.4),
   projected onto the read model, never a column. `last_active_at` IS stored: the
   professional's island writes it via a throttled RLS-guarded own-row update

@@ -17,22 +17,9 @@ import { accounts, orgs, profiles } from '@/db/schema';
 import { uniqueSlug } from '@/app/data/db/account';
 import { slugifyBase } from '@/lib/slug';
 import type { CitySlug, Gender } from '@/lib/taxonomy';
-import type { OrgLocation } from '@/app/models/org';
+import type { PublicAgency } from '@/app/models/org';
 
-export interface PublicAgency {
-  id: string;
-  name: string;
-  slug: string;
-  city: string;
-  verified: boolean;
-  description: string;
-  logoUrl?: string;
-  siteUrl?: string;
-  /** Physical branches (address/phones/hours) — public storefront data,
-   *  unlike contact_email/KvK/crawl config which stay server-only. */
-  locations: OrgLocation[];
-  createdAt: string;
-}
+export type { PublicAgency };
 
 const db = () => requestDb((env as unknown as { HYPERDRIVE: Hyperdrive }).HYPERDRIVE);
 
@@ -51,6 +38,12 @@ const toPublic = (r: typeof orgs.$inferSelect): PublicAgency => ({
 
 export async function agencyBySlug(slug: string): Promise<PublicAgency | null> {
   const [row] = await db().select().from(orgs).where(eq(orgs.slug, slug)).limit(1);
+  return row ? toPublic(row) : null;
+}
+
+/** Public projection by id — the profile page's agency block (profiles.orgId). */
+export async function agencyById(id: string): Promise<PublicAgency | null> {
+  const [row] = await db().select().from(orgs).where(eq(orgs.id, id)).limit(1);
   return row ? toPublic(row) : null;
 }
 

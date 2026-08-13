@@ -28,7 +28,8 @@ export function buildExtractPrompt(opts: { agency?: boolean; notes?: string; tod
   const agencyKeys = opts.agency
     ? `
   "name": her display/working name exactly as shown (first name or alias, no titles) or null,
-  "age": her age in years as an integer, as listed on the page, or null,
+  "age": her age in years as an integer ONLY when the page lists a number — NEVER estimate from words, or null,
+  "ageText": her age EXACTLY as written on the page when it is words rather than a number (e.g. "midden twintig"), else null,
   "photoUrls": array (max 12) of absolute URLs of HER photos on this page — pick the largest/original variants; exclude logos, icons, banners, thumbnails of OTHER people,`
     : '';
   return withOperatorNotes(`${opts.today ? `Today is ${opts.today}. ` : ''}You extract ONE Dutch adult-services (escort) profile from scraped page markdown into a single JSON object for a Netherlands directory. Translate ALL free text to natural English. Map every controlled field to EXACTLY one of the allowed values below; if nothing fits, omit it (use null / []). Never invent data. Prices are integers in EUR. Output ONLY the JSON object.

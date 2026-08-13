@@ -118,6 +118,9 @@ export const ProfileSchema = z.object({
   name: z.string(),
   /** Date of birth (YYYY-MM-DD); displayed age is computed via profileAge(). */
   birthDate: z.iso.date(),
+  /** Verbatim age text from an import source ("midden twintig") — shown via
+   *  profileAgeLabel() instead of the computed number. Never a guessed value. */
+  ageDisplay: z.string().optional(),
   gender: z.enum(GENDERS),
   city: z.enum(CITY_SLUGS),
   /** Live but hidden from listings/search/sitemap — direct URL only. */
@@ -238,6 +241,12 @@ export function localizedDescription(p: Profile, locale: Locale = getLocale() as
   return p.descriptionTranslations[locale] ?? p.description;
 }
 
+/** The age as the UI shows it: the source's verbatim text when set ("midden
+ *  twintig" — never a guessed number), else the computed years. */
+export function profileAgeLabel(p: Pick<Profile, 'ageDisplay' | 'birthDate'>): string {
+  return p.ageDisplay || String(profileAge(p.birthDate));
+}
+
 /**
  * The three honest availability states (UX-PLAN 1.3). One helper is the single
  * source of truth: cards, profile and the sticky card all derive from it, and
@@ -267,10 +276,13 @@ const TZ = 'Europe/Amsterdam';
 const DOW: readonly Day[] = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as unknown as Day[];
 
 /** Wall-clock parts of an instant in the Amsterdam timezone. */
-function amsParts(d: Date): { day: Day; minutes: number; hhmm: string } {
+function amsParts(d: Date): { day: Day; minutes: number; hhmm: string; iso: string } {
   const f = new Intl.DateTimeFormat('en-GB', {
     timeZone: TZ,
     weekday: 'short',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
     hour: '2-digit',
     minute: '2-digit',
     hour12: false,
@@ -280,7 +292,12 @@ function amsParts(d: Date): { day: Day; minutes: number; hhmm: string } {
   let hh = get('hour');
   if (hh === '24') hh = '00'; // some engines emit 24:00 for midnight
   const mm = get('minute');
-  return { day: wd, minutes: Number(hh) * 60 + Number(mm), hhmm: `${hh}:${mm}` };
+  return {
+    day: wd,
+    minutes: Number(hh) * 60 + Number(mm),
+    hhmm: `${hh}:${mm}`,
+    iso: `${get('year')}-${get('month')}-${get('day')}`,
+  };
 }
 
 const toMinutes = (hhmm: string): number | null => {
@@ -298,8 +315,16 @@ function openTodayUntil(day: DayHours | undefined, nowMin: number): string | nul
   return to > nowMin ? day.to : null;
 }
 
+/** A date entry as a DayHours row: no times = the whole day. */
+const dateAsDayHours = (o: DateAvailability): DayHours => ({
+  closed: !o.available,
+  allDay: o.available && !o.from && !o.to,
+  from: o.from,
+  to: o.to,
+});
+
 export function availabilityState(p: Profile, now: Date = new Date()): Availability {
-  const { day, minutes } = amsParts(now);
+  const { day, minutes, iso } = amsParts(now);
   const dayIdx = DOW.indexOf(day);
 
   // "active today HH:MM" — only when lastActiveAt lands on the same local day.
@@ -311,18 +336,49 @@ export function availabilityState(p: Profile, now: Date = new Date()): Availabil
 
   if (p.online) return { kind: 'online', lastActiveToday };
 
-  const until = openTodayUntil(p.openingHours[day], minutes);
+  // Precedence: a date entry (agency calendars) beats the weekly row for that
+  // day — an explicit AFWEZIG also silences the weekly hours. Weekly = fallback.
+  const todayOverride = p.availabilityDates?.[iso];
+  const until = openTodayUntil(todayOverride ? dateAsDayHours(todayOverride) : p.openingHours[day], minutes);
   if (until) return { kind: 'today_until', until, lastActiveToday };
 
-  // Not open today → next open weekday (scan the coming 7 days).
+  // Not open today → next open day (dates override weekdays here too).
+  const base = Date.parse(`${iso}T12:00:00Z`);
   for (let i = 1; i <= 7; i++) {
     const d = DOW[(dayIdx + i) % 7]!;
+    const od = p.availabilityDates?.[new Date(base + i * 86_400_000).toISOString().slice(0, 10)];
+    if (od) {
+      if (od.available) return { kind: 'back_at', nextDay: d, lastActiveToday };
+      continue;
+    }
     const dh = p.openingHours[d];
     if (dh && !dh.closed && (dh.allDay || toMinutes(dh.to) !== null)) {
       return { kind: 'back_at', nextDay: d, lastActiveToday };
     }
   }
   return { kind: 'back_at', lastActiveToday };
+}
+
+/** The next `limit` calendar entries from today (Amsterdam), sorted — feeds the
+ *  profile date strip. Past keys are simply ignored (pruning is a re-crawl). */
+export interface UpcomingDate {
+  date: string;
+  day: Day;
+  dayOfMonth: number;
+  available: boolean;
+  from: string;
+  to: string;
+}
+export function upcomingAvailability(p: Profile, now: Date = new Date(), limit = 7): UpcomingDate[] {
+  const { iso } = amsParts(now);
+  return Object.entries(p.availabilityDates ?? {})
+    .filter(([d]) => d >= iso)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .slice(0, limit)
+    .map(([date, v]) => {
+      const dt = new Date(`${date}T12:00:00Z`);
+      return { date, day: DOW[dt.getUTCDay()]!, dayOfMonth: dt.getUTCDate(), available: v.available, from: v.from, to: v.to };
+    });
 }
 
 /**

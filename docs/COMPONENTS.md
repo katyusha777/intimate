@@ -45,6 +45,10 @@ Pages = `src/pages/` (compose organisms; own no reusable markup).
   footer + header/compact; cycles off→neutral→dev),
   Section (owns page rhythm + section headings),
   AvailabilityLine (dot + text availability, card/line variants),
+  DateStrip (per-date availability chips — agency calendars; next 7 entries
+  from upcomingAvailability(), dates override weekdays),
+  AgencyCard (org profiles' deal-card block: branch phone + generated
+  "call and ask for {name}" line + tap-through to the agency page),
   ContactButtons (open tap-to-contact links — WhatsApp/Telegram/Instagram/phone,
   handles pre-sanitized by contactLinks()),
   AdminLogin (organisms/admin — sign-in shown by /admin when there's no admin session; also drives the TOTP step-up/enroll after a correct password),

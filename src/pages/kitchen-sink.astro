@@ -9,7 +9,9 @@ import PhotoCarousel from '@/components/molecules/PhotoCarousel.astro';
 import SafeImage from '@/components/atoms/SafeImage.astro';
 import Combobox from '@/components/molecules/Combobox.astro';
 import ActionSheet from '@/components/molecules/ActionSheet.astro';
+import AgencyCard from '@/components/molecules/AgencyCard.astro';
 import AvailabilityLine from '@/components/molecules/AvailabilityLine.astro';
+import DateStrip from '@/components/molecules/DateStrip.astro';
 import ProfilePhotoMosaic from '@/components/organisms/profile/ProfilePhotoMosaic.astro';
 import RatesTable from '@/components/organisms/profile/RatesTable.astro';
 import GoodToKnow from '@/components/organisms/profile/GoodToKnow.astro';
@@ -103,6 +105,35 @@ const availFixtures = [
   },
 ] as const;
 const mosaicPhotos = profiles.flatMap((pr) => pr.photos).slice(0, 5);
+
+/* DateStrip fixture (agency date calendar) — keys relative to availNow. */
+const stripProfile = {
+  ...profiles[4]!,
+  online: false,
+  availabilityDates: {
+    '2026-08-05': { available: true, from: '10:30', to: '22:00' },
+    '2026-08-06': { available: false, from: '', to: '' },
+    '2026-08-07': { available: false, from: '', to: '' },
+    '2026-08-08': { available: true, from: '', to: '' },
+    '2026-08-09': { available: true, from: '', to: '' },
+    '2026-08-10': { available: false, from: '', to: '' },
+  },
+};
+
+/* AgencyCard fixture — a two-branch parlor; branch resolves by the profile's city. */
+const agencyFixture = {
+  id: 'demo-agency',
+  name: 'Demo Massage NL',
+  slug: 'demo-massage',
+  city: 'tilburg',
+  verified: true,
+  description: '',
+  locations: [
+    { city: 'tilburg' as const, address: 'Koestraat 44', phone: '013 469 0686', openingHours: {} },
+    { city: 'rotterdam' as const, address: 'Admiraal de Ruyterweg 42A', phone: '010 404 8953', openingHours: {} },
+  ],
+  createdAt: '2026-08-01T00:00:00.000Z',
+};
 
 /* Offline-fallback demo (2.6): an away profile + three online candidates. */
 const awayProfile = { ...p, online: false, openingHours: {} };
@@ -443,6 +474,26 @@ const swatches = [
             ))
           }
         </div>
+      </div>
+    </section>
+
+    <section class="space-y-4">
+      <h2 class="text-xl font-semibold">DateStrip — agency date calendar</h2>
+      <p class="text-sm text-muted-foreground">
+        Per-date availability (<code>availabilityDates</code> — a date entry overrides that weekday);
+        next 7 entries from today, zero JS. Fixed <code>now</code> = 5 Aug.
+      </p>
+      <DateStrip profile={stripProfile} now={availNow} class="max-w-md" />
+    </section>
+
+    <section class="space-y-4">
+      <h2 class="text-xl font-semibold">AgencyCard — branch phone + ask-for line</h2>
+      <p class="text-sm text-muted-foreground">
+        Org profiles only (deal-card block): branch = the location matching her city; the calling
+        instruction is generated per locale, never stored free text.
+      </p>
+      <div class="facts-slab dark max-w-xs bg-neutral-950 p-6">
+        <AgencyCard agency={agencyFixture} profile={{ ...p, city: 'tilburg' }} />
       </div>
     </section>
 

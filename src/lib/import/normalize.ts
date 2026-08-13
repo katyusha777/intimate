@@ -224,11 +224,13 @@ export function pickPaginationUrls(raw: unknown, baseUrl: string): string[] {
 }
 
 /** Untrusted agency-extraction extras → validated identity + photo URLs. */
-export function pickAgencyExtras(raw: unknown): { name?: string; age?: number; photoUrls: string[] } {
+export function pickAgencyExtras(raw: unknown): { name?: string; age?: number; ageText?: string; photoUrls: string[] } {
   const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
   const name = typeof r.name === 'string' && r.name.trim() ? r.name.trim().slice(0, 40) : undefined;
   const ageN = typeof r.age === 'number' ? Math.round(r.age) : typeof r.age === 'string' ? parseInt(r.age, 10) : NaN;
   const age = Number.isFinite(ageN) && ageN >= 18 && ageN <= 80 ? ageN : undefined;
+  // Verbatim prose age ("midden twintig") — display-only, never a guessed number.
+  const ageText = typeof r.ageText === 'string' && r.ageText.trim() ? r.ageText.trim().slice(0, 40) : undefined;
   const photoUrls: string[] = [];
   if (Array.isArray(r.photoUrls)) {
     for (const p of r.photoUrls.slice(0, 30)) {
@@ -243,7 +245,7 @@ export function pickAgencyExtras(raw: unknown): { name?: string; age?: number; p
       if (photoUrls.length >= 12) break;
     }
   }
-  return { name, age, photoUrls };
+  return { name, age, ageText, photoUrls };
 }
 
 /** WordPress (and most CMS) resize convention: `foo-400x517.jpg` is a generated

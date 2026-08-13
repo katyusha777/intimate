@@ -23,6 +23,8 @@ export const ProfileEditSchema = z.object({
   }),
   gender: z.enum(GENDERS),
   city: z.enum(CITY_SLUGS),
+  /** Verbatim age text from an import ("midden twintig") — display-only. */
+  ageDisplay: z.string().trim().max(40).optional(),
   // Direct contact channels (open buttons). Handles are UGC — validated for
   // length here; the URL builder sanitizes to a safe charset before linking.
   phone: z.string().trim().max(30).optional(),

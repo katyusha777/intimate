@@ -174,7 +174,7 @@ export async function uniqueSlug(d: Db, name: string, city: string): Promise<str
 export function profileUpdate(patch: Partial<ProfileEdit>) {
   const u: Record<string, unknown> = {};
   const copy = [
-    'name', 'gender', 'city', 'phone', 'whatsapp', 'telegram', 'instagram',
+    'name', 'gender', 'city', 'ageDisplay', 'phone', 'whatsapp', 'telegram', 'instagram',
     'rates', 'depositPolicy', 'extrasNote', 'services',
     'meetingTypes', 'languages', 'incallLocations', 'amenities', 'paymentMethods',
     'availableFor', 'bodyType', 'hairColor', 'hairLength', 'eyeColor', 'cupSize',

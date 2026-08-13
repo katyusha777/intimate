@@ -10,24 +10,28 @@
 import * as m from '@/paraglide/messages';
 import type { Profile } from '@/app/models/profile';
 import type { ReplySpeed } from '@/app/models/messaging';
+import type { PublicAgency } from '@/app/models/org';
 import { genderLabel, meetingTypeLabel } from '@/lib/labels';
 import { localizePath } from '@/lib/i18n';
 import { cityName } from '@/lib/seo';
 import Button from '@/components/atoms/Button.astro';
 import VerifiedBadge from '@/components/atoms/VerifiedBadge.astro';
+import AgencyCard from '@/components/molecules/AgencyCard.astro';
 import ContactButtons from '@/components/molecules/ContactButtons.astro';
 import RatesTable from '@/components/organisms/profile/RatesTable.astro';
 import RequestSheet from '@/components/organisms/profile/RequestSheet.astro';
 
 interface Props {
   profile: Profile;
+  /** Her agency (when orgId is set) — renders the branch/calling block. */
+  agency?: PublicAgency | null;
   /** Measured reply speed (3.2); null → hidden. */
   replySpeed?: ReplySpeed | null;
   /** Her screening question (UX-PLAN 4.x), asked as the last step of a request. */
   screeningQuestion?: string;
   class?: string;
 }
-const { profile: p, replySpeed, screeningQuestion, class: className } = Astro.props;
+const { profile: p, agency, replySpeed, screeningQuestion, class: className } = Astro.props;
 
 const visitLabel = p.meetingTypes.map(meetingTypeLabel).join(' · ');
 const factRow = 'flex items-center justify-between gap-4 border-b border-white/10 py-2.5 text-sm';
@@ -78,6 +82,8 @@ const hasRates = (p.rates ?? []).length > 0;
       </noscript>
       <!-- Direct channels (open buttons) — only render when she's added any. -->
       <ContactButtons profile={p} />
+      <!-- Her agency: branch phone + "call and ask for her" + the roster link. -->
+      {agency && <AgencyCard {agency} profile={p} />}
       <!-- Trust-receipt opener (3.1): the whole row opens the dated receipt. -->
       <button
         type="button"

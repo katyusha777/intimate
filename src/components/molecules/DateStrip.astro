@@ -1,0 +1,48 @@
+---
+/**
+ * Date-based availability strip (agency calendars, UX: kimnl's BESCHIKBAAR/
+ * AFWEZIG carousel): the next 7 calendar entries as compact chips — weekday,
+ * day-of-month, state (+ hours when given). Zero JS, SSR'd in Amsterdam time
+ * via upcomingAvailability(); renders nothing without entries. Rides beside
+ * the weekly table in ProfileDetail — dates override weekdays (model rule).
+ */
+import * as m from '@/paraglide/messages';
+import type { Profile } from '@/app/models/profile';
+import { upcomingAvailability } from '@/app/models/profile';
+import { dayLabel } from '@/lib/labels';
+
+interface Props {
+  profile: Profile;
+  /** Injected for deterministic tests/screenshots; defaults to real now. */
+  now?: Date;
+  class?: string;
+}
+const { profile, now, class: className } = Astro.props;
+const entries = upcomingAvailability(profile, now);
+---
+
+{
+  entries.length > 0 && (
+    <ol class:list={['flex snap-x gap-2 overflow-x-auto', className]}>
+      {entries.map((e) => (
+        <li
+          class:list={[
+            'flex min-w-16 flex-1 snap-start flex-col items-center gap-0.5 border py-2.5 text-center',
+            e.available ? 'border-foreground' : 'border-border opacity-60',
+          ]}
+        >
+          <span class="eyebrow text-2xs text-muted-foreground">{dayLabel(e.day)}</span>
+          <span class="font-condensed text-xl font-bold leading-none">{e.dayOfMonth}</span>
+          <span class:list={['text-2xs font-medium', e.available ? 'text-online' : 'text-muted-foreground']}>
+            {e.available ? m.avail_date_available() : m.avail_date_absent()}
+          </span>
+          {e.available && e.from && e.to && (
+            <span class="text-2xs text-muted-foreground">
+              {e.from}–{e.to}
+            </span>
+          )}
+        </li>
+      ))}
+    </ol>
+  )
+}

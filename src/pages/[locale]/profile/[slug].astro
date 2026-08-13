@@ -9,7 +9,8 @@ import { profilesApi } from '@/app/api/profiles';
 import { messagingApi } from '@/app/api/messaging';
 import { accountApi } from '@/app/api/account';
 import { sessionApi } from '@/app/api/session';
-import { availabilityState, localizedDescription, profileAge } from '@/app/models/profile';
+import { availabilityState, localizedDescription, profileAgeLabel } from '@/app/models/profile';
+import { agencyById } from '@/app/api/orgs';
 import { isLocale, samePathAlternates } from '@/lib/i18n';
 import { realImageFor } from '@/lib/safe-images';
 import { breadcrumbJsonLd, cityName } from '@/lib/seo';
@@ -67,7 +68,7 @@ const isOwner = session?.profileSlug === slug;
 // than four sequential edge→Frankfurt round-trips (the cold-load cost). The
 // offline-fallback candidates (2.6) are only fetched when she's away.
 const offline = availabilityState(p).kind !== 'online';
-const [replySpeed, convo, candidates] = await Promise.all([
+const [replySpeed, convo, candidates, agency] = await Promise.all([
   // Measured reply speed (3.2): null below the honest sample threshold → hidden.
   messagingApi.replySpeedFor(p.id),
   // Request sheet (UX-PLAN 4.x): her screening question rides in the request
@@ -77,6 +78,8 @@ const [replySpeed, convo, candidates] = await Promise.all([
   offline
     ? profilesApi.list({ city: p.city, onlineOnly: true, limit: 12 })
     : Promise.resolve({ items: [] as (typeof p)[] }),
+  // Her agency (P3): branch phone + "ask for her" block on the deal card.
+  p.orgId ? agencyById(p.orgId) : Promise.resolve(null),
 ]);
 
 let similar: (typeof p)[] = [];
@@ -90,7 +93,7 @@ const screeningQuestion = convo.screeningQuestion || undefined;
 
 const description = localizedDescription(p);
 const city = cityName(p.city);
-const title = `${p.name}, ${profileAge(p.birthDate)} — ${city} | Intimate`;
+const title = `${p.name}, ${profileAgeLabel(p)} — ${city} | Intimate`;
 const metaDescription = `${description.slice(0, 140)}${description.length > 140 ? '…' : ''}`;
 const canonical = new URL(`/${locale}/profile/${p.slug}/`, Astro.url.origin).href;
 
@@ -132,5 +135,5 @@ const jsonLd = [
       </div>
     )
   }
-  <ProfileDetail profile={p} {similar} {replySpeed} {screeningQuestion} {isOwner} />
+  <ProfileDetail profile={p} {agency} {similar} {replySpeed} {screeningQuestion} {isOwner} />
 </Layout>

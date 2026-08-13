@@ -19,6 +19,8 @@ import { normalizeImported, pickAgencyExtras, pickPaginationUrls, pickProfileUrl
 export interface AgencyImportOutcome extends ImportResult {
   name?: string;
   age?: number;
+  /** Verbatim prose age from the page ("midden twintig") — display-only. */
+  ageText?: string;
   photoUrls: string[];
   /** Raw LLM object — admin test tool only. */
   raw: unknown;

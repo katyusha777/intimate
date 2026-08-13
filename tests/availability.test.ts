@@ -8,6 +8,7 @@ import {
   availabilityRank,
   availableNow,
   availabilityState,
+  upcomingAvailability,
   ProfileSchema,
 } from '@/app/models/profile';
 
@@ -93,4 +94,59 @@ test('availableNow: online or open-today true, back-later false', () => {
   expect(availableNow({ ...base, online: true }, wedNoon)).toBe(true);
   expect(availableNow({ ...base, openingHours: { wed: { closed: false, allDay: true, from: '', to: '' } } }, wedNoon)).toBe(true);
   expect(availableNow(base, wedNoon)).toBe(false);
+});
+
+// Date overrides (agency calendars): a date entry beats the weekly row.
+test('date entry available today → today_until (all day without times)', () => {
+  const p = { ...base, availabilityDates: { '2026-08-05': { available: true, from: '', to: '' } } };
+  const a = availabilityState(p, wedNoon);
+  expect(a.kind).toBe('today_until');
+  expect(a.until).toBe('24:00');
+});
+
+test('date entry with times respects the window', () => {
+  const open = { ...base, availabilityDates: { '2026-08-05': { available: true, from: '10:30', to: '22:00' } } };
+  expect(availabilityState(open, wedNoon).until).toBe('22:00');
+  const closed = { ...base, availabilityDates: { '2026-08-05': { available: true, from: '09:00', to: '13:00' } } };
+  expect(availabilityState(closed, wedNoon).kind).toBe('back_at'); // now 14:00, closed 13:00
+});
+
+test('date AFWEZIG silences the weekly row for that day', () => {
+  const p = {
+    ...base,
+    openingHours: { wed: { closed: false, allDay: true, from: '', to: '' } },
+    availabilityDates: { '2026-08-05': { available: false, from: '', to: '' } },
+  };
+  const a = availabilityState(p, wedNoon);
+  expect(a.kind).toBe('back_at');
+});
+
+test('back_at scans dates and weekly together, dates override', () => {
+  const p = {
+    ...base,
+    openingHours: { thu: { closed: false, allDay: true, from: '', to: '' } },
+    availabilityDates: {
+      '2026-08-05': { available: false, from: '', to: '' },
+      '2026-08-06': { available: false, from: '', to: '' }, // thu explicitly absent → weekly thu doesn't apply
+      '2026-08-08': { available: true, from: '', to: '' }, // sat available by date
+    },
+  };
+  const a = availabilityState(p, wedNoon);
+  expect(a.kind).toBe('back_at');
+  expect(a.nextDay).toBe('sat');
+});
+
+test('upcomingAvailability: sorted, today-forward, capped', () => {
+  const p = {
+    ...base,
+    availabilityDates: {
+      '2026-08-07': { available: true, from: '', to: '' },
+      '2026-08-04': { available: true, from: '', to: '' }, // yesterday → ignored
+      '2026-08-05': { available: false, from: '', to: '' },
+    },
+  };
+  const list = upcomingAvailability(p, wedNoon);
+  expect(list.map((e) => e.date)).toEqual(['2026-08-05', '2026-08-07']);
+  expect(list[0]!.day).toBe('wed');
+  expect(list[1]!.dayOfMonth).toBe(7);
 });

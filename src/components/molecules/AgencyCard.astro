@@ -1,0 +1,69 @@
+---
+/**
+ * The profile's agency block (dark deal-card context): who she works with, the
+ * branch's booking phone with the generated "call and ask for {name}" line
+ * (localized — never stored free text), and the tap-through to the agency page.
+ * Branch = the org location matching her city (models/org.ts city-match rule);
+ * single-location orgs fall back to the org-level contact phone.
+ */
+import * as m from '@/paraglide/messages';
+import type { Profile } from '@/app/models/profile';
+import type { PublicAgency } from '@/app/models/org';
+import { localizePath } from '@/lib/i18n';
+import { cityName } from '@/lib/seo';
+import Icon from '@/components/atoms/Icon.astro';
+
+interface Props {
+  agency: PublicAgency;
+  profile: Profile;
+  class?: string;
+}
+const { agency, profile: p, class: className } = Astro.props;
+
+const branch = agency.locations.find((l) => l.city === p.city) ?? agency.locations[0];
+const phone = branch?.phone;
+const telHref = phone ? `tel:${phone.replace(/[^\d+]/g, '')}` : undefined;
+---
+
+<div class:list={['border-t border-white/10 pt-4', className]}>
+  <p class="eyebrow text-2xs text-white/50">{m.agency_eyebrow()}</p>
+  <a
+    href={localizePath(`/agencies/${agency.slug}/`)}
+    class="mt-1.5 flex items-center gap-3 transition-colors hover:text-white/80"
+  >
+    {
+      agency.logoUrl && (
+        <img src={`${agency.logoUrl}?v=thumb`} alt="" width="36" height="36" class="size-9 flex-none rounded-lg bg-white/10 object-cover" loading="lazy" />
+      )
+    }
+    <span class="min-w-0">
+      <span class="flex items-center gap-1.5 text-sm font-semibold">
+        {agency.name}
+        {
+          agency.verified && (
+            <svg class="size-3.5 flex-none text-online" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-label={m.verified()}>
+              <circle cx="12" cy="12" r="10" />
+              <path d="M9 12l2 2 4-4" />
+            </svg>
+          )
+        }
+      </span>
+      {branch && <span class="block truncate text-xs text-white/50">{cityName(branch.city)}{branch.address ? ` · ${branch.address}` : ''}</span>}
+    </span>
+    <svg class="ml-auto size-4 flex-none text-white/40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 18l6-6-6-6" /></svg>
+  </a>
+  {
+    phone && telHref && (
+      <div class="mt-3">
+        <a
+          href={telHref}
+          class="flex items-center justify-center gap-2 border border-white/20 py-2.5 text-sm font-medium text-white transition-colors hover:border-white/50"
+        >
+          <Icon name="phone" class="text-base" />
+          {phone}
+        </a>
+        <p class="mt-1.5 text-center text-xs text-white/60">{m.agency_call_ask({ agency: agency.name, name: p.name })}</p>
+      </div>
+    )
+  }
+</div>

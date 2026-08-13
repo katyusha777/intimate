@@ -94,6 +94,7 @@ export function toProfile(
     drinking: row.drinking ?? undefined,
     tattoos: row.tattoos ?? undefined,
     piercings: row.piercings ?? undefined,
+    ageDisplay: row.ageDisplay ?? undefined,
     openingHours: row.openingHours,
     availabilityDates: row.availabilityDates,
     lastActiveAt: iso(row.lastActiveAt),

@@ -277,6 +277,9 @@ export const profiles = pgTable(
     stateChangedAt: timestamp('state_changed_at', { withTimezone: true }).notNull().defaultNow(),
     name: text('name').notNull(),
     birthDate: date('birth_date').notNull(),
+    /** Verbatim age text from an import source ("midden twintig") — displayed
+     *  instead of the computed age when set. Never a guessed number. */
+    ageDisplay: text('age_display'),
     gender: genderEnum('gender').notNull(),
     city: cityEnum('city').notNull(),
 

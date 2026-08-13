@@ -186,7 +186,7 @@ export async function importAgencyProfile(
   const d = db();
   const [org] = await d.select().from(orgs).where(eq(orgs.id, orgId)).limit(1);
   if (!org) throw new Error('unknown agency');
-  const { fields, name, age, photoUrls } = await agencyImportFromUrl(url, org.crawlNotes ?? undefined);
+  const { fields, name, age, ageText, photoUrls } = await agencyImportFromUrl(url, org.crawlNotes ?? undefined);
 
   // The 21+ floor (hard rule 4) holds on EVERY crawl — agencies reuse URLs, so
   // a re-crawled page may now show a different, younger person.
@@ -211,6 +211,8 @@ export async function importAgencyProfile(
       ...profileUpdate(fields),
       ...(name ? { name } : {}),
       ...(age !== undefined ? { birthDate: birthDateForAge(age) } : {}),
+      // Verbatim prose age tracks the site both ways (set AND cleared).
+      ageDisplay: ageText ?? null,
     };
     if (Object.keys(update).length) {
       await d.update(profiles).set(update).where(eq(profiles.id, profileId));
@@ -232,6 +234,7 @@ export async function importAgencyProfile(
       state: 'pending_review', // never auto-publish (hard rule 5)
       ...profileUpdate(fields),
       name,
+      ageDisplay: ageText ?? null,
       // The site lists an age, not a DOB — the derived date keeps the DB 21+
       // CHECK honest (computed age = listed age). Admin reviews pre-publish.
       birthDate: birthDateForAge(age),

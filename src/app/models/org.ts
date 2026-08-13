@@ -14,6 +14,23 @@ import { OpeningHoursSchema } from './profile';
  * ponytail: city match breaks with two branches in one city — add an explicit
  * per-profile location index when that agency shows up.
  */
+/** The org's PUBLIC projection (agency page, profile AgencyCard) — private
+ *  business data (contact email, KvK, crawl config) is deliberately absent.
+ *  Produced by @/app/api/orgs; typed here so components never import the seam. */
+export interface PublicAgency {
+  id: string;
+  name: string;
+  slug: string;
+  city: string;
+  verified: boolean;
+  description: string;
+  logoUrl?: string;
+  siteUrl?: string;
+  /** Physical branches (address/phones/hours) — public storefront data. */
+  locations: OrgLocation[];
+  createdAt: string;
+}
+
 export const OrgLocationSchema = z.object({
   city: z.enum(CITY_SLUGS),
   address: z.string().trim().max(200).optional(),
