@@ -31,6 +31,7 @@ import { dataUrlToJpegBytes } from '@/lib/jpeg-strip';
 import { CITY_SLUGS, GENDERS, POLICY_MIN_AGE } from '@/lib/taxonomy';
 import { profileAge } from '@/app/models/profile';
 import { ProfileEditSchema } from '@/app/models/account';
+import { OrgLocationsSchema } from '@/app/models/org';
 import { INDEXNOW_KEY, submitIndexNow } from '@/lib/indexnow';
 import { evictMediaCache, isR2Key, mediaBucket } from '@/lib/media-keys';
 import { ADMIN_EVENTS, NOTIFY_PREFS_KEY } from '@/lib/pushover';
@@ -427,8 +428,11 @@ export const admin = {
       contactEmail: z.string().email().max(200).or(z.literal('')).optional(),
       contactPhone: z.string().max(30).optional(),
       description: z.string().max(2000).optional(),
+      locations: OrgLocationsSchema.optional(),
       crawlEnabled: z.boolean().optional(),
       crawlListUrl: z.string().url().max(500).or(z.literal('')).optional(),
+      crawlNotes: z.string().max(2000).optional(),
+      crawlIntervalHours: z.number().int().min(1).max(720).optional(),
     }),
     handler: async ({ id, ...patch }, context) => {
       const session = await requireAdmin(context, ['super']);
@@ -535,23 +539,25 @@ export const admin = {
   }),
 
   // Crawl test tools (/admin/organizations): read-only previews, no DB writes.
+  // `notes` = the form's UNSAVED crawl-notes value, so the admin can iterate on
+  // per-site guidance in the tester before saving it to the org.
   orgDiscoverPreview: defineAction({
-    input: z.object({ url: z.string().url().max(500) }),
-    handler: async ({ url }, context) => {
+    input: z.object({ url: z.string().url().max(500), notes: z.string().max(2000).optional() }),
+    handler: async ({ url, notes }, context) => {
       await requireAdmin(context, ['moderator']);
       try {
-        return await discoverProfileUrls(url);
+        return await discoverProfileUrls(url, notes);
       } catch (e) {
         throw new ActionError({ code: 'BAD_REQUEST', message: (e as Error).message });
       }
     },
   }),
   orgImportPreview: defineAction({
-    input: z.object({ url: z.string().url().max(500) }),
-    handler: async ({ url }, context) => {
+    input: z.object({ url: z.string().url().max(500), notes: z.string().max(2000).optional() }),
+    handler: async ({ url, notes }, context) => {
       await requireAdmin(context, ['moderator']);
       try {
-        const { fields, warnings, name, age, photoUrls, raw, cost } = await agencyImportFromUrl(url);
+        const { fields, warnings, name, age, photoUrls, raw, cost } = await agencyImportFromUrl(url, notes);
         return { fields, warnings, name, age, photoUrls, raw, cost };
       } catch (e) {
         throw new ActionError({ code: 'BAD_REQUEST', message: (e as Error).message });

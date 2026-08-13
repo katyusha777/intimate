@@ -22,7 +22,7 @@ export interface ImportResult {
 }
 
 
-export function normalizeImported(raw: unknown): ImportResult {
+export function normalizeImported(raw: unknown, now: Date = new Date()): ImportResult {
   const warnings: string[] = [];
   const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
   const out: Record<string, unknown> = {};
@@ -153,6 +153,29 @@ export function normalizeImported(raw: unknown): ImportResult {
     if (Object.keys(oh).length) out.openingHours = oh;
   }
 
+  // Date availability (kimnl-style calendars): ISO keys within today..+60d —
+  // past/far dates are noise; times must be real HH:MM or they become ''.
+  if (r.availabilityDates && typeof r.availabilityDates === 'object') {
+    const dayMs = 86_400_000;
+    const min = now.toISOString().slice(0, 10);
+    const max = new Date(now.getTime() + 60 * dayMs).toISOString().slice(0, 10);
+    const hhmm = (v: unknown): string => (typeof v === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(v.trim()) ? v.trim() : '');
+    const ad: Record<string, unknown> = {};
+    let dropped = 0;
+    for (const [key, val] of Object.entries(r.availabilityDates as Record<string, unknown>).slice(0, 90)) {
+      const k = key.trim();
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(k) || !val || typeof val !== 'object') continue;
+      if (k < min || k > max) {
+        dropped++;
+        continue;
+      }
+      const dv = val as Record<string, unknown>;
+      ad[k] = { available: dv.available === true, from: hhmm(dv.from), to: hhmm(dv.to) };
+    }
+    if (dropped) warnings.push(`Skipped ${dropped} past/far availability date(s)`);
+    if (Object.keys(ad).length) out.availabilityDates = ad;
+  }
+
   return finalGate(out, warnings);
 }
 
@@ -221,6 +244,18 @@ export function pickAgencyExtras(raw: unknown): { name?: string; age?: number; p
     }
   }
   return { name, age, photoUrls };
+}
+
+/** WordPress (and most CMS) resize convention: `foo-400x517.jpg` is a generated
+ *  thumbnail; the full original lives at `foo.jpg` — the `-WIDTHxHEIGHT` suffix
+ *  right before the extension is the only marker, so stripping it is a pure,
+ *  site-agnostic transform (no probing). Returns null when there is no such
+ *  suffix (already an original), so callers can tell "de-resized" from "as-is".
+ *  `-scaled`/other WP markers are deliberately left alone. */
+export function originalImageUrl(url: string): string | null {
+  // Match only the query-less path so `?w=400` etc. never gets mistaken for a size.
+  const m = url.match(/^(https?:\/\/[^?#]*?)-\d{2,4}x\d{2,4}(\.(?:jpe?g|png|webp|avif|gif))(\?[^#]*)?(#.*)?$/i);
+  return m ? `${m[1]}${m[2]}${m[3] ?? ''}${m[4] ?? ''}` : null;
 }
 
 function finalGate(out: Record<string, unknown>, warnings: string[]): ImportResult {

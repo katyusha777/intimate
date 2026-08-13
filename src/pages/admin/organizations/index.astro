@@ -207,11 +207,20 @@ const label = 'block text-2xs uppercase tracking-wide text-muted-foreground';
                     <div><span class={label}>Contact phone</span><input name="contactPhone" value={detail.contactPhone ?? ''} class={input} /></div>
                   </div>
                   <div><span class={label}>Description (shown on the public page)</span><textarea name="description" rows="3" class={input}>{detail.description}</textarea></div>
+                  <div>
+                    <span class={label}>Locations (JSON: branches with city/address/phone/whatsapp/openingHours — shown on the public page; a profile's branch = its city)</span>
+                    <textarea name="locations" rows="3" placeholder='[{"city":"tilburg","address":"Koestraat 44, 5014 ED Tilburg","phone":"013 469 0686"}]' class={input}>{detail.locations.length ? JSON.stringify(detail.locations) : ''}</textarea>
+                  </div>
                   <div class="flex flex-wrap items-center gap-4 text-sm">
                     <label class="flex items-center gap-2"><input type="checkbox" name="verified" checked={detail.verified} /> Verified</label>
-                    <label class="flex items-center gap-2"><input type="checkbox" name="crawlEnabled" checked={detail.crawlEnabled} /> Auto-crawl daily</label>
+                    <label class="flex items-center gap-2"><input type="checkbox" name="crawlEnabled" checked={detail.crawlEnabled} /> Auto-crawl</label>
+                    <label class="flex items-center gap-2">every <input name="crawlIntervalHours" type="number" min="1" max="720" value={detail.crawlIntervalHours} class={`${input} w-20`} /> h</label>
                   </div>
                   <div><span class={label}>Crawl URL (roster/homepage)</span><input name="crawlListUrl" type="url" value={detail.crawlListUrl ?? ''} class={input} /></div>
+                  <div>
+                    <span class={label}>Crawl notes (site-specific guidance appended to the extractor prompts — the test tools use the unsaved value)</span>
+                    <textarea name="crawlNotes" rows="4" placeholder="e.g. The schedule is a date carousel: BESCHIKBAAR = available, AFWEZIG = absent. The phone shown is the branch's, not hers — set her city from the branch (Tilburg/Rotterdam). Services are the massage-menu names." class={input}>{detail.crawlNotes ?? ''}</textarea>
+                  </div>
                   <div class="flex items-center gap-3">
                     <button type="submit" class={btn}>Save</button>
                     <span data-edit-status class="text-2xs text-muted-foreground" />
@@ -279,6 +288,16 @@ const label = 'block text-2xs uppercase tracking-wide text-muted-foreground';
       const form = e.currentTarget as HTMLFormElement;
       const status = document.querySelector<HTMLElement>('[data-edit-status]')!;
       status.textContent = 'Saving…';
+      let locations: unknown = [];
+      const locRaw = val(form, 'locations');
+      if (locRaw) {
+        try {
+          locations = JSON.parse(locRaw);
+        } catch {
+          status.textContent = 'Locations is not valid JSON';
+          return;
+        }
+      }
       const { error } = await actions.admin.orgUpdate({
         id: form.dataset.org!,
         name: val(form, 'name'),
@@ -288,9 +307,12 @@ const label = 'block text-2xs uppercase tracking-wide text-muted-foreground';
         contactEmail: val(form, 'contactEmail'),
         contactPhone: val(form, 'contactPhone'),
         description: val(form, 'description'),
+        locations: locations as never,
         verified: checked(form, 'verified'),
         crawlEnabled: checked(form, 'crawlEnabled'),
         crawlListUrl: val(form, 'crawlListUrl'),
+        crawlNotes: val(form, 'crawlNotes'),
+        crawlIntervalHours: Number(val(form, 'crawlIntervalHours')) || 24,
       });
       status.textContent = error ? `Error: ${error.message}` : 'Saved ✓';
     });
@@ -316,7 +338,7 @@ const label = 'block text-2xs uppercase tracking-wide text-muted-foreground';
       if (!url) { status.textContent = 'Set a crawl URL first (and Save).'; return; }
       btn.disabled = true;
       status.textContent = 'Discovering… (~30s)';
-      const { data, error } = await actions.admin.orgDiscoverPreview({ url });
+      const { data, error } = await actions.admin.orgDiscoverPreview({ url, notes: val(form, 'crawlNotes') || undefined });
       btn.disabled = false;
       if (error) { status.textContent = `Error: ${error.message}`; return; }
       status.textContent = `${data.urls.length} profile URL(s) across ${data.pages} page(s) · $${data.cost.toFixed(4)}`;
@@ -341,7 +363,8 @@ const label = 'block text-2xs uppercase tracking-wide text-muted-foreground';
       photos.classList.add('hidden');
       out.classList.remove('hidden');
       out.textContent = 'Scraping + extracting… (~1 min)';
-      const { data, error } = await actions.admin.orgImportPreview({ url });
+      const form = document.querySelector<HTMLFormElement>('[data-org-edit]')!;
+      const { data, error } = await actions.admin.orgImportPreview({ url, notes: val(form, 'crawlNotes') || undefined });
       btn.disabled = false;
       if (error) { out.textContent = `Error: ${error.message}`; return; }
       if (data.photoUrls.length) {

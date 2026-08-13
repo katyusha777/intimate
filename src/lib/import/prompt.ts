@@ -11,7 +11,17 @@ import {
 
 const list = (a: readonly string[]) => a.join(', ');
 
-export function buildExtractPrompt(opts: { agency?: boolean } = {}): string {
+/**
+ * Per-site scrape guidance (orgs.crawl_notes — admin-authored, trusted config,
+ * not code): appended to any of the crawl prompts. The page content itself
+ * stays data-never-instructions; this block is the operator talking.
+ */
+export function withOperatorNotes(prompt: string, notes?: string): string {
+  const n = notes?.trim();
+  return n ? `${prompt}\n\nOPERATOR GUIDANCE for this specific site (admin-authored, trusted — follow where applicable):\n${n.slice(0, 2000)}` : prompt;
+}
+
+export function buildExtractPrompt(opts: { agency?: boolean; notes?: string; today?: string } = {}): string {
   // Agency crawl (src/lib/crawl.ts): nobody types identity/photos in by hand,
   // so the extraction must carry them. Self-service NEVER gets these keys —
   // she owns her identity (normalize.ts header).
@@ -21,7 +31,7 @@ export function buildExtractPrompt(opts: { agency?: boolean } = {}): string {
   "age": her age in years as an integer, as listed on the page, or null,
   "photoUrls": array (max 12) of absolute URLs of HER photos on this page — pick the largest/original variants; exclude logos, icons, banners, thumbnails of OTHER people,`
     : '';
-  return `You extract ONE Dutch adult-services (escort) profile from scraped page markdown into a single JSON object for a Netherlands directory. Translate ALL free text to natural English. Map every controlled field to EXACTLY one of the allowed values below; if nothing fits, omit it (use null / []). Never invent data. Prices are integers in EUR. Output ONLY the JSON object.
+  return withOperatorNotes(`${opts.today ? `Today is ${opts.today}. ` : ''}You extract ONE Dutch adult-services (escort) profile from scraped page markdown into a single JSON object for a Netherlands directory. Translate ALL free text to natural English. Map every controlled field to EXACTLY one of the allowed values below; if nothing fits, omit it (use null / []). Never invent data. Prices are integers in EUR. Output ONLY the JSON object.
 
 Output keys (use null or [] when unknown):
 {${agencyKeys}
@@ -51,9 +61,10 @@ Output keys (use null or [] when unknown):
   "phone": string or null, "whatsapp": string or null, "telegram": string or null, "instagram": string or null,
   "rates": array of { "duration": one of [${list(RATE_DURATIONS)}] or null, "label": short custom label or null, "incall": integer EUR or null, "outcall": integer EUR or null }
            (map "30 min"->min_30, "1 uur"->hour_1, "90 min"->min_90, "2 uur"->hour_2, "nacht"->overnight, "weekend"->weekend; set incall/outcall from the section: Prive/Thuisontvangst=incall, Escort=outcall; a row needs a duration OR label AND at least one price),
-  "openingHours": object with only the weekdays shown, each { "closed": bool, "allDay": bool, "from": "HH:MM", "to": "HH:MM" } (24-hour times; "24 uur"->allDay true; a closed day -> closed true),
+  "openingHours": object with only the weekdays shown, each { "closed": bool, "allDay": bool, "from": "HH:MM", "to": "HH:MM" } (24-hour times; "24 uur"->allDay true; a closed day -> closed true) — use ONLY for weekly recurring schedules,
+  "availabilityDates": object for date-based calendars (e.g. a carousel of specific dates marked BESCHIKBAAR/available or AFWEZIG/absent): keys are ISO dates "YYYY-MM-DD" (infer the year from today's date), values { "available": bool, "from": "HH:MM" or "", "to": "HH:MM" or "" }; only dates the page explicitly shows; null if the page has no per-date calendar,
   "description": her profile text translated to natural English (max ~800 chars) or null,
   "depositPolicy": deposit/booking terms in English or null,
   "extrasNote": short note on extras/surcharges in English or null
-}`;
+}`, opts.notes);
 }

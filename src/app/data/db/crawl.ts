@@ -24,6 +24,7 @@ import { and, count, eq, inArray, isNotNull, lt, sql } from 'drizzle-orm';
 import { requestDb, type Db } from '@/db/client';
 import { importJobs, media, orgs, profiles } from '@/db/schema';
 import { agencyImportFromUrl, discoverProfileUrls } from '@/lib/import/agency';
+import { originalImageUrl } from '@/lib/import/normalize';
 import { profileUpdate, uniqueSlug } from './account';
 import { birthDateForAge } from '@/app/models/profile';
 import { fetchExternalImage, transformImage } from '@/lib/fetch-image';
@@ -64,7 +65,7 @@ export async function enqueueOrgCrawl(orgId: string): Promise<CrawlEnqueueResult
   const listUrl = org.crawlListUrl?.trim();
   if (!listUrl) throw new Error('no crawl URL configured for this agency');
 
-  const { urls, pages } = await discoverProfileUrls(listUrl);
+  const { urls, pages } = await discoverProfileUrls(listUrl, org.crawlNotes ?? undefined);
 
   // URL already ours → update job; unseen → create job; open job → skip.
   const existing = await d
@@ -183,7 +184,9 @@ export async function importAgencyProfile(
   opts: { existingProfileId?: string } = {},
 ): Promise<AgencyImportApplied> {
   const d = db();
-  const { fields, name, age, photoUrls } = await agencyImportFromUrl(url);
+  const [org] = await d.select().from(orgs).where(eq(orgs.id, orgId)).limit(1);
+  if (!org) throw new Error('unknown agency');
+  const { fields, name, age, photoUrls } = await agencyImportFromUrl(url, org.crawlNotes ?? undefined);
 
   // The 21+ floor (hard rule 4) holds on EVERY crawl — agencies reuse URLs, so
   // a re-crawled page may now show a different, younger person.
@@ -218,8 +221,6 @@ export async function importAgencyProfile(
   // New profile — identity + the 21+ policy floor are non-negotiable.
   if (!name) throw new AgencyImportError('no name found on the page');
   if (!age) throw new AgencyImportError('no age listed on the page — cannot verify the 21+ policy', name);
-  const [org] = await d.select().from(orgs).where(eq(orgs.id, orgId)).limit(1);
-  if (!org) throw new AgencyImportError('agency no longer exists', name);
 
   const city = fields.city ?? org.city;
   const [created] = await d
@@ -252,9 +253,15 @@ export async function importAgencyProfile(
  *  inserted in original order so the gallery matches the source page. */
 async function importPhotos(d: Db, profileId: string, urls: string[]): Promise<number> {
   const bucket = mediaBucket();
+  // Agency galleries hand us WordPress thumbnails (`foo-400x517.jpg`) that would
+  // upscale to mush at width 1600. Deterministically map each to its full
+  // original (`foo.jpg`) — this also dedups several sizes of the same source
+  // down to one row. Keep the resized URL as the fallback for the rare miss.
+  const deduped = [...new Map(urls.map((u) => [originalImageUrl(u) ?? u, u])).values()];
   const keys = await Promise.all(
-    urls.slice(0, MAX_PHOTOS).map(async (u): Promise<string | null> => {
-      const img = await fetchExternalImage(u);
+    deduped.slice(0, MAX_PHOTOS).map(async (u): Promise<string | null> => {
+      const orig = originalImageUrl(u);
+      const img = (orig ? await fetchExternalImage(orig) : null) ?? (await fetchExternalImage(u));
       if (!img || img.bytes.byteLength < 10_000) return null; // icons/trackers
       // No transform binding → no metadata strip → no photo import (hard rule 2).
       const bytes = await transformImage(img.bytes, { width: 1600, format: 'image/jpeg', quality: 85 });
@@ -308,7 +315,9 @@ export async function crawlTick(): Promise<CrawlTickResult> {
       and(
         eq(orgs.crawlEnabled, true),
         isNotNull(orgs.crawlListUrl),
-        sql`(${orgs.lastCrawledAt} is null or ${orgs.lastCrawledAt} < now() - interval '24 hours')`,
+        // Per-org cadence (orgs.crawl_interval_hours): schedule-bearing sites
+        // (rolling date calendars) need daily; static rosters can go slower.
+        sql`(${orgs.lastCrawledAt} is null or ${orgs.lastCrawledAt} < now() - make_interval(hours => ${orgs.crawlIntervalHours}))`,
       ),
     )
     .limit(1);

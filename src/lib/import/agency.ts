@@ -13,7 +13,7 @@
  */
 import { firecrawlScrape } from './firecrawl';
 import { llmExtract } from './extract';
-import { buildExtractPrompt } from './prompt';
+import { buildExtractPrompt, withOperatorNotes } from './prompt';
 import { normalizeImported, pickAgencyExtras, pickPaginationUrls, pickProfileUrls, type ImportResult } from './normalize';
 
 export interface AgencyImportOutcome extends ImportResult {
@@ -34,9 +34,11 @@ const DISCOVER_PROMPT = `You are given the scraped markdown and the link list of
  *  ever paginates deeper. */
 const MAX_ROSTER_PAGES = 8;
 
-/** Roster/homepage → profile-page URLs, following the listing's pagination. */
+/** Roster/homepage → profile-page URLs, following the listing's pagination.
+ *  `notes` = orgs.crawl_notes (per-site operator guidance, prompt-appended). */
 export async function discoverProfileUrls(
   listUrl: string,
+  notes?: string,
 ): Promise<{ urls: string[]; cost: number; pages: number }> {
   const urls: string[] = [];
   const queue = [listUrl];
@@ -50,7 +52,7 @@ export async function discoverProfileUrls(
     pages++;
     const { markdown, links } = await firecrawlScrape({ url: pageUrl, onlyMainContent: false, waitFor: 2500 });
     const user = `${markdown.slice(0, 30_000)}\n\nLINKS ON PAGE:\n${links.slice(0, 500).join('\n')}`;
-    const { raw, cost: c } = await llmExtract(user, DISCOVER_PROMPT);
+    const { raw, cost: c } = await llmExtract(user, withOperatorNotes(DISCOVER_PROMPT, notes));
     cost += c;
     for (const u of pickProfileUrls(raw, pageUrl)) if (!urls.includes(u)) urls.push(u);
     for (const p of pickPaginationUrls(raw, pageUrl)) if (!visited.has(p) && !queue.includes(p)) queue.push(p);
@@ -58,10 +60,12 @@ export async function discoverProfileUrls(
   return { urls, cost, pages };
 }
 
-/** One agency profile page → normalized fields + identity + photo URLs. */
-export async function agencyImportFromUrl(url: string): Promise<AgencyImportOutcome> {
+/** One agency profile page → normalized fields + identity + photo URLs.
+ *  `notes` = orgs.crawl_notes; `today` anchors year-less calendar dates. */
+export async function agencyImportFromUrl(url: string, notes?: string): Promise<AgencyImportOutcome> {
   const { markdown } = await firecrawlScrape({ url, onlyMainContent: false, waitFor: 2500 });
-  const { raw, cost } = await llmExtract(markdown, buildExtractPrompt({ agency: true }));
+  const today = new Date().toISOString().slice(0, 10);
+  const { raw, cost } = await llmExtract(markdown, buildExtractPrompt({ agency: true, notes, today }));
   const { fields, warnings } = normalizeImported(raw);
   return { fields, warnings, ...pickAgencyExtras(raw), raw, cost };
 }
