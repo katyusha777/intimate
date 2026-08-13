@@ -95,6 +95,7 @@ export function toProfile(
     tattoos: row.tattoos ?? undefined,
     piercings: row.piercings ?? undefined,
     openingHours: row.openingHours,
+    availabilityDates: row.availabilityDates,
     lastActiveAt: iso(row.lastActiveAt),
     description: row.description,
     descriptionTranslations: row.descriptionTranslations,

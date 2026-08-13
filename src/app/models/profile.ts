@@ -36,7 +36,6 @@ import {
   SMOKING,
   SORT_OPTIONS,
   TATTOOS,
-  type CitySlug,
   type Day,
   type Locale,
   type ProfileState,
@@ -53,6 +52,21 @@ export const DayHoursSchema = z.object({
 export type DayHours = z.infer<typeof DayHoursSchema>;
 export const OpeningHoursSchema = z.partialRecord(z.enum(DAYS), DayHoursSchema);
 export type OpeningHours = z.infer<typeof OpeningHoursSchema>;
+
+/**
+ * One calendar date's availability override (agency schedules: kimnl-style
+ * "BESCHIKBAAR / AFWEZIG per date"). Keyed by ISO date; a date entry beats the
+ * weekly `openingHours` for that day, weekly stays the fallback. `from`/`to`
+ * optional — absent = the whole day. Past dates are ignored at read time.
+ */
+export const DateAvailabilitySchema = z.object({
+  available: z.boolean(),
+  from: z.string().default(''),
+  to: z.string().default(''),
+});
+export type DateAvailability = z.infer<typeof DateAvailabilitySchema>;
+export const AvailabilityDatesSchema = z.record(z.iso.date(), DateAvailabilitySchema);
+export type AvailabilityDates = z.infer<typeof AvailabilityDatesSchema>;
 
 const SERVICE_VALUES = ALL_SERVICES as unknown as [Service, ...Service[]];
 
@@ -170,6 +184,8 @@ export const ProfileSchema = z.object({
   piercings: z.enum(PIERCINGS).optional(),
   /** Availability per weekday (optional — absent = not specified). */
   openingHours: OpeningHoursSchema.default({}),
+  /** Per-date overrides (see DateAvailabilitySchema) — date beats weekday. */
+  availabilityDates: AvailabilityDatesSchema.default({}),
   /**
    * Last time presence was seen (ISO datetime). Mock now; the realtime
    * (Supabase presence) upgrade swaps the input, not the availability helper.

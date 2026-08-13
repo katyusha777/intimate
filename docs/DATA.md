@@ -34,7 +34,7 @@ anonymous pages (RLS `state='live'` only for profiles/media).
 | Table | Owner | Public read | Purpose |
 |---|---|---|---|
 | `accounts` | auth user | no | one row per `auth.users` id; role + verification state |
-| `orgs` | agency account (placeholder, no login) | name/slug/logo/description via `/{locale}/agencies/{slug}` | partner agencies: KvK, verification, contact, crawl config (`crawl_enabled`, `crawl_list_url`, `last_crawled_at`); a profile links via `org_id` |
+| `orgs` | agency account (placeholder, no login) | name/slug/logo/description/`locations` via `/{locale}/agencies/{slug}` | partner agencies: KvK, verification, contact, branches (`locations` JSONB: address/phones/hours per city; profile's branch = city match), crawl config (`crawl_enabled`, `crawl_list_url`, `crawl_notes` — per-site LLM guidance, `crawl_interval_hours`, `last_crawled_at`); a profile links via `org_id` |
 | `profiles` | account | live only | the listing row — one flat, joinless row per profile |
 | `media` | profile | approved only | one row per image (R2 object key + review state) |
 | `verification_docs` | account | **never** | toxic-waste metadata (R2-backed doc; hard rule 3) |
@@ -75,7 +75,9 @@ access (SUPABASE.md decision 5) and the inbox + admin surfaces need it.
 Appearance/physical columns (`body_type`, `hair_color`, …, `height_cm`,
 `nationality char(2)`) are all nullable. `rates` is order-preserving JSONB;
 `price_from` is the derived min, denormalized as an `integer` column for
-sort/filter. `opening_hours` + `description_translations` are JSONB.
+sort/filter. `opening_hours` + `availability_dates` + `description_translations`
+are JSONB — weekly hours plus per-date overrides (agency-style calendars); a
+date entry beats the weekday for that day, weekly is the fallback.
 - **Not stored:** `online` — it comes from realtime presence (SUPABASE.md §5.4),
   projected onto the read model, never a column. `last_active_at` IS stored: the
   professional's island writes it via a throttled RLS-guarded own-row update
@@ -151,7 +153,9 @@ live only inside JSONB (rates, request cards), validated by Zod, not DB enums.
 |---|---|---|
 | `profiles.rates` | `RateRow[]` (order = display order) | `RateRowSchema` |
 | `profiles.opening_hours` | `Partial<Record<Day, DayHours>>` | `OpeningHoursSchema` |
+| `profiles.availability_dates` | `Record<IsoDate, DateAvailability>` (date beats weekday) | `AvailabilityDatesSchema` |
 | `profiles.description_translations` | `Partial<Record<Locale, string>>` | profile model |
+| `orgs.locations` | `OrgLocation[]` (branch: city/address/phones/hours) | `OrgLocationsSchema` (`models/org.ts`) |
 | `messages.request` | `RequestPayload` (frozen snapshot) | `RequestPayloadSchema` |
 | `audit_log.meta` | `Record<string, string>` | admin action |
 

@@ -180,7 +180,7 @@ export function profileUpdate(patch: Partial<ProfileEdit>) {
     'availableFor', 'bodyType', 'hairColor', 'hairLength', 'eyeColor', 'cupSize',
     'breastType', 'pubicHair', 'appearance', 'nationality', 'heightCm', 'weightKg',
     'shoeSizeEu', 'smoking', 'drinking', 'tattoos', 'piercings', 'openingHours',
-    'description',
+    'availabilityDates', 'description',
   ] as const;
   for (const k of copy) if (patch[k] !== undefined) u[k] = patch[k];
   if (patch.birthDate !== undefined) u.birthDate = patch.birthDate;

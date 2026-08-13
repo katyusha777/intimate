@@ -8,8 +8,8 @@
  * images-only (ADMIN.md §6).
  */
 import { z } from 'zod';
-import { ALL_SERVICES, AMENITIES, APPEARANCES, AVAILABLE_FOR, BODY_TYPES, BREAST_TYPES, CITY_SLUGS, CUP_SIZES, DRINKING, EYE_COLORS, GENDERS, HAIR_COLORS, HAIR_LENGTHS, INCALL_LOCATIONS, LANGUAGES, MEDIA_STATES, MEETING_TYPES, NUMERIC_RANGES, PAYMENT_METHODS, PIERCINGS, POLICY_MIN_AGE, PUBIC_HAIR, SMOKING, TATTOOS, VERIFICATION_STATES, type AccountType, type AdminRole, type CitySlug, type Service } from '@/lib/taxonomy';
-import { OpeningHoursSchema, RateRowSchema, profileAge, type Profile } from '@/app/models/profile';
+import { ALL_SERVICES, AMENITIES, APPEARANCES, AVAILABLE_FOR, BODY_TYPES, BREAST_TYPES, CITY_SLUGS, CUP_SIZES, DRINKING, EYE_COLORS, GENDERS, HAIR_COLORS, HAIR_LENGTHS, INCALL_LOCATIONS, LANGUAGES, MEDIA_STATES, MEETING_TYPES, NUMERIC_RANGES, PAYMENT_METHODS, PIERCINGS, POLICY_MIN_AGE, PUBIC_HAIR, SMOKING, TATTOOS, VERIFICATION_STATES, type AccountType, type AdminRole, type Service } from '@/lib/taxonomy';
+import { AvailabilityDatesSchema, OpeningHoursSchema, RateRowSchema, profileAge, type Profile } from '@/app/models/profile';
 import type { Session } from '@/app/models/session';
 
 const SERVICE_VALUES = ALL_SERVICES as unknown as [Service, ...Service[]];
@@ -58,6 +58,8 @@ export const ProfileEditSchema = z.object({
   tattoos: z.enum(TATTOOS).optional(),
   piercings: z.enum(PIERCINGS).optional(),
   openingHours: OpeningHoursSchema,
+  /** Per-date overrides (agency calendars); date beats weekday. */
+  availabilityDates: AvailabilityDatesSchema,
   description: z.string().trim().max(1000),
 });
 export type ProfileEdit = z.infer<typeof ProfileEditSchema>;

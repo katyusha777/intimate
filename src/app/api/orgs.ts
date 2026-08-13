@@ -17,6 +17,7 @@ import { accounts, orgs, profiles } from '@/db/schema';
 import { uniqueSlug } from '@/app/data/db/account';
 import { slugifyBase } from '@/lib/slug';
 import type { CitySlug, Gender } from '@/lib/taxonomy';
+import type { OrgLocation } from '@/app/models/org';
 
 export interface PublicAgency {
   id: string;
@@ -27,6 +28,9 @@ export interface PublicAgency {
   description: string;
   logoUrl?: string;
   siteUrl?: string;
+  /** Physical branches (address/phones/hours) — public storefront data,
+   *  unlike contact_email/KvK/crawl config which stay server-only. */
+  locations: OrgLocation[];
   createdAt: string;
 }
 
@@ -41,6 +45,7 @@ const toPublic = (r: typeof orgs.$inferSelect): PublicAgency => ({
   description: r.description,
   logoUrl: r.logoKey ? `/media/${r.logoKey}` : undefined,
   siteUrl: r.siteUrl ?? undefined,
+  locations: r.locations,
   createdAt: r.createdAt.toISOString(),
 });
 

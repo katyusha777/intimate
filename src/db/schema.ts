@@ -74,7 +74,8 @@ import {
   ALL_SERVICES,
   type CitySlug,
 } from '../lib/taxonomy';
-import type { DayHours, RateRow } from '../app/models/profile';
+import type { DateAvailability, DayHours, RateRow } from '../app/models/profile';
+import type { OrgLocation } from '../app/models/org';
 import type { RequestPayload } from '../app/models/messaging';
 
 /** Preserve literal enum values while satisfying pgEnum's `[string, ...string[]]`. */
@@ -200,10 +201,20 @@ export const orgs = pgTable(
     siteUrl: text('site_url'),
     contactEmail: text('contact_email'),
     contactPhone: text('contact_phone'),
+    /** Physical branches (OrgLocation[]): address/phones/hours per city, shown
+     *  on the agency page; a profile's branch = the entry matching its city.
+     *  Empty = single-location org (city/contact_phone above are the storefront). */
+    locations: jsonb('locations').$type<OrgLocation[]>().notNull().default([]),
     description: text('description').notNull().default(''),
     /** Periodic re-crawl of crawl_list_url (roster page) by the cron tick. */
     crawlEnabled: boolean('crawl_enabled').notNull().default(false),
     crawlListUrl: text('crawl_list_url'),
+    /** Site-specific scrape guidance, appended verbatim to the LLM crawl
+     *  prompts (discovery + extraction) — per-site rules as config, not code. */
+    crawlNotes: text('crawl_notes'),
+    /** Re-crawl cadence for the cron tick. Schedule-bearing sites (rolling
+     *  date calendars) need daily; raise for static rosters. */
+    crawlIntervalHours: integer('crawl_interval_hours').notNull().default(24),
     lastCrawledAt: timestamp('last_crawled_at', { withTimezone: true }),
     /** One-line summary of the last discovery run (admin display only). */
     lastCrawlNote: text('last_crawl_note'),
@@ -318,6 +329,10 @@ export const profiles = pgTable(
     piercings: piercingsEnum('piercings'),
 
     openingHours: jsonb('opening_hours').$type<Partial<Record<string, DayHours>>>().notNull().default({}),
+    /** Per-date availability overrides ('YYYY-MM-DD' → DateAvailability):
+     *  agency-style calendars (kimnl "BESCHIKBAAR/AFWEZIG per date"). A date
+     *  entry beats opening_hours for that day; past keys are pruned on write. */
+    availabilityDates: jsonb('availability_dates').$type<Record<string, DateAvailability>>().notNull().default({}),
     description: text('description').notNull().default(''),
     descriptionTranslations: jsonb('description_translations')
       .$type<Partial<Record<string, string>>>()

@@ -11,6 +11,7 @@ import { accounts, importJobs, orgs, profiles } from '@/db/schema';
 import { profilesApi } from '@/app/api/profiles';
 import { mediaBucket } from '@/lib/media-keys';
 import type { CitySlug, ImportJobState } from '@/lib/taxonomy';
+import { OrgLocationsSchema, type OrgLocation } from '@/app/models/org';
 import { completeness } from './entities';
 
 const adb = (): Db => requestDb((env as unknown as { HYPERDRIVE: Hyperdrive }).HYPERDRIVE);
@@ -26,9 +27,12 @@ export interface Org {
   siteUrl?: string;
   contactEmail?: string;
   contactPhone?: string;
+  locations: OrgLocation[];
   description: string;
   crawlEnabled: boolean;
   crawlListUrl?: string;
+  crawlNotes?: string;
+  crawlIntervalHours: number;
   lastCrawledAt?: string;
   lastCrawlNote?: string;
 }
@@ -97,9 +101,12 @@ const toOrg = (r: typeof orgs.$inferSelect): Org => ({
   siteUrl: r.siteUrl ?? undefined,
   contactEmail: r.contactEmail ?? undefined,
   contactPhone: r.contactPhone ?? undefined,
+  locations: r.locations,
   description: r.description,
   crawlEnabled: r.crawlEnabled,
   crawlListUrl: r.crawlListUrl ?? undefined,
+  crawlNotes: r.crawlNotes ?? undefined,
+  crawlIntervalHours: r.crawlIntervalHours,
   lastCrawledAt: r.lastCrawledAt?.toISOString(),
   lastCrawlNote: r.lastCrawlNote ?? undefined,
 });
@@ -137,9 +144,12 @@ export interface OrgPatch {
   siteUrl?: string;
   contactEmail?: string;
   contactPhone?: string;
+  locations?: OrgLocation[];
   description?: string;
   crawlEnabled?: boolean;
   crawlListUrl?: string;
+  crawlNotes?: string;
+  crawlIntervalHours?: number;
 }
 
 // Org creation + manual profile creation live in the shared seam (@/app/api/orgs
@@ -157,9 +167,12 @@ export async function updateOrg(id: string, patch: OrgPatch): Promise<void> {
   if (patch.siteUrl !== undefined) u.siteUrl = patch.siteUrl || null;
   if (patch.contactEmail !== undefined) u.contactEmail = patch.contactEmail || null;
   if (patch.contactPhone !== undefined) u.contactPhone = patch.contactPhone || null;
+  if (patch.locations !== undefined) u.locations = OrgLocationsSchema.parse(patch.locations);
   if (patch.description !== undefined) u.description = patch.description;
   if (patch.crawlEnabled !== undefined) u.crawlEnabled = patch.crawlEnabled;
   if (patch.crawlListUrl !== undefined) u.crawlListUrl = patch.crawlListUrl || null;
+  if (patch.crawlNotes !== undefined) u.crawlNotes = patch.crawlNotes || null;
+  if (patch.crawlIntervalHours !== undefined) u.crawlIntervalHours = Math.max(1, Math.trunc(patch.crawlIntervalHours));
   if (Object.keys(u).length) await d.update(orgs).set(u).where(eq(orgs.id, id));
 }
 

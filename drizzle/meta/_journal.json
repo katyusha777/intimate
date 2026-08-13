@@ -183,6 +183,13 @@
       "when": 1786460694912,
       "tag": "0025_nice_starjammers",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1786627419825,
+      "tag": "0026_cloudy_katie_power",
+      "breakpoints": true
     }
   ]
 }
