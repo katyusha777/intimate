@@ -253,14 +253,20 @@ export async function importAgencyProfile(
  *  inserted in original order so the gallery matches the source page. */
 async function importPhotos(d: Db, profileId: string, urls: string[]): Promise<number> {
   const bucket = mediaBucket();
-  // Agency galleries hand us WordPress thumbnails (`foo-400x517.jpg`) that would
-  // upscale to mush at width 1600. Deterministically map each to its full
-  // original (`foo.jpg`) — this also dedups several sizes of the same source
-  // down to one row. Keep the resized URL as the fallback for the rare miss.
+  // Agency galleries hand us WordPress thumbnails (`foo-400x517.jpg`) that upscale
+  // to mush at width 1600. Map each to its full original (`foo.jpg`) — which also
+  // dedups several sizes of one source into a single row. But only when the site
+  // actually KEPT its originals: probe ONE candidate first and trust the site to be
+  // consistent, so a host that serves only derivatives doesn't cost a failed fetch
+  // on every image. Per-image fallback still covers the odd individually-missing one.
+  // ponytail: one probe assumes per-site consistency; if a site mixes kept/stripped
+  //   originals we'd re-fetch on the stripped ones — fine until that site shows up.
   const deduped = [...new Map(urls.map((u) => [originalImageUrl(u) ?? u, u])).values()];
+  const probe = deduped.map(originalImageUrl).find((o): o is string => !!o);
+  const useOriginals = probe ? !!(await fetchExternalImage(probe)) : false;
   const keys = await Promise.all(
     deduped.slice(0, MAX_PHOTOS).map(async (u): Promise<string | null> => {
-      const orig = originalImageUrl(u);
+      const orig = useOriginals ? originalImageUrl(u) : null;
       const img = (orig ? await fetchExternalImage(orig) : null) ?? (await fetchExternalImage(u));
       if (!img || img.bytes.byteLength < 10_000) return null; // icons/trackers
       // No transform binding → no metadata strip → no photo import (hard rule 2).
