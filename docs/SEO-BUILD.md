@@ -9,7 +9,7 @@ built. Update statuses as phases land.
 | Item | Spec | Status |
 |---|---|---|
 | Locale routing: everything under `/{nl\|en\|de}/`, no locale-less URLs | §2 | ✅ `src/middleware.ts` + paraglide URL strategy |
-| `/` 302 by Accept-Language (fallback en) | §2 | ✅ middleware, `negotiateLocale()` tested |
+| `/` renders negotiated-locale home in place (200, no redirect; canonical→/{locale}/) | §2 | ✅ middleware `effectiveRequestUrl`, `negotiateLocale()` tested |
 | Full reciprocal hreflang + x-default→en, localized slugs mapped | §2 | ✅ Layout `alternates` prop; `_listing.ts` builds per-locale paths |
 | Canonicals: querystrings → clean path | §1.8 | ✅ every listing page |
 | Localized category slugs (prive-ontvangst / private-visit / privatempfang…) | §2 | ✅ `LISTING_CATEGORIES.slugs`, collision-tested vs city slugs |

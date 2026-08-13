@@ -17,10 +17,12 @@ const deployId = (): string =>
   ((env as unknown as { CF_VERSION?: { id?: string } }).CF_VERSION?.id) ?? 'dev';
 
 /**
- * Locale architecture (SEO.md §2): no locale-less URLs. `/` 302-redirects by
- * Accept-Language; every page renders inside paraglideMiddleware so
- * getLocale()/m.* resolve the URL's locale per request (AsyncLocalStorage —
- * safe under concurrent requests in one isolate).
+ * Locale architecture (SEO.md §2): no locale-less URLs. `/` is the ONE exception
+ * — it renders the negotiated locale's home IN PLACE (200, no redirect: a
+ * bouncing homepage is penalised by Google), canonical'd to /{locale}/. Every
+ * page renders inside paraglideMiddleware so getLocale()/m.* resolve the URL's
+ * locale per request (AsyncLocalStorage — safe under concurrent requests in one
+ * isolate).
  *
  * The home ALWAYS shows the full national shelf — the chosen `city` cookie is a
  * saved preference surfaced as a one-tap chip on the fold (index.astro), never
@@ -133,11 +135,28 @@ const handle = (context: APIContext, next: MiddlewareNext) =>
   // action inside this request reuses it instead of re-connecting.
   withRequestDb(async () => {
   if (context.url.pathname === '/') {
+    // Root stays a 200 — a redirecting homepage is flagged by Google ("Page with
+    // redirect") and drops the apex from the index. Render the negotiated locale's
+    // home IN PLACE: effectiveRequestUrl tells paraglide the locale (so getLocale()/
+    // m.* resolve AND paraglide's own url-strategy 307 is suppressed) while the
+    // browser URL stays `/`. The page still emits canonical/hreflang → /{locale}/,
+    // so Google consolidates there; the root simply no longer bounces.
     const locale = negotiateLocale(
       context.request.headers.get('accept-language'),
       context.cookies.get('PARAGLIDE_LOCALE')?.value,
     );
-    return context.redirect(`/${locale}/${context.url.search}`, 302);
+    // On the pre-launch apex the home IS the landing (the corridor rewrites
+    // /{locale}/ → /{locale}/prelaunch/ and renders BARE); mirror that here since
+    // `/` skips the corridor block below. Post-launch (normal host) it's the real home.
+    const onPrelaunch = context.url.hostname === PRELAUNCH_HOST;
+    if (onPrelaunch) context.locals.prelaunch = true;
+    const target = `/${locale}/${onPrelaunch ? 'prelaunch/' : ''}${context.url.search}`;
+    // ponytail: `/` renders fresh, not edge-cached (isCacheableHome only matches
+    // /{locale}/). Fine for one URL; wire it to the per-locale home cache if root
+    // traffic ever justifies it.
+    return paraglideMiddleware(context.request, () => next(target), {
+      effectiveRequestUrl: new URL(`/${locale}/`, context.url),
+    });
   }
   // The short link printed in agency emails and said on calls ("intimate.nl
   // slash agencies") — locale-negotiated like `/` (PRE-LAUNCH doc §12).

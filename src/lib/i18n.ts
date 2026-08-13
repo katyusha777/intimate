@@ -1,7 +1,8 @@
 /**
  * Locale routing helpers (SEO.md §2). One canonical URL shape: EVERY page
- * lives under /{nl|en|de}/ — no locale-less duplicates. `/` 302-redirects by
- * Accept-Language; x-default points at /en/ (the tourist-wedge fallback).
+ * lives under /{nl|en|de}/ — no locale-less duplicates. `/` renders the
+ * negotiated locale's home in place (200, canonical'd to /{locale}/ — no
+ * redirect); x-default points at /nl/ (the NL-market default).
  */
 import { getLocale } from '@/paraglide/runtime';
 import { LOCALES, type Locale } from '@/lib/taxonomy';
