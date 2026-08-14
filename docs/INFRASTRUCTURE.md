@@ -105,6 +105,15 @@ other. `PUBLIC_SITE_ORIGIN` and the warm worker `ORIGIN` point at beta.
    beta.intimate.nl keeps serving (it can simply stay as a mirror or the route
    gets removed from wrangler.jsonc).
 
+**Gotcha — scheduled crawl-ticks can silently see an empty DB for hours**
+(issue #8, observed 2026-08-14): the cron fires and returns 200, but every
+query comes back empty (no jobs claimed, no due orgs) while a MANUAL run of
+the same path (`intimate-purge.<sub>.workers.dev/?crawl`) works — suspicion:
+colo-dependent Hyperdrive stale reads. The pipeline is idempotent so a silent
+window only delays imports. Diagnose from Workers Logs (intimate-purge logs
+every tick body); owner step: check/disable Hyperdrive `caching` (needs a
+token with Hyperdrive scope — the repo token lacks it).
+
 ## 3. CI (GitHub Actions)
 
 `.github/workflows/ci.yml`: PRs run `bun install → bun test → build`. **Branch
