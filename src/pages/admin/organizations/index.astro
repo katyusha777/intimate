@@ -218,8 +218,8 @@ const label = 'block text-2xs uppercase tracking-wide text-muted-foreground';
                   </div>
                   <div><span class={label}>Crawl URL (roster/homepage)</span><input name="crawlListUrl" type="url" value={detail.crawlListUrl ?? ''} class={input} /></div>
                   <div>
-                    <span class={label}>Crawl notes (site-specific guidance appended to the extractor prompts — the test tools use the unsaved value)</span>
-                    <textarea name="crawlNotes" rows="4" placeholder="e.g. The schedule is a date carousel: BESCHIKBAAR = available, AFWEZIG = absent. The phone shown is the branch's, not hers — set her city from the branch (Tilburg/Rotterdam). Services are the massage-menu names." class={input}>{detail.crawlNotes ?? ''}</textarea>
+                    <span class={label}>Site prompt — THIS provider's extraction instructions, appended to the shared schema contract (the test tools use the unsaved value)</span>
+                    <textarea name="sitePrompt" rows="10" placeholder="Describe THIS site: how its schedule widget reads and which field it maps to, whose phone appears on a profile page, service menu naming + mappings, age conventions, URL structure, what to ignore. One self-contained prompt per provider — never edit shared code for a site." class={input}>{detail.sitePrompt ?? ''}</textarea>
                   </div>
                   <div class="flex items-center gap-3">
                     <button type="submit" class={btn}>Save</button>
@@ -311,7 +311,7 @@ const label = 'block text-2xs uppercase tracking-wide text-muted-foreground';
         verified: checked(form, 'verified'),
         crawlEnabled: checked(form, 'crawlEnabled'),
         crawlListUrl: val(form, 'crawlListUrl'),
-        crawlNotes: val(form, 'crawlNotes'),
+        sitePrompt: val(form, 'sitePrompt'),
         crawlIntervalHours: Number(val(form, 'crawlIntervalHours')) || 24,
       });
       status.textContent = error ? `Error: ${error.message}` : 'Saved ✓';
@@ -338,7 +338,7 @@ const label = 'block text-2xs uppercase tracking-wide text-muted-foreground';
       if (!url) { status.textContent = 'Set a crawl URL first (and Save).'; return; }
       btn.disabled = true;
       status.textContent = 'Discovering… (~30s)';
-      const { data, error } = await actions.admin.orgDiscoverPreview({ url, notes: val(form, 'crawlNotes') || undefined });
+      const { data, error } = await actions.admin.orgDiscoverPreview({ url, sitePrompt: val(form, 'sitePrompt') || undefined });
       btn.disabled = false;
       if (error) { status.textContent = `Error: ${error.message}`; return; }
       status.textContent = `${data.urls.length} profile URL(s) across ${data.pages} page(s) · $${data.cost.toFixed(4)}`;
@@ -364,7 +364,7 @@ const label = 'block text-2xs uppercase tracking-wide text-muted-foreground';
       out.classList.remove('hidden');
       out.textContent = 'Scraping + extracting… (~1 min)';
       const form = document.querySelector<HTMLFormElement>('[data-org-edit]')!;
-      const { data, error } = await actions.admin.orgImportPreview({ url, notes: val(form, 'crawlNotes') || undefined });
+      const { data, error } = await actions.admin.orgImportPreview({ url, sitePrompt: val(form, 'sitePrompt') || undefined });
       btn.disabled = false;
       if (error) { out.textContent = `Error: ${error.message}`; return; }
       if (data.photoUrls.length) {

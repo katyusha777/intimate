@@ -209,9 +209,11 @@ export const orgs = pgTable(
     /** Periodic re-crawl of crawl_list_url (roster page) by the cron tick. */
     crawlEnabled: boolean('crawl_enabled').notNull().default(false),
     crawlListUrl: text('crawl_list_url'),
-    /** Site-specific scrape guidance, appended verbatim to the LLM crawl
-     *  prompts (discovery + extraction) — per-site rules as config, not code. */
-    crawlNotes: text('crawl_notes'),
+    /** THIS provider's extraction prompt (one per site, admin-edited):
+     *  everything about how the site expresses fields — appended verbatim to
+     *  the site-neutral schema contract (lib/import/prompt.ts). A new provider
+     *  is a row + this text, never a code change. */
+    sitePrompt: text('site_prompt'),
     /** Re-crawl cadence for the cron tick. Schedule-bearing sites (rolling
      *  date calendars) need daily; raise for static rosters. */
     crawlIntervalHours: integer('crawl_interval_hours').notNull().default(24),

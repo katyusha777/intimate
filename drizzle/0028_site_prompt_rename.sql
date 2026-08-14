@@ -1,0 +1,1 @@
+ALTER TABLE "orgs" RENAME COLUMN "crawl_notes" TO "site_prompt";

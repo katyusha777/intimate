@@ -431,7 +431,7 @@ export const admin = {
       locations: OrgLocationsSchema.optional(),
       crawlEnabled: z.boolean().optional(),
       crawlListUrl: z.string().url().max(500).or(z.literal('')).optional(),
-      crawlNotes: z.string().max(2000).optional(),
+      sitePrompt: z.string().max(4000).optional(),
       crawlIntervalHours: z.number().int().min(1).max(720).optional(),
     }),
     handler: async ({ id, ...patch }, context) => {
@@ -542,22 +542,22 @@ export const admin = {
   // `notes` = the form's UNSAVED crawl-notes value, so the admin can iterate on
   // per-site guidance in the tester before saving it to the org.
   orgDiscoverPreview: defineAction({
-    input: z.object({ url: z.string().url().max(500), notes: z.string().max(2000).optional() }),
-    handler: async ({ url, notes }, context) => {
+    input: z.object({ url: z.string().url().max(500), sitePrompt: z.string().max(4000).optional() }),
+    handler: async ({ url, sitePrompt }, context) => {
       await requireAdmin(context, ['moderator']);
       try {
-        return await discoverProfileUrls(url, notes);
+        return await discoverProfileUrls(url, sitePrompt);
       } catch (e) {
         throw new ActionError({ code: 'BAD_REQUEST', message: (e as Error).message });
       }
     },
   }),
   orgImportPreview: defineAction({
-    input: z.object({ url: z.string().url().max(500), notes: z.string().max(2000).optional() }),
-    handler: async ({ url, notes }, context) => {
+    input: z.object({ url: z.string().url().max(500), sitePrompt: z.string().max(4000).optional() }),
+    handler: async ({ url, sitePrompt }, context) => {
       await requireAdmin(context, ['moderator']);
       try {
-        const { fields, warnings, name, age, photoUrls, raw, cost } = await agencyImportFromUrl(url, notes);
+        const { fields, warnings, name, age, photoUrls, raw, cost } = await agencyImportFromUrl(url, sitePrompt);
         return { fields, warnings, name, age, photoUrls, raw, cost };
       } catch (e) {
         throw new ActionError({ code: 'BAD_REQUEST', message: (e as Error).message });

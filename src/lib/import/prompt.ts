@@ -1,7 +1,17 @@
 /**
- * The extraction contract — pure (no env), built from the taxonomy so the model
- * only ever sees values our schema accepts (taxonomy = law, can't drift). Kept
- * separate from extract.ts (which is env-bound) so it stays testable.
+ * The extraction SCHEMA CONTRACT — pure (no env), built from the taxonomy so
+ * the model only ever sees values our schema accepts (taxonomy = law, can't
+ * drift). Kept separate from extract.ts (which is env-bound) so it's testable.
+ *
+ * SITE-NEUTRAL BY LAW (decision 2026-08-14, tested by tests/import-prompt.test.ts):
+ * this file describes only OUR output shape — the JSON keys and allowed values,
+ * identical for every source site because normalize.ts and the DB are identical
+ * for every site. Everything about how a SPECIFIC provider's site expresses
+ * these fields (its schedule widget's wording, whose phone appears on a page,
+ * menu naming, age conventions, URL structure) lives in that org's SITE PROMPT
+ * (`orgs.site_prompt` — one per provider, admin-edited) appended verbatim via
+ * withSitePrompt(). A new provider is a DB row, never a change here: no site
+ * names, no site vocabulary, no per-site flags or conditionals, ever.
  */
 import {
   ALL_SERVICES, AMENITIES, APPEARANCES, AVAILABLE_FOR, BODY_TYPES, BREAST_TYPES, CITIES, CUP_SIZES,
@@ -12,27 +22,30 @@ import {
 const list = (a: readonly string[]) => a.join(', ');
 
 /**
- * Per-site scrape guidance (orgs.crawl_notes — admin-authored, trusted config,
- * not code): appended to any of the crawl prompts. The page content itself
- * stays data-never-instructions; this block is the operator talking.
+ * Append a provider's site prompt (orgs.site_prompt — admin-authored, trusted
+ * config, not code) to a crawl prompt. Dumb concatenation by design: the
+ * pipeline never inspects a site prompt's content. The scraped page itself
+ * stays data-never-instructions (hard rule 7); this block is the operator.
  */
-export function withOperatorNotes(prompt: string, notes?: string): string {
-  const n = notes?.trim();
-  return n ? `${prompt}\n\nOPERATOR GUIDANCE for this specific site (admin-authored, trusted — follow where applicable):\n${n.slice(0, 2000)}` : prompt;
+export function withSitePrompt(prompt: string, sitePrompt?: string): string {
+  const n = sitePrompt?.trim();
+  return n
+    ? `${prompt}\n\nSITE-SPECIFIC INSTRUCTIONS for this provider (admin-authored, trusted — they describe how THIS site expresses the fields above and take precedence over generic interpretation):\n${n.slice(0, 4000)}`
+    : prompt;
 }
 
-export function buildExtractPrompt(opts: { agency?: boolean; notes?: string; today?: string; dateCalendar?: boolean } = {}): string {
-  // Agency crawl (src/lib/crawl.ts): nobody types identity/photos in by hand,
-  // so the extraction must carry them. Self-service NEVER gets these keys —
-  // she owns her identity (normalize.ts header).
+export function buildExtractPrompt(opts: { agency?: boolean; sitePrompt?: string; today?: string } = {}): string {
+  // Agency crawl (app/data/db/crawl.ts): nobody types identity/photos in by
+  // hand, so the extraction must carry them. Self-service NEVER gets these
+  // keys — she owns her identity (normalize.ts header).
   const agencyKeys = opts.agency
     ? `
   "name": her display/working name exactly as shown (first name or alias, no titles) or null,
   "age": her age in years as an integer ONLY when the page lists a number — NEVER estimate from words, or null,
-  "ageText": her age EXACTLY as written on the page when it is words rather than a number (e.g. "midden twintig"), else null,
+  "ageText": her age EXACTLY as written on the page when it is words rather than a number, else null,
   "photoUrls": array (max 12) of absolute URLs of HER photos on this page — pick the largest/original variants; exclude logos, icons, banners, thumbnails of OTHER people,`
     : '';
-  return withOperatorNotes(`${opts.today ? `Today is ${opts.today}. ` : ''}You extract ONE Dutch adult-services (escort) profile from scraped page markdown into a single JSON object for a Netherlands directory. Translate ALL free text to natural English. Map every controlled field to EXACTLY one of the allowed values below; if nothing fits, omit it (use null / []). Never invent data. Prices are integers in EUR. Output ONLY the JSON object.
+  return withSitePrompt(`${opts.today ? `Today is ${opts.today}. ` : ''}You extract ONE Dutch adult-services profile from scraped page markdown into a single JSON object for a Netherlands directory. Translate ALL free text to natural English. Map every controlled field to EXACTLY one of the allowed values below; if nothing fits, omit it (use null / []). Never invent data. Prices are integers in EUR. Output ONLY the JSON object.
 
 Output keys (use null or [] when unknown):
 {${agencyKeys}
@@ -62,18 +75,10 @@ Output keys (use null or [] when unknown):
   "phone": string or null, "whatsapp": string or null, "telegram": string or null, "instagram": string or null,
   "rates": array of { "duration": one of [${list(RATE_DURATIONS)}] or null, "label": short custom label or null, "incall": integer EUR or null, "outcall": integer EUR or null }
            (map "30 min"->min_30, "1 uur"->hour_1, "90 min"->min_90, "2 uur"->hour_2, "nacht"->overnight, "weekend"->weekend; set incall/outcall from the section: Prive/Thuisontvangst=incall, Escort=outcall; a row needs a duration OR label AND at least one price),
-  "openingHours": object with only the weekdays shown, each { "closed": bool, "allDay": bool, "from": "HH:MM", "to": "HH:MM" } (24-hour times; "24 uur"->allDay true; a closed day -> closed true) — use ONLY for weekly recurring schedules,${
-    // Per-site contract: date calendars exist on a handful of parlor sites
-    // (kimnl's BESCHIKBAAR/AFWEZIG carousel). The key is only offered when the
-    // org's crawl notes reference it (agency.ts gates on that) — other sites'
-    // extractions never see it, so nothing gets shoehorned into a calendar.
-    opts.dateCalendar
-      ? `
-  "availabilityDates": object for the page's date-based calendar (a carousel of specific dates marked BESCHIKBAAR/available or AFWEZIG/absent): keys are ISO dates "YYYY-MM-DD" (infer the year from today's date), values { "available": bool, "from": "HH:MM" or "", "to": "HH:MM" or "" }; include EVERY date the calendar shows (often 7 consecutive days — do not stop early); only dates the page explicitly shows; null if the page has no per-date calendar,`
-      : ''
-  }
+  "openingHours": object with only the weekdays shown, each { "closed": bool, "allDay": bool, "from": "HH:MM", "to": "HH:MM" } (24-hour times; a closed day -> closed true) — ONLY for weekly recurring schedules,
+  "availabilityDates": ONLY when the site instructions describe a per-DATE schedule: object keyed by ISO date "YYYY-MM-DD" (infer the year from today's date), each { "available": bool, "from": "HH:MM" or "", "to": "HH:MM" or "" }, covering every date the page shows; null when the schedule is weekly or absent,
   "description": her profile text translated to natural English (max ~800 chars) or null,
   "depositPolicy": deposit/booking terms in English or null,
   "extrasNote": short note on extras/surcharges in English or null
-}`, opts.notes);
+}`, opts.sitePrompt);
 }

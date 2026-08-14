@@ -197,6 +197,13 @@
       "when": 1786629771994,
       "tag": "0027_fast_robin_chapel",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1786703406991,
+      "tag": "0028_site_prompt_rename",
+      "breakpoints": true
     }
   ]
 }

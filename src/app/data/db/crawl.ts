@@ -65,7 +65,7 @@ export async function enqueueOrgCrawl(orgId: string): Promise<CrawlEnqueueResult
   const listUrl = org.crawlListUrl?.trim();
   if (!listUrl) throw new Error('no crawl URL configured for this agency');
 
-  const { urls, pages } = await discoverProfileUrls(listUrl, org.crawlNotes ?? undefined);
+  const { urls, pages } = await discoverProfileUrls(listUrl, org.sitePrompt ?? undefined);
 
   // URL already ours → update job; unseen → create job; open job → skip.
   const existing = await d
@@ -186,7 +186,7 @@ export async function importAgencyProfile(
   const d = db();
   const [org] = await d.select().from(orgs).where(eq(orgs.id, orgId)).limit(1);
   if (!org) throw new Error('unknown agency');
-  const { fields, name, age, ageText, photoUrls } = await agencyImportFromUrl(url, org.crawlNotes ?? undefined);
+  const { fields, name, age, ageText, photoUrls } = await agencyImportFromUrl(url, org.sitePrompt ?? undefined);
 
   // The 21+ floor (hard rule 4) holds on EVERY crawl — agencies reuse URLs, so
   // a re-crawled page may now show a different, younger person.

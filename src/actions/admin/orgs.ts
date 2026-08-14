@@ -31,7 +31,7 @@ export interface Org {
   description: string;
   crawlEnabled: boolean;
   crawlListUrl?: string;
-  crawlNotes?: string;
+  sitePrompt?: string;
   crawlIntervalHours: number;
   lastCrawledAt?: string;
   lastCrawlNote?: string;
@@ -105,7 +105,7 @@ const toOrg = (r: typeof orgs.$inferSelect): Org => ({
   description: r.description,
   crawlEnabled: r.crawlEnabled,
   crawlListUrl: r.crawlListUrl ?? undefined,
-  crawlNotes: r.crawlNotes ?? undefined,
+  sitePrompt: r.sitePrompt ?? undefined,
   crawlIntervalHours: r.crawlIntervalHours,
   lastCrawledAt: r.lastCrawledAt?.toISOString(),
   lastCrawlNote: r.lastCrawlNote ?? undefined,
@@ -148,7 +148,7 @@ export interface OrgPatch {
   description?: string;
   crawlEnabled?: boolean;
   crawlListUrl?: string;
-  crawlNotes?: string;
+  sitePrompt?: string;
   crawlIntervalHours?: number;
 }
 
@@ -171,7 +171,7 @@ export async function updateOrg(id: string, patch: OrgPatch): Promise<void> {
   if (patch.description !== undefined) u.description = patch.description;
   if (patch.crawlEnabled !== undefined) u.crawlEnabled = patch.crawlEnabled;
   if (patch.crawlListUrl !== undefined) u.crawlListUrl = patch.crawlListUrl || null;
-  if (patch.crawlNotes !== undefined) u.crawlNotes = patch.crawlNotes || null;
+  if (patch.sitePrompt !== undefined) u.sitePrompt = patch.sitePrompt || null;
   if (patch.crawlIntervalHours !== undefined) u.crawlIntervalHours = Math.max(1, Math.trunc(patch.crawlIntervalHours));
   if (Object.keys(u).length) await d.update(orgs).set(u).where(eq(orgs.id, id));
 }
