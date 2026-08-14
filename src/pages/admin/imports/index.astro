@@ -1,21 +1,38 @@
 ---
 /**
- * Imports queue (docs/ADMIN.md §3): job monitor — states, failures, retries.
- * Reads `import_jobs` — empty until the import pipeline lands.
+ * Imports (docs/ADMIN.md §3): per-agency crawl dashboard (last run, backlog,
+ * staleness — a calendar site served from an old crawl is wrong data) + the
+ * job monitor: states, failures, retries.
  */
 import { getAdmin } from '@/actions/admin/lib';
-import { listImports } from '@/actions/admin/imports';
+import { importDashboard, listImports } from '@/actions/admin/imports';
 import AdminShell from '@/components/organisms/admin/AdminShell.astro';
 import * as m from '@/paraglide/messages';
 
 const session = await getAdmin(Astro);
-const jobs = session ? await listImports() : [];
+const [jobs, dash] = session ? await Promise.all([listImports(), importDashboard()]) : [[], []];
 const failed = jobs.filter((j) => j.state === 'failed').length;
 
 const when = (iso: string) => iso.replace('T', ' ').slice(5, 16);
 const humanize = (s: string) => s.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
 const stateClass = (s: string) =>
   s === 'failed' ? 'text-brand' : s === 'confirmed' || s === 'ready_for_review' ? 'text-online' : 'text-amber-500';
+
+// Crawl freshness, computed at render (admin pages are never edge-cached).
+const now = Date.now();
+const hoursSince = (iso?: string) => (iso ? Math.max(0, Math.round((now - Date.parse(iso)) / 3600000)) : null);
+const fmtH = (h: number) => (h >= 48 ? `${Math.round(h / 24)}d` : `${h}h`);
+// Past due by >6h means the 5-min tick has skipped it for ~72 chances — stuck.
+const isOverdue = (o: (typeof dash)[number]) => {
+  const h = hoursSince(o.lastCrawledAt);
+  return h !== null && h > o.crawlIntervalHours + 6;
+};
+const dueIn = (o: (typeof dash)[number]) => {
+  const h = hoursSince(o.lastCrawledAt);
+  return h === null ? 0 : Math.max(0, o.crawlIntervalHours - h);
+};
+const oldest = dash.filter((o) => o.lastCrawledAt).sort((a, b) => (a.lastCrawledAt! < b.lastCrawledAt! ? -1 : 1))[0];
+const stuck = dash.filter(isOverdue);
 ---
 
 <AdminShell title={m.adm_nav_imports()} section="imports">
@@ -27,6 +44,52 @@ const stateClass = (s: string) =>
           <a href="/admin/imports/test" class="text-sm font-medium underline underline-offset-4">Import test tool →</a>
         </div>
         <p class="mt-1 text-sm text-muted-foreground">{m.adm_imports_meta({ count: jobs.length, failed })}</p>
+
+        {stuck.length > 0 && (
+          <p class="mt-4 border border-brand/40 bg-brand/5 px-3 py-2 text-sm text-brand">
+            ⚠ Crawl overdue for {stuck.map((o) => o.name).join(', ')} — the scheduled tick isn't keeping up (issue #8). Open the agency and hit “Crawl now”.
+          </p>
+        )}
+
+        {dash.length > 0 && (
+          <div class="mt-6 grid gap-4 sm:grid-cols-2">
+            {dash.map((o) => {
+              const h = hoursSince(o.lastCrawledAt);
+              return (
+                <div class:list={['space-y-2 border p-3', isOverdue(o) ? 'border-brand/60' : 'border-border']}>
+                  <div class="flex items-baseline justify-between gap-3">
+                    <a href={`/admin/organizations?id=${o.orgId}`} class="font-condensed text-lg font-bold hover:underline">{o.name}</a>
+                    <span class:list={['text-2xs font-medium uppercase tracking-wide', isOverdue(o) ? 'text-brand' : 'text-muted-foreground']}>
+                      {h === null ? 'never crawled' : isOverdue(o) ? `overdue — last run ${fmtH(h)} ago` : `last run ${fmtH(h)} ago`}
+                    </span>
+                  </div>
+                  {o.lastCrawlNote && <p class="text-2xs text-muted-foreground">{o.lastCrawlNote}</p>}
+                  <dl class="grid grid-cols-4 gap-px overflow-hidden border border-border bg-border text-xs">
+                    {[
+                      ['imported', String(o.runConfirmed), 'text-online'],
+                      ['failed', String(o.runFailed), o.runFailed ? 'text-brand' : ''],
+                      ['queued', String(o.queueOpen), o.queueOpen ? 'text-amber-500' : ''],
+                      ['awaiting approval', String(o.pendingReview), o.pendingReview ? 'text-amber-500' : ''],
+                    ].map(([k, v, cls]) => (
+                      <div class="bg-card px-2.5 py-1.5">
+                        <dt class="text-2xs uppercase tracking-wide text-muted-foreground">{k}</dt>
+                        <dd class:list={['font-medium tabular-nums', cls]}>{v}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                  <p class="text-2xs text-muted-foreground">
+                    {o.live} live · every {fmtH(o.crawlIntervalHours)} · {isOverdue(o) ? 'due now' : `next run in ~${fmtH(dueIn(o))}`}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        {oldest && (
+          <p class="mt-2 text-2xs text-muted-foreground">
+            Oldest last run: {oldest.name} — {fmtH(hoursSince(oldest.lastCrawledAt)!)} ago. Approvals live in <a href="/admin/approvals" class="underline underline-offset-2">Profile approval</a>.
+          </p>
+        )}
 
         <div class="mt-6 overflow-x-auto border border-border">
           <table class="w-full min-w-[720px] text-left text-sm">

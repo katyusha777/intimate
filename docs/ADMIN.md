@@ -54,7 +54,7 @@ horizontal scroll (headers hidden).
 ├─ Directory
 │  ├─ Profiles         search/filter, detail, state, completeness · + New profile
 │  ├─ Agencies         tabbed detail: Roster (+ New profile) / Crawler / Details
-│  └─ Imports          job monitor + /imports/test (paste-URL → mapping preview, apply-to-profile)
+│  └─ Imports          per-agency crawl dashboard (last run outcome, backlog, overdue-cadence alarm) + job monitor + /imports/test (paste-URL → mapping preview, apply-to-profile)
 ├─ Users
 │  ├─ Accounts         every account, relations, status, GDPR (was "Users")
 │  └─ Client accounts  clients: favorites, phone, reports made (was "Clients")

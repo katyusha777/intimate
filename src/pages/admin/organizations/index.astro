@@ -20,6 +20,14 @@ const detail = session && id ? await orgById(id) : null;
 const stateClass = (s: string) =>
   ({ live: 'text-online', pending_review: 'text-amber-500', paused: 'text-muted-foreground', blocked: 'text-brand', confirmed: 'text-online', failed: 'text-brand', queued: 'text-amber-500' })[s] ?? 'text-muted-foreground';
 
+// Crawl recency for the sidebar: how long since the last run, red when the
+// cadence has been missed by >6h (the tick should have caught it by then).
+const crawlAgo = (iso?: string, intervalH = 24) => {
+  if (!iso) return { label: 'never', overdue: false };
+  const h = Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 3600000));
+  return { label: h >= 48 ? `${Math.round(h / 24)}d` : `${h}h`, overdue: h > intervalH + 6 };
+};
+
 const input = 'slab-cut w-full border border-foreground/20 bg-background px-3 py-2 text-sm outline-none focus:border-foreground';
 const btn = 'slab-cut border border-foreground/20 px-4 py-2 text-sm font-semibold hover:border-foreground/60 disabled:opacity-50';
 const label = 'block text-2xs uppercase tracking-wide text-muted-foreground';
@@ -61,7 +69,15 @@ const label = 'block text-2xs uppercase tracking-wide text-muted-foreground';
                     <span class="flex items-center gap-1.5 font-medium">
                       {o.name}
                       {o.verified && <svg class="size-3 flex-none text-online" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/><path d="M9 12l2 2 4-4"/></svg>}
-                      {o.crawlEnabled && <span class="text-2xs text-muted-foreground" title="auto-crawl on">⟳</span>}
+                      {o.crawlEnabled &&
+                        (() => {
+                          const c = crawlAgo(o.lastCrawledAt, o.crawlIntervalHours);
+                          return (
+                            <span class:list={['text-2xs', c.overdue ? 'font-medium text-brand' : 'text-muted-foreground']} title={c.overdue ? 'auto-crawl OVERDUE' : 'auto-crawl on · last run'}>
+                              ⟳ {c.label}
+                            </span>
+                          );
+                        })()}
                     </span>
                     <span class="block text-2xs text-muted-foreground">{cityName(o.city)} · {m.adm_orgs_members_count({ count: o.memberCount })}</span>
                   </span>
