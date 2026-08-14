@@ -60,8 +60,11 @@ export const ProfileEditSchema = z.object({
   tattoos: z.enum(TATTOOS).optional(),
   piercings: z.enum(PIERCINGS).optional(),
   openingHours: OpeningHoursSchema,
-  /** Per-date overrides (agency calendars); date beats weekday. */
-  availabilityDates: AvailabilityDatesSchema,
+  /** Per-date overrides (agency calendars); date beats weekday. Bounded — the
+   *  crawl caps at 90 entries too; an unbounded record is row-bloat surface. */
+  availabilityDates: AvailabilityDatesSchema.refine((r) => Object.keys(r).length <= 90, {
+    message: 'Too many availability dates.',
+  }),
   description: z.string().trim().max(1000),
 });
 export type ProfileEdit = z.infer<typeof ProfileEditSchema>;

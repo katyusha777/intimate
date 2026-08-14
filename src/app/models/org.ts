@@ -28,6 +28,9 @@ export interface PublicAgency {
   siteUrl?: string;
   /** Physical branches (address/phones/hours) — public storefront data. */
   locations: OrgLocation[];
+  /** Org-level booking number — the AgencyCard fallback when no branch matches
+   *  the profile's city. Storefront data, same class as a branch phone. */
+  contactPhone?: string;
   createdAt: string;
 }
 

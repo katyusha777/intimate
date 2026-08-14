@@ -24,7 +24,8 @@ import { and, count, eq, inArray, isNotNull, lt, sql } from 'drizzle-orm';
 import { requestDb, type Db } from '@/db/client';
 import { importJobs, media, orgs, profiles } from '@/db/schema';
 import { agencyImportFromUrl, discoverProfileUrls } from '@/lib/import/agency';
-import { originalImageUrl, proseAgeFloor } from '@/lib/import/normalize';
+import { originalImageUrl, resolveImportedAge } from '@/lib/import/normalize';
+import { bustProfiles, type CacheKv } from '@/lib/page-cache';
 import { profileUpdate, uniqueSlug } from './account';
 import { birthDateForAge } from '@/app/models/profile';
 import { fetchExternalImage, transformImage } from '@/lib/fetch-image';
@@ -37,6 +38,9 @@ const db = (): Db => requestDb((env as unknown as { HYPERDRIVE: Hyperdrive }).HY
  *  'processing_images' exist in the enum but nothing sets them). */
 const OPEN_STATES = ['queued', 'scraping'] as const;
 const MAX_PHOTOS = 8;
+/** DOB basis when a page shows NO vetted age — display-hidden ('' sentinel);
+ *  the pending_review approval confirms the real 21+ (hard rule 5). */
+const PLACEHOLDER_AGE = 25;
 /** A legit scrape+extract runs ~1–2 min; past this the runner is dead. */
 const STALE_CLAIM_MINUTES = 15;
 
@@ -161,6 +165,12 @@ export async function processImportJobs(limit = 2, orgId?: string): Promise<Craw
     }
   }
   const [agg] = await d.select({ n: count() }).from(importJobs).where(jobScope('queued'));
+  // Crawl writes mutate LIVE pages (re-crawl patches) — bump the edge-cache
+  // generation like every action does, or the 24h TTL serves yesterday's
+  // calendar/rates until the next deploy.
+  if (processed > 0) {
+    await bustProfiles((env as unknown as { SESSION?: CacheKv }).SESSION);
+  }
   return { processed, failed, remaining: agg?.n ?? 0 };
 }
 
@@ -190,16 +200,21 @@ export async function importAgencyProfile(
 
   // Deterministic per-org service whitelist (orgs.allowed_services): the LLM
   // occasionally ignores prose whitelists in the site prompt — config
-  // enforcement can't be argued with. NULL/empty = no restriction.
-  if (org.allowedServices?.length && fields.services?.length) {
+  // enforcement can't be argued with. NULL/empty = no restriction. An emptied
+  // list is KEPT as [] so a re-crawl overwrites previously-imported services
+  // that the whitelist now forbids (deleting the key would leave them live).
+  if (org.allowedServices?.length && fields.services) {
     fields.services = fields.services.filter((s) => org.allowedServices!.includes(s));
-    if (fields.services.length === 0) delete fields.services;
   }
 
   // The 21+ floor (hard rule 4) holds on EVERY crawl — agencies reuse URLs, so
-  // a re-crawled page may now show a different, younger person.
-  if (age !== undefined && age < POLICY_MIN_AGE) {
-    throw new AgencyImportError(`listed age ${age} is below the policy minimum ${POLICY_MIN_AGE}`, name);
+  // a re-crawled page may now show a different, younger person. `anchor` is any
+  // numeric/prose age evidence (incl. a digit inside ageText like "18 jaar");
+  // `ageDisplay` follows the display invariant: null = computed years,
+  // verbatim text = vetted prose/number, '' = no vetted age → UI hides it.
+  const { anchor, display: ageDisplay } = resolveImportedAge(age, ageText);
+  if (anchor !== undefined && anchor < POLICY_MIN_AGE) {
+    throw new AgencyImportError(`listed age ${anchor} is below the policy minimum ${POLICY_MIN_AGE}`, name);
   }
 
   let profileId = opts.existingProfileId;
@@ -211,26 +226,34 @@ export async function importAgencyProfile(
       .limit(1);
     profileId = hit?.id;
   }
-  // Age display invariant (decision 2026-08-14, never show a guessed number):
-  // numeric age on the page → null (computed years show) · prose age → the
-  // verbatim text · NO age info at all → '' (the UI hides the age entirely,
-  // exactly like the source page — profileNameAge()).
-  const ageDisplay = ageText ?? (age !== undefined ? null : '');
-
   if (profileId) {
     // Re-crawl: the agency's site is the source of truth for its own roster —
-    // patch mapped fields (+ name, + refreshed DOB so the displayed age tracks
-    // the listed age instead of drifting +1 every year) in place.
+    // patch mapped fields (+ name, + re-anchored DOB — anchored ages and even
+    // the hidden-age placeholder refresh so computed years never drift) in place.
     const update = {
       ...profileUpdate(fields),
       ...(name ? { name } : {}),
-      ...(age !== undefined ? { birthDate: birthDateForAge(age) } : {}),
+      birthDate: birthDateForAge(anchor ?? PLACEHOLDER_AGE),
       ageDisplay,
+      // A successful weekly-hours extraction with no calendar clears stale
+      // future dates (a site that DROPPED its calendar must stop overriding
+      // the new weekly schedule); a calendar-less flaky pass touches nothing.
+      ...(fields.openingHours && !fields.availabilityDates ? { availabilityDates: {} } : {}),
     };
-    if (Object.keys(update).length) {
-      await d.update(profiles).set(update).where(eq(profiles.id, profileId));
+    await d.update(profiles).set(update).where(eq(profiles.id, profileId));
+    // Backfill photos when the create was interrupted mid-import (profile row
+    // exists, zero media) — otherwise re-crawls never retry photos and the
+    // profile stays photo-less forever.
+    let photosAttempted = 0;
+    let photosStored = 0;
+    if (photoUrls.length) {
+      const [mc] = await d.select({ n: count() }).from(media).where(eq(media.profileId, profileId));
+      if (!mc?.n) {
+        photosAttempted = photoUrls.length;
+        photosStored = await importPhotos(d, profileId, photoUrls);
+      }
     }
-    return { profileId, created: false, name, photosAttempted: 0, photosStored: 0 };
+    return { profileId, created: false, name, photosAttempted, photosStored };
   }
 
   // New profile. The DOB anchoring the DB's 21+ CHECK: the listed number, a
@@ -240,8 +263,7 @@ export async function importAgencyProfile(
   // live (hard rule 5); the UI shows no age for it (ageDisplay '' sentinel).
   // A page that LISTS an under-21 number still hard-fails above.
   if (!name) throw new AgencyImportError('no name found on the page');
-  const PLACEHOLDER_AGE = 25; // display-hidden; approval confirms the real 21+
-  const dobAge = age ?? proseAgeFloor(ageText) ?? PLACEHOLDER_AGE;
+  const dobAge = anchor ?? PLACEHOLDER_AGE;
 
   const city = fields.city ?? org.city;
   const [created] = await d

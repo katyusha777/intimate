@@ -150,3 +150,17 @@ test('upcomingAvailability: sorted, today-forward, capped', () => {
   expect(list[0]!.day).toBe('wed');
   expect(list[1]!.dayOfMonth).toBe(7);
 });
+
+test('overnight weekly window (22:00-03:00) reads open, closing after midnight', () => {
+  const p = { ...base, openingHours: { wed: { closed: false, allDay: false, from: '22:00', to: '03:00' } } };
+  const a = availabilityState(p, wedNoon);
+  expect(a.kind).toBe('today_until');
+  expect(a.until).toBe('03:00');
+});
+
+test('available date entry with from but no to counts as open the rest of the day', () => {
+  const p = { ...base, availabilityDates: { '2026-08-05': { available: true, from: '14:00', to: '' } } };
+  const a = availabilityState(p, wedNoon);
+  expect(a.kind).toBe('today_until');
+  expect(a.until).toBe('24:00');
+});

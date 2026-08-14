@@ -20,8 +20,10 @@ interface Props {
 }
 const { agency, profile: p, class: className } = Astro.props;
 
-const branch = agency.locations.find((l) => l.city === p.city) ?? agency.locations[0];
-const phone = branch?.phone;
+// Branch ONLY on an exact city match — showing another city's address/phone
+// as hers would be wrong. No match → the org-level booking number, no address.
+const branch = agency.locations.find((l) => l.city === p.city);
+const phone = branch?.phone ?? agency.contactPhone;
 const telHref = phone ? `tel:${phone.replace(/[^\d+]/g, '')}` : undefined;
 ---
 

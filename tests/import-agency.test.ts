@@ -91,10 +91,12 @@ describe('pickAgencyExtras', () => {
     expect(r.photoUrls).toEqual(['https://cdn.site.nl/eva-1.jpg']);
   });
 
-  test('out-of-range age and empty name are rejected, never invented', () => {
-    expect(pickAgencyExtras({ name: '', age: 17 })).toEqual({ name: undefined, age: undefined, photoUrls: [] });
+  test('implausible age and empty name are rejected; under-21 numbers PASS so the gate fails them', () => {
+    // 17 must survive extraction — the crawl's 21+ gate hard-fails it; silently
+    // dropping it here turned "listed 17" into "no age" (review 2026-08-14).
+    expect(pickAgencyExtras({ name: '', age: 17 })).toEqual({ name: undefined, age: 17, ageText: undefined, photoUrls: [] });
     expect(pickAgencyExtras({ age: 250 }).age).toBeUndefined();
-    expect(pickAgencyExtras(null)).toEqual({ name: undefined, age: undefined, photoUrls: [] });
+    expect(pickAgencyExtras(null)).toEqual({ name: undefined, age: undefined, ageText: undefined, photoUrls: [] });
   });
 });
 

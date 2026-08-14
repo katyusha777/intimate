@@ -33,6 +33,7 @@ const toPublic = (r: typeof orgs.$inferSelect): PublicAgency => ({
   logoUrl: r.logoKey ? `/media/${r.logoKey}` : undefined,
   siteUrl: r.siteUrl ?? undefined,
   locations: r.locations,
+  contactPhone: r.contactPhone ?? undefined,
   createdAt: r.createdAt.toISOString(),
 });
 

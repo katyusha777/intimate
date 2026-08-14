@@ -50,7 +50,11 @@ const serviceGroups = SERVICE_CATEGORIES.map((cat) => ({
 const hours = p.openingHours ?? {};
 const hasHours = DAYS.some((d) => hours[d]);
 const hasDates = upcomingAvailability(p).length > 0;
-const todayKey = (['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const)[new Date().getDay()];
+// Amsterdam weekday, not the server's UTC one (they differ 00:00–02:00 CEST).
+const todayKey = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Amsterdam', weekday: 'short' })
+  .format(new Date())
+  .toLowerCase()
+  .slice(0, 3);
 function hoursLabel(h: (typeof hours)[keyof typeof hours]): string {
   if (!h || h.closed) return m.hours_closed();
   if (h.allDay) return m.hours_allday();

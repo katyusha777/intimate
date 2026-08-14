@@ -74,7 +74,11 @@ const REVALIDATE = 'no-cache';
 // Host is part of the key: one worker serves intimate.nl AND beta.intimate.nl
 // (pre-launch window) — a pathname-only key would serve one host's HTML on the
 // other (the prelaunch landing and the full home share `/{locale}/`).
-const cacheKey = (deployId: string, gen: string, url: URL) => `pc:${deployId}:${gen}:${url.host}${url.pathname}`;
+// The Amsterdam calendar date is part of the key too: cached pages bake in
+// date-dependent UI (the hours table's "today" bold, the DateStrip), so a 24h
+// TTL must still roll over at the market's midnight, not the store time +24h.
+const amsDay = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Amsterdam' }).format(new Date());
+const cacheKey = (deployId: string, gen: string, url: URL) => `pc:${deployId}:${gen}:${amsDay()}:${url.host}${url.pathname}`;
 
 export async function servedFromCache(
   kv: CacheKv | undefined,

@@ -6,7 +6,7 @@
  * warnings.
  */
 import { expect, test } from 'bun:test';
-import { normalizeImported, originalImageUrl, proseAgeFloor } from '@/lib/import/normalize';
+import { normalizeImported, originalImageUrl, pickAgencyExtras, proseAgeFloor, resolveImportedAge } from '@/lib/import/normalize';
 
 test('keeps valid taxonomy values, drops junk, and reports it', () => {
   const { fields, warnings } = normalizeImported({
@@ -101,4 +101,18 @@ test('proseAgeFloor: conservative floors, all ≥21, unknown → undefined', () 
   expect(proseAgeFloor('begin dertig')).toBe(30);
   expect(proseAgeFloor('geheimzinnig')).toBeUndefined();
   expect(proseAgeFloor(undefined)).toBeUndefined();
+});
+
+test('resolveImportedAge: numeric evidence anchors (incl. digits in text), unvetted prose hides', () => {
+  expect(resolveImportedAge(24, undefined)).toEqual({ anchor: 24, display: null });
+  expect(resolveImportedAge(17, undefined)).toEqual({ anchor: 17, display: null }); // caller gates <21
+  expect(resolveImportedAge(undefined, '18 jaar')).toEqual({ anchor: 18, display: '18 jaar' });
+  expect(resolveImportedAge(undefined, 'midden twintig')).toEqual({ anchor: 24, display: 'midden twintig' });
+  expect(resolveImportedAge(undefined, 'jonge')).toEqual({ display: '' }); // unmapped prose is never displayed
+  expect(resolveImportedAge(undefined, undefined)).toEqual({ display: '' });
+});
+
+test('pickAgencyExtras keeps under-18 listed ages so the policy gate can hard-fail them', () => {
+  expect(pickAgencyExtras({ age: 17, photoUrls: [] }).age).toBe(17);
+  expect(pickAgencyExtras({ age: 0, photoUrls: [] }).age).toBeUndefined();
 });

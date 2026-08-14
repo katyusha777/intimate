@@ -14,7 +14,7 @@
 import { firecrawlScrape } from './firecrawl';
 import { llmExtract } from './extract';
 import { buildExtractPrompt, withSitePrompt } from './prompt';
-import { normalizeImported, pickAgencyExtras, pickPaginationUrls, pickProfileUrls, type ImportResult } from './normalize';
+import { amsDate, normalizeImported, pickAgencyExtras, pickPaginationUrls, pickProfileUrls, type ImportResult } from './normalize';
 
 export interface AgencyImportOutcome extends ImportResult {
   name?: string;
@@ -66,7 +66,9 @@ export async function discoverProfileUrls(
  *  `sitePrompt` = orgs.site_prompt; `today` anchors year-less calendar dates. */
 export async function agencyImportFromUrl(url: string, sitePrompt?: string): Promise<AgencyImportOutcome> {
   const { markdown } = await firecrawlScrape({ url, onlyMainContent: false, waitFor: 2500 });
-  const today = new Date().toISOString().slice(0, 10);
+  // Market-timezone date — the UTC date is yesterday 00:00–02:00 CEST and
+  // would make the model label a calendar one day off.
+  const today = amsDate(new Date());
   const { raw, cost } = await llmExtract(markdown, buildExtractPrompt({ agency: true, sitePrompt, today }));
   const { fields, warnings } = normalizeImported(raw);
   return { fields, warnings, ...pickAgencyExtras(raw), raw, cost };

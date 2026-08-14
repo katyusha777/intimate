@@ -11,6 +11,7 @@ import { reportsApi } from '@/app/api/reports';
 import { env } from 'cloudflare:workers';
 import { REJECTION_REASONS, REPORT_RESOLUTIONS } from '@/lib/taxonomy';
 import { bustProfiles, type CacheKv } from '@/lib/page-cache';
+import { rateLimit } from '@/lib/rate-limit';
 import { listWarmUrls } from '@/lib/warm';
 import { claimItem, record, releaseItem, requireAdmin, requireOwner } from './lib';
 
@@ -540,12 +541,16 @@ export const admin = {
   }),
 
   // Crawl test tools (/admin/organizations): read-only previews, no DB writes.
-  // `notes` = the form's UNSAVED crawl-notes value, so the admin can iterate on
-  // per-site guidance in the tester before saving it to the org.
+  // `sitePrompt` = the form's UNSAVED value, so the admin can iterate on a site
+  // prompt in the tester before saving it to the org. Rate-limited: each call
+  // is a paid Firecrawl+LLM run on an arbitrary URL — an unbounded oracle.
   orgDiscoverPreview: defineAction({
     input: z.object({ url: z.string().url().max(500), sitePrompt: z.string().max(4000).optional() }),
     handler: async ({ url, sitePrompt }, context) => {
-      await requireAdmin(context, ['moderator']);
+      const session = await requireAdmin(context, ['moderator']);
+      if (!(await rateLimit(sessionKv(), 'org-preview', session.accountId, 30, 3600))) {
+        throw new ActionError({ code: 'TOO_MANY_REQUESTS', message: 'Preview limit reached — try again later.' });
+      }
       try {
         return await discoverProfileUrls(url, sitePrompt);
       } catch (e) {
@@ -556,7 +561,10 @@ export const admin = {
   orgImportPreview: defineAction({
     input: z.object({ url: z.string().url().max(500), sitePrompt: z.string().max(4000).optional() }),
     handler: async ({ url, sitePrompt }, context) => {
-      await requireAdmin(context, ['moderator']);
+      const session = await requireAdmin(context, ['moderator']);
+      if (!(await rateLimit(sessionKv(), 'org-preview', session.accountId, 30, 3600))) {
+        throw new ActionError({ code: 'TOO_MANY_REQUESTS', message: 'Preview limit reached — try again later.' });
+      }
       try {
         const { fields, warnings, name, age, photoUrls, raw, cost } = await agencyImportFromUrl(url, sitePrompt);
         return { fields, warnings, name, age, photoUrls, raw, cost };
@@ -575,6 +583,7 @@ export const admin = {
       const session = await requireAdmin(context, ['super']);
       try {
         const r = await importAgencyProfile(id, url);
+        await bustProfiles(sessionKv()); // a live profile may have been patched
         await record(session, {
           action: 'crawl_org',
           entityType: 'org',

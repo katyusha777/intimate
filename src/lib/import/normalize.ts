@@ -153,12 +153,14 @@ export function normalizeImported(raw: unknown, now: Date = new Date()): ImportR
     if (Object.keys(oh).length) out.openingHours = oh;
   }
 
-  // Date availability (kimnl-style calendars): ISO keys within today..+60d —
+  // Date availability (per-date calendars): ISO keys within today..+60d —
   // past/far dates are noise; times must be real HH:MM or they become ''.
+  // "Today" is the MARKET's calendar date (Amsterdam) — the UTC date is
+  // yesterday between 00:00 and 02:00 CEST and would drop today's entry.
   if (r.availabilityDates && typeof r.availabilityDates === 'object') {
     const dayMs = 86_400_000;
-    const min = now.toISOString().slice(0, 10);
-    const max = new Date(now.getTime() + 60 * dayMs).toISOString().slice(0, 10);
+    const min = amsDate(now);
+    const max = amsDate(new Date(now.getTime() + 60 * dayMs));
     const hhmm = (v: unknown): string => (typeof v === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(v.trim()) ? v.trim() : '');
     const ad: Record<string, unknown> = {};
     let dropped = 0;
@@ -228,7 +230,9 @@ export function pickAgencyExtras(raw: unknown): { name?: string; age?: number; a
   const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
   const name = typeof r.name === 'string' && r.name.trim() ? r.name.trim().slice(0, 40) : undefined;
   const ageN = typeof r.age === 'number' ? Math.round(r.age) : typeof r.age === 'string' ? parseInt(r.age, 10) : NaN;
-  const age = Number.isFinite(ageN) && ageN >= 18 && ageN <= 80 ? ageN : undefined;
+  // Keep ANY plausible number — pre-filtering to the policy range would turn a
+  // listed 17 into "no age" and sail past the 21+ gate (it must hard-fail there).
+  const age = Number.isFinite(ageN) && ageN >= 1 && ageN <= 99 ? ageN : undefined;
   // Verbatim prose age ("midden twintig") — display-only, never a guessed number.
   const ageText = typeof r.ageText === 'string' && r.ageText.trim() ? r.ageText.trim().slice(0, 40) : undefined;
   const photoUrls: string[] = [];
@@ -296,4 +300,29 @@ const PROSE_AGE_FLOOR: ReadonlyArray<[RegExp, number]> = [
 export function proseAgeFloor(ageText: string | undefined): number | undefined {
   if (!ageText) return undefined;
   return PROSE_AGE_FLOOR.find(([re]) => re.test(ageText))?.[1];
+}
+
+/** Calendar date (YYYY-MM-DD) of an instant in the market timezone — the
+ *  anchor for "today" in calendar imports (UTC shifts a day 00:00–02:00 CEST). */
+export const amsDate = (d: Date): string =>
+  new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Amsterdam' }).format(d);
+
+/**
+ * Resolve the untrusted age evidence to ONE policy decision (hard rule 4):
+ *   · numeric age → anchor it (caller gates < 21), display = computed years
+ *   · ageText with a digit ("18 jaar") → anchor the digit (same gate), display verbatim
+ *   · ageText matching PROSE_AGE_FLOOR → anchor the conservative floor, display verbatim
+ *   · anything else → NO display (unvetted age claims are never shown; '' hides)
+ */
+export function resolveImportedAge(
+  age: number | undefined,
+  ageText: string | undefined,
+): { anchor?: number; display: string | null } {
+  if (age !== undefined) return { anchor: age, display: null };
+  const text = ageText?.trim().slice(0, 40);
+  const digit = text?.match(/\d{1,3}/);
+  if (text && digit) return { anchor: parseInt(digit[0], 10), display: text };
+  const floor = proseAgeFloor(text);
+  if (text && floor !== undefined) return { anchor: floor, display: text };
+  return { display: '' };
 }

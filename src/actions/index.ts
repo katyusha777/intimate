@@ -203,6 +203,10 @@ export const server = {
           // ("birthDate: …") which reads as a bug to a non-technical advertiser.
           throw new ActionError({ code: "BAD_REQUEST", message: parsed.error.issues[0].message });
         }
+        // ageDisplay is import/admin-owned (verbatim vetted source text or the
+        // hidden sentinel) — an advertiser must not self-set an arbitrary
+        // displayed age ("18", junk) that bypasses the computed-years truth.
+        delete parsed.data.ageDisplay;
         // Writes her profiles row directly — edits publish immediately; the
         // first save creates the draft (ADMIN.md §6, DATA.md).
         try {

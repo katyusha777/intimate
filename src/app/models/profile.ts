@@ -317,14 +317,20 @@ function openTodayUntil(day: DayHours | undefined, nowMin: number): string | nul
   if (day.allDay) return '24:00';
   const to = toMinutes(day.to);
   if (to === null) return null;
+  const from = toMinutes(day.from);
+  // Overnight window (22:00–03:00): the close is after midnight, so today's
+  // entry is open from `from` onward — never "already closed".
+  if (from !== null && to <= from) return day.to;
   // Open now, or opens later today, and there's still time before close.
   return to > nowMin ? day.to : null;
 }
 
-/** A date entry as a DayHours row: no times = the whole day. */
+/** A date entry as a DayHours row: an available day with no (usable) closing
+ *  time counts as open the whole day — "available, from 14:00" must not read
+ *  as closed just because the site omitted the end. */
 const dateAsDayHours = (o: DateAvailability): DayHours => ({
   closed: !o.available,
-  allDay: o.available && !o.from && !o.to,
+  allDay: o.available && toMinutes(o.to) === null,
   from: o.from,
   to: o.to,
 });
