@@ -67,7 +67,10 @@ export async function discoverProfileUrls(
 export async function agencyImportFromUrl(url: string, notes?: string): Promise<AgencyImportOutcome> {
   const { markdown } = await firecrawlScrape({ url, onlyMainContent: false, waitFor: 2500 });
   const today = new Date().toISOString().slice(0, 10);
-  const { raw, cost } = await llmExtract(markdown, buildExtractPrompt({ agency: true, notes, today }));
+  // The date-calendar contract is per-site: only orgs whose crawl notes
+  // reference availabilityDates (kimnl-style carousels) get the key at all.
+  const dateCalendar = /availabilitydates/i.test(notes ?? '');
+  const { raw, cost } = await llmExtract(markdown, buildExtractPrompt({ agency: true, notes, today, dateCalendar }));
   const { fields, warnings } = normalizeImported(raw);
   return { fields, warnings, ...pickAgencyExtras(raw), raw, cost };
 }
