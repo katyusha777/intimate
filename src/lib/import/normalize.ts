@@ -274,3 +274,26 @@ function finalGate(out: Record<string, unknown>, warnings: string[]): ImportResu
   }
   return { fields: {}, warnings };
 }
+
+/**
+ * Conservative DOB basis for a PROSE age ("midden twintig") — the display stays
+ * the verbatim ageText (never a guessed number, decision 2026-08-14); this only
+ * anchors the required birth_date at the range's policy-safe floor (all ≥21).
+ * Unknown phrasing → undefined → the job still fails the age gate honestly.
+ * ponytail: tiny fixed map — extend as new phrasings surface in failed jobs.
+ */
+const PROSE_AGE_FLOOR: ReadonlyArray<[RegExp, number]> = [
+  [/begin\s*twintig|early\s*twent/i, 21],
+  [/midden\s*twintig|mid\s*-?\s*twent/i, 24],
+  [/eind\s*twintig|late\s*twent/i, 27],
+  [/begin\s*dertig|early\s*thirt/i, 30],
+  [/midden\s*dertig|mid\s*-?\s*thirt/i, 33],
+  [/eind\s*dertig|late\s*thirt/i, 37],
+  [/twintiger|twenties/i, 21],
+  [/dertiger|thirties/i, 30],
+  [/veertiger|forties/i, 40],
+];
+export function proseAgeFloor(ageText: string | undefined): number | undefined {
+  if (!ageText) return undefined;
+  return PROSE_AGE_FLOOR.find(([re]) => re.test(ageText))?.[1];
+}

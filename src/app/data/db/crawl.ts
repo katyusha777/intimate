@@ -24,7 +24,7 @@ import { and, count, eq, inArray, isNotNull, lt, sql } from 'drizzle-orm';
 import { requestDb, type Db } from '@/db/client';
 import { importJobs, media, orgs, profiles } from '@/db/schema';
 import { agencyImportFromUrl, discoverProfileUrls } from '@/lib/import/agency';
-import { originalImageUrl } from '@/lib/import/normalize';
+import { originalImageUrl, proseAgeFloor } from '@/lib/import/normalize';
 import { profileUpdate, uniqueSlug } from './account';
 import { birthDateForAge } from '@/app/models/profile';
 import { fetchExternalImage, transformImage } from '@/lib/fetch-image';
@@ -220,9 +220,17 @@ export async function importAgencyProfile(
     return { profileId, created: false, name, photosAttempted: 0, photosStored: 0 };
   }
 
-  // New profile — identity + the 21+ policy floor are non-negotiable.
+  // New profile — identity + the 21+ policy floor are non-negotiable. A prose
+  // age anchors the DOB at its conservative floor (display stays verbatim);
+  // no age information at all still fails: someone must confirm 21+.
   if (!name) throw new AgencyImportError('no name found on the page');
-  if (!age) throw new AgencyImportError('no age listed on the page — cannot verify the 21+ policy', name);
+  const dobAge = age ?? proseAgeFloor(ageText);
+  if (!dobAge) {
+    throw new AgencyImportError(
+      `no usable age on the page${ageText ? ` (unmapped: "${ageText}")` : ''} — cannot verify the 21+ policy`,
+      name,
+    );
+  }
 
   const city = fields.city ?? org.city;
   const [created] = await d
@@ -237,7 +245,7 @@ export async function importAgencyProfile(
       ageDisplay: ageText ?? null,
       // The site lists an age, not a DOB — the derived date keeps the DB 21+
       // CHECK honest (computed age = listed age). Admin reviews pre-publish.
-      birthDate: birthDateForAge(age),
+      birthDate: birthDateForAge(dobAge),
       gender: fields.gender ?? 'female',
       city,
       importedFromUrl: url,

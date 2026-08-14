@@ -6,7 +6,7 @@
  * warnings.
  */
 import { expect, test } from 'bun:test';
-import { normalizeImported, originalImageUrl } from '@/lib/import/normalize';
+import { normalizeImported, originalImageUrl, proseAgeFloor } from '@/lib/import/normalize';
 
 test('keeps valid taxonomy values, drops junk, and reports it', () => {
   const { fields, warnings } = normalizeImported({
@@ -91,4 +91,14 @@ test('originalImageUrl: strips WP -WxH thumbnail suffix, leaves originals/others
   expect(originalImageUrl('https://x.com/a/photo.jpg')).toBeNull();
   expect(originalImageUrl('https://x.com/a/photo-scaled.jpg')).toBeNull();
   expect(originalImageUrl('https://x.com/a/photo-400x517-final.jpg')).toBeNull(); // suffix not before ext
+});
+
+test('proseAgeFloor: conservative floors, all ≥21, unknown → undefined', () => {
+  expect(proseAgeFloor('midden twintig')).toBe(24);
+  expect(proseAgeFloor('een jonge masseuse van midden twintig')).toBe(24);
+  expect(proseAgeFloor('begin twintig')).toBe(21);
+  expect(proseAgeFloor('late twenties')).toBe(27);
+  expect(proseAgeFloor('begin dertig')).toBe(30);
+  expect(proseAgeFloor('geheimzinnig')).toBeUndefined();
+  expect(proseAgeFloor(undefined)).toBeUndefined();
 });
