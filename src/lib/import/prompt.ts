@@ -63,7 +63,7 @@ Output keys (use null or [] when unknown):
   "rates": array of { "duration": one of [${list(RATE_DURATIONS)}] or null, "label": short custom label or null, "incall": integer EUR or null, "outcall": integer EUR or null }
            (map "30 min"->min_30, "1 uur"->hour_1, "90 min"->min_90, "2 uur"->hour_2, "nacht"->overnight, "weekend"->weekend; set incall/outcall from the section: Prive/Thuisontvangst=incall, Escort=outcall; a row needs a duration OR label AND at least one price),
   "openingHours": object with only the weekdays shown, each { "closed": bool, "allDay": bool, "from": "HH:MM", "to": "HH:MM" } (24-hour times; "24 uur"->allDay true; a closed day -> closed true) — use ONLY for weekly recurring schedules,
-  "availabilityDates": object for date-based calendars (e.g. a carousel of specific dates marked BESCHIKBAAR/available or AFWEZIG/absent): keys are ISO dates "YYYY-MM-DD" (infer the year from today's date), values { "available": bool, "from": "HH:MM" or "", "to": "HH:MM" or "" }; only dates the page explicitly shows; null if the page has no per-date calendar,
+  "availabilityDates": object for date-based calendars (e.g. a carousel of specific dates marked BESCHIKBAAR/available or AFWEZIG/absent): keys are ISO dates "YYYY-MM-DD" (infer the year from today's date), values { "available": bool, "from": "HH:MM" or "", "to": "HH:MM" or "" }; include EVERY date the calendar shows (often 7 consecutive days — do not stop early); only dates the page explicitly shows; null if the page has no per-date calendar,
   "description": her profile text translated to natural English (max ~800 chars) or null,
   "depositPolicy": deposit/booking terms in English or null,
   "extrasNote": short note on extras/surcharges in English or null
