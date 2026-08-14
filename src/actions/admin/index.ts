@@ -28,7 +28,7 @@ import { importFromUrl } from '@/lib/import';
 import { agencyImportFromUrl, discoverProfileUrls } from '@/lib/import/agency';
 import { enqueueOrgCrawl, importAgencyProfile, processImportJobs } from '@/app/api/crawl';
 import { dataUrlToJpegBytes } from '@/lib/jpeg-strip';
-import { CITY_SLUGS, GENDERS, POLICY_MIN_AGE } from '@/lib/taxonomy';
+import { ALL_SERVICES, CITY_SLUGS, GENDERS, POLICY_MIN_AGE } from '@/lib/taxonomy';
 import { profileAge } from '@/app/models/profile';
 import { ProfileEditSchema } from '@/app/models/account';
 import { OrgLocationsSchema } from '@/app/models/org';
@@ -432,6 +432,7 @@ export const admin = {
       crawlEnabled: z.boolean().optional(),
       crawlListUrl: z.string().url().max(500).or(z.literal('')).optional(),
       sitePrompt: z.string().max(4000).optional(),
+      allowedServices: z.array(z.enum(ALL_SERVICES as unknown as [string, ...string[]])).max(48).optional(),
       crawlIntervalHours: z.number().int().min(1).max(720).optional(),
     }),
     handler: async ({ id, ...patch }, context) => {

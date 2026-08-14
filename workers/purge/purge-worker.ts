@@ -18,6 +18,10 @@ interface Env {
   SITE: { fetch(input: string | Request, init?: RequestInit): Promise<Response> };
   // Shared secret the /api/purge endpoint checks (same value on both workers).
   PURGE_SECRET: string;
+  // Gates the MANUAL fetch() runs (this worker only, independent of
+  // PURGE_SECRET). Unset → manual runs disabled (fail closed); the cron
+  // scheduled() path never needs it.
+  TICK_KEY?: string;
   // Per-tier site origin (wrangler.jsonc vars).
   ORIGIN: string;
 }
@@ -52,6 +56,11 @@ export default {
   },
 
   async fetch(req: Request, env: Env): Promise<Response> {
+    // Manual runs are TICK_KEY-gated: the workers.dev URL was an open (if
+    // idempotent) trigger — a door is a door. Fail closed when unset.
+    if (!env.TICK_KEY || req.headers.get('authorization') !== `Bearer ${env.TICK_KEY}`) {
+      return new Response('forbidden', { status: 403 });
+    }
     // Manual runs: /…?crawl ticks the crawler; default is the purge.
     const endpoint = new URL(req.url).searchParams.has('crawl') ? 'crawl-tick' : 'purge';
     return new Response(`${await run(env, endpoint)}\n`, {

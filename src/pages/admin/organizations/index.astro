@@ -221,6 +221,10 @@ const label = 'block text-2xs uppercase tracking-wide text-muted-foreground';
                     <span class={label}>Site prompt — THIS provider's extraction instructions, appended to the shared schema contract (the test tools use the unsaved value)</span>
                     <textarea name="sitePrompt" rows="10" placeholder="Describe THIS site: how its schedule widget reads and which field it maps to, whose phone appears on a profile page, service menu naming + mappings, age conventions, URL structure, what to ignore. One self-contained prompt per provider — never edit shared code for a site." class={input}>{detail.sitePrompt ?? ''}</textarea>
                   </div>
+                  <div>
+                    <span class={label}>Allowed services (comma-separated taxonomy values — imports are hard-filtered to this set; empty = no restriction)</span>
+                    <input name="allowedServices" placeholder="relaxing_massage, erotic_massage, tantra_massage, …" value={detail.allowedServices?.join(', ') ?? ''} class={input} />
+                  </div>
                   <div class="flex items-center gap-3">
                     <button type="submit" class={btn}>Save</button>
                     <span data-edit-status class="text-2xs text-muted-foreground" />
@@ -312,6 +316,7 @@ const label = 'block text-2xs uppercase tracking-wide text-muted-foreground';
         crawlEnabled: checked(form, 'crawlEnabled'),
         crawlListUrl: val(form, 'crawlListUrl'),
         sitePrompt: val(form, 'sitePrompt'),
+        allowedServices: val(form, 'allowedServices').split(',').map((s) => s.trim()).filter(Boolean),
         crawlIntervalHours: Number(val(form, 'crawlIntervalHours')) || 24,
       });
       status.textContent = error ? `Error: ${error.message}` : 'Saved ✓';

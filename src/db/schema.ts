@@ -214,6 +214,10 @@ export const orgs = pgTable(
      *  the site-neutral schema contract (lib/import/prompt.ts). A new provider
      *  is a row + this text, never a code change. */
     sitePrompt: text('site_prompt'),
+    /** Deterministic per-org service whitelist: imported services are filtered
+     *  to this set in the crawl engine (the LLM occasionally ignores prose
+     *  whitelists in the site prompt). NULL/empty = no restriction. */
+    allowedServices: serviceEnum('allowed_services').array(),
     /** Re-crawl cadence for the cron tick. Schedule-bearing sites (rolling
      *  date calendars) need daily; raise for static rosters. */
     crawlIntervalHours: integer('crawl_interval_hours').notNull().default(24),

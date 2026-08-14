@@ -34,7 +34,7 @@ anonymous pages (RLS `state='live'` only for profiles/media).
 | Table | Owner | Public read | Purpose |
 |---|---|---|---|
 | `accounts` | auth user | no | one row per `auth.users` id; role + verification state |
-| `orgs` | agency account (placeholder, no login) | name/slug/logo/description/`locations` via `/{locale}/agencies/{slug}` | partner agencies: KvK, verification, contact, branches (`locations` JSONB: address/phones/hours per city; profile's branch = city match), crawl config (`crawl_enabled`, `crawl_list_url`, `site_prompt` — THIS provider's own extraction prompt, appended to the site-neutral schema contract in `lib/import/prompt.ts`, `crawl_interval_hours`, `last_crawled_at`); a profile links via `org_id` |
+| `orgs` | agency account (placeholder, no login) | name/slug/logo/description/`locations` via `/{locale}/agencies/{slug}` | partner agencies: KvK, verification, contact, branches (`locations` JSONB: address/phones/hours per city; profile's branch = city match), crawl config (`crawl_enabled`, `crawl_list_url`, `site_prompt` — THIS provider's own extraction prompt, appended to the site-neutral schema contract in `lib/import/prompt.ts`, `allowed_services` — deterministic import whitelist, `crawl_interval_hours`, `last_crawled_at`); a profile links via `org_id` |
 | `profiles` | account | live only | the listing row — one flat, joinless row per profile |
 | `media` | profile | approved only | one row per image (R2 object key + review state) |
 | `verification_docs` | account | **never** | toxic-waste metadata (R2-backed doc; hard rule 3) |

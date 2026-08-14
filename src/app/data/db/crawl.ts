@@ -188,6 +188,14 @@ export async function importAgencyProfile(
   if (!org) throw new Error('unknown agency');
   const { fields, name, age, ageText, photoUrls } = await agencyImportFromUrl(url, org.sitePrompt ?? undefined);
 
+  // Deterministic per-org service whitelist (orgs.allowed_services): the LLM
+  // occasionally ignores prose whitelists in the site prompt — config
+  // enforcement can't be argued with. NULL/empty = no restriction.
+  if (org.allowedServices?.length && fields.services?.length) {
+    fields.services = fields.services.filter((s) => org.allowedServices!.includes(s));
+    if (fields.services.length === 0) delete fields.services;
+  }
+
   // The 21+ floor (hard rule 4) holds on EVERY crawl — agencies reuse URLs, so
   // a re-crawled page may now show a different, younger person.
   if (age !== undefined && age < POLICY_MIN_AGE) {

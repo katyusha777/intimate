@@ -32,6 +32,8 @@ export interface Org {
   crawlEnabled: boolean;
   crawlListUrl?: string;
   sitePrompt?: string;
+  /** Deterministic import whitelist — see schema.ts orgs.allowed_services. */
+  allowedServices?: string[];
   crawlIntervalHours: number;
   lastCrawledAt?: string;
   lastCrawlNote?: string;
@@ -106,6 +108,7 @@ const toOrg = (r: typeof orgs.$inferSelect): Org => ({
   crawlEnabled: r.crawlEnabled,
   crawlListUrl: r.crawlListUrl ?? undefined,
   sitePrompt: r.sitePrompt ?? undefined,
+  allowedServices: r.allowedServices ?? undefined,
   crawlIntervalHours: r.crawlIntervalHours,
   lastCrawledAt: r.lastCrawledAt?.toISOString(),
   lastCrawlNote: r.lastCrawlNote ?? undefined,
@@ -149,6 +152,7 @@ export interface OrgPatch {
   crawlEnabled?: boolean;
   crawlListUrl?: string;
   sitePrompt?: string;
+  allowedServices?: string[];
   crawlIntervalHours?: number;
 }
 
@@ -172,6 +176,8 @@ export async function updateOrg(id: string, patch: OrgPatch): Promise<void> {
   if (patch.crawlEnabled !== undefined) u.crawlEnabled = patch.crawlEnabled;
   if (patch.crawlListUrl !== undefined) u.crawlListUrl = patch.crawlListUrl || null;
   if (patch.sitePrompt !== undefined) u.sitePrompt = patch.sitePrompt || null;
+  if (patch.allowedServices !== undefined)
+    u.allowedServices = patch.allowedServices.length ? (patch.allowedServices as (typeof orgs.$inferInsert)['allowedServices']) : null;
   if (patch.crawlIntervalHours !== undefined) u.crawlIntervalHours = Math.max(1, Math.trunc(patch.crawlIntervalHours));
   if (Object.keys(u).length) await d.update(orgs).set(u).where(eq(orgs.id, id));
 }
