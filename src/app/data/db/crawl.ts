@@ -203,6 +203,12 @@ export async function importAgencyProfile(
       .limit(1);
     profileId = hit?.id;
   }
+  // Age display invariant (decision 2026-08-14, never show a guessed number):
+  // numeric age on the page → null (computed years show) · prose age → the
+  // verbatim text · NO age info at all → '' (the UI hides the age entirely,
+  // exactly like the source page — profileNameAge()).
+  const ageDisplay = ageText ?? (age !== undefined ? null : '');
+
   if (profileId) {
     // Re-crawl: the agency's site is the source of truth for its own roster —
     // patch mapped fields (+ name, + refreshed DOB so the displayed age tracks
@@ -211,8 +217,7 @@ export async function importAgencyProfile(
       ...profileUpdate(fields),
       ...(name ? { name } : {}),
       ...(age !== undefined ? { birthDate: birthDateForAge(age) } : {}),
-      // Verbatim prose age tracks the site both ways (set AND cleared).
-      ageDisplay: ageText ?? null,
+      ageDisplay,
     };
     if (Object.keys(update).length) {
       await d.update(profiles).set(update).where(eq(profiles.id, profileId));
@@ -220,17 +225,15 @@ export async function importAgencyProfile(
     return { profileId, created: false, name, photosAttempted: 0, photosStored: 0 };
   }
 
-  // New profile — identity + the 21+ policy floor are non-negotiable. A prose
-  // age anchors the DOB at its conservative floor (display stays verbatim);
-  // no age information at all still fails: someone must confirm 21+.
+  // New profile. The DOB anchoring the DB's 21+ CHECK: the listed number, a
+  // prose age's conservative floor, or — when the page shows NO age (common on
+  // licensed-parlor sites) — a placeholder. The placeholder is legal because
+  // the row lands pending_review and a HUMAN confirms 21+ before it ever goes
+  // live (hard rule 5); the UI shows no age for it (ageDisplay '' sentinel).
+  // A page that LISTS an under-21 number still hard-fails above.
   if (!name) throw new AgencyImportError('no name found on the page');
-  const dobAge = age ?? proseAgeFloor(ageText);
-  if (!dobAge) {
-    throw new AgencyImportError(
-      `no usable age on the page${ageText ? ` (unmapped: "${ageText}")` : ''} — cannot verify the 21+ policy`,
-      name,
-    );
-  }
+  const PLACEHOLDER_AGE = 25; // display-hidden; approval confirms the real 21+
+  const dobAge = age ?? proseAgeFloor(ageText) ?? PLACEHOLDER_AGE;
 
   const city = fields.city ?? org.city;
   const [created] = await d
@@ -242,7 +245,7 @@ export async function importAgencyProfile(
       state: 'pending_review', // never auto-publish (hard rule 5)
       ...profileUpdate(fields),
       name,
-      ageDisplay: ageText ?? null,
+      ageDisplay,
       // The site lists an age, not a DOB — the derived date keeps the DB 21+
       // CHECK honest (computed age = listed age). Admin reviews pre-publish.
       birthDate: birthDateForAge(dobAge),

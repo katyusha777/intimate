@@ -6,7 +6,7 @@
  * (the grid card shrunk) for the favorites rail.
  */
 import * as m from '@/paraglide/messages';
-import { localizedDescription, profileAgeLabel, type Profile } from '@/app/models/profile';
+import { localizedDescription, profileNameAge, type Profile } from '@/app/models/profile';
 import { localizePath } from '@/lib/i18n';
 import { CITIES } from '@/lib/taxonomy';
 import SafeImage from '@/components/atoms/SafeImage.astro';
@@ -82,7 +82,7 @@ const heartCut = `cut-${(hash + 1) % 4}`;
             <!-- Name + price scale down on the 2-col mobile grid so the name
                  gets its letters instead of an ellipsis. -->
             <p class="flex items-center gap-1 font-condensed text-base font-semibold leading-snug sm:text-lg">
-              <span class="truncate">{p.name}, {profileAgeLabel(p)}</span>
+              <span class="truncate">{profileNameAge(p)}</span>
               <VerifiedBadge receiptFor={p.id} class="size-4" />
               <!-- Online lives top-left ON the photo now — no dot repeated here. -->
             </p>
@@ -112,7 +112,7 @@ const heartCut = `cut-${(hash + 1) % 4}`;
       <div class="flex flex-col justify-between gap-3 p-5">
         <div class="space-y-1.5">
           <h3 class="flex items-center gap-1.5 font-condensed text-xl font-semibold tracking-tight">
-            <a href={href} class="after:absolute after:inset-0">{p.name}, {profileAgeLabel(p)}</a>
+            <a href={href} class="after:absolute after:inset-0">{profileNameAge(p)}</a>
             <VerifiedBadge receiptFor={p.id} class="relative z-10 size-4.5" />
             {p.online && (
               <span class="online-dot size-2 flex-none rounded-full bg-online" title={m.online_now()}>
@@ -149,7 +149,7 @@ const heartCut = `cut-${(hash + 1) % 4}`;
         style="clip-path: polygon(0 4px, 100% 0, 100% calc(100% - 3px), 0 100%)"
       >
         <p class="flex items-center gap-1 font-condensed text-sm font-semibold leading-snug">
-          <span class="truncate">{p.name}, {profileAgeLabel(p)}</span>
+          <span class="truncate">{profileNameAge(p)}</span>
           {p.online && (
             <span class="online-dot size-1.5 flex-none rounded-full bg-online" title={m.online_now()}>
               <span class="sr-only">{m.online_now()}</span>
@@ -175,7 +175,7 @@ const heartCut = `cut-${(hash + 1) % 4}`;
       <SafeImage imageKey={p.id} src={p.photos[0]} alt={p.name} class="size-14 flex-none rounded-lg" {loading} variant="thumb" />
       <div class="min-w-0 flex-1">
         <p class="flex items-center gap-1 truncate font-condensed text-base font-semibold">
-          {p.name}, {profileAgeLabel(p)}
+          {profileNameAge(p)}
           <VerifiedBadge receiptFor={p.id} class="size-3.5" />
           {p.online && (
             <span class="online-dot size-2 flex-none rounded-full bg-online" title={m.online_now()}>

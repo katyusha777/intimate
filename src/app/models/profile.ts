@@ -119,7 +119,8 @@ export const ProfileSchema = z.object({
   /** Date of birth (YYYY-MM-DD); displayed age is computed via profileAge(). */
   birthDate: z.iso.date(),
   /** Verbatim age text from an import source ("midden twintig") — shown via
-   *  profileAgeLabel() instead of the computed number. Never a guessed value. */
+   *  profileNameAge() instead of the computed number; '' = the source shows no
+   *  age, so the UI hides it (placeholder DOB underneath). Never a guessed value. */
   ageDisplay: z.string().optional(),
   gender: z.enum(GENDERS),
   city: z.enum(CITY_SLUGS),
@@ -241,10 +242,15 @@ export function localizedDescription(p: Profile, locale: Locale = getLocale() as
   return p.descriptionTranslations[locale] ?? p.description;
 }
 
-/** The age as the UI shows it: the source's verbatim text when set ("midden
- *  twintig" — never a guessed number), else the computed years. */
-export function profileAgeLabel(p: Pick<Profile, 'ageDisplay' | 'birthDate'>): string {
-  return p.ageDisplay || String(profileAge(p.birthDate));
+/**
+ * "Name, age" as the UI shows it (never a guessed number — decision 2026-08-14):
+ *   ageDisplay text ("midden twintig") → verbatim · null/absent → computed
+ *   years · '' (import sentinel: the source page shows NO age) → name only,
+ *   because the DOB under it is a placeholder pending human review.
+ */
+export function profileNameAge(p: Pick<Profile, 'name' | 'ageDisplay' | 'birthDate'>): string {
+  if (p.ageDisplay === '') return p.name;
+  return `${p.name}, ${p.ageDisplay || profileAge(p.birthDate)}`;
 }
 
 /**

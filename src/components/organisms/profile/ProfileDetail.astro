@@ -8,7 +8,7 @@
 import * as m from '@/paraglide/messages';
 import type { Profile } from '@/app/models/profile';
 import type { PublicAgency } from '@/app/models/org';
-import { localizedDescription, profileAgeLabel, upcomingAvailability } from '@/app/models/profile';
+import { localizedDescription, profileNameAge, upcomingAvailability } from '@/app/models/profile';
 import { dayLabel, serviceCategoryLabel, serviceLabel } from '@/lib/labels';
 import { cityName } from '@/lib/seo';
 import { DAYS, SERVICES, SERVICE_CATEGORIES } from '@/lib/taxonomy';
@@ -83,7 +83,7 @@ function hoursLabel(h: (typeof hours)[keyof typeof hours]): string {
     <div class="mb-4 flex items-end justify-between gap-4">
       <div>
         <h1 class="flex items-center gap-2.5 font-condensed text-3xl font-bold tracking-tight lg:text-4xl">
-          {p.name}, {profileAgeLabel(p)}
+          {profileNameAge(p)}
           <VerifiedBadge receiptFor={p.id} class="size-6" />
         </h1>
         <p class="mt-1.5 flex items-center gap-2 text-sm text-muted-foreground">

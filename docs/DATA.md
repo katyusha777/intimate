@@ -79,8 +79,10 @@ sort/filter. `opening_hours` + `availability_dates` + `description_translations`
 are JSONB — weekly hours plus per-date overrides (agency-style calendars); a
 date entry beats the weekday for that day, weekly is the fallback.
 `age_display` (nullable text) is a source-verbatim prose age ("midden twintig")
-shown via `profileAgeLabel()` instead of the computed years — never a guessed
-number; `birth_date` stays required and 21+-checked.
+shown via `profileNameAge()` instead of the computed years — never a guessed
+number. `''` is the import sentinel for "the source shows no age": the UI hides
+the age entirely and the required, 21+-checked `birth_date` underneath is a
+placeholder that the pending_review approval confirms before going live.
 - **Not stored:** `online` — it comes from realtime presence (SUPABASE.md §5.4),
   projected onto the read model, never a column. `last_active_at` IS stored: the
   professional's island writes it via a throttled RLS-guarded own-row update

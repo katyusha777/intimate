@@ -9,7 +9,7 @@ import { profilesApi } from '@/app/api/profiles';
 import { messagingApi } from '@/app/api/messaging';
 import { accountApi } from '@/app/api/account';
 import { sessionApi } from '@/app/api/session';
-import { availabilityState, localizedDescription, profileAgeLabel } from '@/app/models/profile';
+import { availabilityState, localizedDescription, profileNameAge } from '@/app/models/profile';
 import { agencyById } from '@/app/api/orgs';
 import { isLocale, samePathAlternates } from '@/lib/i18n';
 import { realImageFor } from '@/lib/safe-images';
@@ -93,7 +93,7 @@ const screeningQuestion = convo.screeningQuestion || undefined;
 
 const description = localizedDescription(p);
 const city = cityName(p.city);
-const title = `${p.name}, ${profileAgeLabel(p)} — ${city} | Intimate`;
+const title = `${profileNameAge(p)} — ${city} | Intimate`;
 const metaDescription = `${description.slice(0, 140)}${description.length > 140 ? '…' : ''}`;
 const canonical = new URL(`/${locale}/profile/${p.slug}/`, Astro.url.origin).href;
 
