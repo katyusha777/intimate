@@ -89,9 +89,9 @@ const jsonLd = [websiteJsonLd(Astro.url.origin, locale), organizationJsonLd(Astr
   </script>
   <div class="dark min-h-dvh bg-neutral-950 text-white">
     <div class="relative overflow-hidden lg:min-h-dvh">
-      <!-- Cinematic media: right half on desktop (the home hero's language),
-           full-bleed dimmed backdrop on mobile. One asset, already shipped. -->
-      <div class="absolute inset-0 lg:inset-y-0 lg:left-auto lg:right-0 lg:w-1/2" data-safe-video-wrap>
+      <!-- Cinematic media: right half on DESKTOP only. Mobile stays a clean,
+           solid-dark canvas — no video, no busy backdrop behind the type. -->
+      <div class="absolute inset-y-0 right-0 hidden w-1/2 lg:block" data-safe-video-wrap>
         <video
           class="hidden h-full w-full object-cover"
           data-safe-video
@@ -105,8 +105,6 @@ const jsonLd = [websiteJsonLd(Astro.url.origin, locale), organizationJsonLd(Astr
           <source src="/video/hero.mp4" type="video/mp4" />
         </video>
         <SafeImage imageKey="hero-video" src="/video/hero-poster.jpg" alt="" class="h-full w-full" loading="eager" />
-        <!-- Mobile scrim so the type always wins; desktop keeps the media clean. -->
-        <div class="absolute inset-0 bg-neutral-950/75 lg:hidden" aria-hidden="true"></div>
       </div>
       <div class="hero-panel absolute inset-y-0 left-0 hidden w-[58%] bg-neutral-950 lg:block" aria-hidden="true"></div>
 
@@ -122,23 +120,23 @@ const jsonLd = [websiteJsonLd(Astro.url.origin, locale), organizationJsonLd(Astr
               <span class="size-1.5 rounded-full bg-online" aria-hidden="true"></span>
               {m.prelaunch_eyebrow()}
             </p>
-            <h1 class="display mt-3 text-4xl md:text-5xl">{m.prelaunch_title()}</h1>
+            <h1 class="display mt-3 text-3xl md:text-5xl">{m.prelaunch_title()}</h1>
             <p class="mt-4 max-w-md text-lg leading-relaxed text-white/75">{m.prelaunch_sub()}</p>
 
-            <dl class="mt-8 max-w-md space-y-3">
+            <ul class="mt-8 max-w-md space-y-2.5">
               {
                 [
                   [m.prelaunch_point_1_lead(), m.prelaunch_point_1_body()],
                   [m.prelaunch_point_2_lead(), m.prelaunch_point_2_body()],
                   [m.prelaunch_point_3_lead(), m.prelaunch_point_3_body()],
                 ].map(([lead, body]) => (
-                  <div class="flex items-baseline gap-2">
-                    <dt class="flex-none whitespace-nowrap font-condensed font-bold uppercase tracking-wide text-brand">{lead}</dt>
-                    <dd class="text-sm leading-relaxed text-white/70">{body}</dd>
-                  </div>
+                  <li class="text-sm leading-relaxed text-white/70">
+                    <span class="font-condensed font-bold uppercase tracking-wide text-brand">{lead} </span>
+                    {body}
+                  </li>
                 ))
               }
-            </dl>
+            </ul>
 
             <div id="join" class="mt-10 max-w-md scroll-mt-6">
               {
