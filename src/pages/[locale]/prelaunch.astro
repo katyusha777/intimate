@@ -11,15 +11,27 @@ import Layout from '@/layouts/Layout.astro';
 import * as m from '@/paraglide/messages';
 import { sessionApi } from '@/app/api/session';
 import { accountApi } from '@/app/api/account';
+import { profilesApi } from '@/app/api/profiles';
+import { agencyBySlug } from '@/app/api/orgs';
 import { isLocale, localizePath, homeAlternates, homeUrl } from '@/lib/i18n';
 import { organizationJsonLd, websiteJsonLd } from '@/lib/seo';
 import Button from '@/components/atoms/Button.astro';
 import SafeImage from '@/components/atoms/SafeImage.astro';
 import SlabField from '@/components/molecules/SlabField.astro';
 import SupportChips from '@/components/molecules/SupportChips.astro';
+import RecentSignups from '@/components/organisms/profile/RecentSignups.astro';
+import ProfileSheet from '@/components/organisms/profile/ProfileSheet.astro';
 
 const locale = Astro.params.locale;
 if (!isLocale(locale)) return new Response(null, { status: 404 });
+
+/* Proof of life for the landing: a live rail of "recent signups", drawn from
+ * Schipol Escort's roster (the strongest photos). A tap opens the ProfileSheet
+ * (X-Sheet fetch — the one profile path the pre-launch corridor lets through). */
+const signupOrg = await agencyBySlug('schipol-escort');
+const signups = signupOrg
+  ? (await profilesApi.list({ orgId: signupOrg.id, sort: 'newest', limit: 18 })).items
+  : [];
 
 const result = Astro.getActionResult(actions.prelaunch.join);
 // Advertiser → her real (passwordless) draft profile in /account/setup, built now
@@ -96,6 +108,9 @@ const jsonLd = [websiteJsonLd(Astro.url.origin, locale), organizationJsonLd(Astr
       <div class="relative mx-auto max-w-7xl px-4 md:px-6">
         <div class="flex min-h-dvh flex-col py-6 lg:max-w-[46%] lg:justify-center">
           <img src="/img/logo-light.svg" alt={m.app_name()} width="1242" height="597" class="h-6 w-auto md:h-7" />
+
+          {/* Live proof-of-life rail — top of the column on every viewport. */}
+          {signups.length > 0 && <RecentSignups profiles={signups} class="mt-6" />}
 
           <div class="flex flex-1 flex-col justify-center py-10 lg:flex-none lg:py-12">
             <p class="eyebrow flex items-center gap-2 font-condensed text-lg font-bold uppercase tracking-wide">
@@ -261,6 +276,10 @@ const jsonLd = [websiteJsonLd(Astro.url.origin, locale), organizationJsonLd(Astr
     initKindLabel();
     document.addEventListener('astro:page-load', initKindLabel);
   </script>
+
+  {/* A tapped signup card opens here (bottom sheet / desktop slide-over) instead
+      of navigating — the corridor only lets the X-Sheet profile fetch through. */}
+  {signups.length > 0 && <ProfileSheet />}
 </Layout>
 
 <style>

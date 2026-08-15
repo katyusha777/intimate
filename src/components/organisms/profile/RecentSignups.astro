@@ -1,0 +1,139 @@
+---
+/**
+ * Live "recent signups" rail — a compact auto-advancing strip of profile cards
+ * that proves the marketplace is alive (used on the pre-launch landing). Every
+ * few seconds a fresh card slides in at the front; the strip stays bounded by
+ * recycling the tail. Cards are real ProfileCard (variant=mini) links, so a tap
+ * opens the ProfileSheet like anywhere else. Pure CSS animation + one tiny
+ * vanilla script — no framework island. Reduced-motion: renders static.
+ */
+import ProfileCard from '@/components/organisms/profile/ProfileCard.astro';
+import * as m from '@/paraglide/messages';
+import type { Profile } from '@/app/models/profile';
+
+interface Props {
+  profiles: Profile[];
+  /** Cards painted on first load (the rest seed the ticker queue, hidden). */
+  initial?: number;
+  class?: string;
+}
+const { profiles, initial = 6, class: klass } = Astro.props;
+const shown = profiles.slice(0, initial);
+const pool = profiles.slice(initial);
+---
+
+{
+  profiles.length > 0 && (
+    <section class:list={['space-y-3', klass]} data-signups aria-label={m.section_recent_signups()}>
+      <p class="eyebrow flex items-center gap-2 font-condensed text-sm font-bold uppercase tracking-wide text-foreground/70">
+        <span class="size-1.5 rounded-full bg-online" aria-hidden="true" />
+        {m.section_recent_signups()}
+      </p>
+
+      <div
+        class="flex overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        data-signups-track
+      >
+        {shown.map((p) => (
+          <div class="signup-item">
+            <div class="signup-card w-28 sm:w-32">
+              <ProfileCard profile={p} variant="mini" />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Queue: rendered but display:none until the ticker lifts them in. */}
+      <div hidden data-signups-pool>
+        {pool.map((p) => (
+          <div class="signup-item">
+            <div class="signup-card w-28 sm:w-32">
+              <ProfileCard profile={p} variant="mini" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+<style>
+  /* The incoming card wipes open from the left, pushing the rest along.
+     min-width:0 defeats the flexbox min-content floor so max-width:0 holds;
+     overflow:hidden clips the fixed-width card while the slot is narrow. */
+  .signup-item {
+    flex: 0 0 auto;
+    min-width: 0;
+  }
+  .signup-card {
+    margin-right: 0.75rem;
+  }
+  .signup-item.is-entering {
+    overflow: hidden;
+    animation: signup-in 0.55s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+  @keyframes signup-in {
+    from {
+      max-width: 0;
+      opacity: 0;
+      transform: translateX(-10px) scale(0.96);
+    }
+    to {
+      max-width: 12rem;
+      opacity: 1;
+      transform: translateX(0) scale(1);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .signup-item.is-entering {
+      animation: none;
+    }
+  }
+</style>
+
+<script>
+  function initSignups() {
+    document.querySelectorAll<HTMLElement>('[data-signups]').forEach((root) => {
+      if (root.dataset.init) return;
+      root.dataset.init = '1';
+      const track = root.querySelector<HTMLElement>('[data-signups-track]');
+      const pool = root.querySelector<HTMLElement>('[data-signups-pool]');
+      if (!track || !pool) return;
+
+      const queue = Array.from(pool.children) as HTMLElement[];
+      pool.remove();
+      if (!queue.length) return; // nothing to cycle — the painted cards suffice
+
+      // Reduced motion / battery: drop the whole queue in, no ticker.
+      if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        queue.forEach((n) => track.appendChild(n));
+        return;
+      }
+
+      const MAX = 8; // visible cap; the tail recycles back into the queue
+      const INTERVAL = 3200;
+
+      const tick = () => {
+        const node = queue.shift();
+        if (!node) return;
+        node.classList.add('is-entering');
+        node.addEventListener('animationend', () => node.classList.remove('is-entering'), { once: true });
+        track.prepend(node);
+        while (track.children.length > MAX) {
+          const last = track.lastElementChild as HTMLElement;
+          track.removeChild(last);
+          last.classList.remove('is-entering');
+          queue.push(last); // recycle so the feed never runs dry
+        }
+      };
+
+      let timer = window.setInterval(tick, INTERVAL);
+      document.addEventListener('visibilitychange', () => {
+        clearInterval(timer);
+        if (!document.hidden) timer = window.setInterval(tick, INTERVAL);
+      });
+    });
+  }
+  initSignups();
+  document.addEventListener('astro:page-load', initSignups);
+</script>

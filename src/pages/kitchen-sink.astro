@@ -23,6 +23,7 @@ import RequestSheet from '@/components/organisms/profile/RequestSheet.astro';
 import RequestCard from '@/components/organisms/messaging/RequestCard.astro';
 import ReceiptSheet from '@/components/organisms/profile/ReceiptSheet.astro';
 import SimilarProfiles from '@/components/organisms/profile/SimilarProfiles.astro';
+import RecentSignups from '@/components/organisms/profile/RecentSignups.astro';
 import OnboardingChecklist from '@/components/organisms/dashboard/OnboardingChecklist.astro';
 import StatusBanner from '@/components/organisms/dashboard/StatusBanner.astro';
 import type { OnboardingProgress } from '@/lib/onboarding';
@@ -449,6 +450,14 @@ const swatches = [
           </div>
         ))}
       </div>
+    </section>
+
+    <section class="space-y-4">
+      <h2 class="text-xl font-semibold">RecentSignups — live proof-of-life rail</h2>
+      <p class="text-sm text-muted-foreground">
+        A new card slides in every few seconds; the strip recycles its tail. Taps open the ProfileSheet.
+      </p>
+      <RecentSignups profiles={profiles} />
     </section>
 
     <section class="space-y-4">
