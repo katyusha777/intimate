@@ -29,9 +29,14 @@ if (!isLocale(locale)) return new Response(null, { status: 404 });
  * Schipol Escort's roster (the strongest photos). A tap opens the ProfileSheet
  * (X-Sheet fetch — the one profile path the pre-launch corridor lets through). */
 const signupOrg = await agencyBySlug('schipol-escort');
-const signups = signupOrg
-  ? (await profilesApi.list({ orgId: signupOrg.id, sort: 'newest', limit: 18 })).items
-  : [];
+const roster = signupOrg ? (await profilesApi.list({ orgId: signupOrg.id, limit: 60 })).items : [];
+/* A random sample, not a newest-first feed — Fisher–Yates, then take 18. Frozen
+ * per edge-cache fill (fine — the client ticker keeps reshuffling the order). */
+for (let i = roster.length - 1; i > 0; i--) {
+  const j = Math.floor(Math.random() * (i + 1));
+  [roster[i], roster[j]] = [roster[j], roster[i]];
+}
+const signups = roster.slice(0, 18);
 
 const result = Astro.getActionResult(actions.prelaunch.join);
 // Advertiser → her real (passwordless) draft profile in /account/setup, built now
