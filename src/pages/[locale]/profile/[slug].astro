@@ -79,7 +79,9 @@ const [replySpeed, convo, candidates, agency] = await Promise.all([
     ? profilesApi.list({ city: p.city, onlineOnly: true, limit: 12 })
     : Promise.resolve({ items: [] as (typeof p)[] }),
   // Her agency (P3): branch phone + "ask for her" block on the deal card.
-  p.orgId ? agencyById(p.orgId) : Promise.resolve(null),
+  // Suppressed in the pre-launch corridor — profiles opened from the waiting
+  // page read as standalone (agency stays wired for the live site, not removed).
+  p.orgId && !Astro.locals.prelaunch ? agencyById(p.orgId) : Promise.resolve(null),
 ]);
 
 let similar: (typeof p)[] = [];
