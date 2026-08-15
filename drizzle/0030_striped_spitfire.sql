@@ -1,0 +1,1 @@
+ALTER TYPE "public"."incall_location" ADD VALUE 'salon';

@@ -479,6 +479,12 @@ const SORTERS: Record<string, (a: Profile, b: Profile) => number> = {
 /** Digits only, minus NL prefixes — "+31 6 12…" and "0612…" compare equal. */
 const phoneDigits = (s: string) => s.replace(/\D/g, '').replace(/^(0031|31|0)/, '');
 
+/** The incall ("private visit") filter means she receives you PRIVATELY —
+ *  salon-only profiles (staffed parlors, e.g. agency masseuses) don't qualify.
+ *  Unspecified locations pass: independents who skipped the field stay listed. */
+const receivesPrivately = (p: Profile) =>
+  p.incallLocations.length === 0 || p.incallLocations.some((l) => l !== 'salon');
+
 /** Naive full-text match (Postgres FTS is a later swap, same semantics seam). */
 function matchesQuery(p: Profile, q: string): boolean {
   // Find-someone-specific: a query with 6+ digits is a phone lookup.
@@ -514,7 +520,7 @@ export function applyProfileListParams(
         (q.genders.length === 0 || q.genders.includes(p.gender)) &&
         (q.services.length === 0 || q.services.some((s) => p.services.includes(s))) &&
         (!categoryServices || p.services.some((s) => categoryServices.has(s))) &&
-        (!q.meetingType || p.meetingTypes.includes(q.meetingType)) &&
+        (!q.meetingType || (p.meetingTypes.includes(q.meetingType) && (q.meetingType !== 'incall' || receivesPrivately(p)))) &&
         (q.priceMin === undefined || p.priceFrom >= q.priceMin) &&
         (q.priceMax === undefined || p.priceFrom <= q.priceMax) &&
         (!q.onlineOnly || p.online) &&

@@ -241,7 +241,10 @@ export const MEETING_TYPES = ['incall', 'outcall', 'virtual'] as const; // profi
 export const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
 export type Day = (typeof DAYS)[number];
 
-export const INCALL_LOCATIONS = ['private_apartment', 'private_house', 'hotel', 'club'] as const;
+/** `salon` = a staffed establishment (massage parlor) — NOT privéontvangst:
+ *  salon-only profiles are excluded from the private-visit listing (the tab
+ *  means "she receives you privately", per NL directory convention). */
+export const INCALL_LOCATIONS = ['private_apartment', 'private_house', 'hotel', 'club', 'salon'] as const;
 
 export const AMENITIES = [
   // incall amenities — common directory filters
@@ -487,6 +490,9 @@ export const PROVINCES = [
  */
 export const LISTING_CATEGORIES = [
   {
+    // The incall filter additionally excludes salon-only profiles (see
+    // INCALL_LOCATIONS) — privéontvangst means HER private place, not a
+    // staffed parlor; salons surface via erotic-massage/city/agency pages.
     slug: 'private-visit',
     kind: 'meeting_type',
     icon: 'house',
