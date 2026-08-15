@@ -84,15 +84,21 @@ const hasRates = (p.rates ?? []).length > 0;
       <ContactButtons profile={p} />
       <!-- Her agency: branch phone + "call and ask for her" + the roster link. -->
       {agency && <AgencyCard {agency} profile={p} />}
-      <!-- Trust-receipt opener (3.1): the whole row opens the dated receipt. -->
-      <button
-        type="button"
-        data-sheet-open={`receipt-${p.id}`}
-        class="flex w-full cursor-pointer items-center justify-center gap-1.5 text-xs text-white/60 underline-offset-4 transition-colors hover:text-white hover:underline"
-      >
-        <VerifiedBadge class="size-3.5" />
-        {m.profile_verified_note()}
-      </button>
+      <!-- Trust-receipt opener (3.1): the whole row opens the dated receipt.
+           Agency-listed profiles skip it — the agency vouches for her, Intimate
+           hasn't run an identity check. -->
+      {
+        !p.orgId && (
+          <button
+            type="button"
+            data-sheet-open={`receipt-${p.id}`}
+            class="flex w-full cursor-pointer items-center justify-center gap-1.5 text-xs text-white/60 underline-offset-4 transition-colors hover:text-white hover:underline"
+          >
+            <VerifiedBadge class="size-3.5" />
+            {m.profile_verified_note()}
+          </button>
+        )
+      }
     </div>
 
     <!-- Identity metadata demoted to the bottom of the card. -->

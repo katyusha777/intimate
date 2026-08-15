@@ -3,7 +3,14 @@
  * All photos as a grid — the browsing alternative to the hero. This grid is
  * ALSO the canonical photo source for the lightbox ([data-lightbox-photos]);
  * tapping any photo opens the lightbox at that index.
+ *
+ * Long imported galleries (agency rosters ship 20+ photos) would wall off the
+ * facts card, so only the first rows render open; the rest sit inside a native
+ * <details> behind a SHOW ALL row — zero JS, and the closed (display:none)
+ * details keeps its lazy imgs from downloading until revealed, while the imgs
+ * stay in the DOM so the lightbox still sees the full set.
  */
+import * as m from '@/paraglide/messages';
 import SafeImage from '@/components/atoms/SafeImage.astro';
 
 interface Props {
@@ -12,25 +19,52 @@ interface Props {
   alt: string;
 }
 const { photos, keyBase, alt } = Astro.props;
+/* Three full rows on screen, then the fold — but never a fold hiding a single
+   photo (a one-cell reveal is sillier than just showing it). */
+const FOLD = 9;
+const rest = photos.length > FOLD + 1 ? photos.slice(FOLD) : [];
+const head = rest.length ? photos.slice(0, FOLD) : photos;
+
+const cell =
+  'group relative aspect-square cursor-pointer overflow-hidden bg-neutral-950';
+const img = 'h-full w-full transition-transform duration-200 group-hover:scale-[1.03]';
 ---
 
 <!-- Instagram-clean: square cells, hairline gaps, edge to edge. -->
-<div class="grid grid-cols-3 gap-0.5" data-lightbox-photos>
+<div data-lightbox-photos>
+  <div class="grid grid-cols-3 gap-0.5">
+    {
+      head.map((photo, i) => (
+        <button type="button" data-lightbox data-lightbox-index={i} class={cell}>
+          <SafeImage
+            imageKey={`${keyBase}-${i}`}
+            src={photo}
+            alt={`${alt} — ${i + 1}`}
+            class={img}
+          />
+        </button>
+      ))
+    }
+  </div>
   {
-    photos.map((photo, i) => (
-      <button
-        type="button"
-        data-lightbox
-        data-lightbox-index={i}
-        class="group relative aspect-square cursor-pointer overflow-hidden bg-neutral-950"
-      >
-        <SafeImage
-          imageKey={`${keyBase}-${i}`}
-          src={photo}
-          alt={`${alt} — ${i + 1}`}
-          class="h-full w-full transition-transform duration-200 group-hover:scale-[1.03]"
-        />
-      </button>
-    ))
+    rest.length > 0 && (
+      <details class="group/fold">
+        <summary class="flex h-12 cursor-pointer select-none list-none items-center justify-center gap-1.5 text-sm font-semibold group-open/fold:hidden [&::-webkit-details-marker]:hidden">
+          {m.profile_show_all()} ({photos.length})
+        </summary>
+        <div class="mt-0.5 grid grid-cols-3 gap-0.5">
+          {rest.map((photo, j) => (
+            <button type="button" data-lightbox data-lightbox-index={FOLD + j} class={cell}>
+              <SafeImage
+                imageKey={`${keyBase}-${FOLD + j}`}
+                src={photo}
+                alt={`${alt} — ${FOLD + j + 1}`}
+                class={img}
+              />
+            </button>
+          ))}
+        </div>
+      </details>
+    )
   }
 </div>
