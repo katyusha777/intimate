@@ -29,9 +29,11 @@ interface Props {
   replySpeed?: ReplySpeed | null;
   /** Her screening question (UX-PLAN 4.x), asked as the last step of a request. */
   screeningQuestion?: string;
+  /** Pre-launch corridor: hide the direct contact channels (teaser only). */
+  prelaunch?: boolean;
   class?: string;
 }
-const { profile: p, agency, replySpeed, screeningQuestion, class: className } = Astro.props;
+const { profile: p, agency, replySpeed, screeningQuestion, prelaunch = false, class: className } = Astro.props;
 
 const visitLabel = p.meetingTypes.map(meetingTypeLabel).join(' · ');
 const factRow = 'flex items-center justify-between gap-4 border-b border-white/10 py-2.5 text-sm';
@@ -80,8 +82,9 @@ const hasRates = (p.rates ?? []).length > 0;
           {m.profile_message()}
         </a>
       </noscript>
-      <!-- Direct channels (open buttons) — only render when she's added any. -->
-      <ContactButtons profile={p} />
+      <!-- Direct channels (open buttons) — only render when she's added any.
+           Suppressed in the pre-launch corridor (teaser reads without contacts). -->
+      {!prelaunch && <ContactButtons profile={p} />}
       <!-- Her agency: branch phone + "call and ask for her" + the roster link. -->
       {agency && <AgencyCard {agency} profile={p} />}
       <!-- Trust-receipt opener (3.1): the whole row opens the dated receipt.

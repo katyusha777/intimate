@@ -137,5 +137,5 @@ const jsonLd = [
       </div>
     )
   }
-  <ProfileDetail profile={p} {agency} {similar} {replySpeed} {screeningQuestion} {isOwner} />
+  <ProfileDetail profile={p} {agency} {similar} {replySpeed} {screeningQuestion} {isOwner} prelaunch={!!Astro.locals.prelaunch} />
 </Layout>

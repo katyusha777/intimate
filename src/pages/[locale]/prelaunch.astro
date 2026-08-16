@@ -14,6 +14,7 @@ import { accountApi } from '@/app/api/account';
 import { profilesApi } from '@/app/api/profiles';
 import { agencyBySlug } from '@/app/api/orgs';
 import { isLocale, localizePath, homeAlternates, homeUrl } from '@/lib/i18n';
+import { articlesForLocale } from '@/lib/articles';
 import { organizationJsonLd, websiteJsonLd } from '@/lib/seo';
 import Button from '@/components/atoms/Button.astro';
 import SafeImage from '@/components/atoms/SafeImage.astro';
@@ -37,6 +38,12 @@ for (let i = roster.length - 1; i > 0; i--) {
   [roster[i], roster[j]] = [roster[j], roster[i]];
 }
 const signups = roster.slice(0, 18);
+
+/* Below-the-fold editorial shelf: our own articles as real, indexable HTML +
+ * internal links (SEO). The corridor lets /blog through; the reader renders BARE
+ * (Astro.locals.prelaunch), so a tap opens a clean article with no way back into
+ * the marketplace. ro/it fall back to en (same as the live blog). */
+const articles = await articlesForLocale(locale);
 
 const result = Astro.getActionResult(actions.prelaunch.join);
 // Advertiser → her real (passwordless) draft profile in /account/setup, built now
@@ -225,6 +232,36 @@ const jsonLd = [websiteJsonLd(Astro.url.origin, locale), organizationJsonLd(Astr
         </div>
       </div>
     </div>
+
+    {/* Below the fold: our editorial shelf. Real indexable text + internal links
+        (SEO) and the only reading path the corridor opens besides the form. */}
+    {
+      articles.length > 0 && (
+        <section class="border-t border-white/10 px-4 py-16 md:px-6">
+          <div class="mx-auto max-w-3xl">
+            <h2 class="eyebrow font-condensed text-lg font-bold uppercase tracking-wide text-white/50">
+              {m.section_articles()}
+            </h2>
+            <ul class="mt-6 divide-y divide-white/10">
+              {articles.map((a) => (
+                <li>
+                  <a href={localizePath(`/blog/${a.data.slug}/`)} class="group block py-5">
+                    <h3 class="font-condensed text-xl font-bold leading-snug transition-colors group-hover:text-brand">
+                      {a.data.title}
+                    </h3>
+                    <p class="mt-1.5 text-sm leading-relaxed text-white/60">{a.data.excerpt}</p>
+                  </a>
+                </li>
+              ))}
+            </ul>
+
+            {/* Closing SEO line — our own site copy (home meta description), not
+                generated prose. Keyword-rich, localized in all five languages. */}
+            <p class="mt-14 max-w-2xl text-sm leading-relaxed text-white/40">{m.home_meta_desc()}</p>
+          </div>
+        </section>
+      )
+    }
   </div>
 
   <script>

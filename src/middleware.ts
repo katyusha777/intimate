@@ -39,6 +39,24 @@ const BYPASS = ['/kitchen-sink', '/_actions', '/admin', '/auth', '/media', '/api
  * Legacy article URLs (old flat, locale-less, Dutch) → new /nl/blog/{slug}/.
  * These ranked in Google; a 301 preserves the equity. Keyed by old slug.
  */
+/**
+ * High-traffic legacy URLs from the old site/structure (advertising pages, the
+ * old flat /escort/{city}/ shelves, topic pages). Permanent 301 → home keeps the
+ * inbound link equity on the apex. Keyed by path with the surrounding slashes
+ * stripped. Outlives the pre-launch corridor (which would only 302 them home).
+ */
+const LEGACY_REDIRECTS = new Set([
+  'advertenties',
+  'adverteren',
+  'lgbt',
+  'spaces',
+  'escort/amsterdam',
+  'escort/rotterdam',
+  'escort/den-haag',
+  'escort/eindhoven',
+  'escort/breda',
+]);
+
 const LEGACY_ARTICLES: Record<string, string> = {
   'ontdek-de-intimate-app-een-nieuwe-dimensie-in-erotisch-plezier-voor-jouw-mobiel':
     'ontdek-de-intimate-app',
@@ -166,6 +184,11 @@ const handle = (context: APIContext, next: MiddlewareNext) =>
       context.cookies.get('PARAGLIDE_LOCALE')?.value,
     );
     return context.redirect(`/${locale}/agencies/`, 302);
+  }
+  // High-traffic legacy URLs → home (301, permanent). Before the corridor so the
+  // status stays 301 (the corridor would 302 them) and survives launch.
+  if (LEGACY_REDIRECTS.has(context.url.pathname.replace(/^\/|\/$/g, ''))) {
+    return context.redirect('/', 301);
   }
   // Pre-launch corridor (lib/prelaunch.ts): the apex serves only the landing
   // (home rewritten onto /prelaunch/) + /agencies; everything else 302s home.

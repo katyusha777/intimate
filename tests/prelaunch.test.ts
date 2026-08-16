@@ -54,8 +54,16 @@ describe('prelaunch corridor', () => {
     expect(kind('/nl/prelaunch/')).toBe('redirect');
   });
 
+  test('the editorial shelf passes (indexable articles the landing links to)', () => {
+    expect(kind('/nl/blog/')).toBe('pass');
+    expect(kind('/nl/blog/welkom-bij-intimate/')).toBe('pass');
+    expect(kind('/en/blog/gratis-wallpapers')).toBe('pass');
+    // Not a slug segment past the reader — dead-ends.
+    expect(kind('/nl/blog/welkom-bij-intimate/extra/')).toBe('redirect');
+  });
+
   test('the rest of the site dead-ends', () => {
-    for (const p of ['/nl/amsterdam/', '/nl/search/', '/nl/blog/welkom-bij-intimate/', '/kitchen-sink', '/nl/stats/', '/nl/messages/']) {
+    for (const p of ['/nl/amsterdam/', '/nl/search/', '/kitchen-sink', '/nl/stats/', '/nl/messages/']) {
       expect(kind(p)).toBe('redirect');
     }
   });
