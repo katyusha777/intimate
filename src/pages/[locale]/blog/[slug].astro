@@ -51,11 +51,14 @@ const jsonLd = [
   {jsonLd}
 >
   <article class="mx-auto max-w-2xl px-4 py-8 md:px-6 md:py-12">
+    {/* In the pre-launch corridor the blog index is a dead end — send the back
+        link home instead (and relabel), so the article reads as a standalone
+        leaf. On the live site it returns to the blog as usual. */}
     <a
-      href={localizePath('/blog/')}
+      href={localizePath(Astro.locals.prelaunch ? '/' : '/blog/')}
       class="eyebrow text-sm font-semibold text-muted-foreground hover:text-brand"
     >
-      ← {m.to_blog()}
+      ← {Astro.locals.prelaunch ? m.to_home() : m.to_blog()}
     </a>
 
     <p class="eyebrow mt-6 text-2xs font-mono font-semibold text-brand">
