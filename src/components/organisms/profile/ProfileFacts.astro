@@ -31,9 +31,13 @@ interface Props {
   screeningQuestion?: string;
   /** Pre-launch corridor: hide the direct contact channels (teaser only). */
   prelaunch?: boolean;
+  /** Viewer has a session. SEND MESSAGE (and the request island) needs one —
+   *  the action rejects anonymous callers — so a logged-out visitor gets no
+   *  dead button. Defaults true (kitchen-sink demo keeps it). */
+  loggedIn?: boolean;
   class?: string;
 }
-const { profile: p, agency, replySpeed, screeningQuestion, prelaunch = false, class: className } = Astro.props;
+const { profile: p, agency, replySpeed, screeningQuestion, prelaunch = false, loggedIn = true, class: className } = Astro.props;
 
 const visitLabel = p.meetingTypes.map(meetingTypeLabel).join(' · ');
 const factRow = 'flex items-center justify-between gap-4 border-b border-white/10 py-2.5 text-sm';
@@ -70,18 +74,24 @@ const hasRates = (p.rates ?? []).length > 0;
     <div class="mt-5 space-y-3">
       <!-- The flagship (UX-PLAN 4.2): SEND MESSAGE opens the three-tap request
            sheet. A plain zero-JS fallback link (message her cold) rides under
-           it for the no-JS/island-fail case. -->
-      <Button type="button" class="w-full" data-sheet-open={`request-${p.id}`}>
-        {m.profile_message()}
-      </Button>
-      <noscript>
-        <a
-          href={localizePath(`/messages/?to=${p.slug}`)}
-          class="block text-center text-xs text-white/60 underline underline-offset-4"
-        >
-          {m.profile_message()}
-        </a>
-      </noscript>
+           it for the no-JS/island-fail case. Logged-out only: the request
+           action rejects anonymous callers, so hide the dead button (and skip
+           its island below) rather than lead into a guaranteed failure. -->
+      {loggedIn && (
+        <>
+          <Button type="button" class="w-full" data-sheet-open={`request-${p.id}`}>
+            {m.profile_message()}
+          </Button>
+          <noscript>
+            <a
+              href={localizePath(`/messages/?to=${p.slug}`)}
+              class="block text-center text-xs text-white/60 underline underline-offset-4"
+            >
+              {m.profile_message()}
+            </a>
+          </noscript>
+        </>
+      )}
       <!-- Direct channels (open buttons) — only render when she's added any.
            Suppressed in the pre-launch corridor (teaser reads without contacts). -->
       {!prelaunch && <ContactButtons profile={p} />}
@@ -125,6 +135,8 @@ const hasRates = (p.rates ?? []).length > 0;
     </div>
   </div>
 
-  <!-- The request sheet the SEND MESSAGE button opens (UX-PLAN 4.2). -->
-  <RequestSheet profile={p} {screeningQuestion} />
+  <!-- The request sheet the SEND MESSAGE button opens (UX-PLAN 4.2). Skipped
+       for logged-out visitors — no opener, and it keeps the island's JS off the
+       anonymous (cached, zero-JS) public profile page. -->
+  {loggedIn && <RequestSheet profile={p} {screeningQuestion} />}
 </aside>
