@@ -4,6 +4,7 @@ import * as m from '@/paraglide/messages';
 import { isLocale, localizePath, homeAlternates, homeUrl } from '@/lib/i18n';
 import { organizationJsonLd, websiteJsonLd } from '@/lib/seo';
 import ProfileCard from '@/components/organisms/profile/ProfileCard.astro';
+import RecentSignups from '@/components/organisms/profile/RecentSignups.astro';
 import Section from '@/components/molecules/Section.astro';
 import SafeImage from '@/components/atoms/SafeImage.astro';
 import Button from '@/components/atoms/Button.astro';
@@ -37,16 +38,27 @@ const jsonLd = [websiteJsonLd(Astro.url.origin, locale), organizationJsonLd(Astr
  * own canonical URL (/{locale}/{city}/); the saved preference surfaces only as
  * the labelled "back to your city" chip below, so coming Home always feels
  * like leaving the city. */
-const [{ items: online, total: onlineReal }, { items: fresh }, { items: featured }, articles] =
+const [{ items: online, total: onlineReal }, { items: newest }, { items: featured }, articles] =
   await Promise.all([
     // Default shelf (1.4): ONLINE NOW — online-first, the every-visit question.
     profilesApi.list({ onlineOnly: true, sort: 'recently_online', limit: 18 }),
-    // NEW THIS WEEK (1.4) — its own shelf, the cold-start boost. Mock: newest
-    // arrivals (the real backend windows to a true 7 days).
-    profilesApi.list({ sort: 'newest', limit: 12 }),
+    // Newest arrivals feed BOTH the recent-signups ticker rail (18, shuffled)
+    // and the NEW THIS WEEK grid (first 10 — two full rows on the lg 5-col
+    // grid, no orphan line).
+    profilesApi.list({ sort: 'newest', limit: 18 }),
     profilesApi.list({ featuredOnly: true, limit: 8 }),
     articlesForLocale(locale),
   ]);
+
+// NEW THIS WEEK — its own shelf (1.4), the cold-start boost.
+const fresh = newest.slice(0, 10);
+// Recent-signups rail (migrated from the pre-launch landing): same newest set,
+// Fisher–Yates-shuffled so the ticker feels alive. Frozen per edge-cache fill.
+const signups = [...newest];
+for (let i = signups.length - 1; i > 0; i--) {
+  const j = Math.floor(Math.random() * (i + 1));
+  [signups[i], signups[j]] = [signups[j], signups[i]];
+}
 
 // Live national count = phantom base (~72+, drifts) + real online profiles.
 const onlineCount = phantomOnlineBase() + onlineReal;
@@ -162,6 +174,20 @@ const moreArticles = articles.filter((a) => a !== featuredArticle).slice(0, 3);
           {m.home_hero_title()}<span class="text-brand">.</span>
         </h1>
         <p class="mt-4 max-w-md leading-relaxed text-white/70">{m.home_hero_sub()}</p>
+        <ul class="mt-6 max-w-md space-y-2.5">
+          {
+            [
+              [m.home_hero_point_1_lead(), m.home_hero_point_1_body()],
+              [m.home_hero_point_2_lead(), m.home_hero_point_2_body()],
+              [m.home_hero_point_3_lead(), m.home_hero_point_3_body()],
+            ].map(([lead, body]) => (
+              <li class="text-sm leading-relaxed text-white/70">
+                <span class="font-condensed font-bold uppercase tracking-wide text-brand">{lead} </span>
+                {body}
+              </li>
+            ))
+          }
+        </ul>
         {
           loggedOut && (
             <div class="mt-7">
@@ -190,21 +216,24 @@ const moreArticles = articles.filter((a) => a !== featuredArticle).slice(0, 3);
   </section>
 
   <div class="mx-auto max-w-7xl px-4 md:px-6">
-    <!-- Featured: slideshow of cards -->
-    <Section title={m.section_featured()}>
-      <div
-        class="-mb-6 flex snap-x snap-mandatory gap-4 overflow-x-auto pb-10 pt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-      >
-        {
-          rail.map((p, i) => (
-            <div class="w-52 flex-none snap-start sm:w-60 lg:w-[calc((100%-4rem)/5)]">
-              {/* First rail card = the LCP image on mobile — never lazy. */}
-              <ProfileCard profile={p} loading={i < 2 ? 'eager' : 'lazy'} fetchpriority={i === 0 ? 'high' : undefined} />
-            </div>
-          ))
-        }
-      </div>
-    </Section>
+    <!-- Recent signups — the live ticker rail migrated from the landing. -->
+    <RecentSignups profiles={signups} class="pt-6" />
+
+    <!-- Featured: slideshow of cards. Empty = no shelf, no orphan heading. -->
+    {
+      rail.length > 0 && (
+        <Section title={m.section_featured()}>
+          <div class="-mb-6 flex snap-x snap-mandatory gap-4 overflow-x-auto pb-10 pt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {rail.map((p, i) => (
+              <div class="w-52 flex-none snap-start sm:w-60 lg:w-[calc((100%-4rem)/5)]">
+                {/* First rail card = the LCP image on mobile — never lazy. */}
+                <ProfileCard profile={p} loading={i < 2 ? 'eager' : 'lazy'} fetchpriority={i === 0 ? 'high' : undefined} />
+              </div>
+            ))}
+          </div>
+        </Section>
+      )
+    }
 
     <!-- ONLINE NOW — the default shelf (1.4). One claim it can prove; when
          nobody's online the claim is empty, so drop the whole shelf. -->

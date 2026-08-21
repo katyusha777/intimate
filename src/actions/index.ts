@@ -18,7 +18,6 @@ import { dataUrlToJpegBytes, stripJpegDataUrl } from "@/lib/jpeg-strip";
 import { importFromUrl } from "@/lib/import";
 import { mintIceServers } from "@/lib/turn";
 import { joinFromConsent } from "@/app/api/orgs";
-import { addPrelaunchLead } from "@/app/api/prelaunch";
 import { pushoverAdmins } from "@/lib/pushover";
 import { CONVERSATION_MODES, REPORT_REASONS, REPORT_TARGETS } from "@/lib/taxonomy";
 // The one sanctioned cross-fence import: the action registry wires in admin.
@@ -40,14 +39,6 @@ const turnSecret = (): string | undefined =>
 /** Best-effort client IP for rate-limit keys (Cloudflare always sets this). */
 const clientIp = (context: { request: Request }): string =>
   context.request.headers.get("cf-connecting-ip") ?? "unknown";
-
-/** A strong random password for a pre-signup account she NEVER types — the
- *  passwordless join creates a real (draft) advertiser account so she can build
- *  her profile now, and we email her a set-password link at launch. Guarantees
- *  upper/lower/digit/symbol + ~244 bits, under bcrypt's 72-byte ceiling. */
-function randomPassword(): string {
-  return `Aa1!${crypto.randomUUID()}${crypto.randomUUID()}`.slice(0, 64);
-}
 
 /** Shared spam wall for authenticated actions — throws TOO_MANY_REQUESTS.
  *  `failClosedInProd` denies (instead of the dev-friendly open) when the KV
@@ -823,63 +814,6 @@ export const server = {
         await requireUnderLimit("report-file", session.accountId, 20);
         await reportsApi.file(session, input);
         return { ok: true };
-      },
-    }),
-  },
-
-  // Pre-launch campaign (PRE-LAUNCH-GRANT-CARDONE.md) — anonymous plain-HTML
-  // form post (accept: 'form', zero JS). Keep the SAME lead form (name + email +
-  // a contact). An ADVERTISER becomes a REAL but PASSWORDLESS draft profile: we
-  // register her with a random password she never sees, so she builds her
-  // profile in the actual onboarding (basics → photos → ID → import/details) and
-  // it goes live at launch. The onboarding renders BARE on the apex (no site
-  // chrome). At launch we email her a set-password link. A CLIENT stays a lead.
-  prelaunch: {
-    join: defineAction({
-      accept: "form",
-      input: z
-        .object({
-          kind: z.enum(["agency", "advertiser", "client"]).optional(),
-          name: z.string().trim().min(1).max(80),
-          email: emailField,
-          phone: z.string().trim().max(30).optional(),
-          whatsapp: z.string().trim().max(30).optional(),
-          telegram: z.string().trim().max(40).optional(),
-          locale: z.enum(LOCALES),
-        })
-        // An independent professional is only reachable if she leaves a handle —
-        // at least one of the three. Clients (just browsing) need none.
-        .refine((i) => i.kind !== "advertiser" || i.phone || i.whatsapp || i.telegram, {
-          path: ["phone"],
-        }),
-      handler: async (input, context) => {
-        await requireUnderLimit("prelaunch-ip", clientIp(context), 10);
-        // Keep the lead either way — it's the admin Pre-signups row + her
-        // contacts (the account carries no phone/wa/tg), matched to her profile
-        // by email so admin can open the profile from Pre-signups.
-        await addPrelaunchLead(input);
-        const contacts = [input.phone, input.whatsapp && `wa ${input.whatsapp}`, input.telegram && `tg ${input.telegram}`]
-          .filter(Boolean)
-          .join(" · ");
-        pushoverAdmins(
-          "prelaunch_lead",
-          `Pre-launch signup: ${input.name}${input.kind ? ` (${input.kind})` : ""}`,
-          `${input.email}\n${contacts || "-"} · ${input.locale}`,
-        );
-        // Advertiser → real passwordless account (Confirm-email OFF ⇒ a session
-        // exists on this response; the page-level Astro.redirect carries its
-        // cookie into the bare onboarding). Already registered → send her to
-        // sign in rather than error.
-        if (input.kind === "advertiser") {
-          const { emailExists } = await sessionApi.register(context, {
-            email: input.email,
-            password: randomPassword(),
-            role: "advertiser",
-            notify: false, // prelaunch already sent a named admin ping above
-          });
-          return { href: `/${input.locale}/account/${emailExists ? "" : "setup/"}`, ok: false };
-        }
-        return { href: null, ok: true };
       },
     }),
   },

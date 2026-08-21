@@ -29,15 +29,14 @@ interface Props {
   replySpeed?: ReplySpeed | null;
   /** Her screening question (UX-PLAN 4.x), asked as the last step of a request. */
   screeningQuestion?: string;
-  /** Pre-launch corridor: hide the direct contact channels (teaser only). */
-  prelaunch?: boolean;
-  /** Viewer has a session. SEND MESSAGE (and the request island) needs one —
-   *  the action rejects anonymous callers — so a logged-out visitor gets no
-   *  dead button. Defaults true (kitchen-sink demo keeps it). */
+  /** Viewer has a session. Gates where SEND MESSAGE leads: the request sheet
+   *  (island) needs one — the action rejects anonymous callers — so logged-out
+   *  the button opens the register modal instead. Defaults true (kitchen-sink
+   *  demo keeps the sheet). */
   loggedIn?: boolean;
   class?: string;
 }
-const { profile: p, agency, replySpeed, screeningQuestion, prelaunch = false, loggedIn = true, class: className } = Astro.props;
+const { profile: p, agency, replySpeed, screeningQuestion, loggedIn = true, class: className } = Astro.props;
 
 const visitLabel = p.meetingTypes.map(meetingTypeLabel).join(' · ');
 const factRow = 'flex items-center justify-between gap-4 border-b border-white/10 py-2.5 text-sm';
@@ -74,10 +73,11 @@ const hasRates = (p.rates ?? []).length > 0;
     <div class="mt-5 space-y-3">
       <!-- The flagship (UX-PLAN 4.2): SEND MESSAGE opens the three-tap request
            sheet. A plain zero-JS fallback link (message her cold) rides under
-           it for the no-JS/island-fail case. Logged-out only: the request
-           action rejects anonymous callers, so hide the dead button (and skip
-           its island below) rather than lead into a guaranteed failure. -->
-      {loggedIn && (
+           it for the no-JS/island-fail case. Logged-out, the request action
+           would reject the caller — so the same button opens the register
+           modal instead (client preselected), keeping the island's JS off the
+           anonymous, cached page. -->
+      {loggedIn ? (
         <>
           <Button type="button" class="w-full" data-sheet-open={`request-${p.id}`}>
             {m.profile_message()}
@@ -91,10 +91,13 @@ const hasRates = (p.rates ?? []).length > 0;
             </a>
           </noscript>
         </>
+      ) : (
+        <Button type="button" class="w-full" data-modal-open="auth" data-auth-tab="register" data-auth-role="client">
+          {m.profile_message()}
+        </Button>
       )}
-      <!-- Direct channels (open buttons) — only render when she's added any.
-           Suppressed in the pre-launch corridor (teaser reads without contacts). -->
-      {!prelaunch && <ContactButtons profile={p} />}
+      <!-- Direct channels (open buttons) — only render when she's added any. -->
+      <ContactButtons profile={p} />
       <!-- Her agency: branch phone + "call and ask for her" + the roster link. -->
       {agency && <AgencyCard {agency} profile={p} />}
       <!-- Trust-receipt opener (3.1): the whole row opens the dated receipt.

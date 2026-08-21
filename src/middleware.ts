@@ -4,7 +4,6 @@ import { env } from 'cloudflare:workers';
 import { paraglideMiddleware } from '@/paraglide/server';
 import { withRequestDb } from '@/db/client';
 import { negotiateLocale } from '@/lib/i18n';
-import { corridor, PRELAUNCH_HOST } from '@/lib/prelaunch';
 import { HOME_TTL_S, isAnonymousRequest, isCacheableHome, isCacheableProfile, servedFromCache, storeInCache, type CacheKv } from '@/lib/page-cache';
 import { captureError } from '@/lib/sentry';
 
@@ -120,12 +119,10 @@ export const onRequest = defineMiddleware(async (context, next) => {
   // apex DNS records vanishing) — admin stays at intimate.nl/admin; the
   // Cloudflare Access wall goes on the PATH intimate.nl/admin instead. If the
   // admin host still resolves, send it home.
-  if (context.url.hostname === 'admin.intimate.nl') {
-    return context.redirect(`https://intimate.nl${context.url.pathname}${context.url.search}`, 301);
-  }
-  // Admin lives ONLY on the apex: the Cloudflare Access wall is scoped to the
-  // PATH intimate.nl/admin — beta answering /admin would route around it.
-  if (context.url.hostname === 'beta.intimate.nl' && context.url.pathname.startsWith('/admin')) {
+  // beta.intimate.nl (the pre-launch mirror, retired at launch 2026-08-21):
+  // same 301 — the apex IS the site now, and beta serving a duplicate would
+  // both leak around the /admin Access wall and split link equity.
+  if (['admin.intimate.nl', 'beta.intimate.nl'].includes(context.url.hostname)) {
     return context.redirect(`https://intimate.nl${context.url.pathname}${context.url.search}`, 301);
   }
   let res: Response;
@@ -139,9 +136,6 @@ export const onRequest = defineMiddleware(async (context, next) => {
   }
   try {
     for (const [k, v] of Object.entries(SECURITY_HEADERS)) res.headers.set(k, v);
-    // Pre-launch window: beta is the full site but must never enter the index
-    // (duplicate of the apex; the apex URLs return at launch).
-    if (context.url.hostname === 'beta.intimate.nl') res.headers.set('X-Robots-Tag', 'noindex');
   } catch {
     /* immutable headers (passthrough response) — serve as-is */
   }
@@ -163,16 +157,10 @@ const handle = (context: APIContext, next: MiddlewareNext) =>
       context.request.headers.get('accept-language'),
       context.cookies.get('PARAGLIDE_LOCALE')?.value,
     );
-    // On the pre-launch apex the home IS the landing (the corridor rewrites
-    // /{locale}/ → /{locale}/prelaunch/ and renders BARE); mirror that here since
-    // `/` skips the corridor block below. Post-launch (normal host) it's the real home.
-    const onPrelaunch = context.url.hostname === PRELAUNCH_HOST;
-    if (onPrelaunch) context.locals.prelaunch = true;
-    const target = `/${locale}/${onPrelaunch ? 'prelaunch/' : ''}${context.url.search}`;
     // ponytail: `/` renders fresh, not edge-cached (isCacheableHome only matches
     // /{locale}/). Fine for one URL; wire it to the per-locale home cache if root
     // traffic ever justifies it.
-    return paraglideMiddleware(context.request, () => next(target), {
+    return paraglideMiddleware(context.request, () => next(`/${locale}/${context.url.search}`), {
       effectiveRequestUrl: new URL(`/${locale}/`, context.url),
     });
   }
@@ -185,25 +173,9 @@ const handle = (context: APIContext, next: MiddlewareNext) =>
     );
     return context.redirect(`/${locale}/agencies/`, 302);
   }
-  // High-traffic legacy URLs → home (301, permanent). Before the corridor so the
-  // status stays 301 (the corridor would 302 them) and survives launch.
+  // High-traffic legacy URLs → home (301, permanent).
   if (LEGACY_REDIRECTS.has(context.url.pathname.replace(/^\/|\/$/g, ''))) {
     return context.redirect('/', 301);
-  }
-  // Pre-launch corridor (lib/prelaunch.ts): the apex serves only the landing
-  // (home rewritten onto /prelaunch/) + /agencies; everything else 302s home.
-  // Delete this block at launch (INFRASTRUCTURE.md §2 flip-back checklist).
-  let rewriteTo: string | undefined;
-  if (context.url.hostname === PRELAUNCH_HOST) {
-    // In the corridor: reused pages (account/onboarding) render BARE (Layout
-    // reads this) — the marketplace chrome would only 302 home here.
-    context.locals.prelaunch = true;
-    // Authenticated views (admin god-view, owner preview) reach the real profile
-    // page; anonymous visitors stay bounced to the landing.
-    const authed = !isAnonymousRequest(context.request.headers.get('cookie'));
-    const c = corridor(context.url, context.request.headers.get('x-sheet') === '1', authed);
-    if (c.kind === 'redirect') return context.redirect('/', 302);
-    if (c.kind === 'rewrite') rewriteTo = c.to;
   }
   const legacy = LEGACY_ARTICLES[context.url.pathname.replace(/^\/|\/$/g, '')];
   if (legacy) return context.redirect(`/nl/blog/${legacy}/`, 301);
@@ -242,11 +214,9 @@ const handle = (context: APIContext, next: MiddlewareNext) =>
       cacheableHome && !!warmSecret && context.request.headers.get('x-warm') === warmSecret;
     const hit = forceStore ? null : await servedFromCache(kv, dep, context.url);
     if (hit) return hit;
-    // next(path) = Astro rewrite: context.url stays the ORIGINAL request URL,
-    // so the cache key + canonical stay /{locale}/ (host-scoped per A4).
-    const res = await paraglideMiddleware(context.request, () => (rewriteTo ? next(rewriteTo) : next()));
+    const res = await paraglideMiddleware(context.request, () => next());
     return storeInCache(kv, dep, context.url, res, cacheableHome ? HOME_TTL_S : undefined);
   }
 
-  return paraglideMiddleware(context.request, () => (rewriteTo ? next(rewriteTo) : next()));
+  return paraglideMiddleware(context.request, () => next());
   });

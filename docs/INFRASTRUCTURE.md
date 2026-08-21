@@ -73,37 +73,21 @@ just not forced. Same secret is the Bearer on `/api/cache/urls`.
 `workers_dev:false` + `preview_urls:false` (`wrangler.jsonc`, set 2026-08-10):
 without them, `intimate.<account>.workers.dev/admin` would reach the app around
 the Cloudflare Access rule that is scoped to the `intimate.nl/admin` path
-(ADMIN.md §1). Keep both false. During the pre-launch window middleware also
-301s `beta.intimate.nl/admin/*` → the apex for the same reason.
+(ADMIN.md §1). Keep both false. Middleware also 301s every
+`beta.intimate.nl` and `admin.intimate.nl` request → the apex for the same
+reason.
 
-**Pre-launch window (2026-08-11, PRE-LAUNCH-GRANT-CARDONE.md).** ONE worker,
-two custom domains: `beta.intimate.nl` serves the full site (noindexed via an
-`X-Robots-Tag` middleware header); the apex serves the pre-launch landing
-(`/{locale}/` rewritten onto `pages/[locale]/prelaunch.astro`), the
-`/{locale}/agencies/` closer page, and — for a professional who just joined —
-her own `/{locale}/account/*` builder (the advertiser lead form registers a real
-but PASSWORDLESS draft account and drops her into the actual onboarding + editor,
-so her profile goes live at launch; she gets a set-password link then). Those
-account pages render BARE on the apex (middleware sets `locals.prelaunch`, Layout
-drops the marketplace chrome). Every other apex path 302s to `/`
-(`src/lib/prelaunch.ts` corridor, unit-tested in `tests/prelaunch.test.ts`).
-The page-cache key carries `url.host` so the two homes can't poison each
-other. `PUBLIC_SITE_ORIGIN` and the warm worker `ORIGIN` point at beta.
-
-**Launch-day flip-back checklist (do in ONE pass):**
-1. Delete `src/lib/prelaunch.ts` + its middleware wiring (incl. the
-   `locals.prelaunch` set) + `tests/prelaunch.test.ts` + `pages/[locale]/prelaunch.astro`
-   (the corridor commit, reverted). Also drop the `chromeBare` line in
-   `layouts/Layout.astro` (revert to `bare`) + the `App.Locals.prelaunch` type in
-   `env.d.ts`, and the passwordless-advertiser branch in `actions/prelaunch.join`
-   (+ `profilesForLeadEmails` in `app/api/prelaunch.ts` and its admin link).
-2. `PUBLIC_SITE_ORIGIN` → `https://intimate.nl` (wrangler.jsonc) · warm worker
-   `ORIGIN` → `https://intimate.nl` + redeploy it.
-3. OneSignal dashboard Site URL → intimate.nl · Supabase redirect URLs: keep
-   both hosts until beta is retired, then drop beta.
-4. Retire the founding frame on /agencies per the doc §14.4; decide whether
-   beta.intimate.nl keeps serving (it can simply stay as a mirror or the route
-   gets removed from wrangler.jsonc).
+**Launched 2026-08-21 (pre-launch window over).** The apex serves the full
+site; the pre-launch corridor (`lib/prelaunch.ts`, the landing page, its
+tests, `locals.prelaunch`) is deleted. `beta.intimate.nl` stays a custom
+domain in wrangler.jsonc only so old links resolve — middleware 301s it
+wholesale to the apex. `PUBLIC_SITE_ORIGIN` and the warm worker `ORIGIN`
+point at `https://intimate.nl`. The pre-signup leads (`prelaunch_leads` table,
+admin Pre-signups queue, onboarding contact prefill) remain — they're real
+contacts. **Owner steps still open:** OneSignal dashboard Site URL →
+intimate.nl · email set-password links to the passwordless pre-signup
+advertisers (their accounts hold random passwords they never saw) · drop the
+beta host from the Supabase redirect-URL allow-list once beta traffic dies.
 
 **Gotcha — scheduled crawl-ticks can silently see an empty DB for hours**
 (issue #8, observed 2026-08-14): the cron fires and returns 200, but every

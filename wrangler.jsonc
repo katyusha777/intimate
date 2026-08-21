@@ -17,9 +17,8 @@
     // route-over-dummy-record setup, same behavior.
     { "pattern": "intimate.nl", "custom_domain": true },
     { "pattern": "www.intimate.nl", "custom_domain": true },
-    // Pre-launch window (PRE-LAUNCH-GRANT-CARDONE.md): the full site lives on
-    // beta while the apex serves only the pre-launch corridor (lib/prelaunch.ts).
-    // Remove at launch together with the corridor + PUBLIC_SITE_ORIGIN flip.
+    // Retired pre-launch mirror (launched 2026-08-21): kept only so old beta
+    // links resolve — middleware 301s every beta request to the apex.
     { "pattern": "beta.intimate.nl", "custom_domain": true }
   ],
   "compatibility_date": "2026-07-01",
@@ -69,9 +68,7 @@
     // Worker secret (ONESIGNAL_API_KEY), never here.
     "PUBLIC_ONESIGNAL_APP_ID": "33308041-5873-497c-8a28-d20f2d29181d",
     // Absolute origin for outbound links (push deep links, transactional mail).
-    // Pre-launch window: beta — signed-in users live there while the apex is the
-    // corridor. Flip back to https://intimate.nl at launch (INFRASTRUCTURE §2).
-    "PUBLIC_SITE_ORIGIN": "https://beta.intimate.nl",
+    "PUBLIC_SITE_ORIGIN": "https://intimate.nl",
     // Outbound mail (lib/email.ts): SMTP2GO relay over workerd sockets.
     // SMTP_USER / SMTP_PASS are Worker secrets, never here.
     "SMTP_HOST": "mail-eu.smtp2go.com",

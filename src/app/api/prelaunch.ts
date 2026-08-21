@@ -1,7 +1,10 @@
 /**
- * Pre-launch leads seam (docs/API.md): professionals who pre-register on the
- * intimate.nl landing. Server path only — `prelaunch_leads` has zero browser
- * grants. The table (and this module) retires at launch.
+ * Pre-launch leads seam (docs/API.md): professionals who pre-registered on the
+ * pre-launch landing (retired at launch, 2026-08-21 — no new leads arrive).
+ * The table + admin surfaces stay: the leads are real contacts (launch
+ * outreach, set-password emails for the passwordless pre-signup accounts) and
+ * the onboarding prefill still reads them. Server path only — `prelaunch_leads`
+ * has zero browser grants.
  */
 import { env } from 'cloudflare:workers';
 import { desc, eq, inArray } from 'drizzle-orm';
@@ -11,31 +14,6 @@ import { accounts, prelaunchLeads, profiles } from '@/db/schema';
 const db = () => requestDb((env as unknown as { HYPERDRIVE: Hyperdrive }).HYPERDRIVE);
 
 export type PrelaunchLead = typeof prelaunchLeads.$inferSelect;
-
-/** Duplicate email = idempotent success — no enumeration surface, nothing a
- *  phone-holding closer has to explain. */
-export async function addPrelaunchLead(i: {
-  name: string;
-  email: string;
-  phone?: string;
-  whatsapp?: string;
-  telegram?: string;
-  kind?: string;
-  locale: string;
-}): Promise<void> {
-  await db()
-    .insert(prelaunchLeads)
-    .values({
-      name: i.name,
-      email: i.email,
-      phone: i.phone || null,
-      whatsapp: i.whatsapp || null,
-      telegram: i.telegram || null,
-      kind: i.kind || null,
-      locale: i.locale,
-    })
-    .onConflictDoNothing();
-}
 
 /** Admin Pre-signups: which landing leads have already become a (draft) profile.
  *  An advertiser's passwordless join creates an account (same email) + her

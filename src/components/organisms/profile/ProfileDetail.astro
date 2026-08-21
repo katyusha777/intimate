@@ -38,15 +38,11 @@ interface Props {
   screeningQuestion?: string;
   /** The signed-in owner viewing her own profile — hides the Save/favourite. */
   isOwner?: boolean;
-  /** Pre-launch corridor: profiles opened from the waiting page read as a teaser
-   *  — direct contact channels and working hours are suppressed (agency too, at
-   *  the page). Everything stays wired for the live site. */
-  prelaunch?: boolean;
-  /** Viewer has a session — gates the SEND MESSAGE button (dead when logged
-   *  out). Defaults true (demo/standalone usage keeps it). */
+  /** Viewer has a session — logged-out, SEND MESSAGE opens the register modal
+   *  instead of the request sheet. Defaults true (demo/standalone usage). */
   loggedIn?: boolean;
 }
-const { profile: p, agency = null, similar = [], replySpeed, screeningQuestion, isOwner = false, prelaunch = false, loggedIn = true } = Astro.props;
+const { profile: p, agency = null, similar = [], replySpeed, screeningQuestion, isOwner = false, loggedIn = true } = Astro.props;
 
 const description = localizedDescription(p);
 const serviceGroups = SERVICE_CATEGORIES.map((cat) => ({
@@ -134,7 +130,7 @@ function hoursLabel(h: (typeof hours)[keyof typeof hours]): string {
 
   <div class="mx-auto max-w-7xl px-4 py-8 md:px-6 md:py-12" id="profile-details">
     <div class="grid items-start gap-8 lg:grid-cols-[1fr_22rem] lg:gap-12">
-      <ProfileFacts profile={p} {agency} {replySpeed} {screeningQuestion} {prelaunch} {loggedIn} class="order-first w-full lg:order-last" />
+      <ProfileFacts profile={p} {agency} {replySpeed} {screeningQuestion} {loggedIn} class="order-first w-full lg:order-last" />
 
       <div class="min-w-0 space-y-10">
         <!-- Essentials chips (kinky-style): key specifics scannable up top. -->
@@ -172,7 +168,7 @@ function hoursLabel(h: (typeof hours)[keyof typeof hours]): string {
         </section>
 
         {
-          (hasHours || hasDates) && !prelaunch && (
+          (hasHours || hasDates) && (
             <section>
               <div class="flex items-baseline justify-between gap-4">
                 <h2 class="display text-2xl md:text-3xl">{m.hours_title()}</h2>

@@ -60,11 +60,6 @@ interface Props {
 const { title = m.app_name(), description, canonical, alternates, jsonLd = [], noindex, bare, preloadImage, image, ogType = 'website' } = Astro.props;
 const locale = getLocale();
 
-// Pre-launch corridor (lib/prelaunch.ts): on the apex, reused pages render BARE
-// — no Header/Footer/BottomTabBar, whose links would only 302 home. The flag is
-// set by middleware and dies with the corridor at launch.
-const chromeBare = Astro.locals.prelaunch ? true : bare;
-
 // OG/Twitter card (#15). Absolute URLs required by crawlers; canonical is the
 // share URL, image falls back to the maskable app icon. Locale maps to the
 // OG territory code; the other two locales become og:locale:alternate.
@@ -89,7 +84,7 @@ const session = await sessionApi.current(Astro);
 const idVerified = session?.role === 'advertiser' ? session.idVerification === 'approved' : true;
 // Dock unread badge — one SQL COUNT (unreadCount), not listThreads' full
 // per-thread message load on every page render.
-const unread = session && chromeBare !== true ? await messagingApi.unreadCount(session) : 0;
+const unread = session && bare !== true ? await messagingApi.unreadCount(session) : 0;
 ---
 
 <!doctype html>
@@ -271,10 +266,10 @@ const unread = session && chromeBare !== true ? await messagingApi.unreadCount(s
     <!-- .page-zoom = the iOS push-back target when a sheet opens; fixed
          chrome (dock, dialogs) lives outside it. -->
     <div class="page-zoom">
-      {!chromeBare && <Header {session} {unread} />}
+      {!bare && <Header {session} {unread} />}
       {/* bare='mobile' (messages): full-screen app feel on mobile, but the
           site header stays on desktop so navigation is never trapped. */}
-      {chromeBare === 'mobile' && (
+      {bare === 'mobile' && (
         <div class="hidden md:block">
           <Header {session} {unread} />
         </div>
@@ -284,9 +279,9 @@ const unread = session && chromeBare !== true ? await messagingApi.unreadCount(s
         <slot />
       </main>
 
-      {!chromeBare && <Footer {session} />}
+      {!bare && <Footer {session} />}
     </div>
-    {!chromeBare && <BottomTabBar {session} {idVerified} {unread} />}
+    {!bare && <BottomTabBar {session} {idVerified} {unread} />}
     <AuthModal />
     <PageSheet />
     <ProfileSheet />

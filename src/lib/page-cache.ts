@@ -71,9 +71,8 @@ export function isAnonymousRequest(cookieHeader: string | null): boolean {
 // TTL happens to lapse. Cheap: a 304 when nothing changed.
 const REVALIDATE = 'no-cache';
 
-// Host is part of the key: one worker serves intimate.nl AND beta.intimate.nl
-// (pre-launch window) — a pathname-only key would serve one host's HTML on the
-// other (the prelaunch landing and the full home share `/{locale}/`).
+// Host stays part of the key (cheap, and safe if a second serving host ever
+// returns — beta taught us two hosts sharing `/{locale}/` poison each other).
 // The Amsterdam calendar date is part of the key too: cached pages bake in
 // date-dependent UI (the hours table's "today" bold, the DateStrip), so a 24h
 // TTL must still roll over at the market's midnight, not the store time +24h.

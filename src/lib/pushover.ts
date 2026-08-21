@@ -28,8 +28,7 @@ export type AdminEvent =
   | 'client_registered'
   | 'client_message'
   | 'profile_changed'
-  | 'agency_consent'
-  | 'prelaunch_lead';
+  | 'agency_consent';
 
 /** UI list for /admin/settings — order = display order. */
 export const ADMIN_EVENTS: { key: AdminEvent; label: string }[] = [
@@ -39,7 +38,6 @@ export const ADMIN_EVENTS: { key: AdminEvent; label: string }[] = [
   { key: 'client_message', label: 'Client messages a professional' },
   { key: 'profile_changed', label: 'Professional edits her profile' },
   { key: 'agency_consent', label: 'Agency submits the founding consent form' },
-  { key: 'prelaunch_lead', label: 'Professional pre-registers (pre-launch)' },
 ];
 
 export const NOTIFY_PREFS_KEY = 'notify:prefs';
@@ -50,7 +48,6 @@ const DEFAULT_ON: Record<AdminEvent, boolean> = {
   client_message: true,
   profile_changed: true,
   agency_consent: true,
-  prelaunch_lead: true,
 };
 
 /** Merge stored prefs over the all-on defaults. */
