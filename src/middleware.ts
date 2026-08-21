@@ -157,6 +157,20 @@ const handle = (context: APIContext, next: MiddlewareNext) =>
       context.request.headers.get('accept-language'),
       context.cookies.get('PARAGLIDE_LOCALE')?.value,
     );
+    // Supabase auth links whose redirect_to fell back to the bare Site URL land
+    // HERE with ?code= (success) or ?error_code= (expired/used) — never strand
+    // them on the homepage. Route the code through /auth/confirm; recovery is
+    // the only mail flow that redirects today (signup confirm is off), so the
+    // reset form is the right landing.
+    if (context.url.searchParams.has('code')) {
+      return context.redirect(
+        `/auth/confirm?code=${encodeURIComponent(context.url.searchParams.get('code')!)}&next=/auth/reset`,
+        302,
+      );
+    }
+    if (context.url.searchParams.has('error_code')) {
+      return context.redirect(`/${locale}/auth/expired`, 302);
+    }
     // ponytail: `/` renders fresh, not edge-cached (isCacheableHome only matches
     // /{locale}/). Fine for one URL; wire it to the per-locale home cache if root
     // traffic ever justifies it.
