@@ -49,6 +49,7 @@ const genderPick = ([Astro.url.searchParams.get('gender'), Astro.cookies.get('ge
 const withGender = (href: string) => (genderPick === 'women' ? href : `${href}?gender=${genderPick}`);
 
 const categories = LISTING_CATEGORIES.map((c) => ({
+  slug: c.slug,
   label: listingCategoryLabel(c.slug),
   href: localizePath(`/${c.slugs[locale]}/`),
   active: path.startsWith(localizePath(`/${c.slugs[locale]}/`)),
@@ -58,9 +59,11 @@ const categories = LISTING_CATEGORIES.map((c) => ({
  * cookie must never silently re-route a national page. */
 const citySeg = pathCity ? `${pathCity}/` : '';
 const listingBase = `${categories.find((c) => c.active)?.href ?? searchPath}${citySeg}`;
-const genderTabs = (Object.keys(GENDER_FILTERS) as GenderFilter[]).map((g) => ({
+// Women + men only in the nav (trans stays a taxonomy value + ?gender= URL,
+// just not a tab — decision 2026-08-21).
+const genderTabs = (['women', 'men'] as const).map((g) => ({
   value: g,
-  label: { women: m.gender_tab_women(), men: m.gender_tab_men(), trans: m.gender_tab_trans() }[g],
+  label: { women: m.gender_tab_women(), men: m.gender_tab_men() }[g],
   href: g === 'women' ? listingBase : `${listingBase}?gender=${g}`,
   active: g === genderPick,
 }));
@@ -200,8 +203,9 @@ const genderTabs = (Object.keys(GENDER_FILTERS) as GenderFilter[]).map((g) => ({
         class="flex min-w-0 flex-1 select-none items-stretch gap-5 overflow-x-auto [scrollbar-width:none] md:gap-7 [&::-webkit-scrollbar]:hidden"
       >
         <!-- Gender: single-select, default women; a click persists (cookie).
-             Desktop-only — on mobile the filter sheet owns gender. -->
-        <nav class="hidden flex-none items-stretch gap-4 md:flex md:gap-5" aria-label={m.filter_gender()}>
+             Both viewports (mobile got WOMEN/MEN 2026-08-21; the filter sheet
+             still offers the full gender list). -->
+        <nav class="flex flex-none items-stretch gap-4 md:gap-5" aria-label={m.filter_gender()}>
           {
             genderTabs.map((g) => (
               <a
@@ -219,7 +223,7 @@ const genderTabs = (Object.keys(GENDER_FILTERS) as GenderFilter[]).map((g) => ({
           }
         </nav>
 
-        <span class="my-3.5 hidden w-px flex-none bg-border md:block" aria-hidden="true"></span>
+        <span class="my-3.5 w-px flex-none bg-border" aria-hidden="true"></span>
 
         <!-- lg: categories take the middle of the bar (mx-auto) instead of
              hugging the gender group — the empty run of bar works for us. -->
@@ -235,7 +239,10 @@ const genderTabs = (Object.keys(GENDER_FILTERS) as GenderFilter[]).map((g) => ({
                 href={withGender(l.href)}
                 aria-current={l.active ? 'page' : undefined}
                 class:list={[
-                  'chroma-hover relative flex flex-none items-center font-condensed text-sm font-bold uppercase tracking-wide transition-colors active:scale-[0.97]',
+                  // Virtual sex earns no mobile slot — the bar carries the
+                  // genders there instead; it stays a desktop tab + URL.
+                  l.slug === 'virtual_sex' ? 'hidden md:flex' : 'flex',
+                  'chroma-hover relative flex-none items-center font-condensed text-sm font-bold uppercase tracking-wide transition-colors active:scale-[0.97]',
                   l.active ? 'text-foreground' : 'text-foreground/55 hover:text-foreground',
                 ]}
               >

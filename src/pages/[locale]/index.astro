@@ -91,6 +91,12 @@ const moreArticles = articles.filter((a) => a !== featuredArticle).slice(0, 3);
     )
   }
 
+  <!-- Recent signups — the live ticker rail, top of the page on every
+       viewport (as on the pre-launch landing). -->
+  <div class="mx-auto max-w-7xl px-4 pt-4 md:px-6">
+    <RecentSignups profiles={signups} />
+  </div>
+
   <!-- ===================================================================
        MOBILE FOLD (UX-PLAN 1.1) — the every-visit question, "who's here now?"
        Live local header line + compact search + link-chips, then the first
@@ -216,9 +222,6 @@ const moreArticles = articles.filter((a) => a !== featuredArticle).slice(0, 3);
   </section>
 
   <div class="mx-auto max-w-7xl px-4 md:px-6">
-    <!-- Recent signups — the live ticker rail migrated from the landing. -->
-    <RecentSignups profiles={signups} class="pt-6" />
-
     <!-- Featured: slideshow of cards. Empty = no shelf, no orphan heading. -->
     {
       rail.length > 0 && (
