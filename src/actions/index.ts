@@ -126,8 +126,8 @@ export const server = {
         // Two walls: per-IP (mail-bomb source) and per-email (a victim's inbox
         // can't be flooded regardless of source IP). Reset stays anti-enumeration
         // (always returns ok), so the limit never leaks existence either.
-        await requireUnderLimit("reset-ip", clientIp(context), 10);
-        await requireUnderLimit("reset-email", email, 5);
+        await requireUnderLimit("reset-ip", clientIp(context), 20);
+        await requireUnderLimit("reset-email", email, 10);
         await sessionApi.requestPasswordReset(context, { email });
         return { ok: true };
       },
