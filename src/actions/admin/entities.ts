@@ -9,9 +9,9 @@ import { reportsApi } from '@/app/api/reports';
 import { profilesApi } from '@/app/api/profiles';
 import type { Profile } from '@/app/models/profile';
 import { profileAge } from '@/app/models/profile';
-import type { ProfileState } from '@/lib/taxonomy';
-import { eq } from 'drizzle-orm';
-import { profiles as profilesTable } from '@/db/schema';
+import type { ProfileState, VerificationState } from '@/lib/taxonomy';
+import { and, eq, isNull } from 'drizzle-orm';
+import { accounts as accountsTable, profiles as profilesTable, verificationDocs } from '@/db/schema';
 import { adb } from './lib';
 
 
@@ -125,17 +125,88 @@ export async function listProfilesAdmin(f: ProfileFilters = {}): Promise<AdminPr
   // Newest first.
   return rows.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
-export async function profileByIdAdmin(id: string): Promise<{ profile: Profile; admin: AdminProfile } | null> {
+/** The owning account, so the drawer isn't blind (email, phone, ID state). */
+export interface AdminAccountInfo {
+  id: string;
+  email: string | null; // nullable: phone-only signups
+  displayName: string | null;
+  phone: string | null;
+  phoneVerified: boolean;
+  accountType: string;
+  idVerification: VerificationState;
+  verificationSubmittedAt?: string;
+  verificationReason?: string;
+  createdAt: string;
+}
+
+export async function profileByIdAdmin(id: string): Promise<{
+  profile: Profile;
+  admin: AdminProfile;
+  account?: AdminAccountInfo;
+  siblings: { id: string; slug: string; name: string; state: ProfileState }[];
+  vdocIds: string[];
+} | null> {
   const profile = await profilesApi.byId(id);
   if (!profile) return null;
   const admin = (await enrich([profile]))[0]!;
   const [row] = await adb()
-    .select({ at: profilesTable.stateChangedAt })
+    .select({
+      at: profilesTable.stateChangedAt,
+      accountId: profilesTable.accountId,
+      email: accountsTable.email,
+      displayName: accountsTable.displayName,
+      phone: accountsTable.phone,
+      phoneVerifiedAt: accountsTable.phoneVerifiedAt,
+      accountType: accountsTable.accountType,
+      idVerification: accountsTable.idVerification,
+      verificationSubmittedAt: accountsTable.verificationSubmittedAt,
+      verificationReason: accountsTable.verificationReason,
+      accountCreatedAt: accountsTable.createdAt,
+    })
     .from(profilesTable)
+    .leftJoin(accountsTable, eq(accountsTable.id, profilesTable.accountId))
     .where(eq(profilesTable.id, id))
     .limit(1);
   admin.stateChangedAt = row?.at.toISOString();
-  return { profile, admin };
+  // profiles.account_id is a notNull FK, so the joined account is present
+  // whenever the row exists — the guard covers the left-join's TS nullability.
+  const account: AdminAccountInfo | undefined =
+    row && row.accountType
+      ? {
+          id: row.accountId,
+          email: row.email,
+          displayName: row.displayName,
+          phone: row.phone,
+          phoneVerified: !!row.phoneVerifiedAt,
+          accountType: row.accountType,
+          idVerification: row.idVerification ?? 'unverified',
+          verificationSubmittedAt: row.verificationSubmittedAt?.toISOString(),
+          verificationReason: row.verificationReason ?? undefined,
+          createdAt: row.accountCreatedAt!.toISOString(),
+        }
+      : undefined;
+  // Siblings + un-purged doc ids — two small indexed selects, no N+1. Agency
+  // placeholder accounts legitimately own many profiles; the page slices.
+  const [siblingRows, docRows] = row
+    ? await Promise.all([
+        adb()
+          .select({ id: profilesTable.id, slug: profilesTable.slug, name: profilesTable.name, state: profilesTable.state })
+          .from(profilesTable)
+          .where(eq(profilesTable.accountId, row.accountId)),
+        // Purged docs have no R2 bytes (would 404 on reveal) — filter them out.
+        adb()
+          .select({ id: verificationDocs.id })
+          .from(verificationDocs)
+          .where(and(eq(verificationDocs.accountId, row.accountId), isNull(verificationDocs.purgedAt))),
+      ])
+    : [[], []];
+  return {
+    profile,
+    admin,
+    account,
+    siblings: siblingRows.filter((r) => r.id !== id),
+    vdocIds: docRows.map((r) => r.id),
+  };
 }
 
 // --- clients --------------------------------------------------------------

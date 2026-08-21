@@ -10,9 +10,11 @@ import { listProfilesAdmin, profileByIdAdmin } from '@/actions/admin/entities';
 import { reportsApi } from '@/app/api/reports';
 import { listAgencies } from '@/app/api/orgs';
 import { localizedDescription } from '@/app/models/profile';
-import { CITIES, GENDERS, PROFILE_STATES } from '@/lib/taxonomy';
+import { CITIES, GENDERS, PROFILE_STATES, REJECTION_REASONS } from '@/lib/taxonomy';
 import { cityName } from '@/lib/seo';
+import { signVdocUrl } from '@/lib/vdoc-sign';
 import AdminShell from '@/components/organisms/admin/AdminShell.astro';
+import DocViewer from '@/components/organisms/admin/DocViewer.astro';
 import NewProfileForm from '@/components/organisms/admin/NewProfileForm.astro';
 import Lightbox from '@/components/molecules/Lightbox.astro';
 import SideDrawer from '@/components/molecules/SideDrawer.astro';
@@ -40,8 +42,15 @@ const reportsAgainst = detail
 const history = detail
   ? (await listAudit()).filter((e) => e.entityType === 'profile' && e.entityId === detail.admin.id).slice(0, 8)
   : [];
+// Signed doc URLs for the ID panel — viewing an approved account's docs is the
+// legitimate re-check path; each reveal is tap-gated by DocViewer and audited
+// at the serve route. The (id) => wrapper matters: bare .map(signVdocUrl)
+// passes the array index as nowMs → URLs signed for 1970 → always "forbidden".
+const docSrcs = detail?.vdocIds.length ? await Promise.all(detail.vdocIds.map((id) => signVdocUrl(id))) : [];
 const humanizeH = (s: string) => s.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
 
+const vClass = (s: string) =>
+  ({ approved: 'text-online', pending: 'text-amber-500', rejected: 'text-brand' })[s] ?? 'text-muted-foreground';
 const stateClass = (s: string) =>
   ({ live: 'text-online', pending_review: 'text-amber-500', paused: 'text-muted-foreground', blocked: 'text-brand', deleted: 'text-muted-foreground', draft: 'text-muted-foreground' })[s] ??
   'text-muted-foreground';
@@ -184,7 +193,7 @@ const ago = (iso: string) => {
                 )}
                 <div class="min-w-0">
                   <p class="font-condensed text-xl font-bold">{detail.admin.name}, {detail.admin.age}</p>
-                  <p class:list={['text-xs font-medium', stateClass(detail.admin.state)]}>
+                  <p data-pstate class:list={['text-xs font-medium', stateClass(detail.admin.state)]}>
                     {detail.admin.state}{detail.admin.stateReason ? ` · ${detail.admin.stateReason}` : ''}
                     {detail.admin.stateChangedAt && <span class="font-normal text-muted-foreground"> · {ago(detail.admin.stateChangedAt)}</span>}
                   </p>
@@ -233,6 +242,107 @@ const ago = (iso: string) => {
                   Imported from <a href={detail.profile.importedFromUrl} target="_blank" class="underline underline-offset-2">{detail.profile.importedFromUrl}</a>
                 </p>
               )}
+
+              {/* Account — the owning account's identity, so support isn't blind. */}
+              {detail.account && (
+                <div class="border-t border-border pt-3">
+                  <p class="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">Account</p>
+                  <dl class="mt-1.5 grid grid-cols-2 gap-px overflow-hidden border border-border bg-border text-xs">
+                    <div class="bg-card px-2.5 py-1.5">
+                      <dt class="text-2xs uppercase tracking-wide text-muted-foreground">Email</dt>
+                      <dd class="font-medium">
+                        {detail.account.email ? (
+                          <button type="button" data-copy={detail.account.email} class="cursor-pointer break-all text-left font-medium underline underline-offset-2 hover:text-brand">{detail.account.email}</button>
+                        ) : ('—')}
+                      </dd>
+                    </div>
+                    <div class="bg-card px-2.5 py-1.5">
+                      <dt class="text-2xs uppercase tracking-wide text-muted-foreground">Phone</dt>
+                      <dd class="font-medium">
+                        {detail.account.phone ? (
+                          <button type="button" data-copy={detail.account.phone} class="cursor-pointer break-all text-left font-medium underline underline-offset-2 hover:text-brand">{detail.account.phone}</button>
+                        ) : ('—')}{' '}
+                        {detail.account.phoneVerified ? <span class="text-online">✓ verified</span> : <span class="text-muted-foreground">unverified</span>}
+                      </dd>
+                    </div>
+                    <div class="bg-card px-2.5 py-1.5"><dt class="text-2xs uppercase tracking-wide text-muted-foreground">Type</dt><dd class="font-medium">{humanizeH(detail.account.accountType)}</dd></div>
+                    <div class="bg-card px-2.5 py-1.5"><dt class="text-2xs uppercase tracking-wide text-muted-foreground">Created</dt><dd class="font-medium">{fmtDate(detail.account.createdAt)} <span class="text-muted-foreground">· {ago(detail.account.createdAt)}</span></dd></div>
+                    {[
+                      ['WhatsApp', detail.profile.whatsapp],
+                      ['Telegram', detail.profile.telegram],
+                      ['Instagram', detail.profile.instagram],
+                      ['Profile phone', detail.profile.phone && detail.profile.phone !== detail.account.phone ? detail.profile.phone : undefined],
+                    ].map(([k, v]) => v && (
+                      <div class="bg-card px-2.5 py-1.5"><dt class="text-2xs uppercase tracking-wide text-muted-foreground">{k}</dt><dd class="font-medium"><button type="button" data-copy={v} class="cursor-pointer break-all text-left font-medium underline underline-offset-2 hover:text-brand">{v}</button></dd></div>
+                    ))}
+                  </dl>
+                  {detail.account.email && (
+                    <a href={`/admin/users?email=${encodeURIComponent(detail.account.email)}`} class="mt-2 inline-block text-xs font-medium underline underline-offset-4">Open in Users</a>
+                  )}
+                  {detail.siblings.length > 0 && (
+                    <div class="mt-3">
+                      <p class="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">Other profiles on this account ({detail.siblings.length})</p>
+                      <ul class="mt-1.5 space-y-1">
+                        {detail.siblings.slice(0, 8).map((s) => (
+                          <li class="flex items-center justify-between gap-2 text-xs">
+                            <a href={`/admin/profiles?id=${s.id}`} class="underline underline-offset-2 hover:text-brand">{s.name}</a>
+                            <span class:list={['text-2xs', stateClass(s.state)]}>{s.state}</span>
+                          </li>
+                        ))}
+                        {detail.siblings.length > 8 && <li class="text-2xs text-muted-foreground">+{detail.siblings.length - 8} more</li>}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ID verification — authoritative account state + the audited doc
+                  viewer (every reveal logged at the vdoc serve route). Reject only
+                  renders while pending and rejects the WHOLE submission (ID →
+                  rejected, pending_review profile → draft, pending photos →
+                  rejected — all state-guarded); approve = the drawer's Approve,
+                  which chains approveWholeSubmission. */}
+              {detail.account && (
+                <div class="border-t border-border pt-3">
+                  <p class="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">ID verification</p>
+                  <p class="mt-1.5 text-xs">
+                    <span data-vstate class:list={['font-medium', vClass(detail.account.idVerification)]}>{detail.account.idVerification}</span>
+                    {detail.account.verificationSubmittedAt && (
+                      <span class="text-muted-foreground"> · submitted {fmtDate(detail.account.verificationSubmittedAt)} ({ago(detail.account.verificationSubmittedAt)})</span>
+                    )}
+                    {detail.account.verificationReason && <span class="text-brand"> · {humanizeH(detail.account.verificationReason)}</span>}
+                  </p>
+                  <div class="mt-2">
+                    <DocViewer srcs={docSrcs} admin={session.email} />
+                  </div>
+                  {detail.account.idVerification === 'pending' && (
+                    <div data-vreject-row class="mt-2 flex flex-wrap items-center gap-1.5">
+                      <select data-vreason class="slab-cut border border-foreground/20 bg-background px-2.5 py-1.5 text-xs outline-none focus:border-foreground">
+                        <option value="" disabled selected>Reject reason…</option>
+                        {REJECTION_REASONS.map((r) => <option value={r}>{humanizeH(r)}</option>)}
+                      </select>
+                      <button type="button" data-vreject data-drafts={detail.admin.state === 'pending_review' ? '1' : undefined} class="slab-cut border border-brand px-2.5 py-1 text-2xs font-bold uppercase text-brand">Reject submission</button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* IDs — copyable identifiers for support lookups. */}
+              <div class="border-t border-border pt-3">
+                <p class="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">IDs</p>
+                <dl class="mt-1.5 divide-y divide-border border border-border text-xs">
+                  {[
+                    ['Profile ID', detail.admin.id],
+                    ['Slug', detail.profile.slug],
+                    ['Account ID', detail.account?.id],
+                  ].map(([k, v]) => (
+                    <div class="flex justify-between gap-4 px-2.5 py-1.5">
+                      <dt class="text-muted-foreground">{k}</dt>
+                      <dd>{v ? <button type="button" data-copy={v} class="cursor-pointer break-all text-right font-mono text-2xs hover:text-brand">{v}</button> : '—'}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
 
               {reportsAgainst.length > 0 && (
                 <div class="border-t border-border pt-3">
@@ -306,6 +416,7 @@ const ago = (iso: string) => {
 <script>
   import { actions } from 'astro:actions';
   import * as m from '@/paraglide/messages';
+  import type { RejectionReason } from '@/lib/taxonomy';
   function initProfiles() {
     // Whole row opens the detail drawer (the name cell stays a real link).
     document.querySelectorAll<HTMLTableRowElement>('tr[data-href]').forEach((row) => {
@@ -387,6 +498,62 @@ const ago = (iso: string) => {
         setTimeout(() => p.remove(), 4000);
       }),
     );
+
+    // Click-to-copy for account facts + IDs (mirrors tools/index.astro).
+    d.querySelectorAll<HTMLButtonElement>('[data-copy]').forEach((b) =>
+      b.addEventListener('click', async () => {
+        const orig = b.textContent;
+        try {
+          await navigator.clipboard.writeText(b.dataset.copy!);
+          b.textContent = 'Copied ✓';
+        } catch {
+          b.textContent = 'Copy failed';
+        }
+        setTimeout(() => (b.textContent = orig), 1500);
+      }),
+    );
+
+    // Reject the pending ID with a reason (approvalDecision — same action as the
+    // approvals queue). Optimistic: flip the state line in place, never reload
+    // (Hyperdrive reads lag writes).
+    const vreject = d.querySelector<HTMLButtonElement>('[data-vreject]');
+    vreject?.addEventListener('click', async () => {
+      const sel = d.querySelector('[data-vreason]') as unknown as HTMLInputElement;
+      if (!sel.value) { sel.focus(); return; }
+      vreject.disabled = true;
+      const { error } = await actions.admin.approvalDecision({
+        key: 'profile:' + id,
+        decision: 'reject',
+        reason: sel.value as RejectionReason,
+      });
+      vreject.disabled = false;
+      const row = d.querySelector<HTMLElement>('[data-vreject-row]')!;
+      const drafts = !!vreject.dataset.drafts; // profile was pending_review → now draft
+      const p = document.createElement('p');
+      p.className = error ? 'text-xs font-medium text-brand' : 'text-xs font-medium text-online';
+      p.textContent = error
+        ? m.adm_action_failed({ message: error.message })
+        : drafts ? 'Submission rejected — profile back to draft, pending photos rejected' : 'Submission rejected — ID rejected, pending photos rejected';
+      row.after(p);
+      setTimeout(() => p.remove(), 8000);
+      if (!error) {
+        const st = d.querySelector<HTMLElement>('[data-vstate]');
+        if (st) {
+          st.textContent = 'rejected';
+          st.classList.remove('text-amber-500');
+          st.classList.add('text-brand');
+        }
+        if (drafts) {
+          const ps = d.querySelector<HTMLElement>('[data-pstate]');
+          if (ps) {
+            ps.textContent = 'draft';
+            ps.classList.remove('text-amber-500');
+            ps.classList.add('text-muted-foreground');
+          }
+        }
+        row.remove();
+      }
+    });
   }
   initProfiles();
   document.addEventListener('astro:page-load', initProfiles);
