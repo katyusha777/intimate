@@ -21,7 +21,7 @@ import { requestDb } from '@/db/client';
 import { accounts, media, profiles } from '@/db/schema';
 import { approveWholeSubmission, rejectWholeSubmission } from './queues';
 import { setProfileState, setProfileUnlisted } from './entities';
-import { approveDeletion, exportAccountData } from './gdpr';
+import { approveDeletion, exportAccountData, serviceAuthClient } from './gdpr';
 import { retryImport } from './imports';
 import { assignProfileToOrg, createManualProfile, createOrg, deleteOrg, setOrgLogo, updateOrg } from './orgs';
 import { deletePrelaunchLead, updatePrelaunchLead } from '@/app/api/prelaunch';
@@ -326,6 +326,36 @@ export const admin = {
         .returning({ email: accounts.email, phone: accounts.phone });
       if (!rows.length) throw new ActionError({ code: 'NOT_FOUND', message: 'account not found' });
       await record(session, { action: 'owner_clear_phone', entityType: 'account', entityId: rows[0]!.email ?? accountId });
+      return { ok: true };
+    },
+  }),
+
+  /** Change a user's login email (typo'd signups, support). Auth user first
+   *  (accounts.id = auth.users.id, auto-confirmed — no mail round-trip), then
+   *  the denormalized accounts.email every admin/inbox surface reads. Fails
+   *  closed without the service key: a DB-only change would desync the login. */
+  setAccountEmail: defineAction({
+    input: z.object({ accountId: z.string().max(60), email: z.string().email().max(200) }),
+    handler: async ({ accountId, email }, context) => {
+      const session = await requireOwner(context);
+      const supabase = serviceAuthClient();
+      if (!supabase)
+        throw new ActionError({ code: 'PRECONDITION_FAILED', message: 'SUPABASE_SERVICE_ROLE_KEY not configured' });
+      const [before] = await adb().select({ email: accounts.email }).from(accounts).where(eq(accounts.id, accountId)).limit(1);
+      if (!before) throw new ActionError({ code: 'NOT_FOUND', message: 'account not found' });
+      // Auth uniqueness rejects an already-taken address here, before any DB write.
+      const { error } = await supabase.auth.admin.updateUserById(accountId, { email, email_confirm: true });
+      if (error) throw new ActionError({ code: 'BAD_REQUEST', message: error.message });
+      await adb().update(accounts).set({ email }).where(eq(accounts.id, accountId));
+      // ponytail: audit rides add_note (meta holds old→new) — a first-class
+      // set_email admin_action needs an ALTER TYPE migration; add if email
+      // changes become routine.
+      await record(session, {
+        action: 'add_note',
+        entityType: 'account',
+        entityId: email,
+        meta: { note: `email changed from ${before.email ?? '—'} to ${email}` },
+      });
       return { ok: true };
     },
   }),

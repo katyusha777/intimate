@@ -5,7 +5,7 @@
  * made/received, favorites. Status actions (warn/suspend/block) ride on
  * platform messaging (§10) — next pass; this is the read surface.
  */
-import { getAdmin } from '@/actions/admin/lib';
+import { getAdmin, isOwner } from '@/actions/admin/lib';
 import { accountApi } from '@/app/api/account';
 import { reportsApi } from '@/app/api/reports';
 import { profilesApi } from '@/app/api/profiles';
@@ -14,6 +14,7 @@ import AdminShell from '@/components/organisms/admin/AdminShell.astro';
 import * as m from '@/paraglide/messages';
 
 const session = await getAdmin(Astro);
+const owner = isOwner(session);
 const q = (Astro.url.searchParams.get('q') ?? '').toLowerCase().trim();
 const email = Astro.url.searchParams.get('email');
 
@@ -127,7 +128,7 @@ const typeChip =
               <div class="flex flex-wrap items-center gap-3">
                 <span class="grid size-10 flex-none place-items-center rounded-full bg-foreground font-condensed text-base font-bold text-background">{selected.email.charAt(0).toUpperCase()}</span>
                 <div class="min-w-0">
-                  <p class="break-all font-condensed text-xl font-bold">{selected.email}</p>
+                  <p data-user-email class="break-all font-condensed text-xl font-bold">{selected.email}</p>
                   <span class:list={['mt-1 inline-block slab-cut border px-2 py-0.5 text-2xs font-bold uppercase tracking-wide', typeChip]}>{accountType}</span>
                 </div>
               </div>
@@ -171,6 +172,25 @@ const typeChip =
                     </button>
                     <span data-set-type-done class="hidden text-2xs text-online">Changed ✓ (reload to confirm)</span>
                   </div>
+                </div>
+              )}
+
+              {/* Owner-only: change the login email (setAccountEmail — auth user
+                  + accounts row together, auto-confirmed, audit-logged). */}
+              {owner && (
+                <div class="border-t border-border pt-4">
+                  <p class="text-2xs uppercase tracking-wide text-muted-foreground">Email (owner)</p>
+                  <div class="mt-2 flex flex-wrap items-center gap-2">
+                    <input
+                      type="email"
+                      data-email-input={selected.id}
+                      value={selected.email}
+                      class="slab-cut w-72 max-w-full border border-foreground/20 bg-background px-3 py-1.5 text-sm outline-none focus:border-foreground"
+                    />
+                    <button type="button" data-email-save class="slab-cut cursor-pointer border border-foreground/20 px-3 py-1.5 text-sm font-medium transition-colors hover:border-foreground/60">Save</button>
+                    <span data-email-msg class="text-2xs" />
+                  </div>
+                  <p class="mt-1 text-2xs text-muted-foreground">Changes the login immediately (auto-confirmed, no mail sent). She signs in with the new address from now on.</p>
                 </div>
               )}
 
@@ -263,4 +283,29 @@ const typeChip =
   }
   initSetType();
   document.addEventListener('astro:page-load', initSetType);
+
+  // Owner-only login-email change. Optimistic in place (Hyperdrive reads lag
+  // writes — a reload would also lose the selection, keyed by the OLD ?email=).
+  function initSetEmail() {
+    const btn = document.querySelector<HTMLButtonElement>('[data-email-save]');
+    if (!btn || btn.dataset.init) return;
+    btn.dataset.init = '1';
+    const input = document.querySelector<HTMLInputElement>('[data-email-input]')!;
+    const msg = document.querySelector<HTMLElement>('[data-email-msg]')!;
+    btn.addEventListener('click', async () => {
+      const email = input.value.trim();
+      if (!email || !input.checkValidity()) { input.focus(); return; }
+      btn.disabled = true;
+      const { error } = await actions.admin.setAccountEmail({ accountId: input.dataset.emailInput!, email });
+      btn.disabled = false;
+      msg.textContent = error ? `Failed: ${error.message}` : 'Changed ✓';
+      msg.className = error ? 'text-2xs text-brand' : 'text-2xs text-online';
+      if (!error) {
+        const header = document.querySelector<HTMLElement>('[data-user-email]');
+        if (header) header.textContent = email;
+      }
+    });
+  }
+  initSetEmail();
+  document.addEventListener('astro:page-load', initSetEmail);
 </script>

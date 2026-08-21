@@ -30,6 +30,17 @@ import {
 
 const adb = (): Db => requestDb((env as unknown as { HYPERDRIVE: Hyperdrive }).HYPERDRIVE);
 
+/** Service-role auth Admin API client — null when the secret isn't configured.
+ *  The ONE sanctioned construction site (CLAUDE.md admin boundary rule 2). */
+export function serviceAuthClient(): ReturnType<typeof createClient> | null {
+  const e = env as unknown as Record<string, string | undefined>;
+  const key = e.SUPABASE_SERVICE_ROLE_KEY;
+  if (!key) return null;
+  return createClient(e.PUBLIC_SUPABASE_URL!, key, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+}
+
 /** Everything we hold on one account, projected for the export file. */
 export async function exportAccountData(accountId: string): Promise<Record<string, unknown>> {
   const d = adb();
@@ -109,12 +120,8 @@ export async function approveDeletion(accountId: string): Promise<{ authDeleted:
     .set({ email: null, displayName: null, phone: null, phoneVerifiedAt: null, deletionRequestedAt: null, dataRequestedAt: null })
     .where(eq(accounts.id, accountId));
 
-  const e = env as unknown as Record<string, string | undefined>;
-  const key = e.SUPABASE_SERVICE_ROLE_KEY;
-  if (!key) return { authDeleted: false };
-  const supabase = createClient(e.PUBLIC_SUPABASE_URL!, key, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
+  const supabase = serviceAuthClient();
+  if (!supabase) return { authDeleted: false };
   const { error } = await supabase.auth.admin.deleteUser(accountId);
   return { authDeleted: !error };
 }
