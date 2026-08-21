@@ -36,7 +36,7 @@ const pool = profiles.slice(initial);
       >
         {shown.map((p) => (
           <div class="signup-item">
-            <div class="signup-card w-28 sm:w-32">
+            <div class="signup-card">
               <ProfileCard profile={p} variant="mini" />
             </div>
           </div>
@@ -47,7 +47,7 @@ const pool = profiles.slice(initial);
       <div hidden data-signups-pool>
         {pool.map((p) => (
           <div class="signup-item">
-            <div class="signup-card w-28 sm:w-32">
+            <div class="signup-card">
               <ProfileCard profile={p} variant="mini" />
             </div>
           </div>
@@ -60,12 +60,15 @@ const pool = profiles.slice(initial);
 <style>
   /* The incoming card wipes open from the left, pushing the rest along.
      min-width:0 defeats the flexbox min-content floor so max-width:0 holds;
-     overflow:hidden clips the fixed-width card while the slot is narrow. */
+     overflow:hidden clips the card while the slot is narrow. Each slot is a
+     quarter of the track (card + its trailing gap), so EXACTLY four cards sit
+     fully in view — the fifth starts past the edge, never half-cut. */
   .signup-item {
-    flex: 0 0 auto;
+    flex: 0 0 25%;
     min-width: 0;
   }
   .signup-card {
+    width: calc(100% - 0.75rem);
     margin-right: 0.75rem;
   }
   .signup-item.is-entering {
