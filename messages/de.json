@@ -724,6 +724,7 @@
   "adm_profiles_history": "Verlauf",
   "adm_profiles_reason_ph": "Grund (für Sperren/Löschen)",
   "adm_pause": "Pausieren",
+  "adm_resume": "Fortsetzen",
   "adm_delete": "Löschen",
   "adm_clients_meta": "{count} Konten",
   "adm_clients_reports_made": "Meldungen erstellt",

@@ -724,6 +724,7 @@
   "adm_profiles_history": "History",
   "adm_profiles_reason_ph": "Reason (for block/delete)",
   "adm_pause": "Pause",
+  "adm_resume": "Resume",
   "adm_delete": "Delete",
   "adm_clients_meta": "{count} accounts",
   "adm_clients_reports_made": "Reports made",

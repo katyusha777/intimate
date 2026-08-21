@@ -10,6 +10,9 @@ import { profilesApi } from '@/app/api/profiles';
 import type { Profile } from '@/app/models/profile';
 import { profileAge } from '@/app/models/profile';
 import type { ProfileState } from '@/lib/taxonomy';
+import { eq } from 'drizzle-orm';
+import { profiles as profilesTable } from '@/db/schema';
+import { adb } from './lib';
 
 
 
@@ -63,6 +66,8 @@ export interface AdminProfile {
   completeness: number;
   flags: string[];
   stateReason?: string;
+  /** When the current state was entered (DB trigger stamp) — "paused · 3d ago". */
+  stateChangedAt?: string;
   createdAt: string;
 }
 
@@ -100,6 +105,14 @@ export interface ProfileFilters {
 export async function listProfilesAdmin(f: ProfileFilters = {}): Promise<AdminProfile[]> {
   // Admin sees EVERY state (drafts, pending, blocked) — not the public shelf.
   let rows = await enrich(await profilesApi.listAll());
+  // state_changed_at isn't in the public Profile model — one flat id→stamp
+  // select so every row can say how long it's been in its state.
+  const changed = new Map(
+    (await adb().select({ id: profilesTable.id, at: profilesTable.stateChangedAt }).from(profilesTable)).map(
+      (r) => [r.id, r.at.toISOString()] as const,
+    ),
+  );
+  rows.forEach((r) => (r.stateChangedAt = changed.get(r.id)));
   if (f.q) { const q = f.q.toLowerCase(); rows = rows.filter((r) => r.name.toLowerCase().includes(q) || r.city.includes(q)); }
   // Default view hides the dead (deleted/blocked) — surface them only when the
   // state filter explicitly asks for them.
@@ -116,6 +129,12 @@ export async function profileByIdAdmin(id: string): Promise<{ profile: Profile; 
   const profile = await profilesApi.byId(id);
   if (!profile) return null;
   const admin = (await enrich([profile]))[0]!;
+  const [row] = await adb()
+    .select({ at: profilesTable.stateChangedAt })
+    .from(profilesTable)
+    .where(eq(profilesTable.id, id))
+    .limit(1);
+  admin.stateChangedAt = row?.at.toISOString();
   return { profile, admin };
 }
 

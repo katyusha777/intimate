@@ -724,6 +724,7 @@
   "adm_profiles_history": "Cronologia",
   "adm_profiles_reason_ph": "Motivo (per blocco/eliminazione)",
   "adm_pause": "Pausa",
+  "adm_resume": "Riattiva",
   "adm_delete": "Elimina",
   "adm_clients_meta": "{count} account",
   "adm_clients_reports_made": "Segnalazioni fatte",

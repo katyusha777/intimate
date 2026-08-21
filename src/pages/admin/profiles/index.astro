@@ -105,6 +105,7 @@ const ago = (iso: string) => {
                   <th class="px-3 py-2 font-semibold">{m.request_card_price()}</th>
                   <th class="px-3 py-2 font-semibold">{m.adm_th_complete()}</th>
                   <th class="px-3 py-2 font-semibold">{m.adm_th_flags()}</th>
+                  <th class="px-3 py-2 font-semibold"></th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-border">
@@ -135,7 +136,11 @@ const ago = (iso: string) => {
                         <span class="text-muted-foreground">—</span>
                       )}
                     </td>
-                    <td class:list={['px-3 py-2 font-medium', stateClass(r.state)]}>{r.state}</td>
+                    <td class="px-3 py-2">
+                      <span data-state-cell class:list={['font-medium', stateClass(r.state)]}>{r.state}</span>
+                      {/* How long it's been in this state (DB trigger stamp). */}
+                      {r.stateChangedAt && <span class="block text-2xs text-muted-foreground">{ago(r.stateChangedAt)}</span>}
+                    </td>
                     <td class="whitespace-nowrap px-3 py-2 text-2xs text-muted-foreground">
                       {fmtDate(r.createdAt)} <span class="opacity-70">· {ago(r.createdAt)}</span>
                     </td>
@@ -147,6 +152,19 @@ const ago = (iso: string) => {
                       </span>
                     </td>
                     <td class="px-3 py-2 text-2xs text-brand">{r.flags.join(', ')}</td>
+                    <td class="px-3 py-2 text-right">
+                      {/* One-tap lifecycle without the drawer: live ⇄ paused. */}
+                      {(r.state === 'live' || r.state === 'paused') && (
+                        <button
+                          type="button"
+                          data-row-state={r.id}
+                          data-next={r.state === 'live' ? 'pause' : 'resume'}
+                          class="slab-cut cursor-pointer border border-foreground/20 px-2.5 py-1 text-2xs font-bold uppercase transition-colors hover:border-foreground"
+                        >
+                          {r.state === 'live' ? m.adm_pause() : m.adm_resume()}
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -166,7 +184,10 @@ const ago = (iso: string) => {
                 )}
                 <div class="min-w-0">
                   <p class="font-condensed text-xl font-bold">{detail.admin.name}, {detail.admin.age}</p>
-                  <p class:list={['text-xs font-medium', stateClass(detail.admin.state)]}>{detail.admin.state}{detail.admin.stateReason ? ` · ${detail.admin.stateReason}` : ''}</p>
+                  <p class:list={['text-xs font-medium', stateClass(detail.admin.state)]}>
+                    {detail.admin.state}{detail.admin.stateReason ? ` · ${detail.admin.stateReason}` : ''}
+                    {detail.admin.stateChangedAt && <span class="font-normal text-muted-foreground"> · {ago(detail.admin.stateChangedAt)}</span>}
+                  </p>
                 </div>
               </div>
 
@@ -259,7 +280,11 @@ const ago = (iso: string) => {
                 <input data-reason placeholder={m.adm_profiles_reason_ph()} class="w-full slab-cut border border-foreground/20 bg-background px-2.5 py-1.5 text-xs outline-none focus:border-foreground" />
                 <div class="flex flex-wrap gap-1.5">
                   <button type="button" data-act="approve" class="slab-cut bg-online px-2.5 py-1 text-2xs font-bold uppercase text-white">{m.adm_approve()}</button>
-                  <button type="button" data-act="pause" class="slab-cut border border-foreground/20 px-2.5 py-1 text-2xs font-bold uppercase">{m.adm_pause()}</button>
+                  {detail.admin.state === 'paused' ? (
+                    <button type="button" data-act="resume" class="slab-cut border border-foreground/20 px-2.5 py-1 text-2xs font-bold uppercase">{m.adm_resume()}</button>
+                  ) : (
+                    <button type="button" data-act="pause" class="slab-cut border border-foreground/20 px-2.5 py-1 text-2xs font-bold uppercase">{m.adm_pause()}</button>
+                  )}
                   {detail.admin.state === 'blocked' ? (
                     <button type="button" data-act="unblock" class="slab-cut border border-foreground/20 px-2.5 py-1 text-2xs font-bold uppercase">{m.msg_unblock()}</button>
                   ) : (
@@ -289,6 +314,30 @@ const ago = (iso: string) => {
       row.addEventListener('click', (e) => {
         if ((e.target as HTMLElement).closest('a, button')) return;
         location.href = row.dataset.href!;
+      });
+    });
+
+    // Row-level pause ⇄ resume — optimistic flip in place (SSR reads lag
+    // writes behind the Hyperdrive cache, so never reload after a write).
+    document.querySelectorAll<HTMLButtonElement>('[data-row-state]').forEach((b) => {
+      if (b.dataset.init) return;
+      b.dataset.init = '1';
+      b.addEventListener('click', async () => {
+        const action = b.dataset.next as 'pause' | 'resume';
+        b.disabled = true;
+        const { error } = await actions.admin.profileState({ id: b.dataset.rowState!, action });
+        b.disabled = false;
+        if (error) { b.textContent = m.adm_action_failed({ message: error.message }); return; }
+        const next = action === 'pause' ? 'paused' : 'live';
+        const cell = b.closest('tr')?.querySelector<HTMLElement>('[data-state-cell]');
+        if (cell) {
+          cell.textContent = next;
+          cell.classList.toggle('text-online', next === 'live');
+          cell.classList.toggle('text-muted-foreground', next === 'paused');
+          cell.nextElementSibling?.remove(); // the "Xd ago" line is now stale
+        }
+        b.dataset.next = action === 'pause' ? 'resume' : 'pause';
+        b.textContent = action === 'pause' ? m.adm_resume() : m.adm_pause();
       });
     });
 
@@ -325,7 +374,7 @@ const ago = (iso: string) => {
     const reason = d.querySelector('[data-reason]') as unknown as HTMLInputElement;
     d.querySelectorAll<HTMLButtonElement>('[data-act]').forEach((b) =>
       b.addEventListener('click', async () => {
-        const action = b.dataset.act as 'approve' | 'pause' | 'block' | 'unblock' | 'delete';
+        const action = b.dataset.act as 'approve' | 'pause' | 'resume' | 'block' | 'unblock' | 'delete';
         if ((action === 'block' || action === 'delete') && !reason.value) { reason.focus(); return; }
         b.disabled = true;
         const { error } = await actions.admin.profileState({ id, action, reason: reason.value || undefined });

@@ -22,7 +22,7 @@ interface Kv {
 function kv(): Kv | undefined {
   return (env as unknown as Record<string, unknown>).SESSION as Kv | undefined;
 }
-const adb = () => requestDb((env as unknown as { HYPERDRIVE: Hyperdrive }).HYPERDRIVE);
+export const adb = () => requestDb((env as unknown as { HYPERDRIVE: Hyperdrive }).HYPERDRIVE);
 const now = () => new Date().toISOString();
 
 // aal2/MFA enforcement is STAGED OFF by default so it can't lock out an admin

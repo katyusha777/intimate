@@ -151,7 +151,7 @@ export const admin = {
   profileState: defineAction({
     input: z.object({
       id: z.string().max(60),
-      action: z.enum(['approve', 'pause', 'block', 'unblock', 'delete']),
+      action: z.enum(['approve', 'pause', 'resume', 'block', 'unblock', 'delete']),
       reason: z.string().max(200).optional(),
     }),
     handler: async ({ id, action, reason }, context) => {
@@ -159,6 +159,8 @@ export const admin = {
       const map: Record<string, { state: ProfileState; audit: AdminAction }> = {
         approve: { state: 'live', audit: 'approve_profile' },
         pause: { state: 'paused', audit: 'edit_profile_admin' },
+        // Unpause WITHOUT approve's side effects (verification/photo merge).
+        resume: { state: 'live', audit: 'edit_profile_admin' },
         block: { state: 'blocked', audit: 'block_profile' },
         unblock: { state: 'live', audit: 'unblock_profile' },
         delete: { state: 'deleted', audit: 'delete_profile' },
@@ -169,7 +171,7 @@ export const admin = {
       if (action === 'approve') await approveWholeSubmission({ profileId: id });
       await bustProfiles(sessionKv()); // lifecycle change → drop the edge cache
       // Tell engines to re-crawl: a new live page, or the takedown's 410.
-      if (action === 'approve' || action === 'block' || action === 'delete') {
+      if (action === 'approve' || action === 'resume' || action === 'block' || action === 'delete') {
         const [p] = await adb().select({ slug: profiles.slug }).from(profiles).where(eq(profiles.id, id)).limit(1);
         if (p?.slug) await pingIndexNow(new URL(context.request.url).origin, p.slug);
       }
