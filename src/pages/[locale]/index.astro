@@ -91,9 +91,10 @@ const moreArticles = articles.filter((a) => a !== featuredArticle).slice(0, 3);
     )
   }
 
-  <!-- Recent signups — the live ticker rail, top of the page on every
-       viewport (as on the pre-launch landing). -->
-  <div class="mx-auto max-w-7xl px-4 pt-4 md:px-6">
+  <!-- Recent signups — the live ticker rail above the fold. Mobile only here;
+       on lg+ the rail lives INSIDE the hero's ink column (as it sat on the
+       pre-launch landing), not stacked above the band. -->
+  <div class="mx-auto max-w-7xl px-4 pt-4 md:px-6 lg:hidden">
     <RecentSignups profiles={signups} />
   </div>
 
@@ -167,7 +168,9 @@ const moreArticles = articles.filter((a) => a !== featuredArticle).slice(0, 3);
     <div class="hero-panel absolute inset-y-0 left-0 w-[58%] bg-neutral-950" aria-hidden="true"></div>
 
     <div class="relative mx-auto max-w-7xl px-6">
-      <div class="py-24 xl:py-40 lg:max-w-[46%]">
+      <div class="py-14 xl:py-20 lg:max-w-[46%]">
+        {/* The rail opens the ink column, prelaunch-style; the pitch follows. */}
+        <RecentSignups profiles={signups} class="mb-12" />
         <p class="eyebrow flex items-center gap-2 font-condensed text-lg font-bold uppercase tracking-wide text-white">
           <span>{m.where_netherlands()}</span>
           <span class="text-white/30" aria-hidden="true">·</span>

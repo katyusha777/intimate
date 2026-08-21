@@ -230,7 +230,7 @@ const genderTabs = (['women', 'men'] as const).map((g) => ({
         <!-- Mobile: justified across the full bar width; desktop: spaced run
              centered in the bar. -->
         <nav
-          class="flex w-full min-w-0 items-stretch justify-between md:w-auto md:flex-none md:justify-start md:gap-10 lg:mx-auto"
+          class="flex w-full min-w-0 items-stretch justify-between gap-4 md:w-auto md:flex-none md:justify-start md:gap-10 lg:mx-auto"
           aria-label={m.all_categories()}
         >
           {
@@ -241,7 +241,7 @@ const genderTabs = (['women', 'men'] as const).map((g) => ({
                 class:list={[
                   // Virtual sex earns no mobile slot — the bar carries the
                   // genders there instead; it stays a desktop tab + URL.
-                  l.slug === 'virtual_sex' ? 'hidden md:flex' : 'flex',
+                  l.slug === 'virtual-sex' ? 'hidden md:flex' : 'flex',
                   'chroma-hover relative flex-none items-center font-condensed text-sm font-bold uppercase tracking-wide transition-colors active:scale-[0.97]',
                   l.active ? 'text-foreground' : 'text-foreground/55 hover:text-foreground',
                 ]}
