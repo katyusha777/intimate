@@ -179,7 +179,6 @@ const handle = (context: APIContext, next: MiddlewareNext) =>
     anonymous,
     bot: BOT_RE.test(context.request.headers.get('user-agent') ?? ''),
     warm: warmOk,
-    xSheet: context.request.headers.get('x-sheet') === '1',
   };
   if (context.url.pathname === '/') {
     // Root stays a 200 — a redirecting homepage is flagged by Google ("Page with

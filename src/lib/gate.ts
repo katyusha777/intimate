@@ -1,7 +1,9 @@
 /**
  * Registration wall (2026-08-23): the live site is gated — an anonymous HUMAN
  * sees only the /{locale}/welcome/ pitch page (rewritten in place on the home
- * URLs) until they register. Search/AI crawlers and link-preview fetchers pass
+ * URLs) plus a small allowlist (legal/support/blog/agencies, invite links, and
+ * since 2026-08-24 profile pages — a professional's shared link must show HER,
+ * not the wall) until they register. Search/AI crawlers and link-preview fetchers pass
  * by user-agent so every public page stays fully indexable (SEO.md §1.9 records
  * this deliberate crawler exception), signed-in users pass by session cookie,
  * and the warm cron passes by its X-Warm secret so the home cache never goes
@@ -28,9 +30,11 @@ const AUTH = new RegExp(`^/${LOC}/auth(?:/|$)`);
  *  page carries its own join prompt; bouncing a warm lead to the generic gate
  *  would lose the invite context. */
 const INVITE = new RegExp(`^/${LOC}/c/[^/]+/?$`);
-/** ProfileSheet teaser fetch (X-Sheet: 1) — the welcome rail opens profiles in
- *  a sheet: the same taste-of-the-product the corridor allowed. */
-const SHEET_PROFILE = new RegExp(`^/${LOC}/profile/[^/]+/(?:avail\\.json)?$`);
+/** Profile pages — open to anonymous humans (2026-08-24): a professional
+ *  shares her direct link everywhere, and bouncing that warm lead to the
+ *  generic gate loses her the booking (the INVITE rationale). Covers the
+ *  ProfileSheet fetch and avail.json too. */
+const PROFILE = new RegExp(`^/${LOC}/profile/[^/]+/(?:avail\\.json)?$`);
 /** Non-page infrastructure that must keep working for everyone. Mostly
  *  duplicates middleware BYPASS (which returns earlier) — kept here so the
  *  pure function is safe on its own, plus /sitemap + island endpoints that
@@ -64,8 +68,6 @@ export interface Visitor {
   bot: boolean;
   /** Valid X-Warm secret (the cache-warming cron). */
   warm: boolean;
-  /** X-Sheet: 1 — the ProfileSheet modal fetch. */
-  xSheet: boolean;
 }
 
 export function gate(url: URL, v: Visitor): Gate {
@@ -80,11 +82,11 @@ export function gate(url: URL, v: Visitor): Gate {
     BLOG.test(p) ||
     AUTH.test(p) ||
     INVITE.test(p) ||
+    PROFILE.test(p) ||
     PASS.test(p)
   ) {
     return { kind: 'pass' };
   }
-  if (v.xSheet && SHEET_PROFILE.test(p)) return { kind: 'pass' };
   return { kind: 'redirect' };
 }
 

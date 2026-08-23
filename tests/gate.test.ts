@@ -7,7 +7,7 @@ import { describe, expect, test } from 'bun:test';
 import { BOT_RE, focusRedirect, gate } from '../src/lib/gate';
 
 const u = (path: string) => new URL(`https://intimate.nl${path}`);
-const anon = { anonymous: true, bot: false, warm: false, xSheet: false };
+const anon = { anonymous: true, bot: false, warm: false };
 const kind = (path: string, v: Partial<typeof anon> = {}) => gate(u(path), { ...anon, ...v }).kind;
 
 describe('registration wall', () => {
@@ -92,10 +92,9 @@ describe('registration wall', () => {
     }
   });
 
-  test('the ProfileSheet teaser fetch passes, plain profile navs bounce', () => {
-    expect(kind('/nl/profile/alice/', { xSheet: true })).toBe('pass');
-    expect(kind('/nl/profile/alice/avail.json', { xSheet: true })).toBe('pass');
-    expect(kind('/nl/profile/alice/')).toBe('redirect');
+  test('profile pages pass for anonymous humans — direct links are her marketing', () => {
+    expect(kind('/nl/profile/alice/')).toBe('pass');
+    expect(kind('/nl/profile/alice/avail.json')).toBe('pass');
   });
 
   test('the welcome page itself passes; the product dead-ends to the gate', () => {
