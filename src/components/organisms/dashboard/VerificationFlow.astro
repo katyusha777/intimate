@@ -1,8 +1,9 @@
 ---
 /**
- * Two-step verification (ARCHITECTURE §11): SMS via Twilio Verify (mocked)
- * and ID + selfie-with-code review (documents are NEVER stored in the mock —
- * hard rule 3: they are toxic waste; only the state transition is recorded).
+ * The dashboard verification tab (ARCHITECTURE §11): SMS via Twilio Verify,
+ * plus ID STATUS — the 3-photo upload itself lives in the setup flow
+ * (onboarding/VerifyPhotos, 2026-08-23), so this surface only reports state
+ * and links back into the flow when photos are still needed.
  */
 import * as m from '@/paraglide/messages';
 import { localizePath } from '@/lib/i18n';
@@ -14,14 +15,8 @@ import SlabField from '@/components/molecules/SlabField.astro';
 interface Props {
   session: Session;
   account: Account;
-  /** Onboarding wizard AND ID is the last required step: uploading the ID
-   *  auto-verifies a pending phone code, submits for review, and jumps to
-   *  `finishUrl` — no extra button presses. False on the dashboard verification tab. */
-  wizardFinish?: boolean;
-  /** Where to land after the wizard finish (default: the account home). */
-  finishUrl?: string;
 }
-const { session, account, wizardFinish = false, finishUrl = '/account/' } = Astro.props;
+const { session, account } = Astro.props;
 
 const smsDone = Boolean(account.phoneVerifiedAt);
 const idState = account.idVerification;
@@ -34,7 +29,7 @@ const verifiedPill =
   'inline-flex items-center gap-1.5 rounded-full bg-online/15 px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-online';
 ---
 
-<div class="max-w-xl space-y-10" data-verification data-wizard-finish={wizardFinish ? '1' : undefined} data-finish-url={finishUrl}>
+<div class="max-w-xl space-y-10" data-verification>
   <!-- Step 1 · SMS -->
   <section class="space-y-4">
     <div class="flex items-center gap-3">
@@ -117,17 +112,14 @@ const verifiedPill =
     </div>
 
     {
-      idState === 'unverified' && (
+      (idState === 'unverified' || idState === 'rejected') && (
         <div class="space-y-4 border-l border-border pl-7">
+          {idState === 'rejected' && account.verificationReason && (
+            <p class="text-sm font-medium text-brand">{account.verificationReason}</p>
+          )}
           <p class="text-sm leading-relaxed">{m.verify_id_intro()}</p>
-          <label class="flex cursor-pointer flex-col items-center gap-2 border border-dashed border-foreground/30 px-3 py-8 text-center text-sm text-muted-foreground transition-colors hover:border-foreground/70 hover:text-foreground">
-            <input type="file" accept="image/*" data-id-doc class="sr-only" />
-            <svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2" /><circle cx="9" cy="11" r="2" /><path d="M14 9h4M14 13h4M6 17h12" /></svg>
-            <span data-file-label>{m.verify_id_doc()}</span>
-          </label>
+          <Button as="a" href={`${localizePath('/account/setup/')}?step=verify`}>{m.verify_continue()}</Button>
           <p class="text-xs leading-relaxed text-muted-foreground">{m.verify_privacy()}</p>
-          <Button type="button" data-id-submit>{m.verify_submit()}</Button>
-          <p data-id-error class="hidden whitespace-pre-line text-sm font-medium text-brand"></p>
         </div>
       )
     }
@@ -165,8 +157,6 @@ const verifiedPill =
 
 <script>
   import { actions } from 'astro:actions';
-  import { reencode } from '@/lib/reencode';
-  import * as m from '@/paraglide/messages';
 
   // Default to the Netherlands: bare/national numbers (06…, 612…) become +31;
   // an explicit + or 00 country code is respected. Server re-validates E.164.
@@ -246,82 +236,8 @@ const verifiedPill =
         });
       onEnter('[data-sms-start] input[name="phone"]', sendBtn);
       onEnter('[data-sms-check] input[name="code"]', verifyBtn);
-
-      // ID step: a doc chosen → submit. The file is read only to be re-encoded;
-      // the ID goes to the private EU bucket (toxic waste rule). ID only now —
-      // no selfie, and NOT gated on SMS (phone verification is optional).
-      const wizardFinish = root.dataset.wizardFinish === '1';
-      const doc = root.querySelector<HTMLInputElement>('[data-id-doc]');
-      const submit = root.querySelector<HTMLButtonElement>('[data-id-submit]');
-      const idErr = root.querySelector<HTMLElement>('[data-id-error]');
-      // Inline style, not a Tailwind class: classes added at runtime aren't
-      // compiled (Tailwind only emits what it sees in source), so a JS-toggled
-      // `border-brand` would have no CSS. Inline colour is reliable.
-      const markMissing = (inp: HTMLInputElement | null, missing: boolean) => {
-        const label = inp?.closest<HTMLElement>('label');
-        if (label) label.style.borderColor = missing ? 'var(--brand)' : '';
-      };
-      const sync = () => {
-        const label = doc?.closest('label')?.querySelector('[data-file-label]');
-        if (doc?.files?.[0]) {
-          if (label) label.textContent = `✓ ${doc.files[0].name}`;
-          markMissing(doc, false);
-        }
-      };
-
-      // If a code was SENT and typed but not verified, verify it now — so the
-      // final action (upload ID / submit for review) also finalizes the phone.
-      // Best-effort: phone is optional, so a wrong/missing code never blocks.
-      const verifyPendingSms = async () => {
-        const check = root.querySelector<HTMLElement>('[data-sms-check]');
-        const code = (root.querySelector<HTMLInputElement>('[data-sms-check] input[name="code"]')?.value ?? '').trim();
-        if (check && !check.hidden && /^\d{6}$/.test(code)) {
-          try { await actions.account.checkSms({ code }); } catch { /* optional */ }
-        }
-      };
-
-      let submitting = false;
-      const submitIdFlow = async () => {
-        const docFile = doc?.files?.[0];
-        if (!docFile) {
-          markMissing(doc, true);
-          if (idErr) { idErr.textContent = m.verify_fix_missing() + '\n• ' + m.verify_need_doc(); idErr.classList.remove('hidden'); }
-          return;
-        }
-        if (submitting) return;
-        submitting = true;
-        if (submit) submit.disabled = true;
-        idErr?.classList.add('hidden');
-        try {
-          // EXIF-stripped on-device (hard rule 2); larger cap than photos so the
-          // reviewer can actually read the ID. Then it's private + audit-logged.
-          const docUrl = await reencode(docFile, 2000, 0.85);
-          const { error } = await actions.account.submitId({ doc: docUrl });
-          if (error) throw error;
-          if (wizardFinish) {
-            // ID was the last required step — verify a pending phone code, submit
-            // for review, and continue straight to the profile editor to keep
-            // building (services/prices) while the ID is reviewed. No buttons.
-            await verifyPendingSms();
-            const { error: subErr } = await actions.account.submitProfile({});
-            if (subErr) { location.reload(); return; }
-            location.href = root.dataset.finishUrl || '/account/';
-          } else {
-            location.reload();
-          }
-        } catch {
-          submitting = false;
-          if (submit) submit.disabled = false;
-          if (idErr) { idErr.textContent = m.auth_error(); idErr.classList.remove('hidden'); }
-        }
-      };
-
-      // Choosing a file only STAGES it (shows ✓ filename) — it must NOT submit
-      // the whole profile on its own: that skipped the optional phone step (she
-      // hadn't entered/verified her number yet). The explicit Submit button is
-      // the single trigger, on the wizard AND the dashboard tab.
-      doc?.addEventListener('change', () => sync());
-      submit?.addEventListener('click', () => void submitIdFlow());
+      // ID uploads moved to the setup flow (onboarding/VerifyPhotos) — this
+      // surface only reports ID state and links there.
     });
   }
   initVerification();

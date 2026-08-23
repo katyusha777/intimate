@@ -112,11 +112,11 @@ export const admin = {
       const rest = key.slice(sep + 1);
       const by = kind === 'profile' ? { profileId: rest } : { email: rest };
       if (decision === 'approve') {
-        await approveWholeSubmission(by);
+        await approveWholeSubmission(by, session.accountId);
         await record(session, { action: 'approve_profile', entityType: 'approval', entityId: key });
       } else {
         if (!reason) throw new ActionError({ code: 'BAD_REQUEST', message: 'reason required' });
-        await rejectWholeSubmission(by, reason);
+        await rejectWholeSubmission(by, reason, session.accountId);
         await record(session, { action: 'reject_profile', entityType: 'approval', entityId: key, reason, meta: note ? { note } : undefined });
       }
       await releaseItem(session, `approve:${key}`);
@@ -168,7 +168,7 @@ export const admin = {
       const m = map[action]!;
       await setProfileState(id, m.state, session.email, reason);
       // Approving from the directory also clears ID verification + photos (merge).
-      if (action === 'approve') await approveWholeSubmission({ profileId: id });
+      if (action === 'approve') await approveWholeSubmission({ profileId: id }, session.accountId);
       await bustProfiles(sessionKv()); // lifecycle change → drop the edge cache
       // Tell engines to re-crawl: a new live page, or the takedown's 410.
       if (action === 'approve' || action === 'resume' || action === 'block' || action === 'delete') {

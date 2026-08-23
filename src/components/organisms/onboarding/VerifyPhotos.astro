@@ -1,0 +1,232 @@
+---
+/**
+ * The 3-photo ID verification (ARCHITECTURE §11), built for someone who is not
+ * technical, on a phone, maybe nervous (ONBOARDING.md laws): one photo per
+ * screen — 1· the ID itself, 2· a selfie holding the ID, 3· a selfie holding a
+ * paper with her handwritten 4-letter code (lib/verification-code.ts). Each
+ * photo uploads the moment it's taken (account.addVerificationDoc — leaving
+ * the flow never loses one); the three screens swap CLIENT-side inside one
+ * render, so advancing never depends on a read-back that Hyperdrive's read
+ * cache could serve stale. All three in → the account flips to pending review
+ * server-side; the wizard then auto-submits her profile (wizardFinish).
+ */
+import * as m from '@/paraglide/messages';
+import { VERIFICATION_DOC_KINDS, type VerificationDocKind } from '@/lib/taxonomy';
+
+interface Props {
+  /** Kinds already uploaded this cycle (server-derived resume point). */
+  kinds: VerificationDocKind[];
+  /** Her handwritten code — shown big on screen 3 (and to the admin reviewer). */
+  code: string;
+  /** ID is the last required step: after photo 3, auto-submit + go to finishUrl. */
+  wizardFinish?: boolean;
+  finishUrl?: string;
+  /** After photo 3 when the wizard is NOT finishing: the next incomplete step
+   *  (precomputed server-side — never derived from a possibly-stale re-read). */
+  nextHref?: string;
+  /** Retake override (?part=…): open this screen even though it's done. */
+  part?: VerificationDocKind;
+}
+const { kinds, code, wizardFinish = false, finishUrl = '/account/', nextHref = '?step=verify', part } = Astro.props;
+
+const ORDER = VERIFICATION_DOC_KINDS;
+const firstMissing = ORDER.find((k) => !kinds.includes(k)) ?? null;
+const current: VerificationDocKind | null = part ?? firstMissing;
+
+const copy: Record<VerificationDocKind, { title: string; why: string }> = {
+  id_front: { title: m.vp_title_id(), why: m.vp_why_id() },
+  id_selfie: { title: m.vp_title_selfie(), why: m.vp_why_selfie() },
+  code_selfie: { title: m.vp_title_code(), why: m.vp_why_code() },
+};
+
+const tile =
+  'flex w-full cursor-pointer flex-col items-center gap-3 border border-dashed border-foreground/30 px-4 py-10 text-center transition-colors hover:border-foreground/70 active:border-foreground';
+---
+
+<div
+  data-verify-photos
+  data-vp-done={kinds.join(',')}
+  data-vp-wizard-finish={wizardFinish ? '1' : undefined}
+  data-vp-finish-url={finishUrl}
+  data-vp-next-href={nextHref}
+  data-vp-uploading={m.presignup_uploading()}
+  data-vp-retake={m.vp_retake()}
+>
+  {/* The 3 progress dots — ✓ fills as photos land; a filled dot is tappable to retake. */}
+  <div class="flex items-center gap-2" data-vp-dots>
+    {
+      ORDER.map((k, i) => (
+        <button
+          type="button"
+          data-vp-dot={k}
+          disabled={!kinds.includes(k)}
+          class="grid size-11 place-items-center bg-muted font-condensed text-base font-bold text-muted-foreground"
+          aria-label={m.vp_step_of({ n: i + 1 })}
+        >
+          {i + 1}
+        </button>
+      ))
+    }
+  </div>
+
+  {
+    ORDER.map((kind, i) => (
+      <section data-vp-part={kind} hidden={kind !== current} class="mt-6">
+        <p class="text-xs font-medium uppercase tracking-wide text-muted-foreground">{m.vp_step_of({ n: i + 1 })}</p>
+        <h2 class="display mt-1 text-2xl">{copy[kind].title}</h2>
+        <p class="mt-2 leading-relaxed text-muted-foreground">{copy[kind].why}</p>
+
+        {kind === 'code_selfie' && (
+          <p class="slab-cut mt-4 inline-block bg-foreground px-6 py-3 font-condensed text-4xl font-bold tracking-widest text-background">
+            {code}
+          </p>
+        )}
+
+        <div class="mt-6 flex justify-center text-muted-foreground" aria-hidden="true">
+          {kind === 'id_front' && (
+            <svg class="size-24" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="6" y="12" width="36" height="24" rx="2" />
+              <circle cx="16" cy="22" r="4" />
+              <path d="M12 32c0-3 1.8-4 4-4s4 1 4 4M26 19h12M26 24h12M26 29h8" />
+            </svg>
+          )}
+          {kind === 'id_selfie' && (
+            <svg class="size-24" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="19" cy="16" r="6" />
+              <path d="M7 40c0-7 5.4-10 12-10s12 3 12 10" />
+              <rect x="30" y="14" width="13" height="9" rx="1" />
+              <circle cx="33.5" cy="18" r="1.5" />
+              <path d="M37 16.5h4M37 20h4" />
+            </svg>
+          )}
+          {kind === 'code_selfie' && (
+            <svg class="size-24" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="19" cy="14" r="6" />
+              <path d="M6 40c0-7 5.6-10 13-10" />
+              <rect x="26" y="24" width="16" height="12" rx="1" />
+              <path d="M29 30h10" />
+            </svg>
+          )}
+        </div>
+
+        <label class={`${tile} mt-6`}>
+          <input
+            type="file"
+            accept="image/*"
+            capture={kind === 'id_front' ? 'environment' : 'user'}
+            data-vp-input={kind}
+            class="sr-only"
+          />
+          <svg class="size-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M4 8h3l2-2h6l2 2h3v11H4z" />
+            <circle cx="12" cy="13" r="3.5" />
+          </svg>
+          <span class="font-condensed text-lg font-bold uppercase tracking-wide" data-vp-label>
+            {kinds.includes(kind) ? m.vp_retake() : m.vp_take()}
+          </span>
+        </label>
+      </section>
+    ))
+  }
+
+  <div data-vp-alldone hidden={current !== null} class="mt-6 flex items-start gap-3 border-l-2 border-online pl-4">
+    <p class="leading-relaxed text-muted-foreground">{m.vp_all_done()}</p>
+  </div>
+
+  <p data-vp-error hidden class="mt-4 text-sm font-medium text-brand">{m.auth_error()}</p>
+  <p class="mt-6 text-xs leading-relaxed text-muted-foreground">{m.verify_privacy()}</p>
+</div>
+
+<script>
+  import { actions } from 'astro:actions';
+  import { reencode } from '@/lib/reencode';
+
+  const ORDER = ['id_front', 'id_selfie', 'code_selfie'];
+
+  function initVerifyPhotos() {
+    document.querySelectorAll<HTMLElement>('[data-verify-photos]').forEach((root) => {
+      if (root.dataset.init) return;
+      root.dataset.init = '1';
+      const done = new Set((root.dataset.vpDone || '').split(',').filter(Boolean));
+      const err = root.querySelector<HTMLElement>('[data-vp-error]')!;
+
+      const show = (kind: string) => {
+        root.querySelectorAll<HTMLElement>('[data-vp-part]').forEach((s) => {
+          s.hidden = s.dataset.vpPart !== kind;
+        });
+        root.querySelector<HTMLElement>('[data-vp-alldone]')!.hidden = kind !== '';
+      };
+      // Dot states are painted by JS (SSR paints neutral): done = green ✓ and
+      // tappable to retake; runtime classes must be inline styles (Tailwind
+      // only compiles classes it sees in source).
+      const paintDots = () => {
+        root.querySelectorAll<HTMLButtonElement>('[data-vp-dot]').forEach((d) => {
+          const isDone = done.has(d.dataset.vpDot!);
+          d.disabled = !isDone;
+          d.style.background = isDone ? 'var(--online)' : '';
+          d.style.color = isDone ? 'var(--color-neutral-950, #0a0a0a)' : '';
+          if (isDone) d.textContent = '✓';
+        });
+      };
+      paintDots();
+
+      root.querySelectorAll<HTMLButtonElement>('[data-vp-dot]').forEach((d) => {
+        d.addEventListener('click', () => {
+          if (done.has(d.dataset.vpDot!)) show(d.dataset.vpDot!);
+        });
+      });
+
+      const finishFlow = async () => {
+        if (root.dataset.vpWizardFinish === '1') {
+          // ID was the last required step — submit for review and continue to
+          // the editor to keep building while we check (no extra buttons).
+          const { error } = await actions.account.submitProfile({});
+          location.href = error ? root.dataset.vpNextHref || '?step=verify' : root.dataset.vpFinishUrl || '/account/';
+        } else {
+          location.href = root.dataset.vpNextHref || '?step=verify';
+        }
+      };
+
+      root.querySelectorAll<HTMLInputElement>('[data-vp-input]').forEach((input) => {
+        input.addEventListener('change', async () => {
+          const file = input.files?.[0];
+          const kind = input.dataset.vpInput!;
+          if (!file || input.dataset.loading) return;
+          // Clear immediately so re-picking the SAME gallery file after an
+          // error still fires `change` (an unchanged value fires nothing).
+          input.value = '';
+          input.dataset.loading = '1';
+          err.hidden = true;
+          const label = input.closest('label')?.querySelector<HTMLElement>('[data-vp-label]');
+          const prev = label?.textContent ?? '';
+          if (label) label.textContent = root.dataset.vpUploading || '…';
+          try {
+            // EXIF-stripped on-device (hard rule 2); the large cap keeps the ID
+            // text readable for the reviewer. Server re-strips again.
+            const doc = await reencode(file, 2000, 0.85);
+            const { error } = await actions.account.addVerificationDoc({ kind, doc } as never);
+            if (error) throw error;
+            done.add(kind);
+            paintDots();
+            // The screen stays retake-able via its dot — label must not stay
+            // stuck on "Uploading…".
+            if (label) label.textContent = root.dataset.vpRetake || prev;
+            const next = ORDER.find((k) => !done.has(k));
+            if (next) show(next);
+            else {
+              show('');
+              await finishFlow();
+            }
+          } catch {
+            err.hidden = false;
+            if (label) label.textContent = prev;
+          } finally {
+            delete input.dataset.loading;
+          }
+        });
+      });
+    });
+  }
+  initVerifyPhotos();
+  document.addEventListener('astro:page-load', initVerifyPhotos);
+</script>

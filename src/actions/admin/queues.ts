@@ -7,7 +7,7 @@
 import { env } from 'cloudflare:workers';
 import { and, eq } from 'drizzle-orm';
 import { requestDb, type Db } from '@/db/client';
-import { accounts, media, profiles } from '@/db/schema';
+import { accounts, media, profiles, verificationDocs } from '@/db/schema';
 import { accountApi } from '@/app/api/account';
 import { reportsApi } from '@/app/api/reports';
 import { profilesApi } from '@/app/api/profiles';
@@ -112,7 +112,7 @@ export async function reportsQueue(): Promise<ReportItem[]> {
  * same person in two places. Callable by email (verification queue) or by
  * profileId (moderation/profiles), whichever the admin acted from.
  */
-export async function approveWholeSubmission(by: { email?: string; profileId?: string }): Promise<void> {
+export async function approveWholeSubmission(by: { email?: string; profileId?: string }, reviewedBy?: string): Promise<void> {
   const d = adb();
   // Resolve account + profile from whichever key we were given.
   let accountId: string | undefined;
@@ -128,7 +128,9 @@ export async function approveWholeSubmission(by: { email?: string; profileId?: s
     const [p] = await d.select({ accountId: profiles.accountId }).from(profiles).where(eq(profiles.id, profileId));
     accountId = p?.accountId;
   }
-  // Clear a pending ID verification.
+  // Clear a pending ID verification — and stamp the doc rows themselves
+  // (state/reviewer/date is the skeletal record that outlives the purge,
+  // hard rule 3), so the audit trail names which documents this decision read.
   let verified = false;
   if (accountId) {
     const rows = await d
@@ -137,6 +139,12 @@ export async function approveWholeSubmission(by: { email?: string; profileId?: s
       .where(and(eq(accounts.id, accountId), eq(accounts.idVerification, 'pending')))
       .returning({ id: accounts.id });
     verified = rows.length > 0;
+    if (verified) {
+      await d
+        .update(verificationDocs)
+        .set({ state: 'approved', reviewedAt: new Date(), reviewedBy: reviewedBy ?? null })
+        .where(and(eq(verificationDocs.accountId, accountId), eq(verificationDocs.state, 'pending')));
+    }
   }
   // Publish a submitted profile + approve its pending photos.
   let publishedSlug: string | undefined;
@@ -163,7 +171,7 @@ export async function approveWholeSubmission(by: { email?: string; profileId?: s
  * → draft (resubmit), pending photos → rejected. Each step is state-guarded, so
  * rejecting a live profile's newly-added photos never un-publishes the profile.
  */
-export async function rejectWholeSubmission(by: { email?: string; profileId?: string }, reason: RejectionReason): Promise<void> {
+export async function rejectWholeSubmission(by: { email?: string; profileId?: string }, reason: RejectionReason, reviewedBy?: string): Promise<void> {
   const d = adb();
   let accountId: string | undefined;
   let profileId = by.profileId;
@@ -179,10 +187,19 @@ export async function rejectWholeSubmission(by: { email?: string; profileId?: st
     accountId = p?.accountId ?? undefined;
   }
   if (accountId) {
-    await d
+    const rows = await d
       .update(accounts)
       .set({ idVerification: 'rejected', verificationReason: reason })
-      .where(and(eq(accounts.id, accountId), eq(accounts.idVerification, 'pending')));
+      .where(and(eq(accounts.id, accountId), eq(accounts.idVerification, 'pending')))
+      .returning({ id: accounts.id });
+    // Stamp the reviewed docs (mirror of approve): the rejected set stays
+    // distinguishable from her NEXT attempt's fresh `pending` uploads.
+    if (rows.length) {
+      await d
+        .update(verificationDocs)
+        .set({ state: 'rejected', reviewedAt: new Date(), reviewedBy: reviewedBy ?? null })
+        .where(and(eq(verificationDocs.accountId, accountId), eq(verificationDocs.state, 'pending')));
+    }
   }
   if (profileId) {
     await d.update(profiles).set({ state: 'draft' }).where(and(eq(profiles.id, profileId), eq(profiles.state, 'pending_review')));

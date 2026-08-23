@@ -42,6 +42,7 @@ Bun (toolchain) · Astro SSR (Cloudflare adapter) · Cloudflare Workers + static
 ## Architecture defaults
 
 - Public pages: **zero JS by default**, SSR, edge-cached (Cache API, precise purge on publish/edit). JS budget < 50 KB/page. Islands only for real interactivity; **server islands** for personalized fragments on cached pages.
+- **Registration wall (2026-08-23):** anonymous humans see only `/{locale}/welcome/` until they register — crawlers (UA, `lib/gate.ts BOT_RE`), the warm cron and signed-in users pass; the wall runs in middleware BEFORE the page cache. The documented cloaking exception lives in SEO.md §1.9. Draft advertisers additionally live in **focus-mode**: everything redirects into `/account/setup/` until they submit (ONBOARDING.md).
 - Server data path: Drizzle → Hyperdrive → Postgres. Browser path: supabase-js for Auth, Realtime, RLS-guarded dashboard mutations ONLY.
 - **Realtime, not polling — anywhere state changes:** presence for online-now, DB-trigger broadcasts (`realtime.broadcast_changes()`) for live updates (import progress, approval moments, admin queues, new-profile toasts, favorite sync). Always SSR-first paint with realtime layered after hydration; always graceful fallback; private channels authorized via RLS; payloads = IDs + minimal state.
 - View transitions + prefetch on all navigation. Optimistic UI on every user action. CLS = 0. Lighthouse 95+ mobile before merge.

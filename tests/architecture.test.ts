@@ -76,8 +76,10 @@ test('app/data backends are only reachable through the api seam', () => {
   expect(offenders).toEqual([]);
 });
 
-test('app/api is only called from pages, layouts and actions', () => {
-  const allowed = ['src/pages/', 'src/layouts/', 'src/actions/', 'src/app/api/'];
+test('app/api is only called from pages, layouts, actions and the middleware', () => {
+  // middleware.ts joined 2026-08-23: advertiser focus-mode reads the session
+  // seam (memoized — the page's own read reuses it) to gate product pages.
+  const allowed = ['src/pages/', 'src/layouts/', 'src/actions/', 'src/app/api/', 'src/middleware.ts'];
   const offenders = files
     .filter((f) => !allowed.some((a) => f.includes(a)))
     .filter((f) => importsOf(f).some((spec) => spec.startsWith('@/app/api/')));

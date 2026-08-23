@@ -18,7 +18,7 @@
 6. **HTTP 410** for blocked/deleted/expired profiles + IndexNow removal ping. No soft-404s.
 7. **llms.txt** at root: markdown overview of the site (what it is, verified-only claim, links to city/category hubs per locale + key guides). Regenerate weekly via cron.
 8. **Canonicals:** filter/sort querystrings canonicalize to clean path. Indexable = path-level pages only (locale, category, city, profile, content).
-9. **No cloaking.** Bots get exactly what users get.
+9. **The registration wall is a deliberate crawler exception (2026-08-23).** Anonymous HUMANS get only the `/{locale}/welcome/` pitch (rewritten in place on the home URLs; everything else 302s home) until they register; the crawlers in §1.2 + link-preview fetchers (UA match, `BOT_RE` in `src/lib/gate.ts`) and signed-in users get the full site, so indexability is unchanged. Keep `BOT_RE` in sync with the robots.txt list. Known risk, accepted: serving crawlers content humans can't see is cloaking by Google's definition — Bing/AI-first strategy prices that in; revisit if Google traffic ever matters more than registrations. Beyond that exception, bots get exactly what users get — never vary content by UA anywhere else.
 
 ## 2. URL & language architecture
 

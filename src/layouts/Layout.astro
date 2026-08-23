@@ -82,9 +82,19 @@ const ogAltLocales = (Object.keys(OG_LOCALES) as Locale[]).filter((l) => l !== l
  * rides the session identity query (60s memo) — no separate accounts read. */
 const session = await sessionApi.current(Astro);
 const idVerified = session?.role === 'advertiser' ? session.idVerification === 'approved' : true;
+/* Advertiser focus-mode (ONBOARDING.md, 2026-08-23): with a draft (unsubmitted)
+ * profile she gets NO chrome anywhere — the deleted corridor's chromeBare
+ * pattern. Middleware redirects product pages into the setup flow; this covers
+ * the allowlisted reading pages (legal/support/blog) so nav never resurfaces.
+ * The profile_submitted cookie bridges the post-submit Hyperdrive read-lag. */
+const focusMode =
+  session?.role === 'advertiser' &&
+  (session.profileState ?? 'draft') === 'draft' &&
+  !Astro.cookies.get('profile_submitted')?.value;
+const chromeBare = focusMode ? true : bare;
 // Dock unread badge — one SQL COUNT (unreadCount), not listThreads' full
 // per-thread message load on every page render.
-const unread = session && bare !== true ? await messagingApi.unreadCount(session) : 0;
+const unread = session && chromeBare !== true ? await messagingApi.unreadCount(session) : 0;
 ---
 
 <!doctype html>
@@ -266,10 +276,10 @@ const unread = session && bare !== true ? await messagingApi.unreadCount(session
     <!-- .page-zoom = the iOS push-back target when a sheet opens; fixed
          chrome (dock, dialogs) lives outside it. -->
     <div class="page-zoom">
-      {!bare && <Header {session} {unread} />}
+      {!chromeBare && <Header {session} {unread} />}
       {/* bare='mobile' (messages): full-screen app feel on mobile, but the
           site header stays on desktop so navigation is never trapped. */}
-      {bare === 'mobile' && (
+      {chromeBare === 'mobile' && (
         <div class="hidden md:block">
           <Header {session} {unread} />
         </div>
@@ -279,9 +289,9 @@ const unread = session && bare !== true ? await messagingApi.unreadCount(session
         <slot />
       </main>
 
-      {!bare && <Footer {session} />}
+      {!chromeBare && <Footer {session} />}
     </div>
-    {!bare && <BottomTabBar {session} {idVerified} {unread} />}
+    {!chromeBare && <BottomTabBar {session} {idVerified} {unread} />}
     <AuthModal />
     <PageSheet />
     <ProfileSheet />

@@ -7,12 +7,12 @@
  */
 import { env } from 'cloudflare:workers';
 import { ActionError } from 'astro:actions';
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, isNull } from 'drizzle-orm';
 import { requestDb } from '@/db/client';
 import { accounts, auditLog, verificationDocs } from '@/db/schema';
 import { sessionApi } from '@/app/api/session';
 import type { Session } from '@/app/models/session';
-import type { AdminAction, AdminRole } from '@/lib/taxonomy';
+import { VERIFICATION_DOC_KINDS, type AdminAction, type AdminRole, type VerificationDocKind } from '@/lib/taxonomy';
 import type { AuditEntry, Claim } from './types';
 
 interface Kv {
@@ -116,13 +116,19 @@ export async function readVdoc(id: string): Promise<{ r2Key: string; accountId: 
 }
 
 /** Doc ids submitted by an account (by email) — the review panel signs each. */
-export async function verificationDocIdsFor(email: string): Promise<string[]> {
+export async function verificationDocsFor(
+  email: string,
+): Promise<{ id: string; kind: VerificationDocKind }[]> {
+  // The submission under review: pending, un-purged, in flow order (ID → selfie
+  // with ID → selfie with code) so the review grid always reads 1-2-3.
   const rows = await adb()
-    .select({ id: verificationDocs.id })
+    .select({ id: verificationDocs.id, kind: verificationDocs.kind })
     .from(verificationDocs)
     .innerJoin(accounts, eq(accounts.id, verificationDocs.accountId))
-    .where(eq(accounts.email, email));
-  return rows.map((r) => r.id);
+    .where(and(eq(accounts.email, email), eq(verificationDocs.state, 'pending'), isNull(verificationDocs.purgedAt)));
+  return rows.sort(
+    (a, b) => VERIFICATION_DOC_KINDS.indexOf(a.kind) - VERIFICATION_DOC_KINDS.indexOf(b.kind),
+  );
 }
 
 export interface AuditFilter {

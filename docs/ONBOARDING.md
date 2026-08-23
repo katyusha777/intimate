@@ -29,10 +29,30 @@
 > without "all that reading". Rates, services, hours and SMS-verify are now
 > **optional** (contact too): encouraged in the flow but never blocking, filled
 > later from the dashboard editor; a profile is approvable without them.
-> **ID verification is ID-only** — the selfie-with-code was dropped (product
-> decision). Source of truth: `src/lib/onboarding.ts` (`ORDER`/`OPTIONAL`) and
-> `src/pages/[locale]/account/setup/`. The per-step specs below still describe
-> the fuller original flow and are being trimmed to match.
+> Source of truth: `src/lib/onboarding.ts` (`ORDER`/`OPTIONAL`) and
+> `src/pages/[locale]/account/setup/`.
+>
+> **Focus-mode + 3-photo verification (2026-08-23 — registrations dropped and
+> new professionals were lost on the open site, so the flow became the whole
+> app until she submits):**
+> - **Until the profile is submitted, a draft advertiser sees ONLY the flow.**
+>   The "later" escape (SetupShell link + `setup_later` cookie) is gone; the
+>   middleware (`lib/gate.ts focusRedirect`) 302s every product page to
+>   `/account/setup/` and Layout force-bares all chrome (the corridor's
+>   chromeBare pattern). Legal/support/blog stay readable, bare. The
+>   `profile_submitted` cookie (set by `submitProfile`) bridges the
+>   post-submit Hyperdrive read-lag.
+> - **ID verification is THREE photos, one per screen**
+>   (`onboarding/VerifyPhotos.astro`): 1· the ID · 2· selfie holding the ID ·
+>   3· selfie holding a paper with her handwritten 4-letter code (derived from
+>   her email, `lib/verification-code.ts`; the admin review shows the same
+>   code). Each photo uploads the moment it's taken
+>   (`account.addVerificationDoc`, kind-tagged rows) — leaving the flow never
+>   loses one; screens advance client-side inside one render. All three in →
+>   account flips `pending`; if ID was the last required step the wizard
+>   auto-submits (unchanged). The 2026-08-10 "ID-only" decision is reversed:
+>   too many fake/unverifiable submissions, and the audience needed a simpler,
+>   more explicit set of instructions, not a shorter one.
 
 ### Entry
 Register (role tile PROFESSIONAL) → confirm email → she lands **in the flow** (`/account/setup/`), never on the bare dashboard. If she ever navigates away, the dashboard's first card is the same journey as a checklist (§3) — the flow and the checklist are one system, two views.

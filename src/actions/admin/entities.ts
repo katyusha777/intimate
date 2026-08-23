@@ -9,7 +9,7 @@ import { reportsApi } from '@/app/api/reports';
 import { profilesApi } from '@/app/api/profiles';
 import type { Profile } from '@/app/models/profile';
 import { profileAge } from '@/app/models/profile';
-import type { ProfileState, VerificationState } from '@/lib/taxonomy';
+import { VERIFICATION_DOC_KINDS, type ProfileState, type VerificationDocKind, type VerificationState } from '@/lib/taxonomy';
 import { and, eq, isNull } from 'drizzle-orm';
 import { accounts as accountsTable, profiles as profilesTable, verificationDocs } from '@/db/schema';
 import { adb } from './lib';
@@ -144,7 +144,7 @@ export async function profileByIdAdmin(id: string): Promise<{
   admin: AdminProfile;
   account?: AdminAccountInfo;
   siblings: { id: string; slug: string; name: string; state: ProfileState }[];
-  vdocIds: string[];
+  vdocs: { id: string; kind: VerificationDocKind }[];
 } | null> {
   const profile = await profilesApi.byId(id);
   if (!profile) return null;
@@ -195,7 +195,7 @@ export async function profileByIdAdmin(id: string): Promise<{
           .where(eq(profilesTable.accountId, row.accountId)),
         // Purged docs have no R2 bytes (would 404 on reveal) — filter them out.
         adb()
-          .select({ id: verificationDocs.id })
+          .select({ id: verificationDocs.id, kind: verificationDocs.kind })
           .from(verificationDocs)
           .where(and(eq(verificationDocs.accountId, row.accountId), isNull(verificationDocs.purgedAt))),
       ])
@@ -205,7 +205,9 @@ export async function profileByIdAdmin(id: string): Promise<{
     admin,
     account,
     siblings: siblingRows.filter((r) => r.id !== id),
-    vdocIds: docRows.map((r) => r.id),
+    vdocs: docRows.sort(
+      (a, b) => VERIFICATION_DOC_KINDS.indexOf(a.kind) - VERIFICATION_DOC_KINDS.indexOf(b.kind),
+    ),
   };
 }
 

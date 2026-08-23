@@ -8,7 +8,9 @@
  * Oldest-first list → claim → review → approve / reject-with-reason / escalate.
  * Keyboard a/r/e.
  */
-import { getAdmin, verificationDocIdsFor } from '@/actions/admin/lib';
+import { getAdmin, verificationDocsFor } from '@/actions/admin/lib';
+import { verificationCode } from '@/lib/verification-code';
+import type { VerificationDocKind } from '@/lib/taxonomy';
 import { signVdocUrl } from '@/lib/vdoc-sign';
 import { approvalQueue } from '@/actions/admin/queues';
 import { profileAge } from '@/app/models/profile';
@@ -29,10 +31,17 @@ const selected = items.find((i) => i.key === selKey) ?? null;
 // to review (each reveal is audited at the serve route, hard rule 3). The
 // (id) => wrapper matters: bare .map(signVdocUrl) passes the array index as its
 // nowMs param → URLs signed for 1970 → always "forbidden".
-const docSrcs =
-  selected?.idPending && selected.email
-    ? await Promise.all((await verificationDocIdsFor(selected.email)).map((id) => signVdocUrl(id)))
-    : [];
+const docs = selected?.idPending && selected.email ? await verificationDocsFor(selected.email) : [];
+const docSrcs = await Promise.all(docs.map((d) => signVdocUrl(d.id)));
+const kindLabel: Record<VerificationDocKind, string> = {
+  id_front: m.adm_doc_kind_id_front(),
+  id_selfie: m.adm_doc_kind_id_selfie(),
+  code_selfie: m.adm_doc_kind_code_selfie(),
+};
+const docLabels = docs.map((d) => kindLabel[d.kind]);
+// The code she was told to write on paper — deterministic from her email
+// (lib/verification-code), so the reviewer compares photo ↔ this, no lookup.
+const expectedCode = selected?.idPending && selected.email ? verificationCode(selected.email) : null;
 
 function ago(iso: string): string {
   const mins = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
@@ -88,8 +97,14 @@ const rows = items.map((i) => ({
                 {selected.idPending && (
                   <div>
                     <h2 class="font-condensed text-sm font-bold uppercase tracking-wide text-muted-foreground">{m.adm_verification_doc_title()}</h2>
+                    {expectedCode && (
+                      <p class="mt-2 flex items-center gap-2 text-sm">
+                        <span class="text-muted-foreground">{m.adm_expected_code()}:</span>
+                        <span class="slab-cut bg-foreground px-2 py-0.5 font-condensed text-base font-bold tracking-widest text-background">{expectedCode}</span>
+                      </p>
+                    )}
                     <div class="mt-2">
-                      <DocViewer srcs={docSrcs} admin={session.email} />
+                      <DocViewer srcs={docSrcs} labels={docLabels} admin={session.email} />
                     </div>
                     <p class="mt-2 text-2xs text-muted-foreground">{m.adm_verification_doc_note()}</p>
                   </div>

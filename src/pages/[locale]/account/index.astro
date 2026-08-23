@@ -37,15 +37,19 @@ const account = session ? await accountApi.get(session) : null;
 const profile = session ? await accountApi.myProfile(session) : null;
 
 // Advertiser + not-yet-submitted → the onboarding checklist IS the dashboard.
+// The profile_submitted cookie folds into the RENDER too, not just the
+// redirect: right after submitting, Hyperdrive still serves state='draft' for
+// minutes — without the cookie in this condition she'd see a stale "get your
+// profile live" checklist whose CTA bounces (setup redirects her back here).
 const progress =
   session?.role === 'advertiser' && profile && account ? onboardingProgress(profile, account) : null;
-const onboarding = progress != null && !progress.submitted;
+const onboarding =
+  progress != null && !progress.submitted && !Astro.cookies.get('profile_submitted')?.value;
 
-// First-run guidance: send an unfinished advertiser into the setup flow, unless
-// she's explicitly tapped "later" (a session cookie remembers that choice).
-const later = Astro.url.searchParams.get('later');
-if (later) Astro.cookies.set('setup_later', '1', { path: '/', httpOnly: true, sameSite: 'lax' });
-if (onboarding && !later && !Astro.cookies.get('setup_later')) {
+// Focus-mode (2026-08-23): an unfinished advertiser ALWAYS lands in the setup
+// flow — the "later" escape is gone (the middleware enforces the same rule on
+// every other route).
+if (onboarding) {
   return Astro.redirect(localizePath('/account/setup/'));
 }
 

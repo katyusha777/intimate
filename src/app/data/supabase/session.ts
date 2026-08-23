@@ -41,6 +41,13 @@ async function identity(accountId: string, email: string | undefined): Promise<S
         where ${media.profileId} = ${profiles.id}
           and ${media.state} = 'approved' and ${media.isPrivate} = false
         order by ${media.position} asc limit 1)`,
+      // "Never had a profile" (undefined → onboarding/focus-mode) must stay
+      // distinguishable from "profile soft-deleted" — otherwise focus-mode
+      // treats a deleted-profile owner as a fresh draft and redirect-loops her
+      // (middleware → setup → /account/ → middleware …).
+      hasDeletedProfile: sql<boolean>`exists (
+        select 1 from ${profiles}
+        where ${profiles.accountId} = ${accounts.id} and ${profiles.state} = 'deleted')`,
     })
     .from(accounts)
     // A soft-deleted profile (GDPR approval, lifecycle law) must not ride the
@@ -59,7 +66,10 @@ async function identity(accountId: string, email: string | undefined): Promise<S
     name: row.profileName ?? row.displayName ?? mail.split('@')[0] ?? 'User',
     profileId: row.profileId ?? undefined,
     profileSlug: row.profileSlug ?? undefined,
-    profileState: row.profileState ?? undefined,
+    // Deleted profiles stay OFF the session (id/slug/name above) but their
+    // existence shows as state 'deleted' so gating logic never mistakes the
+    // owner for a never-onboarded draft advertiser.
+    profileState: row.profileState ?? (row.hasDeletedProfile ? 'deleted' : undefined),
     avatarUrl: row.avatarKey ? mediaUrl(row.avatarKey) : undefined,
     idVerification: row.idVerification,
     adminRole: row.adminRole ?? undefined,

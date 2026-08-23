@@ -3,7 +3,9 @@ import type { APIContext, MiddlewareNext } from 'astro';
 import { env } from 'cloudflare:workers';
 import { paraglideMiddleware } from '@/paraglide/server';
 import { withRequestDb } from '@/db/client';
+import { sessionApi } from '@/app/api/session';
 import { negotiateLocale } from '@/lib/i18n';
+import { BOT_RE, focusRedirect, gate } from '@/lib/gate';
 import { HOME_TTL_S, isAnonymousRequest, isCacheableHome, isCacheableProfile, servedFromCache, storeInCache, type CacheKv } from '@/lib/page-cache';
 import { captureError } from '@/lib/sentry';
 
@@ -142,10 +144,43 @@ export const onRequest = defineMiddleware(async (context, next) => {
   return res;
 });
 
+/**
+ * Advertiser focus-mode (ONBOARDING.md): a signed-in advertiser whose profile
+ * is still draft (unsubmitted) is locked to the setup flow — every product
+ * page 302s into it. Runs only for cookie-carrying requests on paths
+ * focusRedirect classifies as product (so anonymous/bot traffic never pays the
+ * session read, and the read itself is the same 60s-memoized sessionApi call
+ * the page/Layout makes anyway — warming it here costs nothing extra). The
+ * `profile_submitted` cookie (set by the submitProfile action) bridges the
+ * minutes-long Hyperdrive read lag right after she submits, the same pattern
+ * as became_advertiser.
+ */
+const focusModeRedirect = async (context: APIContext, locale: string): Promise<Response | null> => {
+  const to = focusRedirect(context.url, locale);
+  if (!to) return null;
+  if (context.cookies.get('profile_submitted')?.value) return null;
+  const session = await sessionApi.current(context);
+  if (session?.role !== 'advertiser') return null;
+  if ((session.profileState ?? 'draft') !== 'draft') return null;
+  return context.redirect(to, 302);
+};
+
 const handle = (context: APIContext, next: MiddlewareNext) =>
   // One shared DB client per request (db/client.ts requestDb) — every seam and
   // action inside this request reuses it instead of re-connecting.
   withRequestDb(async () => {
+  // Registration wall + focus-mode inputs, computed once (lib/gate.ts). The
+  // warm secret check is hoisted from the cache block: the warm cron must pass
+  // the wall too, or the home cache would go permanently cold.
+  const anonymous = isAnonymousRequest(context.request.headers.get('cookie'));
+  const warmSecret = (env as unknown as Record<string, string | undefined>).WARM_SECRET;
+  const warmOk = !!warmSecret && context.request.headers.get('x-warm') === warmSecret;
+  const visitor = {
+    anonymous,
+    bot: BOT_RE.test(context.request.headers.get('user-agent') ?? ''),
+    warm: warmOk,
+    xSheet: context.request.headers.get('x-sheet') === '1',
+  };
   if (context.url.pathname === '/') {
     // Root stays a 200 — a redirecting homepage is flagged by Google ("Page with
     // redirect") and drops the apex from the index. Render the negotiated locale's
@@ -170,6 +205,19 @@ const handle = (context: APIContext, next: MiddlewareNext) =>
     }
     if (context.url.searchParams.has('error_code')) {
       return context.redirect(`/${locale}/auth/expired`, 302);
+    }
+    // Registration wall: an anonymous human gets the welcome pitch rendered IN
+    // PLACE at the root (still a 200 — the apex must never bounce; crawlers
+    // never reach this branch, they fall through to the real home below).
+    if (anonymous && !visitor.bot && !warmOk) {
+      return paraglideMiddleware(context.request, () => next(`/${locale}/welcome/${context.url.search}`), {
+        effectiveRequestUrl: new URL(`/${locale}/welcome/`, context.url),
+      });
+    }
+    // Focus-mode: a draft advertiser landing on the apex goes to her flow.
+    if (!anonymous) {
+      const focused = await focusModeRedirect(context, locale);
+      if (focused) return focused;
     }
     // ponytail: `/` renders fresh, not edge-cached (isCacheableHome only matches
     // /{locale}/). Fine for one URL; wire it to the per-locale home cache if root
@@ -204,6 +252,31 @@ const handle = (context: APIContext, next: MiddlewareNext) =>
     return next();
   }
 
+  // Registration wall (lib/gate.ts): anonymous humans get the welcome pitch —
+  // /{locale}/ rewritten in place, everything walled 302s home (which then
+  // shows the pitch). Crawlers/warm/signed-in fall through untouched. This MUST
+  // stay ahead of the cache block: gate responses never enter the shared KV
+  // cache (SECURITY.md §5), and walled visitors must never be served from it.
+  const g = gate(context.url, visitor);
+  if (g.kind === 'redirect') return context.redirect('/', 302);
+  if (g.kind === 'rewrite') {
+    return paraglideMiddleware(context.request, () => next(g.to));
+  }
+
+  // Advertiser focus-mode: draft advertisers browse nothing but their flow.
+  if (!anonymous) {
+    const pathLocale = context.url.pathname.match(/^\/(nl|en|de|ro|it)(?=\/|$)/)?.[1];
+    const focused = await focusModeRedirect(
+      context,
+      pathLocale ??
+        negotiateLocale(
+          context.request.headers.get('accept-language'),
+          context.cookies.get('PARAGLIDE_LOCALE')?.value,
+        ),
+    );
+    if (focused) return focused;
+  }
+
   // Public profile pages: serve the rendered HTML from the edge cache (24h),
   // busted on any profile edit. The live "online" badge is refreshed after
   // paint (Layout → /avail.json), so the cached shell is never stale-online.
@@ -213,7 +286,7 @@ const handle = (context: APIContext, next: MiddlewareNext) =>
   if (
     context.request.method === 'GET' &&
     (isCacheableProfile(context.url) || cacheableHome) &&
-    isAnonymousRequest(context.request.headers.get('cookie'))
+    anonymous
   ) {
     const kv = cacheKv();
     const dep = deployId();
@@ -222,10 +295,10 @@ const handle = (context: APIContext, next: MiddlewareNext) =>
     // Gated on WARM_SECRET so an anonymous `X-Warm` header can't force a fresh
     // SSR + KV write on every request (an unauthenticated cache-bypass DoS). A
     // wrong/absent secret just serves from cache normally; the warmer (worker +
-    // GH action) sends `X-Warm: <WARM_SECRET>`.
-    const warmSecret = (env as unknown as Record<string, string | undefined>).WARM_SECRET;
-    const forceStore =
-      cacheableHome && !!warmSecret && context.request.headers.get('x-warm') === warmSecret;
+    // GH action) sends `X-Warm: <WARM_SECRET>`. (warmOk hoisted above — the
+    // wall consumes it too.) Post-wall, only crawlers and the warm cron reach
+    // this block: the KV page cache is bot/warm-fed by construction.
+    const forceStore = cacheableHome && warmOk;
     const hit = forceStore ? null : await servedFromCache(kv, dep, context.url);
     if (hit) return hit;
     const res = await paraglideMiddleware(context.request, () => next());

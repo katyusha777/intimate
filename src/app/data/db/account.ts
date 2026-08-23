@@ -7,7 +7,7 @@
  * Fresh Db per call — workerd forbids reusing I/O across requests.
  */
 import { env } from 'cloudflare:workers';
-import { and, eq, inArray, isNotNull, ne, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNotNull, isNull, ne, sql } from 'drizzle-orm';
 import { requestDb, type Db } from '@/db/client';
 import { accounts, favorites, media, profiles, verificationDocs } from '@/db/schema';
 import {
@@ -21,7 +21,7 @@ import {
 } from '@/app/models/account';
 import { ProfileSchema, birthDateForAge, priceFromRates, type Profile } from '@/app/models/profile';
 import { mediaUrl, toProfile } from '@/app/data/db/profiles';
-import { CITIES, POLICY_MIN_AGE } from '@/lib/taxonomy';
+import { CITIES, POLICY_MIN_AGE, VERIFICATION_DOC_KINDS } from '@/lib/taxonomy';
 import { slugifyBase } from '@/lib/slug';
 import { evictMediaCache, isR2Key, mediaBucket as bucket } from '@/lib/media-keys';
 import { pushoverAdmins } from '@/lib/pushover';
@@ -305,33 +305,104 @@ export const accountApi: AccountApi = {
     await db().update(profiles).set({ unlisted }).where(eq(profiles.accountId, session.accountId));
   },
 
-  async submitVerification(session, { docs }) {
+  async addVerificationDoc(session, { kind, bytes }) {
     const d = db();
     const b = verificationBucket();
-    // Each EXIF-stripped doc → the private EU bucket + a verification_docs row
-    // (r2Key + content hash). Keys are namespaced by account; contents are never
-    // logged (hard rule 3). purge_after is set later, on deactivation (the
-    // 48-month clock starts then), not at submission.
-    const rows: { accountId: string; r2Key: string; docHash: string }[] = [];
-    for (const doc of docs) {
-      const r2Key = `${session.accountId}/${crypto.randomUUID()}.jpg`;
-      await b.put(r2Key, doc.bytes, { httpMetadata: { contentType: 'image/jpeg' } });
-      rows.push({ accountId: session.accountId, r2Key, docHash: await sha256Hex(doc.bytes) });
+    const [acc] = await d
+      .select({ idVerification: accounts.idVerification })
+      .from(accounts)
+      .where(eq(accounts.id, session.accountId));
+    // Approved accounts need no more documents — refuse quietly (UI never
+    // offers this, so only a crafted call lands here).
+    if (!acc || acc.idVerification === 'approved') throw new Error('already verified');
+    // Under review: the submission must stay exactly what the reviewer is
+    // looking at — no retakes (a supersede would delete a doc an open admin
+    // drawer is showing). Completing a MISSING kind stays allowed, so legacy
+    // single-doc pending accounts can finish their set.
+    if (acc.idVerification === 'pending') {
+      const existing = await accountApi.verificationDocKinds(session);
+      if (existing.includes(kind)) throw new Error('under review');
     }
+    // The EXIF-stripped photo → the private EU bucket + a verification_docs row
+    // (kind + r2Key + content hash). Keys are namespaced by account; contents
+    // are never logged (hard rule 3). purge_after is set later, on deactivation
+    // (the 48-month clock starts then), not at submission.
+    const r2Key = `${session.accountId}/${crypto.randomUUID()}.jpg`;
+    await b.put(r2Key, bytes, { httpMetadata: { contentType: 'image/jpeg' } });
+    let insertedId: string;
     try {
-      if (rows.length) await d.insert(verificationDocs).values(rows);
-      await d
-        .update(accounts)
-        .set({ idVerification: 'pending', verificationSubmittedAt: new Date() })
-        .where(eq(accounts.id, session.accountId));
-      // Verification waiting in the queue → ping the admin team (fire-and-forget).
-      pushoverAdmins('verification_pending', 'Verification pending', `account ${session.accountId} submitted documents — review at intimate.nl/admin/approvals`);
+      const [row] = await d
+        .insert(verificationDocs)
+        .values({ accountId: session.accountId, r2Key, docHash: await sha256Hex(bytes), kind })
+        .returning({ id: verificationDocs.id });
+      insertedId = row!.id;
     } catch (e) {
       // Never leave orphaned toxic-waste objects if the DB write fails — they'd
       // escape the retention/purge accounting (hard rule 3).
-      await Promise.allSettled(rows.map((r) => b.delete(r.r2Key)));
+      await b.delete(r2Key).catch(() => {});
       throw e;
     }
+    // A retake supersedes the unreviewed photo of the same kind: it was never
+    // part of any review, so keeping it would be needless toxic waste — delete
+    // bytes AND row (retention applies to reviewed documents, not discards).
+    // The row is removed ONLY when its bytes actually left R2: a failed object
+    // delete keeps the row, so the object stays visible to the row-driven
+    // retention purge (hard rule 3 accounting — an unrowed object would escape
+    // it forever) and the next retake retries the delete.
+    const stale = await d
+      .select({ id: verificationDocs.id, r2Key: verificationDocs.r2Key })
+      .from(verificationDocs)
+      .where(
+        and(
+          eq(verificationDocs.accountId, session.accountId),
+          eq(verificationDocs.kind, kind),
+          eq(verificationDocs.state, 'pending'),
+          ne(verificationDocs.id, insertedId),
+        ),
+      );
+    if (stale.length) {
+      const deleted = await Promise.allSettled(stale.map((s) => b.delete(s.r2Key)));
+      const okIds = stale.filter((_, i) => deleted[i]!.status === 'fulfilled').map((s) => s.id);
+      if (okIds.length) await d.delete(verificationDocs).where(inArray(verificationDocs.id, okIds));
+    }
+    // All three kinds in → flip to pending review. The completeness decision
+    // rides the WRITE itself (correlated subquery, executed at origin): a
+    // separate re-read here would repeat the exact SELECT the setup page just
+    // primed, and Hyperdrive serves cached SELECTs minutes stale after writes
+    // (memory: hyperdrive-read-cache-active) — the flip would silently never
+    // happen. State guard keeps it one-shot: re-uploads while already pending
+    // never re-ping.
+    const flipped = await d
+      .update(accounts)
+      .set({ idVerification: 'pending', verificationSubmittedAt: new Date() })
+      .where(
+        and(
+          eq(accounts.id, session.accountId),
+          inArray(accounts.idVerification, ['unverified', 'rejected']),
+          sql`(select count(distinct ${verificationDocs.kind}) from ${verificationDocs}
+               where ${verificationDocs.accountId} = ${session.accountId}
+                 and ${verificationDocs.state} = 'pending'
+                 and ${verificationDocs.purgedAt} is null) = ${VERIFICATION_DOC_KINDS.length}`,
+        ),
+      )
+      .returning({ id: accounts.id });
+    if (flipped.length) {
+      pushoverAdmins('verification_pending', 'Verification pending', `account ${session.accountId} submitted documents — review at intimate.nl/admin/approvals`);
+    }
+  },
+
+  async verificationDocKinds(session) {
+    const rows = await db()
+      .selectDistinct({ kind: verificationDocs.kind })
+      .from(verificationDocs)
+      .where(
+        and(
+          eq(verificationDocs.accountId, session.accountId),
+          eq(verificationDocs.state, 'pending'),
+          isNull(verificationDocs.purgedAt),
+        ),
+      );
+    return rows.map((r) => r.kind);
   },
 
   // Her gallery = the by-id core scoped to her own profile row. Admin edits the

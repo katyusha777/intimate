@@ -71,6 +71,7 @@ import {
   TATTOOS,
   THREAD_STATES,
   VERIFICATION_STATES,
+  VERIFICATION_DOC_KINDS,
   ALL_SERVICES,
   type CitySlug,
 } from '../lib/taxonomy';
@@ -90,6 +91,7 @@ export const adminRoleEnum = pgEnum('admin_role', vals(ADMIN_ROLES));
 export const adminActionEnum = pgEnum('admin_action', vals(ADMIN_ACTIONS));
 export const profileStateEnum = pgEnum('profile_state', vals(PROFILE_STATES));
 export const verificationStateEnum = pgEnum('verification_state', vals(VERIFICATION_STATES));
+export const verificationDocKindEnum = pgEnum('verification_doc_kind', vals(VERIFICATION_DOC_KINDS));
 export const importJobStateEnum = pgEnum('import_job_state', vals(IMPORT_JOB_STATES));
 
 export const genderEnum = pgEnum('gender', vals(GENDERS));
@@ -414,6 +416,9 @@ export const verificationDocs = pgTable(
       .references(() => accounts.id),
     r2Key: text('r2_key').notNull(),
     docHash: text('doc_hash').notNull(), // proves nothing alone; the doc is the proof
+    // Which of the 3 photos this is (id_front default backfills the pre-kind
+    // rows, which were all plain ID shots). Admin review labels docs by this.
+    kind: verificationDocKindEnum('kind').notNull().default('id_front'),
     state: verificationStateEnum('state').notNull().default('pending'),
     submittedAt: timestamp('submitted_at', { withTimezone: true }).notNull().defaultNow(),
     reviewedBy: uuid('reviewed_by'), // admin account id — no FK (defensibility, GDPR §10)

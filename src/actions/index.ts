@@ -19,7 +19,7 @@ import { importFromUrl } from "@/lib/import";
 import { mintIceServers } from "@/lib/turn";
 import { joinFromConsent } from "@/app/api/orgs";
 import { pushoverAdmins } from "@/lib/pushover";
-import { CONVERSATION_MODES, REPORT_REASONS, REPORT_TARGETS } from "@/lib/taxonomy";
+import { CONVERSATION_MODES, REPORT_REASONS, REPORT_TARGETS, VERIFICATION_DOC_KINDS } from "@/lib/taxonomy";
 // The one sanctioned cross-fence import: the action registry wires in admin.
 import { admin } from "@/actions/admin";
 import {
@@ -248,6 +248,18 @@ export const server = {
       handler: async (_input, context) => {
         const session = await requireSession(context);
         await accountApi.submitProfile(session);
+        // Bridge cookie (became_advertiser pattern): Hyperdrive's read cache
+        // serves the pre-submit `draft` state for minutes, which would let the
+        // focus-mode middleware bounce her straight back into the setup flow
+        // she just finished. The cookie also busts the 60s session memo (new
+        // Cookie header). Expires well past the lag window.
+        context.cookies.set('profile_submitted', '1', {
+          path: '/',
+          httpOnly: true,
+          sameSite: 'lax',
+          secure: import.meta.env.PROD,
+          maxAge: 900,
+        });
         return { ok: true };
       },
     }),
@@ -429,26 +441,31 @@ export const server = {
       },
     }),
 
-    submitId: defineAction({
-      // Client re-encodes to JPEG via canvas (EXIF/GPS stripped, hard rule 2)
-      // before it leaves the device; same shape + cap as account.addPhoto. ID
-      // ONLY — the selfie-with-code was dropped 2026-08-10 (product decision).
+    // One verification photo per call (the 3-step flow: id_front → id_selfie →
+    // code_selfie), saved the moment it's taken so leaving the flow never loses
+    // an upload. Client re-encodes to JPEG via canvas (EXIF/GPS stripped, hard
+    // rule 2) before it leaves the device; when the third kind lands, the data
+    // layer flips the account to pending review. Replaced submitId 2026-08-23
+    // (the selfie-with-code returns, plus a selfie-with-ID).
+    addVerificationDoc: defineAction({
       input: z.object({
+        kind: z.enum(VERIFICATION_DOC_KINDS),
         doc: z.string().regex(/^data:image\/jpeg;base64,/).max(2_000_000),
       }),
-      handler: async ({ doc }, context) => {
+      handler: async ({ kind, doc }, context) => {
         const session = await requireSession(context);
+        // ID verification is an ADVERTISER flow (VERIFICATION.md §0) — a
+        // client/agency session must not be able to fill the toxic-waste
+        // bucket or flip itself into the admin review queue.
+        if (session.role !== 'advertiser') throw new ActionError({ code: 'FORBIDDEN' });
         try {
-          // Streams to the private EU bucket + records hashes + flags pending
-          // (hard rule 3). NEVER log the contents — only a generic failure.
-          await accountApi.submitVerification(session, {
-            // Decode + re-strip server-side (hard rule 2) — the ID must never
-            // carry EXIF/GPS even if a crafted client skipped the canvas
-            // re-encode. A malformed body throws → caught below → 400.
-            docs: [{ bytes: dataUrlToJpegBytes(doc) }],
-          });
+          // Streams to the private EU bucket + records kind + hash (hard rule
+          // 3). NEVER log the contents — only a generic failure. Decode +
+          // re-strip server-side (hard rule 2) — the photo must never carry
+          // EXIF/GPS even if a crafted client skipped the canvas re-encode.
+          await accountApi.addVerificationDoc(session, { kind, bytes: dataUrlToJpegBytes(doc) });
         } catch (e) {
-          console.error("[verify] submit failed:", (e as Error).message);
+          console.error("[verify] upload failed:", (e as Error).message);
           throw new ActionError({ code: "BAD_REQUEST" });
         }
         return { ok: true };

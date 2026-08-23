@@ -15,9 +15,11 @@ import { isLocale, localizePath } from '@/lib/i18n';
 import SetupShell from '@/components/organisms/onboarding/SetupShell.astro';
 import ProfileEditorForm from '@/components/organisms/dashboard/ProfileEditorForm.astro';
 import MediaManager from '@/components/organisms/dashboard/MediaManager.astro';
-import VerificationFlow from '@/components/organisms/dashboard/VerificationFlow.astro';
+import VerifyPhotos from '@/components/organisms/onboarding/VerifyPhotos.astro';
 import Button from '@/components/atoms/Button.astro';
 import Layout from '@/layouts/Layout.astro';
+import { verificationCode } from '@/lib/verification-code';
+import { VERIFICATION_DOC_KINDS, type VerificationDocKind } from '@/lib/taxonomy';
 
 const locale = Astro.params.locale;
 if (!isLocale(locale)) return new Response(null, { status: 404 });
@@ -67,8 +69,33 @@ const resume = (): Step => {
 const basicsDone = progress.steps.find((s) => s.key === 'basics')!.done;
 let step = (Astro.url.searchParams.get('step') ?? '') as Step;
 if (!ALL.includes(step)) step = progress.submitted ? 'done' : basicsDone ? resume() : 'welcome';
+// ?step=verify stays reachable AFTER submission while ID photos are still
+// needed (unverified/rejected): it is the ONLY upload surface — the dashboard
+// verification tab links here for non-draft profiles (admin-created profile
+// owners, an ID rejected while the profile stayed live).
+const needsIdPhotos = account.idVerification === 'unverified' || account.idVerification === 'rejected';
+const verifyPass = step === 'verify' && needsIdPhotos;
+// Just submitted but the read-back is stale (Hyperdrive lag — the
+// profile_submitted cookie bridges it): treat her as submitted, never re-enter.
+if (!progress.submitted && Astro.cookies.get('profile_submitted')?.value && step !== 'done' && !verifyPass) {
+  return Astro.redirect(localizePath('/account/'));
+}
 // Once submitted, the flow is over — only the 'done' celebration is reachable.
-if (progress.submitted && step !== 'done') return Astro.redirect(localizePath('/account/'));
+if (progress.submitted && step !== 'done' && !verifyPass) return Astro.redirect(localizePath('/account/'));
+
+// The 3-photo verification screen (VerifyPhotos): which photos are already in
+// (resume + retake dots), her handwritten code, and an optional ?part= retake.
+const vKinds = step === 'verify' ? await accountApi.verificationDocKinds(session) : [];
+const vPartRaw = Astro.url.searchParams.get('part');
+const vPart = VERIFICATION_DOC_KINDS.includes(vPartRaw as VerificationDocKind)
+  ? (vPartRaw as VerificationDocKind)
+  : undefined;
+// After photo 3 when verify ISN'T the last open step: go to the real next one
+// (precomputed here — the advance must never depend on a stale read-back).
+const vNextHref =
+  progress.firstIncomplete && progress.firstIncomplete !== 'id'
+    ? `?step=${progress.firstIncomplete}`
+    : '?step=verify';
 
 const idx = (NUMBERED as readonly string[]).indexOf(step) + 1; // 0 for welcome/done
 const cont = 'w-full';
@@ -159,7 +186,24 @@ const why = 'mt-2 leading-relaxed text-muted-foreground';
         <div>
           <h1 class={title}>{m.verify_title()}</h1>
           <p class={why}>{m.onb_why_verify()}</p>
-          <div class="mt-6"><VerificationFlow {session} {account} wizardFinish={progress.firstIncomplete === 'id'} finishUrl={`${localizePath('/account/profile/')}?onboarded=1`} /></div>
+          {/* A rejection re-arms this flow — without the reason shown HERE she
+              would be dropped back on "photo 1 of 3" with zero explanation
+              (the dashboard surfaces that render it are focus-blocked). */}
+          {account.idVerification === 'rejected' && account.verificationReason && (
+            <p class="mt-4 border-l-2 border-brand pl-2.5 text-sm leading-relaxed">
+              {m.verify_reason_label()}: {account.verificationReason.replace(/_/g, ' ')}. {m.verify_reason_fix()}
+            </p>
+          )}
+          <div class="mt-6">
+            <VerifyPhotos
+              kinds={vKinds}
+              code={verificationCode(session.email)}
+              wizardFinish={progress.firstIncomplete === 'id' && !progress.submitted}
+              finishUrl={`${localizePath('/account/profile/')}?onboarded=1`}
+              nextHref={vNextHref}
+              part={vPart}
+            />
+          </div>
           {progress.readyToSubmit && (
             <div class="mt-8 border-t border-border pt-6">
               <p class="mb-3 text-sm text-muted-foreground">{m.onb_verify_submit_hint()}</p>

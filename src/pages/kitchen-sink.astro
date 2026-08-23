@@ -26,6 +26,7 @@ import SimilarProfiles from '@/components/organisms/profile/SimilarProfiles.astr
 import RecentSignups from '@/components/organisms/profile/RecentSignups.astro';
 import OnboardingChecklist from '@/components/organisms/dashboard/OnboardingChecklist.astro';
 import StatusBanner from '@/components/organisms/dashboard/StatusBanner.astro';
+import VerifyPhotos from '@/components/organisms/onboarding/VerifyPhotos.astro';
 import type { OnboardingProgress } from '@/lib/onboarding';
 import { CITIES } from '@/lib/taxonomy';
 import { neutralImageFor, safeImageFor, nsfwImageFor } from '@/lib/safe-images';
@@ -690,6 +691,19 @@ const swatches = [
       <div class="space-y-3">
         <StatusBanner state="pending_review" />
         <StatusBanner state="live" />
+      </div>
+    </section>
+
+    <section class="space-y-4">
+      <h2 class="text-xl font-semibold">Verify photos (3-step ID verification)</h2>
+      <p class="text-sm text-muted-foreground">
+        One photo per screen (ID → selfie with ID → selfie with the handwritten code);
+        screens advance client-side, each photo uploads on capture. Left: fresh start
+        (screen 1). Right: resumed with two photos in — the code screen with the slab.
+      </p>
+      <div class="grid gap-8 md:grid-cols-2">
+        <div class="max-w-md"><VerifyPhotos kinds={[]} code="KFTR" /></div>
+        <div class="max-w-md"><VerifyPhotos kinds={['id_front', 'id_selfie']} code="KFTR" /></div>
       </div>
     </section>
   </div>

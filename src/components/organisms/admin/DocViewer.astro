@@ -9,20 +9,26 @@
 import * as m from '@/paraglide/messages';
 
 interface Props {
-  /** Short-TTL signed URLs for this account's verification doc(s) (ID only). */
+  /** Short-TTL signed URLs for this account's verification doc(s). */
   srcs: string[];
+  /** Per-doc captions parallel to srcs (the 3-photo kinds: ID · selfie with ID
+   *  · selfie with code) — reviewers must know which photo they're judging. */
+  labels?: string[];
   /** Admin identity for the watermark. */
   admin: string;
 }
-const { srcs, admin } = Astro.props;
+const { srcs, labels = [], admin } = Astro.props;
 const gridCls = srcs.length > 1 ? 'grid-cols-2' : 'grid-cols-1';
 ---
 
 <figure class="relative overflow-hidden border border-border bg-muted" data-doc>
   <div class={`grid gap-1 p-1 ${gridCls}`}>
     {
-      srcs.map((src) => (
-        <img data-doc-img data-src={src} alt="" class="aspect-[3/2] w-full bg-card object-contain" />
+      srcs.map((src, i) => (
+        <div>
+          <img data-doc-img data-src={src} alt="" class="aspect-[3/2] w-full bg-card object-contain" />
+          {labels[i] && <p class="px-1 py-0.5 text-2xs font-medium uppercase tracking-wide text-muted-foreground">{labels[i]}</p>}
+        </div>
       ))
     }
     {

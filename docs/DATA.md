@@ -118,7 +118,9 @@ backend projects them from approved/private media rows.
 **verification_docs** — metadata ONLY; the document lives in the private EU R2
 bucket (ARCHITECTURE §11, VERIFICATION.md). `r2_key`, `doc_hash` (proves nothing
 alone — the doc is the proof, hence bounded retention not instant purge),
-`state`, `reviewed_by`/`reviewed_at`, `purge_after` (48 months after
+`kind` (`id_front`/`id_selfie`/`code_selfie` — the 3-photo flow, migration
+0031; pre-kind rows backfilled `id_front`), `state`, `reviewed_by`/`reviewed_at`
+(stamped by approve/reject since 2026-08-23), `purge_after` (48 months after
 deactivation, pending final legal review). After retention the doc is purged;
 state/hash/reviewer/date stay forever. Every read is audit-logged; the table
 gets **no anon/authenticated grants** (server + admin path only).

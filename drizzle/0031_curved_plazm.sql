@@ -1,0 +1,2 @@
+CREATE TYPE "public"."verification_doc_kind" AS ENUM('id_front', 'id_selfie', 'code_selfie');--> statement-breakpoint
+ALTER TABLE "verification_docs" ADD COLUMN "kind" "verification_doc_kind" DEFAULT 'id_front' NOT NULL;

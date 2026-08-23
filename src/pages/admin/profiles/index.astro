@@ -13,6 +13,7 @@ import { localizedDescription } from '@/app/models/profile';
 import { CITIES, GENDERS, PROFILE_STATES, REJECTION_REASONS } from '@/lib/taxonomy';
 import { cityName } from '@/lib/seo';
 import { signVdocUrl } from '@/lib/vdoc-sign';
+import { verificationCode } from '@/lib/verification-code';
 import AdminShell from '@/components/organisms/admin/AdminShell.astro';
 import DocViewer from '@/components/organisms/admin/DocViewer.astro';
 import NewProfileForm from '@/components/organisms/admin/NewProfileForm.astro';
@@ -46,7 +47,12 @@ const history = detail
 // legitimate re-check path; each reveal is tap-gated by DocViewer and audited
 // at the serve route. The (id) => wrapper matters: bare .map(signVdocUrl)
 // passes the array index as nowMs → URLs signed for 1970 → always "forbidden".
-const docSrcs = detail?.vdocIds.length ? await Promise.all(detail.vdocIds.map((id) => signVdocUrl(id))) : [];
+const docSrcs = detail?.vdocs.length ? await Promise.all(detail.vdocs.map((d) => signVdocUrl(d.id))) : [];
+// Kind captions + the code she was told to write (deterministic from email —
+// lib/verification-code): the reviewer compares the code photo against this.
+const docKindLabels: Record<string, string> = { id_front: 'ID', id_selfie: 'Selfie with ID', code_selfie: 'Selfie with code' };
+const docLabels = detail?.vdocs.map((d) => docKindLabels[d.kind] ?? d.kind) ?? [];
+const expectedCode = detail?.account?.email ? verificationCode(detail.account.email) : null;
 const humanizeH = (s: string) => s.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
 
 const vClass = (s: string) =>
@@ -312,8 +318,13 @@ const ago = (iso: string) => {
                     )}
                     {detail.account.verificationReason && <span class="text-brand"> · {humanizeH(detail.account.verificationReason)}</span>}
                   </p>
+                  {expectedCode && docSrcs.length > 0 && (
+                    <p class="mt-1.5 text-xs text-muted-foreground">
+                      Expected code: <span class="slab-cut bg-foreground px-1.5 py-0.5 font-condensed font-bold tracking-widest text-background">{expectedCode}</span>
+                    </p>
+                  )}
                   <div class="mt-2">
-                    <DocViewer srcs={docSrcs} admin={session.email} />
+                    <DocViewer srcs={docSrcs} labels={docLabels} admin={session.email} />
                   </div>
                   {detail.account.idVerification === 'pending' && (
                     <div data-vreject-row class="mt-2 flex flex-wrap items-center gap-1.5">

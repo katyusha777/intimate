@@ -1,0 +1,208 @@
+---
+/**
+ * The registration gate (lib/gate.ts, 2026-08-23) — what an anonymous HUMAN
+ * sees instead of the site: the pre-launch landing's cinematic pitch, reborn
+ * with live proof (online count, recent-signups rail) and real auth CTAs (the
+ * AuthModal, mounted by Layout even when bare). Crawlers never land here (the
+ * wall passes them by UA), so the page is noindex'd; canonical stays the home
+ * URL. Signed-in visitors bounce home. Zero islands, bare chrome — register or
+ * read, nothing else.
+ */
+import Layout from '@/layouts/Layout.astro';
+import * as m from '@/paraglide/messages';
+import { sessionApi } from '@/app/api/session';
+import { profilesApi } from '@/app/api/profiles';
+import { isLocale, localizePath, homeUrl, homeHref } from '@/lib/i18n';
+import { articlesForLocale } from '@/lib/articles';
+import { phantomOnlineBase } from '@/lib/online-base';
+import Button from '@/components/atoms/Button.astro';
+import SafeImage from '@/components/atoms/SafeImage.astro';
+import SupportChips from '@/components/molecules/SupportChips.astro';
+import RecentSignups from '@/components/organisms/profile/RecentSignups.astro';
+
+const locale = Astro.params.locale;
+if (!isLocale(locale)) return new Response(null, { status: 404 });
+
+// Signed-in visitors don't belong on the gate — home is theirs already.
+const session = await sessionApi.current(Astro);
+if (session) return Astro.redirect(homeHref(locale));
+
+/* Proof of life: the newest-profiles ticker (same feed as the live home) and
+ * the live national count. A tapped card opens the ProfileSheet — the one
+ * taste of the product the wall lets through (X-Sheet fetch). */
+const [{ items: newest }, { total: onlineReal }] = await Promise.all([
+  profilesApi.list({ sort: 'newest', limit: 18 }),
+  profilesApi.list({ onlineOnly: true, sort: 'recently_online', limit: 1 }),
+]);
+const signups = [...newest];
+for (let i = signups.length - 1; i > 0; i--) {
+  const j = Math.floor(Math.random() * (i + 1));
+  [signups[i], signups[j]] = [signups[j], signups[i]];
+}
+const onlineCount = phantomOnlineBase() + onlineReal;
+
+/* Below the fold: the editorial shelf (the wall keeps /blog open). */
+const articles = await articlesForLocale(locale);
+
+const roleCard =
+  'group flex w-full cursor-pointer flex-col items-center gap-2 border border-white/20 p-5 text-center transition-colors hover:border-white/50 active:border-white';
+---
+
+<Layout
+  title={m.gate_meta_title()}
+  description={m.gate_meta_desc()}
+  canonical={homeUrl(Astro.url.origin, locale)}
+  noindex
+  bare
+  preloadImage="/video/hero-poster.jpg"
+>
+  <script is:inline>
+    // Build-in-public switch: `localStorage['safe-mode'] = 'true'` flips this
+    // page to the anime skin (operator-only) — primes the cookie before
+    // Layout's end-of-body swap script does the actual swap.
+    (function () {
+      try {
+        var v = localStorage.getItem('safe-mode');
+        if (v === 'true') {
+          localStorage.setItem('dev', '1');
+          document.cookie = 'safe_mode=dev; path=/; max-age=31536000; samesite=lax';
+          document.documentElement.classList.add('safe-on');
+        } else if (v === 'false' && /safe_mode=dev/.test(document.cookie)) {
+          document.cookie = 'safe_mode=off; path=/; max-age=31536000; samesite=lax';
+        }
+      } catch (e) {}
+    })();
+  </script>
+  <div class="dark min-h-dvh bg-neutral-950 text-white">
+    <div class="relative overflow-hidden lg:min-h-dvh">
+      <!-- Cinematic media: right half on DESKTOP only. Mobile stays a clean,
+           solid-dark canvas — no video, no busy backdrop behind the type. -->
+      <div class="absolute inset-y-0 right-0 hidden w-1/2 lg:block" data-safe-video-wrap>
+        <video
+          class="hidden h-full w-full object-cover"
+          data-safe-video
+          muted
+          loop
+          playsinline
+          preload="none"
+          data-poster="/video/hero-poster.jpg"
+        >
+          <source src="/video/hero.webm" type="video/webm" />
+          <source src="/video/hero.mp4" type="video/mp4" />
+        </video>
+        <SafeImage imageKey="hero-video" src="/video/hero-poster.jpg" alt="" class="h-full w-full" loading="eager" />
+      </div>
+      <div class="hero-panel absolute inset-y-0 left-0 hidden w-[58%] bg-neutral-950 lg:block" aria-hidden="true"></div>
+
+      <div class="relative mx-auto max-w-7xl px-4 md:px-6">
+        <div class="flex min-h-dvh flex-col py-6 lg:max-w-[46%] lg:justify-center">
+          <img src="/img/logo-light.svg" alt={m.app_name()} width="1242" height="597" class="h-6 w-auto md:h-7" />
+
+          {/* Live proof-of-life rail — top of the column on every viewport. */}
+          {signups.length > 0 && <RecentSignups profiles={signups} class="mt-6" />}
+
+          <div class="flex flex-1 flex-col justify-center py-10 lg:flex-none lg:py-12">
+            <p class="eyebrow flex items-center gap-2 font-condensed text-lg font-bold uppercase tracking-wide">
+              <span>{m.where_netherlands()}</span>
+              <span class="text-white/30" aria-hidden="true">·</span>
+              <span class="flex items-center gap-1.5 text-brand">
+                <span class="size-1.5 rounded-full bg-online" aria-hidden="true"></span>
+                {m.fold_online_count({ count: onlineCount })}
+              </span>
+            </p>
+            <h1 class="display mt-3 text-3xl md:text-5xl">{m.gate_title()}</h1>
+            <p class="mt-4 max-w-md text-lg leading-relaxed text-white/75">{m.gate_sub()}</p>
+
+            <ul class="mt-8 max-w-md space-y-2.5">
+              {
+                [
+                  [m.gate_point_1_lead(), m.gate_point_1_body()],
+                  [m.gate_point_2_lead(), m.gate_point_2_body()],
+                  [m.gate_point_3_lead(), m.gate_point_3_body()],
+                ].map(([lead, body]) => (
+                  <li class="text-sm leading-relaxed text-white/70">
+                    <span class="font-condensed font-bold uppercase tracking-wide text-brand">{lead} </span>
+                    {body}
+                  </li>
+                ))
+              }
+            </ul>
+
+            <div class="mt-10 max-w-md">
+              <h2 class="display text-2xl">{m.gate_kind_label()}</h2>
+              {/* Two equal role cards, no default — a deliberate tap. Each opens
+                  the register modal with the role preselected. */}
+              <div class="mt-4 grid grid-cols-2 gap-3">
+                <button type="button" data-modal-open="auth" data-auth-tab="register" data-auth-role="advertiser" class={roleCard}>
+                  <svg class="size-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-2h6l2 2h3v11H4z"></path><circle cx="12" cy="13" r="3.5"></circle></svg>
+                  <span class="font-condensed text-base font-bold uppercase tracking-wide">{m.role_advertiser()}</span>
+                  <span class="text-xs text-white/60">{m.role_advertiser_desc()}</span>
+                </button>
+                <button type="button" data-modal-open="auth" data-auth-tab="register" data-auth-role="client" class={roleCard}>
+                  <svg class="size-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"></path></svg>
+                  <span class="font-condensed text-base font-bold uppercase tracking-wide">{m.role_client()}</span>
+                  <span class="text-xs text-white/60">{m.role_client_desc()}</span>
+                </button>
+              </div>
+              <Button data-modal-open="auth" data-auth-tab="register" class="mt-4 block w-full">
+                {m.nav_register()} →
+              </Button>
+              <p class="mt-2 flex justify-center text-sm">
+                <button
+                  type="button"
+                  data-modal-open="auth"
+                  data-auth-tab="login"
+                  class="inline-flex min-h-11 items-center px-3 text-white/55 underline underline-offset-4 transition-colors hover:text-white"
+                >
+                  {m.gate_login()}
+                </button>
+              </p>
+              <p class="mt-2 text-center text-2xs text-white/50">{m.home_verified_free()}</p>
+              <SupportChips class="mt-6 text-white/70" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {/* Below the fold: the editorial shelf — the only reading path the wall
+        opens besides legal/support. Real indexable text stays on the blog. */}
+    {
+      articles.length > 0 && (
+        <section class="border-t border-white/10 px-4 py-16 md:px-6">
+          <div class="mx-auto max-w-3xl">
+            <h2 class="eyebrow font-condensed text-lg font-bold uppercase tracking-wide text-white/50">
+              {m.section_articles()}
+            </h2>
+            <ul class="mt-6 divide-y divide-white/10">
+              {articles.map((a) => (
+                <li>
+                  <a href={localizePath(`/blog/${a.data.slug}/`)} class="group block py-5">
+                    <h3 class="font-condensed text-xl font-bold leading-snug transition-colors group-hover:text-brand">
+                      {a.data.title}
+                    </h3>
+                    <p class="mt-1.5 text-sm leading-relaxed text-white/60">{a.data.excerpt}</p>
+                  </a>
+                </li>
+              ))}
+            </ul>
+
+            <div class="mt-14 max-w-2xl">
+              <h2 class="font-condensed text-xl font-bold leading-snug text-white/70">
+                {m.home_seo_title()}
+              </h2>
+              <p class="mt-3 text-sm leading-relaxed text-white/40">{m.home_seo_body()}</p>
+            </div>
+          </div>
+        </section>
+      )
+    }
+  </div>
+</Layout>
+
+<style>
+  /* The home hero's jagged ink seam — one brand, one cut. */
+  .hero-panel {
+    clip-path: polygon(0 0, 100% 0, 91% 32%, 97% 58%, 87% 100%, 0 100%);
+  }
+</style>

@@ -33,6 +33,10 @@ export const PROFILE_STATES = [
 
 export const VERIFICATION_STATES = ['unverified', 'pending', 'approved', 'rejected'] as const;
 
+/** The 3-photo ID verification (ARCHITECTURE §11): the ID itself, a selfie
+ *  holding the ID, and a selfie holding the handwritten 4-letter code. */
+export const VERIFICATION_DOC_KINDS = ['id_front', 'id_selfie', 'code_selfie'] as const;
+
 export const MEDIA_TYPES = ['photo'] as const; // 'video' post-MVP (requires Cloudflare Stream)
 
 // --- Messaging (docs/MESSAGING.md) ---------------------------------------
@@ -547,6 +551,7 @@ export type ReportState = (typeof REPORT_STATES)[number];
 export type ReportResolution = (typeof REPORT_RESOLUTIONS)[number];
 export type ProfileState = (typeof PROFILE_STATES)[number];
 export type VerificationState = (typeof VERIFICATION_STATES)[number];
+export type VerificationDocKind = (typeof VERIFICATION_DOC_KINDS)[number];
 export type MediaType = (typeof MEDIA_TYPES)[number];
 export type ConversationMode = (typeof CONVERSATION_MODES)[number];
 export type MessageKind = (typeof MESSAGE_KINDS)[number];

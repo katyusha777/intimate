@@ -1,12 +1,13 @@
 ---
 /**
  * The setup-flow chrome (docs/ONBOARDING.md §4) — deliberately NOT the 5-tab
- * AccountShell: tabs are escape routes = drop-off. Just a wordmark, the filling
- * progress bar (the fill IS the reward — law 2), and an always-present "later"
- * escape that costs nothing. One job per screen lives in the slot.
+ * AccountShell: tabs are escape routes = drop-off. Just a wordmark and the
+ * filling progress bar (the fill IS the reward — law 2). The "later" escape
+ * was removed 2026-08-23 with advertiser focus-mode: until she submits, the
+ * flow IS the app (the middleware redirects everything else here anyway).
+ * One job per screen lives in the slot.
  */
 import * as m from '@/paraglide/messages';
-import { localizePath, homeHref } from '@/lib/i18n';
 
 interface Props {
   /** 1-based position among the numbered steps; omit on welcome/done (no bar). */
@@ -20,13 +21,16 @@ const pct = showBar ? Math.round((index! / total!) * 100) : 0;
 
 <div class="mx-auto min-h-dvh max-w-xl px-4 py-6 md:py-10">
   <div class="flex items-center justify-between gap-4">
-    <a href={homeHref()} class="font-condensed text-lg font-bold tracking-tight">Intimate</a>
-    <a
-      href={`${localizePath('/account/')}?later=1`}
-      class="text-sm text-muted-foreground underline-offset-2 transition-colors hover:text-foreground hover:underline"
+    <span class="font-condensed text-lg font-bold tracking-tight">Intimate</span>
+    {/* Focus-mode strips ALL chrome, so this is the one place she can still
+        sign out (wrong account, shared phone). Same handler as AccountShell. */}
+    <button
+      type="button"
+      data-signout
+      class="flex min-h-11 cursor-pointer items-center px-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
     >
-      {m.onb_later()}
-    </a>
+      {m.account_signout()}
+    </button>
   </div>
 
   {
@@ -44,3 +48,21 @@ const pct = showBar ? Math.round((index! / total!) * 100) : 0;
 
   <div class="mt-8"><slot /></div>
 </div>
+
+<script>
+  import { actions } from 'astro:actions';
+
+  function initSetupSignout() {
+    document.querySelectorAll<HTMLElement>('[data-signout]').forEach((btn) => {
+      if (btn.dataset.init) return;
+      btn.dataset.init = '1';
+      btn.addEventListener('click', async () => {
+        const locale = (document.documentElement.lang || 'en') as import('@/lib/taxonomy').Locale;
+        const { data } = await actions.auth.logout({ locale });
+        location.href = data?.href ?? '/';
+      });
+    });
+  }
+  initSetupSignout();
+  document.addEventListener('astro:page-load', initSetupSignout);
+</script>

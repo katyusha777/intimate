@@ -8,7 +8,7 @@
  * images-only (ADMIN.md §6).
  */
 import { z } from 'zod';
-import { ALL_SERVICES, AMENITIES, APPEARANCES, AVAILABLE_FOR, BODY_TYPES, BREAST_TYPES, CITY_SLUGS, CUP_SIZES, DRINKING, EYE_COLORS, GENDERS, HAIR_COLORS, HAIR_LENGTHS, INCALL_LOCATIONS, LANGUAGES, MEDIA_STATES, MEETING_TYPES, NUMERIC_RANGES, PAYMENT_METHODS, PIERCINGS, POLICY_MIN_AGE, PUBIC_HAIR, SMOKING, TATTOOS, VERIFICATION_STATES, type AccountType, type AdminRole, type Service } from '@/lib/taxonomy';
+import { ALL_SERVICES, AMENITIES, APPEARANCES, AVAILABLE_FOR, BODY_TYPES, BREAST_TYPES, CITY_SLUGS, CUP_SIZES, DRINKING, EYE_COLORS, GENDERS, HAIR_COLORS, HAIR_LENGTHS, INCALL_LOCATIONS, LANGUAGES, MEDIA_STATES, MEETING_TYPES, NUMERIC_RANGES, PAYMENT_METHODS, PIERCINGS, POLICY_MIN_AGE, PUBIC_HAIR, SMOKING, TATTOOS, VERIFICATION_STATES, type AccountType, type AdminRole, type Service, type VerificationDocKind } from '@/lib/taxonomy';
 import { AvailabilityDatesSchema, OpeningHoursSchema, RateRowSchema, profileAge, type Profile } from '@/app/models/profile';
 import type { Session } from '@/app/models/session';
 
@@ -142,11 +142,16 @@ export interface AccountApi {
   /** Owner unlisted toggle: hidden from listings/search, direct URL still works. */
   setUnlisted(session: Session, unlisted: boolean): Promise<void>;
   /**
-   * Store EXIF-stripped ID documents in the private EU bucket + record a hash per
-   * doc, then flag the account `pending` review (hard rule 3). Contents never
+   * Store ONE EXIF-stripped verification photo (id_front | id_selfie |
+   * code_selfie) in the private EU bucket, recording kind + hash; a retake
+   * supersedes the unreviewed photo of the same kind. When all three kinds are
+   * in, the account flips to `pending` review (hard rule 3). Contents never
    * logged; reads are admin-only + audit-logged (separate surface).
    */
-  submitVerification(session: Session, input: { docs: { bytes: ArrayBuffer }[] }): Promise<void>;
+  addVerificationDoc(session: Session, input: { kind: VerificationDocKind; bytes: ArrayBuffer }): Promise<void>;
+  /** Photo kinds uploaded in the current (not-yet-reviewed) cycle — drives the
+   *  3-step flow's resume + retake dots. */
+  verificationDocKinds(session: Session): Promise<VerificationDocKind[]>;
 
   // --- media (her gallery) — bytes go to R2, the row records the key ---
   photos(session: Session): Promise<MediaItem[]>;
