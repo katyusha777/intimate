@@ -697,13 +697,13 @@ const swatches = [
     <section class="space-y-4">
       <h2 class="text-xl font-semibold">Verify photos (3-step ID verification)</h2>
       <p class="text-sm text-muted-foreground">
-        One photo per screen (ID → selfie with ID → selfie with the handwritten code);
-        screens advance client-side, each photo uploads on capture. Left: fresh start
-        (screen 1). Right: resumed with two photos in — the code screen with the slab.
+        All three steps stacked on one screen (ID → selfie with ID → selfie with the
+        handwritten code); chips turn ✓ as each photo uploads on capture, the just-taken
+        photo stays as a preview. Left: fresh start. Right: resumed with two photos in.
       </p>
       <div class="grid gap-8 md:grid-cols-2">
         <div class="max-w-md"><VerifyPhotos kinds={[]} code="KFTR" /></div>
-        <div class="max-w-md"><VerifyPhotos kinds={['id_front', 'id_selfie']} code="KFTR" /></div>
+        <div class="max-w-md"><VerifyPhotos kinds={['id_front', 'id_selfie']} code="KFTR" noScroll /></div>
       </div>
     </section>
   </div>

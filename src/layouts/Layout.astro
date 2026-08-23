@@ -367,13 +367,24 @@ const unread = session && chromeBare !== true ? await messagingApi.unreadCount(s
             video.classList.toggle('hidden', !off);
             if (fallback) fallback.classList.toggle('hidden', off);
             // Only play (and thus download — preload="none") when actually
-            // rendered: the section is display:none on mobile, and 2.5 MB of
-            // invisible hero video was starving the LCP image on slow 4G. The
-            // poster rides data-poster for the same reason (57 KB, poster
-            // fetches eagerly even on display:none videos).
+            // rendered: 2.5 MB of invisible hero video was starving the LCP
+            // image on slow 4G. The poster rides data-poster for the same
+            // reason (57 KB, poster fetches eagerly even on display:none
+            // videos). Playback (= the download) waits for window load so it
+            // never competes with the fold; reduced-motion and Save-Data
+            // visitors keep the poster.
             if (off && video.checkVisibility?.() !== false) {
               if (!video.poster && video.dataset.poster) video.poster = video.dataset.poster;
-              video.play().catch(() => {});
+              const still = matchMedia('(prefers-reduced-motion: reduce)').matches || navigator.connection?.saveData;
+              // start re-checks state: a safe-mode toggle before window load
+              // must not let the stale closure fetch 2.5 MB behind the blur.
+              const start = () => {
+                if (state() === 'off' && video.checkVisibility?.() !== false) video.play().catch(() => {});
+              };
+              if (!still) {
+                if (document.readyState === 'complete') start();
+                else addEventListener('load', start, { once: true });
+              }
             } else video.pause();
           });
           // Toggle UI: aria-checked = "is safe mode active at all", data-safe-state

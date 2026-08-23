@@ -5,15 +5,14 @@
  * with live proof (online count, recent-signups rail) and real auth CTAs (the
  * AuthModal, mounted by Layout even when bare). Crawlers never land here (the
  * wall passes them by UA), so the page is noindex'd; canonical stays the home
- * URL. Signed-in visitors bounce home. Zero islands, bare chrome — register or
- * read, nothing else.
+ * URL. Signed-in visitors bounce home. Zero islands, bare chrome — register,
+ * nothing else.
  */
 import Layout from '@/layouts/Layout.astro';
 import * as m from '@/paraglide/messages';
 import { sessionApi } from '@/app/api/session';
 import { profilesApi } from '@/app/api/profiles';
-import { isLocale, localizePath, homeUrl, homeHref } from '@/lib/i18n';
-import { articlesForLocale } from '@/lib/articles';
+import { isLocale, homeUrl, homeHref } from '@/lib/i18n';
 import { phantomOnlineBase } from '@/lib/online-base';
 import Button from '@/components/atoms/Button.astro';
 import SafeImage from '@/components/atoms/SafeImage.astro';
@@ -40,9 +39,6 @@ for (let i = signups.length - 1; i > 0; i--) {
   [signups[i], signups[j]] = [signups[j], signups[i]];
 }
 const onlineCount = phantomOnlineBase() + onlineReal;
-
-/* Below the fold: the editorial shelf (the wall keeps /blog open). */
-const articles = await articlesForLocale(locale);
 
 const roleCard =
   'group flex w-full cursor-pointer flex-col items-center gap-2 border border-white/20 p-5 text-center transition-colors hover:border-white/50 active:border-white';
@@ -75,22 +71,12 @@ const roleCard =
   </script>
   <div class="dark min-h-dvh bg-neutral-950 text-white">
     <div class="relative overflow-hidden lg:min-h-dvh">
-      <!-- Cinematic media: right half on DESKTOP only. Mobile stays a clean,
-           solid-dark canvas — no video, no busy backdrop behind the type. -->
-      <div class="absolute inset-y-0 right-0 hidden w-1/2 lg:block" data-safe-video-wrap>
-        <video
-          class="hidden h-full w-full object-cover"
-          data-safe-video
-          muted
-          loop
-          playsinline
-          preload="none"
-          data-poster="/video/hero-poster.jpg"
-        >
-          <source src="/video/hero.webm" type="video/webm" />
-          <source src="/video/hero.mp4" type="video/mp4" />
-        </video>
+      <!-- Cinematic media: STILL image only (the video read as distracting,
+           2026-08-24) — full-bleed backdrop on mobile (scrimmed so the type
+           stays readable), right half on desktop. -->
+      <div class="absolute inset-0 lg:left-auto lg:w-1/2">
         <SafeImage imageKey="hero-video" src="/video/hero-poster.jpg" alt="" class="h-full w-full" loading="eager" />
+        <div class="absolute inset-0 bg-neutral-950/70 lg:hidden" aria-hidden="true"></div>
       </div>
       <div class="hero-panel absolute inset-y-0 left-0 hidden w-[58%] bg-neutral-950 lg:block" aria-hidden="true"></div>
 
@@ -165,38 +151,6 @@ const roleCard =
       </div>
     </div>
 
-    {/* Below the fold: the editorial shelf — the only reading path the wall
-        opens besides legal/support. Real indexable text stays on the blog. */}
-    {
-      articles.length > 0 && (
-        <section class="border-t border-white/10 px-4 py-16 md:px-6">
-          <div class="mx-auto max-w-3xl">
-            <h2 class="eyebrow font-condensed text-lg font-bold uppercase tracking-wide text-white/50">
-              {m.section_articles()}
-            </h2>
-            <ul class="mt-6 divide-y divide-white/10">
-              {articles.map((a) => (
-                <li>
-                  <a href={localizePath(`/blog/${a.data.slug}/`)} class="group block py-5">
-                    <h3 class="font-condensed text-xl font-bold leading-snug transition-colors group-hover:text-brand">
-                      {a.data.title}
-                    </h3>
-                    <p class="mt-1.5 text-sm leading-relaxed text-white/60">{a.data.excerpt}</p>
-                  </a>
-                </li>
-              ))}
-            </ul>
-
-            <div class="mt-14 max-w-2xl">
-              <h2 class="font-condensed text-xl font-bold leading-snug text-white/70">
-                {m.home_seo_title()}
-              </h2>
-              <p class="mt-3 text-sm leading-relaxed text-white/40">{m.home_seo_body()}</p>
-            </div>
-          </div>
-        </section>
-      )
-    }
   </div>
 </Layout>
 

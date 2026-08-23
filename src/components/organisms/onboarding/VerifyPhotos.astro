@@ -1,14 +1,18 @@
 ---
 /**
  * The 3-photo ID verification (ARCHITECTURE §11), built for someone who is not
- * technical, on a phone, maybe nervous (ONBOARDING.md laws): one photo per
- * screen — 1· the ID itself, 2· a selfie holding the ID, 3· a selfie holding a
- * paper with her handwritten 4-letter code (lib/verification-code.ts). Each
- * photo uploads the moment it's taken (account.addVerificationDoc — leaving
- * the flow never loses one); the three screens swap CLIENT-side inside one
- * render, so advancing never depends on a read-back that Hyperdrive's read
- * cache could serve stale. All three in → the account flips to pending review
- * server-side; the wizard then auto-submits her profile (wizardFinish).
+ * technical, on a phone, maybe nervous (ONBOARDING.md laws): ALL THREE steps
+ * stacked on one screen — 1· the ID itself, 2· a selfie holding the ID, 3· a
+ * selfie holding a paper with her handwritten 4-letter code
+ * (lib/verification-code.ts) — numbered, generously spaced, so she always sees
+ * where she is and what's left (hidden-screen swaps read as "it just changed").
+ * Each photo uploads the moment it's taken (account.addVerificationDoc —
+ * leaving the flow never loses one) and stays visible as an on-device preview;
+ * the next step scrolls into view. Docs are admin-only server-side (hard rule
+ * 3), so a RESUMED session shows the green ✓ without the image — the preview
+ * exists only while the data URL is still in memory. All three in → the
+ * account flips to pending review server-side; the wizard then auto-submits
+ * her profile (wizardFinish).
  */
 import * as m from '@/paraglide/messages';
 import { VERIFICATION_DOC_KINDS, type VerificationDocKind } from '@/lib/taxonomy';
@@ -16,7 +20,7 @@ import { VERIFICATION_DOC_KINDS, type VerificationDocKind } from '@/lib/taxonomy
 interface Props {
   /** Kinds already uploaded this cycle (server-derived resume point). */
   kinds: VerificationDocKind[];
-  /** Her handwritten code — shown big on screen 3 (and to the admin reviewer). */
+  /** Her handwritten code — shown big on step 3 (and to the admin reviewer). */
   code: string;
   /** ID is the last required step: after photo 3, auto-submit + go to finishUrl. */
   wizardFinish?: boolean;
@@ -24,14 +28,17 @@ interface Props {
   /** After photo 3 when the wizard is NOT finishing: the next incomplete step
    *  (precomputed server-side — never derived from a possibly-stale re-read). */
   nextHref?: string;
-  /** Retake override (?part=…): open this screen even though it's done. */
+  /** Retake deep-link (?part=…): scroll that step into view on load. */
   part?: VerificationDocKind;
+  /** Skip the on-load scroll (kitchen-sink showcase — a resumed demo must not drag the page down). */
+  noScroll?: boolean;
 }
-const { kinds, code, wizardFinish = false, finishUrl = '/account/', nextHref = '?step=verify', part } = Astro.props;
+const { kinds, code, wizardFinish = false, finishUrl = '/account/', nextHref = '?step=verify', part, noScroll = false } = Astro.props;
 
 const ORDER = VERIFICATION_DOC_KINDS;
 const firstMissing = ORDER.find((k) => !kinds.includes(k)) ?? null;
-const current: VerificationDocKind | null = part ?? firstMissing;
+/** Where her eyes should land on load: a deep-linked retake, else the resume point. */
+const scrollTarget = noScroll ? null : (part ?? (kinds.length > 0 ? firstMissing : null));
 
 const copy: Record<VerificationDocKind, { title: string; why: string }> = {
   id_front: { title: m.vp_title_id(), why: m.vp_why_id() },
@@ -41,39 +48,36 @@ const copy: Record<VerificationDocKind, { title: string; why: string }> = {
 
 const tile =
   'flex w-full cursor-pointer flex-col items-center gap-3 border border-dashed border-foreground/30 px-4 py-10 text-center transition-colors hover:border-foreground/70 active:border-foreground';
+const chip = 'grid size-11 flex-none place-items-center font-condensed text-lg font-bold';
 ---
 
 <div
   data-verify-photos
   data-vp-done={kinds.join(',')}
+  data-vp-scroll={scrollTarget}
   data-vp-wizard-finish={wizardFinish ? '1' : undefined}
   data-vp-finish-url={finishUrl}
   data-vp-next-href={nextHref}
   data-vp-uploading={m.presignup_uploading()}
   data-vp-retake={m.vp_retake()}
 >
-  {/* The 3 progress dots — ✓ fills as photos land; a filled dot is tappable to retake. */}
-  <div class="flex items-center gap-2" data-vp-dots>
-    {
-      ORDER.map((k, i) => (
-        <button
-          type="button"
-          data-vp-dot={k}
-          disabled={!kinds.includes(k)}
-          class="grid size-11 place-items-center bg-muted font-condensed text-base font-bold text-muted-foreground"
-          aria-label={m.vp_step_of({ n: i + 1 })}
-        >
-          {i + 1}
-        </button>
-      ))
-    }
-  </div>
-
   {
     ORDER.map((kind, i) => (
-      <section data-vp-part={kind} hidden={kind !== current} class="mt-6">
-        <p class="text-xs font-medium uppercase tracking-wide text-muted-foreground">{m.vp_step_of({ n: i + 1 })}</p>
-        <h2 class="display mt-1 text-2xl">{copy[kind].title}</h2>
+      <section
+        data-vp-part={kind}
+        class:list={['scroll-mt-6', i > 0 && 'mt-12 border-t border-foreground/10 pt-10']}
+      >
+        {/* The step's number stays in front of her — green ✓ once its photo is in. */}
+        <div class="flex items-center gap-3">
+          <span
+            data-vp-chip={kind}
+            class:list={[chip, kinds.includes(kind) ? 'bg-online text-neutral-950' : 'bg-muted text-muted-foreground']}
+          >
+            {kinds.includes(kind) ? '✓' : i + 1}
+          </span>
+          <p class="text-xs font-medium uppercase tracking-wide text-muted-foreground">{m.vp_step_of({ n: i + 1 })}</p>
+        </div>
+        <h2 class="display mt-3 text-2xl">{copy[kind].title}</h2>
         <p class="mt-2 leading-relaxed text-muted-foreground">{copy[kind].why}</p>
 
         {kind === 'code_selfie' && (
@@ -82,7 +86,7 @@ const tile =
           </p>
         )}
 
-        <div class="mt-6 flex justify-center text-muted-foreground" aria-hidden="true">
+        <div class="mt-6 flex justify-center text-muted-foreground" data-vp-icon aria-hidden="true">
           {kind === 'id_front' && (
             <svg class="size-24" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
               <rect x="6" y="12" width="36" height="24" rx="2" />
@@ -117,6 +121,8 @@ const tile =
             data-vp-input={kind}
             class="sr-only"
           />
+          {/* Her just-taken photo, straight from the in-memory data URL — proof it landed. */}
+          <img data-vp-preview alt="" hidden class="max-h-64 w-auto" />
           <svg class="size-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M4 8h3l2-2h6l2 2h3v11H4z" />
             <circle cx="12" cy="13" r="3.5" />
@@ -125,15 +131,18 @@ const tile =
             {kinds.includes(kind) ? m.vp_retake() : m.vp_take()}
           </span>
         </label>
+
+        {/* Per-step error, right under the tile she just used — a single line
+            below all three sections sat two viewports away from the failure. */}
+        <p data-vp-error hidden class="mt-3 text-sm font-medium text-brand">{m.auth_error()}</p>
       </section>
     ))
   }
 
-  <div data-vp-alldone hidden={current !== null} class="mt-6 flex items-start gap-3 border-l-2 border-online pl-4">
+  <div data-vp-alldone hidden={firstMissing !== null} class="mt-10 flex items-start gap-3 border-l-2 border-online pl-4">
     <p class="leading-relaxed text-muted-foreground">{m.vp_all_done()}</p>
   </div>
 
-  <p data-vp-error hidden class="mt-4 text-sm font-medium text-brand">{m.auth_error()}</p>
   <p class="mt-6 text-xs leading-relaxed text-muted-foreground">{m.verify_privacy()}</p>
 </div>
 
@@ -148,33 +157,25 @@ const tile =
       if (root.dataset.init) return;
       root.dataset.init = '1';
       const done = new Set((root.dataset.vpDone || '').split(',').filter(Boolean));
-      const err = root.querySelector<HTMLElement>('[data-vp-error]')!;
+      const smooth = () =>
+        matchMedia('(prefers-reduced-motion: reduce)').matches ? ('auto' as const) : ('smooth' as const);
 
-      const show = (kind: string) => {
-        root.querySelectorAll<HTMLElement>('[data-vp-part]').forEach((s) => {
-          s.hidden = s.dataset.vpPart !== kind;
-        });
-        root.querySelector<HTMLElement>('[data-vp-alldone]')!.hidden = kind !== '';
+      // Runtime chip paint is inline styles (Tailwind only compiles classes it
+      // sees in source); SSR paints resumed state with the real classes.
+      const paintChip = (kind: string) => {
+        const c = root.querySelector<HTMLElement>(`[data-vp-chip="${kind}"]`);
+        if (!c) return;
+        c.style.background = 'var(--online)';
+        c.style.color = 'var(--color-neutral-950, #0a0a0a)';
+        c.textContent = '✓';
       };
-      // Dot states are painted by JS (SSR paints neutral): done = green ✓ and
-      // tappable to retake; runtime classes must be inline styles (Tailwind
-      // only compiles classes it sees in source).
-      const paintDots = () => {
-        root.querySelectorAll<HTMLButtonElement>('[data-vp-dot]').forEach((d) => {
-          const isDone = done.has(d.dataset.vpDot!);
-          d.disabled = !isDone;
-          d.style.background = isDone ? 'var(--online)' : '';
-          d.style.color = isDone ? 'var(--color-neutral-950, #0a0a0a)' : '';
-          if (isDone) d.textContent = '✓';
-        });
-      };
-      paintDots();
 
-      root.querySelectorAll<HTMLButtonElement>('[data-vp-dot]').forEach((d) => {
-        d.addEventListener('click', () => {
-          if (done.has(d.dataset.vpDot!)) show(d.dataset.vpDot!);
-        });
-      });
+      const scrollToPart = (kind: string) => {
+        root
+          .querySelector<HTMLElement>(`[data-vp-part="${kind}"]`)
+          ?.scrollIntoView({ behavior: smooth(), block: 'start' });
+      };
+      if (root.dataset.vpScroll) scrollToPart(root.dataset.vpScroll);
 
       const finishFlow = async () => {
         if (root.dataset.vpWizardFinish === '1') {
@@ -196,8 +197,10 @@ const tile =
           // error still fires `change` (an unchanged value fires nothing).
           input.value = '';
           input.dataset.loading = '1';
+          const err = input.closest('[data-vp-part]')!.querySelector<HTMLElement>('[data-vp-error]')!;
           err.hidden = true;
-          const label = input.closest('label')?.querySelector<HTMLElement>('[data-vp-label]');
+          const tile = input.closest('label');
+          const label = tile?.querySelector<HTMLElement>('[data-vp-label]');
           const prev = label?.textContent ?? '';
           if (label) label.textContent = root.dataset.vpUploading || '…';
           try {
@@ -207,14 +210,19 @@ const tile =
             const { error } = await actions.account.addVerificationDoc({ kind, doc } as never);
             if (error) throw error;
             done.add(kind);
-            paintDots();
-            // The screen stays retake-able via its dot — label must not stay
-            // stuck on "Uploading…".
+            paintChip(kind);
+            // Show her the photo that just landed, right where she took it.
+            const preview = tile?.querySelector<HTMLImageElement>('[data-vp-preview]');
+            if (preview) {
+              preview.src = doc;
+              preview.hidden = false;
+            }
+            // The step stays retake-able — label must not stay stuck on "Uploading…".
             if (label) label.textContent = root.dataset.vpRetake || prev;
             const next = ORDER.find((k) => !done.has(k));
-            if (next) show(next);
+            if (next) scrollToPart(next);
             else {
-              show('');
+              root.querySelector<HTMLElement>('[data-vp-alldone]')!.hidden = false;
               await finishFlow();
             }
           } catch {

@@ -42,17 +42,21 @@
 >   chromeBare pattern). Legal/support/blog stay readable, bare. The
 >   `profile_submitted` cookie (set by `submitProfile`) bridges the
 >   post-submit Hyperdrive read-lag.
-> - **ID verification is THREE photos, one per screen**
->   (`onboarding/VerifyPhotos.astro`): 1· the ID · 2· selfie holding the ID ·
->   3· selfie holding a paper with her handwritten 4-letter code (derived from
->   her email, `lib/verification-code.ts`; the admin review shows the same
->   code). Each photo uploads the moment it's taken
+> - **ID verification is THREE photos, all steps stacked on ONE screen**
+>   (`onboarding/VerifyPhotos.astro`, 2026-08-24 — the hidden-screen swap read
+>   as "it just changed" and lost people): 1· the ID · 2· selfie holding the
+>   ID · 3· selfie holding a paper with her handwritten 4-letter code (derived
+>   from her email, `lib/verification-code.ts`; the admin review shows the
+>   same code). Numbered chips turn ✓ green, the just-taken photo stays
+>   visible as an on-device preview (docs are admin-only server-side, so a
+>   resumed session shows the ✓ without the image), and the next step scrolls
+>   into view. Each photo uploads the moment it's taken
 >   (`account.addVerificationDoc`, kind-tagged rows) — leaving the flow never
->   loses one; screens advance client-side inside one render. All three in →
->   account flips `pending`; if ID was the last required step the wizard
->   auto-submits (unchanged). The 2026-08-10 "ID-only" decision is reversed:
->   too many fake/unverifiable submissions, and the audience needed a simpler,
->   more explicit set of instructions, not a shorter one.
+>   loses one. All three in → account flips `pending`; if ID was the last
+>   required step the wizard auto-submits (unchanged). The 2026-08-10
+>   "ID-only" decision is reversed: too many fake/unverifiable submissions,
+>   and the audience needed a simpler, more explicit set of instructions, not
+>   a shorter one.
 
 ### Entry
 Register (role tile PROFESSIONAL) → confirm email → she lands **in the flow** (`/account/setup/`), never on the bare dashboard. If she ever navigates away, the dashboard's first card is the same journey as a checklist (§3) — the flow and the checklist are one system, two views.
