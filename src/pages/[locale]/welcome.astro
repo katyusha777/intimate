@@ -71,12 +71,28 @@ const roleCard =
   </script>
   <div class="dark min-h-dvh bg-neutral-950 text-white">
     <div class="relative overflow-hidden lg:min-h-dvh">
-      <!-- Cinematic media: STILL image only (the video read as distracting,
-           2026-08-24) — full-bleed backdrop on mobile (scrimmed so the type
-           stays readable), right half on desktop. -->
-      <div class="absolute inset-0 lg:left-auto lg:w-1/2">
+      <!-- Cinematic media: the brand VIDEO on desktop (right half; Layout's
+           safe-video script un-hides + plays it after window load, and its
+           checkVisibility guard means the hidden mobile wrapper never even
+           downloads it), scrimmed STILL image on mobile. -->
+      <div class="absolute inset-y-0 right-0 hidden w-1/2 lg:block" data-safe-video-wrap>
+        <video
+          class="hidden h-full w-full object-cover"
+          data-safe-video
+          muted
+          loop
+          playsinline
+          preload="none"
+          data-poster="/video/hero-poster.jpg"
+        >
+          <source src="/video/hero.webm" type="video/webm" />
+          <source src="/video/hero.mp4" type="video/mp4" />
+        </video>
         <SafeImage imageKey="hero-video" src="/video/hero-poster.jpg" alt="" class="h-full w-full" loading="eager" />
-        <div class="absolute inset-0 bg-neutral-950/70 lg:hidden" aria-hidden="true"></div>
+      </div>
+      <div class="absolute inset-0 lg:hidden">
+        <SafeImage imageKey="hero-video" src="/video/hero-poster.jpg" alt="" class="h-full w-full" loading="eager" />
+        <div class="absolute inset-0 bg-neutral-950/70" aria-hidden="true"></div>
       </div>
       <div class="hero-panel absolute inset-y-0 left-0 hidden w-[58%] bg-neutral-950 lg:block" aria-hidden="true"></div>
 
