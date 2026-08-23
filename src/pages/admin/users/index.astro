@@ -252,7 +252,7 @@ const typeChip =
         // warning, deliberately not localized.
         if (data && !data.authDeleted)
           alert(
-            `Data scrubbed and profile soft-deleted, but the Supabase auth user was NOT removed (SUPABASE_SERVICE_ROLE_KEY missing). Delete auth user ${accountId} in the Supabase dashboard, then configure the secret.`,
+            `Data scrubbed and profile soft-deleted, but the Supabase auth user was NOT removed (service-role key not configured). Delete auth user ${accountId} in the Supabase dashboard, then configure the secret.`,
           );
       });
     });

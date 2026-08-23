@@ -58,7 +58,8 @@ fi
 # ponytail: grep proxy for the promised ESLint boundary rule; swap in eslint-plugin-boundaries when an eslint config lands.
 hits=$(grep -rnE "(pages|actions|components/organisms)/admin" src "${SRC[@]}" 2>/dev/null \
   | grep -Ev "^src/pages/admin/|^src/actions/admin/|^src/components/organisms/admin/" \
-  | grep -Ev "^src/actions/index\.ts:" || true)
+  | grep -Ev "^src/actions/index\.ts:" \
+  | grep -Ev "^[^:]+:[0-9]+:[[:space:]]*(\*|//)" || true)
 if [ -n "$hits" ]; then
   echo "::error::code outside the admin fence references an admin folder (only src/actions/index.ts may):"
   echo "$hits"
