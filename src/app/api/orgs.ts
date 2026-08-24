@@ -11,7 +11,7 @@
  * imports from admin.
  */
 import { env } from 'cloudflare:workers';
-import { eq, or, isNotNull, desc } from 'drizzle-orm';
+import { and, eq, or, isNotNull, desc } from 'drizzle-orm';
 import { requestDb, type Db } from '@/db/client';
 import { accounts, orgs, profiles } from '@/db/schema';
 import { uniqueSlug } from '@/app/data/db/account';
@@ -38,19 +38,29 @@ const toPublic = (r: typeof orgs.$inferSelect): PublicAgency => ({
 });
 
 export async function agencyBySlug(slug: string): Promise<PublicAgency | null> {
-  const [row] = await db().select().from(orgs).where(eq(orgs.slug, slug)).limit(1);
+  const [row] = await db()
+    .select()
+    .from(orgs)
+    .where(and(eq(orgs.slug, slug), eq(orgs.unlisted, false)))
+    .limit(1);
   return row ? toPublic(row) : null;
 }
 
 /** Public projection by id — the profile page's agency block (profiles.orgId). */
 export async function agencyById(id: string): Promise<PublicAgency | null> {
-  const [row] = await db().select().from(orgs).where(eq(orgs.id, id)).limit(1);
+  const [row] = await db()
+    .select()
+    .from(orgs)
+    .where(and(eq(orgs.id, id), eq(orgs.unlisted, false)))
+    .limit(1);
   return row ? toPublic(row) : null;
 }
 
-/** All agencies (sitemap + any future index page). */
-export async function listAgencies(): Promise<PublicAgency[]> {
-  return (await db().select().from(orgs)).map(toPublic);
+/** All agencies (sitemap + any future index page). `all` = admin surfaces
+ *  that need unlisted orgs too (name lookups on /admin/profiles). */
+export async function listAgencies(all = false): Promise<PublicAgency[]> {
+  const rows = all ? await db().select().from(orgs) : await db().select().from(orgs).where(eq(orgs.unlisted, false));
+  return rows.map(toPublic);
 }
 
 /** Admin read (Pre-signups surface): agencies that submitted the §12.7 consent

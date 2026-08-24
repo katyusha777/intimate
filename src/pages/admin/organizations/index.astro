@@ -99,6 +99,7 @@ const label = 'block text-2xs uppercase tracking-wide text-muted-foreground';
                     <p class="text-sm text-muted-foreground">
                       {detail.kvk ? `KvK ${detail.kvk} · ` : ''}{cityName(detail.city)} ·{' '}
                       <span class:list={detail.verified ? 'text-online' : 'text-brand'}>{detail.verified ? m.verified() : m.adm_unverified()}</span>
+                      {detail.unlisted && <span class="font-semibold text-brand"> · UNLISTED</span>}
                       {' · '}
                       <a href={`/nl/agencies/${detail.slug}/`} target="_blank" class="underline underline-offset-2">/agencies/{detail.slug}</a>
                     </p>
@@ -229,6 +230,7 @@ const label = 'block text-2xs uppercase tracking-wide text-muted-foreground';
                   </div>
                   <div class="flex flex-wrap items-center gap-4 text-sm">
                     <label class="flex items-center gap-2"><input type="checkbox" name="verified" checked={detail.verified} /> Verified</label>
+                    <label class="flex items-center gap-2"><input type="checkbox" name="unlisted" checked={detail.unlisted} /> Unlisted (hides agency page + ALL its profiles)</label>
                     <label class="flex items-center gap-2"><input type="checkbox" name="crawlEnabled" checked={detail.crawlEnabled} /> Auto-crawl</label>
                     <label class="flex items-center gap-2">every <input name="crawlIntervalHours" type="number" min="1" max="720" value={detail.crawlIntervalHours} class={`${input} w-20`} /> h</label>
                   </div>
@@ -329,6 +331,7 @@ const label = 'block text-2xs uppercase tracking-wide text-muted-foreground';
         description: val(form, 'description'),
         locations: locations as never,
         verified: checked(form, 'verified'),
+        unlisted: checked(form, 'unlisted'),
         crawlEnabled: checked(form, 'crawlEnabled'),
         crawlListUrl: val(form, 'crawlListUrl'),
         sitePrompt: val(form, 'sitePrompt'),

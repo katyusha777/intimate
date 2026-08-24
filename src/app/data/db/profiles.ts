@@ -10,9 +10,9 @@
  * ponytail: loads all live rows then filters in JS (shared core) — push city/
  * gender/services into SQL when the live-profile count makes it matter.
  */
-import { eq, inArray } from 'drizzle-orm';
+import { and as andSql, eq, inArray, notExists } from 'drizzle-orm';
 import { requestDb, requestMemo, type Db } from '@/db/client';
-import { media, profiles } from '@/db/schema';
+import { media, orgs, profiles } from '@/db/schema';
 import {
   applyProfileListParams,
   onlineFromLastActive,
@@ -131,6 +131,10 @@ async function fetchLiveProfiles(db: Db, now: Date, slug?: string, city?: string
           city === undefined ? undefined : eq(p.city, city as (typeof p.city)['_']['data']),
           // Agency pages: don't drag the whole catalog for one roster.
           orgId === undefined ? undefined : eq(p.orgId, orgId),
+          // Org kill-switch: an unlisted agency's whole roster is hidden from
+          // every public read — including direct slug (unlike profile-level
+          // unlisted). NOT EXISTS is NULL-safe for independent profiles.
+          notExists(db.select({ one: orgs.id }).from(orgs).where(andSql(eq(orgs.id, p.orgId), eq(orgs.unlisted, true)))),
         ),
     })
     .catch((e: unknown) => {

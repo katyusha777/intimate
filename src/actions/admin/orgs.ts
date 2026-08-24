@@ -22,6 +22,8 @@ export interface Org {
   slug: string;
   kvk?: string;
   verified: boolean;
+  /** Hidden from ALL public reads (agency page + whole roster) — see schema. */
+  unlisted: boolean;
   city: string;
   logoKey?: string;
   siteUrl?: string;
@@ -98,6 +100,7 @@ const toOrg = (r: typeof orgs.$inferSelect): Org => ({
   slug: r.slug,
   kvk: r.kvk ?? undefined,
   verified: r.verified,
+  unlisted: r.unlisted,
   city: r.city,
   logoKey: r.logoKey ?? undefined,
   siteUrl: r.siteUrl ?? undefined,
@@ -144,6 +147,7 @@ export interface OrgPatch {
   city?: CitySlug;
   kvk?: string;
   verified?: boolean;
+  unlisted?: boolean;
   siteUrl?: string;
   contactEmail?: string;
   contactPhone?: string;
@@ -168,6 +172,7 @@ export async function updateOrg(id: string, patch: OrgPatch): Promise<void> {
   if (patch.city !== undefined) u.city = patch.city;
   if (patch.kvk !== undefined) u.kvk = patch.kvk || null;
   if (patch.verified !== undefined) u.verified = patch.verified;
+  if (patch.unlisted !== undefined) u.unlisted = patch.unlisted;
   if (patch.siteUrl !== undefined) u.siteUrl = patch.siteUrl || null;
   if (patch.contactEmail !== undefined) u.contactEmail = patch.contactEmail || null;
   if (patch.contactPhone !== undefined) u.contactPhone = patch.contactPhone || null;

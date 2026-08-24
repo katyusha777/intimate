@@ -111,3 +111,24 @@ t('media states gate the public gallery, owner sees everything', async () => {
   const ownerView = await api.byId(PROFILE);
   expect(ownerView?.photos).toEqual([`/media/${ok}`, `/media/${pending}`]);
 });
+
+t('an unlisted org hides its whole roster — even direct slug; relist restores', async () => {
+  const ORG = '00000000-0000-4000-c000-000000000003';
+  await api.setState(PROFILE, 'live');
+  try {
+    await sql`insert into orgs (id, account_id, name, slug, city, unlisted) values
+      (${ORG}, ${ACCOUNT}, 'Org Fixture', 'org-unlist-fixture', 'amsterdam', true)`;
+    await sql`update profiles set org_id = ${ORG} where id = ${PROFILE}`;
+
+    expect(await api.bySlug(SLUG)).toBeNull(); // stricter than profile-level unlisted
+    const { items } = await api.list({ limit: 60 });
+    expect(items.some((p) => p.slug === SLUG)).toBe(false);
+    expect((await api.byOrg(ORG)).length).toBe(1); // admin roster still sees it
+
+    await sql`update orgs set unlisted = false where id = ${ORG}`;
+    expect((await api.bySlug(SLUG))?.slug).toBe(SLUG);
+  } finally {
+    await sql`update profiles set org_id = null where id = ${PROFILE}`;
+    await sql`delete from orgs where id = ${ORG}`;
+  }
+});

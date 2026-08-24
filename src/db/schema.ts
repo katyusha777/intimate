@@ -197,6 +197,10 @@ export const orgs = pgTable(
     slug: text('slug').notNull(),
     kvk: text('kvk'), // Dutch Chamber of Commerce number (nullable: unknown at onboarding)
     verified: boolean('verified').notNull().default(false),
+    /** Admin kill-switch: hides the agency page AND its whole roster from every
+     *  public read (listings, direct slugs, sitemap) — reversible, no lifecycle
+     *  change on the profiles. */
+    unlisted: boolean('unlisted').notNull().default(false),
     city: cityEnum('city').notNull(),
     /** R2 key `org/<orgId>/<uuid>` — served via /media, shown on the partner page. */
     logoKey: text('logo_key'),

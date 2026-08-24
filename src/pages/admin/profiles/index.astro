@@ -33,7 +33,7 @@ const f = {
 };
 const rows = session ? await listProfilesAdmin(f) : [];
 // orgId → agency, so each row/detail can name (and link to) its agency.
-const agencyById = new Map((session ? await listAgencies() : []).map((a) => [a.id, a]));
+const agencyById = new Map((session ? await listAgencies(true) : []).map((a) => [a.id, a]));
 const id = sp.get('id');
 const detail = session && id ? await profileByIdAdmin(id) : null;
 const reportsAgainst = detail

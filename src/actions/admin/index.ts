@@ -457,6 +457,7 @@ export const admin = {
       city: z.enum(CITY_SLUGS).optional(),
       kvk: z.string().max(20).optional(),
       verified: z.boolean().optional(),
+      unlisted: z.boolean().optional(),
       siteUrl: z.string().url().max(300).or(z.literal('')).optional(),
       contactEmail: z.string().email().max(200).or(z.literal('')).optional(),
       contactPhone: z.string().max(30).optional(),
@@ -471,7 +472,10 @@ export const admin = {
     handler: async ({ id, ...patch }, context) => {
       const session = await requireAdmin(context, ['super']);
       await updateOrg(id, patch);
-      await record(session, { action: 'edit_org', entityType: 'org', entityId: id });
+      // Org fields render on cached pages (profile agency block; unlist hides
+      // the whole roster) — same coarse gen-bump as profile mutations.
+      await bustProfiles(sessionKv());
+      await record(session, { action: 'edit_org', entityType: 'org', entityId: id, ...(patch.unlisted !== undefined ? { reason: patch.unlisted ? 'unlisted' : 'listed' } : {}) });
       return { ok: true };
     },
   }),

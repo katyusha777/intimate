@@ -1,0 +1,1 @@
+ALTER TABLE "orgs" ADD COLUMN "unlisted" boolean DEFAULT false NOT NULL;
