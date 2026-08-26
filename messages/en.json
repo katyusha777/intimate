@@ -666,6 +666,7 @@
   "adm_overview_by_gender": "By gender",
   "adm_overview_supply": "Supply by city",
   "adm_overview_activity": "Recent activity",
+  "adm_blocked_title": "Blocked profiles",
   "adm_overview_no_activity": "No admin activity yet.",
   "adm_verification_meta": "{count} pending · oldest-first · SLA < 24h",
   "adm_verification_empty": "Queue empty — nothing awaiting verification.",

@@ -666,6 +666,7 @@
   "adm_overview_by_gender": "Per geslacht",
   "adm_overview_supply": "Aanbod per stad",
   "adm_overview_activity": "Recente activiteit",
+  "adm_blocked_title": "Geblokkeerde profielen",
   "adm_overview_no_activity": "Nog geen adminactiviteit.",
   "adm_verification_meta": "{count} wachtend · oudste eerst · SLA < 24u",
   "adm_verification_empty": "Wachtrij leeg — niets wacht op verificatie.",

@@ -21,13 +21,14 @@ interface Props {
 }
 const { session = null, unread = 0 } = Astro.props;
 
-/** Site languages — native names, no flags. All five locales (LOCALES). */
+/** Site languages — native names, no flags. Every locale in LOCALES. */
 const LANGUAGES = [
   { value: 'nl', label: 'Nederlands' },
   { value: 'en', label: 'English' },
   { value: 'de', label: 'Deutsch' },
   { value: 'ro', label: 'Română' },
   { value: 'it', label: 'Italiano' },
+  { value: 'es', label: 'Español' },
 ];
 
 const locale = getLocale() as Locale;
@@ -59,11 +60,10 @@ const categories = LISTING_CATEGORIES.map((c) => ({
  * cookie must never silently re-route a national page. */
 const citySeg = pathCity ? `${pathCity}/` : '';
 const listingBase = `${categories.find((c) => c.active)?.href ?? searchPath}${citySeg}`;
-// Women + men only in the nav (trans stays a taxonomy value + ?gender= URL,
-// just not a tab — decision 2026-08-21).
-const genderTabs = (['women', 'men'] as const).map((g) => ({
+// Full gender radio in the nav — trans tab restored 2026-08-26 (feedback v10).
+const genderTabs = (['women', 'men', 'trans'] as const).map((g) => ({
   value: g,
-  label: { women: m.gender_tab_women(), men: m.gender_tab_men() }[g],
+  label: { women: m.gender_tab_women(), men: m.gender_tab_men(), trans: m.gender_tab_trans() }[g],
   href: g === 'women' ? listingBase : `${listingBase}?gender=${g}`,
   active: g === genderPick,
 }));

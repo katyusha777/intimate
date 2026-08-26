@@ -666,6 +666,7 @@
   "adm_overview_by_gender": "După gen",
   "adm_overview_supply": "Ofertă pe orașe",
   "adm_overview_activity": "Activitate recentă",
+  "adm_blocked_title": "Profiluri blocate",
   "adm_overview_no_activity": "Încă nicio activitate de admin.",
   "adm_verification_meta": "{count} în așteptare · cele mai vechi primele · SLA < 24h",
   "adm_verification_empty": "Coadă goală — nimic nu așteaptă verificare.",

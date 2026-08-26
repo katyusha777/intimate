@@ -7,7 +7,7 @@
 import { env } from 'cloudflare:workers';
 import { getAdmin, listAudit } from '@/actions/admin/lib';
 import { overview } from '@/actions/admin/queues';
-import { commandStats } from '@/actions/admin/entities';
+import { commandStats, listProfilesAdmin } from '@/actions/admin/entities';
 import AdminShell from '@/components/organisms/admin/AdminShell.astro';
 import AdminLogin from '@/components/organisms/admin/AdminLogin.astro';
 import * as m from '@/paraglide/messages';
@@ -22,6 +22,9 @@ const requireMfa = (env as unknown as Record<string, string | undefined>).ADMIN_
 const ov = session ? await overview() : null;
 const stats = session ? await commandStats() : null;
 const activity = session ? (await listAudit()).slice(0, 12) : [];
+// Blocked profiles surfaced on the cockpit (feedback v10 #3) — check + unblock
+// without hunting through the profiles table's state filter.
+const blocked = session ? await listProfilesAdmin({ state: 'blocked' }) : [];
 const humanizeA = (s: string) => s.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
 const agoShort = (iso: string) => {
   const m = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
@@ -152,6 +155,26 @@ const counters = ov
           </div>
         </section>
 
+        {blocked.length > 0 && (
+          <section class="mt-8">
+            <div class="flex items-center justify-between">
+              <h2 class="font-condensed text-sm font-bold uppercase tracking-wide text-brand">{m.adm_blocked_title()} ({blocked.length})</h2>
+              <a href="/admin/profiles?state=blocked" class="text-2xs font-medium text-muted-foreground hover:text-foreground">{m.adm_nav_profiles()} →</a>
+            </div>
+            <ul class="mt-3 max-w-2xl divide-y divide-border border border-border">
+              {blocked.map((p) => (
+                <li class="flex items-center gap-3 px-3 py-2 text-sm">
+                  <a href={`/admin/profiles?id=${p.id}`} class="min-w-0 flex-1 truncate font-medium underline-offset-4 hover:underline">{p.name}</a>
+                  <span class="flex-none text-2xs text-muted-foreground">
+                    {p.stateReason && `${p.stateReason} · `}{p.stateChangedAt && agoShort(p.stateChangedAt)}
+                  </span>
+                  <button type="button" data-unblock={p.id} class="slab-cut flex-none cursor-pointer border border-foreground/20 px-2.5 py-1 text-2xs font-bold uppercase transition-colors hover:border-foreground/60">{m.msg_unblock()}</button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
         <section class="mt-8">
           <div class="flex items-center justify-between">
             <h2 class="font-condensed text-sm font-bold uppercase tracking-wide text-muted-foreground">{m.adm_overview_activity()}</h2>
@@ -180,3 +203,30 @@ const counters = ov
   }
 </AdminShell>
 )}
+
+<script>
+  import { actions } from 'astro:actions';
+
+  // Unblock from the cockpit — optimistic row removal (Hyperdrive reads lag
+  // writes, so never reload after a write; the section drops when emptied).
+  function initUnblock() {
+    document.querySelectorAll<HTMLButtonElement>('[data-unblock]').forEach((btn) => {
+      if (btn.dataset.init) return;
+      btn.dataset.init = '1';
+      btn.addEventListener('click', async () => {
+        btn.disabled = true;
+        const { error } = await actions.admin.profileState({ id: btn.dataset.unblock!, action: 'unblock' });
+        if (error) {
+          btn.disabled = false;
+          alert(`Unblock failed: ${error.message}`);
+          return;
+        }
+        const section = btn.closest('section');
+        btn.closest('li')?.remove();
+        if (!section?.querySelector('[data-unblock]')) section?.remove();
+      });
+    });
+  }
+  initUnblock();
+  document.addEventListener('astro:page-load', initUnblock);
+</script>

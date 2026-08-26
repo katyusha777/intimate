@@ -666,6 +666,7 @@
   "adm_overview_by_gender": "Nach Geschlecht",
   "adm_overview_supply": "Angebot nach Stadt",
   "adm_overview_activity": "Letzte Aktivität",
+  "adm_blocked_title": "Gesperrte Profile",
   "adm_overview_no_activity": "Noch keine Admin-Aktivität.",
   "adm_verification_meta": "{count} ausstehend · älteste zuerst · SLA < 24h",
   "adm_verification_empty": "Warteschlange leer — nichts wartet auf Verifizierung.",

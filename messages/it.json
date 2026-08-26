@@ -666,6 +666,7 @@
   "adm_overview_by_gender": "Per genere",
   "adm_overview_supply": "Offerta per città",
   "adm_overview_activity": "Attività recente",
+  "adm_blocked_title": "Profili bloccati",
   "adm_overview_no_activity": "Ancora nessuna attività admin.",
   "adm_verification_meta": "{count} in attesa · prima i più vecchi · SLA < 24h",
   "adm_verification_empty": "Coda vuota — nulla in attesa di verifica.",
