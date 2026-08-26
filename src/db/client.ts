@@ -8,6 +8,31 @@ import * as schema from './schema';
  * Pass the HYPERDRIVE binding (cloudflare:workers env) — or any object with a
  * connectionString (tests use the local Supabase Postgres directly).
  */
+/**
+ * Retry SELECTs once on any failure. Prod sees a few transient server-side
+ * ErrorResponses per day (Hyperdrive/pooler blips) that 500 random public
+ * pages; selects are idempotent, so one immediate re-run is always safe.
+ * Wraps `unsafe` because it is the one choke point every drizzle query goes
+ * through (session.js awaits `client.unsafe(...)` or `.values()` on it —
+ * the wrapper only needs those two shapes). Writes are never retried.
+ */
+// ponytail: retries on ANY select error (not just transient codes) — narrow to
+// connection/57xxx codes if duplicate round-trips on broken queries ever matter.
+export function wrapSelectRetry(raw: (query: string, params?: unknown[]) => { values(): Promise<unknown> } & PromiseLike<unknown>) {
+  return (query: string, params?: unknown[]) => {
+    if (!/^\s*select\b/i.test(query)) return raw(query, params);
+    const attempt = (values: boolean) => {
+      const q = raw(query, params);
+      return Promise.resolve(values ? q.values() : q);
+    };
+    const withRetry = (values: boolean) => attempt(values).catch(() => attempt(values));
+    return {
+      then: (onOk?: (v: unknown) => unknown, onErr?: (e: unknown) => unknown) => withRetry(false).then(onOk, onErr),
+      values: () => withRetry(true),
+    };
+  };
+}
+
 export function createDb(hyperdrive: Pick<Hyperdrive, 'connectionString'>) {
   const client = postgres(hyperdrive.connectionString, {
     // Workers guidance: small pool, no type fetching round-trip.
@@ -18,6 +43,7 @@ export function createDb(hyperdrive: Pick<Hyperdrive, 'connectionString'>) {
     // "no partition" notice before Realtime first runs) — they're not errors.
     onnotice: () => {},
   });
+  client.unsafe = wrapSelectRetry(client.unsafe.bind(client) as never) as unknown as typeof client.unsafe;
   return drizzle(client, { schema });
 }
 

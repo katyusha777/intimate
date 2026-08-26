@@ -121,27 +121,21 @@ function liveProfiles(db: Db, now: Date, slug?: string, city?: string, orgId?: s
 }
 
 async function fetchLiveProfiles(db: Db, now: Date, slug?: string, city?: string, orgId?: string): Promise<Profile[]> {
-  const rows = await db.query.profiles
-    .findMany({
-      where: (p, { and, eq }) =>
-        and(
-          eq(p.state, 'live'),
-          // Unlisted: excluded from every listing, reachable by direct slug.
-          slug === undefined ? eq(p.unlisted, false) : eq(p.slug, slug),
-          city === undefined ? undefined : eq(p.city, city as (typeof p.city)['_']['data']),
-          // Agency pages: don't drag the whole catalog for one roster.
-          orgId === undefined ? undefined : eq(p.orgId, orgId),
-          // Org kill-switch: an unlisted agency's whole roster is hidden from
-          // every public read — including direct slug (unlike profile-level
-          // unlisted). NOT EXISTS is NULL-safe for independent profiles.
-          notExists(db.select({ one: orgs.id }).from(orgs).where(andSql(eq(orgs.id, p.orgId), eq(orgs.unlisted, true)))),
-        ),
-    })
-    .catch((e: unknown) => {
-      // Surface the driver error — drizzle's wrapper hides the real cause.
-      console.error('[db/profiles] query failed:', (e as Error & { cause?: unknown }).cause ?? e);
-      throw e;
-    });
+  const rows = await db.query.profiles.findMany({
+    where: (p, { and, eq }) =>
+      and(
+        eq(p.state, 'live'),
+        // Unlisted: excluded from every listing, reachable by direct slug.
+        slug === undefined ? eq(p.unlisted, false) : eq(p.slug, slug),
+        city === undefined ? undefined : eq(p.city, city as (typeof p.city)['_']['data']),
+        // Agency pages: don't drag the whole catalog for one roster.
+        orgId === undefined ? undefined : eq(p.orgId, orgId),
+        // Org kill-switch: an unlisted agency's whole roster is hidden from
+        // every public read — including direct slug (unlike profile-level
+        // unlisted). NOT EXISTS is NULL-safe for independent profiles.
+        notExists(db.select({ one: orgs.id }).from(orgs).where(andSql(eq(orgs.id, p.orgId), eq(orgs.unlisted, true)))),
+      ),
+  });
   if (rows.length === 0) return [];
   const mediaRows = await db
     .select()

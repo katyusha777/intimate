@@ -23,6 +23,16 @@ export function captureError(err: unknown, ctx?: { url?: string; extra?: Record<
     // so no caller can leak a query string regardless of what it passes.
     const safeUrl = ctx?.url?.split('?')[0];
     const error = err instanceof Error ? err : new Error(String(err));
+    // Drizzle/driver errors bury the real failure in .cause (postgres-js even
+    // strips it from the stack) — walk the chain so the event reads
+    // "Failed query … ← 57014 canceling statement…" instead of just the SQL.
+    let message = error.message;
+    let cause = (error as { cause?: unknown }).cause;
+    for (let i = 0; cause && i < 5; i++) {
+      const c = cause as { code?: string; message?: string; cause?: unknown };
+      message += ` ← ${[c.code, c.message || String(cause)].filter(Boolean).join(' ')}`;
+      cause = c.cause;
+    }
     const eventId = crypto.randomUUID().replace(/-/g, '');
     const sentAt = new Date().toISOString();
     const event = {
@@ -32,7 +42,7 @@ export function captureError(err: unknown, ctx?: { url?: string; extra?: Record<
       level: 'error',
       environment: 'production',
       release: e.CF_VERSION?.id,
-      exception: { values: [{ type: error.name, value: error.message }] },
+      exception: { values: [{ type: error.name, value: message }] },
       extra: { stack: error.stack, ...ctx?.extra },
       request: safeUrl ? { url: safeUrl } : undefined,
     };
