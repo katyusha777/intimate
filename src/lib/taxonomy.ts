@@ -501,28 +501,28 @@ export const LISTING_CATEGORIES = [
     kind: 'meeting_type',
     icon: 'house',
     filter: { meetingType: 'incall' },
-    slugs: { nl: 'prive-ontvangst', en: 'private-visit', de: 'privatempfang', ro: 'vizita-privata', it: 'visita-privata' },
+    slugs: { nl: 'prive-ontvangst', en: 'private-visit', de: 'privatempfang', ro: 'vizita-privata', it: 'visita-privata', es: 'visita-privada' },
   },
   {
     slug: 'escort',
     kind: 'meeting_type',
     icon: 'car-side',
     filter: { meetingType: 'outcall' },
-    slugs: { nl: 'escort', en: 'escort', de: 'escort', ro: 'escorte', it: 'escort' },
+    slugs: { nl: 'escort', en: 'escort', de: 'escort', ro: 'escorte', it: 'escort', es: 'escort' },
   },
   {
     slug: 'erotic-massage',
     kind: 'service_category',
     icon: 'spa',
     filter: { serviceCategory: 'massage' },
-    slugs: { nl: 'erotische-massage', en: 'erotic-massage', de: 'erotische-massage', ro: 'masaj-erotic', it: 'massaggio-erotico' },
+    slugs: { nl: 'erotische-massage', en: 'erotic-massage', de: 'erotische-massage', ro: 'masaj-erotic', it: 'massaggio-erotico', es: 'masaje-erotico' },
   },
   {
     slug: 'virtual-sex',
     kind: 'meeting_type',
     icon: 'camera-web',
     filter: { meetingType: 'virtual' },
-    slugs: { nl: 'virtuele-seks', en: 'virtual-sex', de: 'virtueller-sex', ro: 'sex-virtual', it: 'sesso-virtuale' },
+    slugs: { nl: 'virtuele-seks', en: 'virtual-sex', de: 'virtueller-sex', ro: 'sex-virtual', it: 'sesso-virtuale', es: 'sexo-virtual' },
   },
   // BDSM tab removed 2026-08-02 — the fetish_bdsm SERVICE category stays
   // filterable in the sidebar; it just no longer owns a top-level tab/page.
@@ -535,7 +535,7 @@ export const SORT_OPTIONS = [
   'price_high_low',
 ] as const;
 
-export const LOCALES = ['nl', 'en', 'de', 'ro', 'it'] as const;
+export const LOCALES = ['nl', 'en', 'de', 'ro', 'it', 'es'] as const;
 export const DEFAULT_LOCALE = 'nl' as const;
 
 export const THEMES = ['light', 'dark', 'system'] as const;

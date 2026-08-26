@@ -45,6 +45,7 @@ export default defineConfig({
               ['de', '/de/:path(.*)?'],
               ['ro', '/ro/:path(.*)?'],
               ['it', '/it/:path(.*)?'],
+              ['es', '/es/:path(.*)?'],
             ],
           },
         ],
