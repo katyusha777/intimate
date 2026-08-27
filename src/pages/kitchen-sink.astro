@@ -695,15 +695,15 @@ const swatches = [
     </section>
 
     <section class="space-y-4">
-      <h2 class="text-xl font-semibold">Verify photos (3-step ID verification)</h2>
+      <h2 class="text-xl font-semibold">Verify photos (2-step ID verification)</h2>
       <p class="text-sm text-muted-foreground">
-        All three steps stacked on one screen (ID → selfie with ID → selfie with the
-        handwritten code); chips turn ✓ as each photo uploads on capture, the just-taken
-        photo stays as a preview. Left: fresh start. Right: resumed with two photos in.
+        Both steps stacked on one screen (ID → selfie with ID); chips turn ✓ as each
+        photo uploads on capture, the just-taken photo stays as a preview.
+        Left: fresh start. Right: resumed with one photo in.
       </p>
       <div class="grid gap-8 md:grid-cols-2">
-        <div class="max-w-md"><VerifyPhotos kinds={[]} code="KFTR" /></div>
-        <div class="max-w-md"><VerifyPhotos kinds={['id_front', 'id_selfie']} code="KFTR" noScroll /></div>
+        <div class="max-w-md"><VerifyPhotos kinds={[]} /></div>
+        <div class="max-w-md"><VerifyPhotos kinds={['id_front']} noScroll /></div>
       </div>
     </section>
   </div>

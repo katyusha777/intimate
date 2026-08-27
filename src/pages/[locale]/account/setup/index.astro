@@ -18,7 +18,6 @@ import MediaManager from '@/components/organisms/dashboard/MediaManager.astro';
 import VerifyPhotos from '@/components/organisms/onboarding/VerifyPhotos.astro';
 import Button from '@/components/atoms/Button.astro';
 import Layout from '@/layouts/Layout.astro';
-import { verificationCode } from '@/lib/verification-code';
 import { VERIFICATION_DOC_KINDS, type VerificationDocKind } from '@/lib/taxonomy';
 
 const locale = Astro.params.locale;
@@ -83,8 +82,8 @@ if (!progress.submitted && Astro.cookies.get('profile_submitted')?.value && step
 // Once submitted, the flow is over — only the 'done' celebration is reachable.
 if (progress.submitted && step !== 'done' && !verifyPass) return Astro.redirect(localizePath('/account/'));
 
-// The 3-photo verification screen (VerifyPhotos): which photos are already in
-// (resume + retake dots), her handwritten code, and an optional ?part= retake.
+// The 2-photo verification screen (VerifyPhotos): which photos are already in
+// (resume + retake dots), and an optional ?part= retake.
 const vKinds = step === 'verify' ? await accountApi.verificationDocKinds(session) : [];
 const vPartRaw = Astro.url.searchParams.get('part');
 const vPart = VERIFICATION_DOC_KINDS.includes(vPartRaw as VerificationDocKind)
@@ -197,7 +196,6 @@ const why = 'mt-2 leading-relaxed text-muted-foreground';
           <div class="mt-6">
             <VerifyPhotos
               kinds={vKinds}
-              code={verificationCode(session.email)}
               wizardFinish={progress.firstIncomplete === 'id' && !progress.submitted}
               finishUrl={`${localizePath('/account/profile/')}?onboarded=1`}
               nextHref={vNextHref}

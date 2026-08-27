@@ -1102,15 +1102,12 @@
   "vp_why_id": "Reisepass, Personalausweis oder Führerschein. Leg ihn flach hin und achte darauf, dass der ganze Text gut lesbar ist.",
   "vp_title_selfie": "Ein Foto von dir mit deinem Ausweis",
   "vp_why_selfie": "Halte denselben Ausweis neben dein Gesicht. Dein Gesicht und der Ausweis müssen beide gut zu sehen sein.",
-  "vp_title_code": "Ein Foto von dir mit diesem Code",
-  "vp_why_code": "Schreib diese 4 Buchstaben groß auf einen Zettel, mit Stift. Mach dann ein Foto von dir mit dem Zettel in der Hand.",
-  "vp_step_of": "Foto {n} von 3",
+  "vp_step_of": "Foto {n} von 2",
   "vp_take": "Foto machen",
   "vp_retake": "Nochmal",
-  "vp_all_done": "Alle 3 Fotos sind da. Nur unser Team kann sie sehen.",
+  "vp_all_done": "Beide Fotos sind da. Nur unser Team kann sie sehen.",
   "verify_continue": "Verifizierung fortsetzen",
   "adm_doc_kind_id_front": "Ausweis",
   "adm_doc_kind_id_selfie": "Selfie mit Ausweis",
-  "adm_doc_kind_code_selfie": "Selfie mit Code",
-  "adm_expected_code": "Erwarteter Code"
+  "adm_doc_kind_code_selfie": "Selfie mit Code"
 }

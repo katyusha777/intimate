@@ -42,12 +42,11 @@
 >   chromeBare pattern). Legal/support/blog stay readable, bare. The
 >   `profile_submitted` cookie (set by `submitProfile`) bridges the
 >   post-submit Hyperdrive read-lag.
-> - **ID verification is THREE photos, all steps stacked on ONE screen**
+> - **ID verification is TWO photos, both steps stacked on ONE screen**
 >   (`onboarding/VerifyPhotos.astro`, 2026-08-24 — the hidden-screen swap read
->   as "it just changed" and lost people): 1· the ID · 2· selfie holding the
->   ID · 3· selfie holding a paper with her handwritten 4-letter code (derived
->   from her email, `lib/verification-code.ts`; the admin review shows the
->   same code). Numbered chips turn ✓ green, the just-taken photo stays
+>   as "it just changed" and lost people; the paper-code third step was
+>   retired 2026-08-27 as a drop-off point): 1· the ID · 2· selfie holding the
+>   ID. Numbered chips turn ✓ green, the just-taken photo stays
 >   visible as an on-device preview (docs are admin-only server-side, so a
 >   resumed session shows the ✓ without the image), and the next step scrolls
 >   into view. Each photo uploads the moment it's taken

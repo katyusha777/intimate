@@ -101,7 +101,7 @@ Folders appear when their first organism lands:
 | `messaging/` | ✓ Inbox, Thread, RequestCard (the request card + Accept/Decline in the thread), ContactList (MESSAGING.md §2 for the rest) |
 | `layout/` | ✓ Header, Footer, BottomTabBar |
 | `content/` | ✓ ContentPage — renders the migrated static editorial/legal pages (about, safety, profile-rules, verification, terms, privacy, app) from `lib/site-pages.ts` |
-| `onboarding/` | ✓ SetupShell (the guided setup-flow chrome per ONBOARDING.md; progress bar; no escapes since focus-mode 2026-08-23; steps reuse the editor sections and MediaManager), VerifyPhotos (the 3-photo ID verification: ID · selfie with ID · selfie with handwritten 4-letter code; one photo per screen; client-side advance; per-photo upload via account.addVerificationDoc) |
+| `onboarding/` | ✓ SetupShell (the guided setup-flow chrome per ONBOARDING.md; progress bar; no escapes since focus-mode 2026-08-23; steps reuse the editor sections and MediaManager), VerifyPhotos (the 2-photo ID verification: ID · selfie with ID; both steps on one screen; client-side advance; per-photo upload via account.addVerificationDoc) |
 | `admin/` | ✓ AdminShell, QueueList, DocViewer — ModerationQueue, ReportQueue, AuditLogTable (ADMIN.md §2) |
 | `contacts/` | — ContactDetail (MESSAGING.md) |
 | `call/` | ✓ CallDock (the one global call surface mounted in Layout for signed-in users: account-channel subscription → live unread dots + the client's incoming-call ring + the full-screen call screen for both parties; vanilla script over WebRTC P2P per VIDEO-CALLING.md) |

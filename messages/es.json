@@ -1102,15 +1102,12 @@
   "vp_why_id": "Pasaporte, DNI o carné de conducir. Colócalo en plano y asegúrate de que todo el texto se lee bien.",
   "vp_title_selfie": "Una foto tuya sosteniendo tu documento",
   "vp_why_selfie": "Sostén el mismo documento junto a tu cara. Tu cara y el documento deben verse con claridad.",
-  "vp_title_code": "Una foto tuya sosteniendo este código",
-  "vp_why_code": "Escribe estas 4 letras en grande en un papel, con bolígrafo. Después hazte una foto sosteniendo el papel.",
-  "vp_step_of": "Foto {n} de 3",
+  "vp_step_of": "Foto {n} de 2",
   "vp_take": "Hacer la foto",
   "vp_retake": "Repetir",
-  "vp_all_done": "Las 3 fotos están listas. Solo nuestro equipo puede verlas.",
+  "vp_all_done": "Las 2 fotos están listas. Solo nuestro equipo puede verlas.",
   "verify_continue": "Continuar verificación",
   "adm_doc_kind_id_front": "Documento",
   "adm_doc_kind_id_selfie": "Selfie con documento",
-  "adm_doc_kind_code_selfie": "Selfie con código",
-  "adm_expected_code": "Código esperado"
+  "adm_doc_kind_code_selfie": "Selfie con código"
 }

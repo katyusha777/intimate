@@ -142,11 +142,11 @@ export interface AccountApi {
   /** Owner unlisted toggle: hidden from listings/search, direct URL still works. */
   setUnlisted(session: Session, unlisted: boolean): Promise<void>;
   /**
-   * Store ONE EXIF-stripped verification photo (id_front | id_selfie |
-   * code_selfie) in the private EU bucket, recording kind + hash; a retake
-   * supersedes the unreviewed photo of the same kind. When all three kinds are
-   * in, the account flips to `pending` review (hard rule 3). Contents never
-   * logged; reads are admin-only + audit-logged (separate surface).
+   * Store ONE EXIF-stripped verification photo (id_front | id_selfie) in the
+   * private EU bucket, recording kind + hash; a retake supersedes the
+   * unreviewed photo of the same kind. When both kinds are in, the account
+   * flips to `pending` review (hard rule 3). Contents never logged; reads are
+   * admin-only + audit-logged (separate surface).
    */
   addVerificationDoc(session: Session, input: { kind: VerificationDocKind; bytes: ArrayBuffer }): Promise<void>;
   /** Photo kinds uploaded in the current (not-yet-reviewed) cycle — drives the

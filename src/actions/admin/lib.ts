@@ -12,7 +12,7 @@ import { requestDb } from '@/db/client';
 import { accounts, auditLog, verificationDocs } from '@/db/schema';
 import { sessionApi } from '@/app/api/session';
 import type { Session } from '@/app/models/session';
-import { VERIFICATION_DOC_KINDS, type AdminAction, type AdminRole, type VerificationDocKind } from '@/lib/taxonomy';
+import { VERIFICATION_DOC_KINDS, type AdminAction, type AdminRole } from '@/lib/taxonomy';
 import type { AuditEntry, Claim } from './types';
 
 interface Kv {
@@ -118,17 +118,21 @@ export async function readVdoc(id: string): Promise<{ r2Key: string; accountId: 
 /** Doc ids submitted by an account (by email) — the review panel signs each. */
 export async function verificationDocsFor(
   email: string,
-): Promise<{ id: string; kind: VerificationDocKind }[]> {
+): Promise<{ id: string; kind: string }[]> {
   // The submission under review: pending, un-purged, in flow order (ID → selfie
-  // with ID → selfie with code) so the review grid always reads 1-2-3.
+  // with ID; legacy paper-code selfies sort last) so the review grid reads 1-2.
   const rows = await adb()
     .select({ id: verificationDocs.id, kind: verificationDocs.kind })
     .from(verificationDocs)
     .innerJoin(accounts, eq(accounts.id, verificationDocs.accountId))
     .where(and(eq(accounts.email, email), eq(verificationDocs.state, 'pending'), isNull(verificationDocs.purgedAt)));
-  return rows.sort(
-    (a, b) => VERIFICATION_DOC_KINDS.indexOf(a.kind) - VERIFICATION_DOC_KINDS.indexOf(b.kind),
-  );
+  return rows.sort((a, b) => kindRank(a.kind) - kindRank(b.kind));
+}
+
+/** Flow order; unknown/legacy kinds (e.g. retired code_selfie rows) sort last. */
+export function kindRank(kind: string): number {
+  const i = (VERIFICATION_DOC_KINDS as readonly string[]).indexOf(kind);
+  return i === -1 ? VERIFICATION_DOC_KINDS.length : i;
 }
 
 export interface AuditFilter {

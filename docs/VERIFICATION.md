@@ -44,8 +44,8 @@ actions is replaced.
    SMS `—` / ID `—`; profile editor works fully — she can prepare everything
    unverified.
 2. **Publish moment is the gate.** "Go live" / submit-for-review requires
-   `phoneVerifiedAt` + `idVerification = approved`. ID = the 3-photo flow
-   (ID · selfie with ID · selfie with handwritten code — ARCHITECTURE §11,
+   `phoneVerifiedAt` + `idVerification = approved`. ID = the 2-photo flow
+   (ID · selfie with ID — ARCHITECTURE §11,
    built as `onboarding/VerifyPhotos` in the setup flow; the dashboard
    verification tab shows status only). Not verified → the publish
    control renders as "Verify first →" linking to `/account/verification/`.

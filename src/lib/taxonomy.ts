@@ -35,7 +35,10 @@ export const VERIFICATION_STATES = ['unverified', 'pending', 'approved', 'reject
 
 /** The 3-photo ID verification (ARCHITECTURE §11): the ID itself, a selfie
  *  holding the ID, and a selfie holding the handwritten 4-letter code. */
-export const VERIFICATION_DOC_KINDS = ['id_front', 'id_selfie', 'code_selfie'] as const;
+export const VERIFICATION_DOC_KINDS = ['id_front', 'id_selfie'] as const;
+/** Retired kinds (paper-code flow, dropped 2026-08-27): old rows keep them —
+ *  pg enums can't drop values — but no new upload may use them. */
+export const LEGACY_VERIFICATION_DOC_KINDS = ['code_selfie'] as const;
 
 export const MEDIA_TYPES = ['photo'] as const; // 'video' post-MVP (requires Cloudflare Stream)
 

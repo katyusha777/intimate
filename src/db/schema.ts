@@ -72,6 +72,7 @@ import {
   THREAD_STATES,
   VERIFICATION_STATES,
   VERIFICATION_DOC_KINDS,
+  LEGACY_VERIFICATION_DOC_KINDS,
   ALL_SERVICES,
   type CitySlug,
 } from '../lib/taxonomy';
@@ -91,7 +92,7 @@ export const adminRoleEnum = pgEnum('admin_role', vals(ADMIN_ROLES));
 export const adminActionEnum = pgEnum('admin_action', vals(ADMIN_ACTIONS));
 export const profileStateEnum = pgEnum('profile_state', vals(PROFILE_STATES));
 export const verificationStateEnum = pgEnum('verification_state', vals(VERIFICATION_STATES));
-export const verificationDocKindEnum = pgEnum('verification_doc_kind', vals(VERIFICATION_DOC_KINDS));
+export const verificationDocKindEnum = pgEnum('verification_doc_kind', vals([...VERIFICATION_DOC_KINDS, ...LEGACY_VERIFICATION_DOC_KINDS]));
 export const importJobStateEnum = pgEnum('import_job_state', vals(IMPORT_JOB_STATES));
 
 export const genderEnum = pgEnum('gender', vals(GENDERS));

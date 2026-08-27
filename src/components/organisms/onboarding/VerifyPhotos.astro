@@ -1,16 +1,15 @@
 ---
 /**
- * The 3-photo ID verification (ARCHITECTURE §11), built for someone who is not
- * technical, on a phone, maybe nervous (ONBOARDING.md laws): ALL THREE steps
- * stacked on one screen — 1· the ID itself, 2· a selfie holding the ID, 3· a
- * selfie holding a paper with her handwritten 4-letter code
- * (lib/verification-code.ts) — numbered, generously spaced, so she always sees
+ * The 2-photo ID verification (ARCHITECTURE §11), built for someone who is not
+ * technical, on a phone, maybe nervous (ONBOARDING.md laws): BOTH steps
+ * stacked on one screen — 1· the ID itself, 2· a selfie holding the ID —
+ * numbered, generously spaced, so she always sees
  * where she is and what's left (hidden-screen swaps read as "it just changed").
  * Each photo uploads the moment it's taken (account.addVerificationDoc —
  * leaving the flow never loses one) and stays visible as an on-device preview;
  * the next step scrolls into view. Docs are admin-only server-side (hard rule
  * 3), so a RESUMED session shows the green ✓ without the image — the preview
- * exists only while the data URL is still in memory. All three in → the
+ * exists only while the data URL is still in memory. Both in → the
  * account flips to pending review server-side; the wizard then auto-submits
  * her profile (wizardFinish).
  */
@@ -20,12 +19,10 @@ import { VERIFICATION_DOC_KINDS, type VerificationDocKind } from '@/lib/taxonomy
 interface Props {
   /** Kinds already uploaded this cycle (server-derived resume point). */
   kinds: VerificationDocKind[];
-  /** Her handwritten code — shown big on step 3 (and to the admin reviewer). */
-  code: string;
-  /** ID is the last required step: after photo 3, auto-submit + go to finishUrl. */
+  /** ID is the last required step: after the last photo, auto-submit + go to finishUrl. */
   wizardFinish?: boolean;
   finishUrl?: string;
-  /** After photo 3 when the wizard is NOT finishing: the next incomplete step
+  /** After the last photo when the wizard is NOT finishing: the next incomplete step
    *  (precomputed server-side — never derived from a possibly-stale re-read). */
   nextHref?: string;
   /** Retake deep-link (?part=…): scroll that step into view on load. */
@@ -33,7 +30,7 @@ interface Props {
   /** Skip the on-load scroll (kitchen-sink showcase — a resumed demo must not drag the page down). */
   noScroll?: boolean;
 }
-const { kinds, code, wizardFinish = false, finishUrl = '/account/', nextHref = '?step=verify', part, noScroll = false } = Astro.props;
+const { kinds, wizardFinish = false, finishUrl = '/account/', nextHref = '?step=verify', part, noScroll = false } = Astro.props;
 
 const ORDER = VERIFICATION_DOC_KINDS;
 const firstMissing = ORDER.find((k) => !kinds.includes(k)) ?? null;
@@ -43,7 +40,6 @@ const scrollTarget = noScroll ? null : (part ?? (kinds.length > 0 ? firstMissing
 const copy: Record<VerificationDocKind, { title: string; why: string }> = {
   id_front: { title: m.vp_title_id(), why: m.vp_why_id() },
   id_selfie: { title: m.vp_title_selfie(), why: m.vp_why_selfie() },
-  code_selfie: { title: m.vp_title_code(), why: m.vp_why_code() },
 };
 
 const tile =
@@ -80,12 +76,6 @@ const chip = 'grid size-11 flex-none place-items-center font-condensed text-lg f
         <h2 class="display mt-3 text-2xl">{copy[kind].title}</h2>
         <p class="mt-2 leading-relaxed text-muted-foreground">{copy[kind].why}</p>
 
-        {kind === 'code_selfie' && (
-          <p class="slab-cut mt-4 inline-block bg-foreground px-6 py-3 font-condensed text-4xl font-bold tracking-widest text-background">
-            {code}
-          </p>
-        )}
-
         <div class="mt-6 flex justify-center text-muted-foreground" data-vp-icon aria-hidden="true">
           {kind === 'id_front' && (
             <svg class="size-24" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -101,14 +91,6 @@ const chip = 'grid size-11 flex-none place-items-center font-condensed text-lg f
               <rect x="30" y="14" width="13" height="9" rx="1" />
               <circle cx="33.5" cy="18" r="1.5" />
               <path d="M37 16.5h4M37 20h4" />
-            </svg>
-          )}
-          {kind === 'code_selfie' && (
-            <svg class="size-24" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="19" cy="14" r="6" />
-              <path d="M6 40c0-7 5.6-10 13-10" />
-              <rect x="26" y="24" width="16" height="12" rx="1" />
-              <path d="M29 30h10" />
             </svg>
           )}
         </div>
@@ -150,7 +132,7 @@ const chip = 'grid size-11 flex-none place-items-center font-condensed text-lg f
   import { actions } from 'astro:actions';
   import { reencode } from '@/lib/reencode';
 
-  const ORDER = ['id_front', 'id_selfie', 'code_selfie'];
+  const ORDER = ['id_front', 'id_selfie'];
 
   function initVerifyPhotos() {
     document.querySelectorAll<HTMLElement>('[data-verify-photos]').forEach((root) => {

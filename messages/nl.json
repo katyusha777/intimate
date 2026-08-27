@@ -1102,15 +1102,12 @@
   "vp_why_id": "Paspoort, ID-kaart of rijbewijs. Leg hem plat neer en zorg dat alle tekst goed leesbaar is.",
   "vp_title_selfie": "Een foto van jou met je ID",
   "vp_why_selfie": "Houd hetzelfde ID naast je gezicht. Je gezicht en het ID moeten allebei goed zichtbaar zijn.",
-  "vp_title_code": "Een foto van jou met deze code",
-  "vp_why_code": "Schrijf deze 4 letters groot op een papiertje, met pen. Maak dan een foto van jezelf met het papiertje in je hand.",
-  "vp_step_of": "Foto {n} van 3",
+  "vp_step_of": "Foto {n} van 2",
   "vp_take": "Maak de foto",
   "vp_retake": "Opnieuw",
-  "vp_all_done": "Alle 3 foto's zijn binnen. Alleen ons team kan ze zien.",
+  "vp_all_done": "Beide foto's zijn binnen. Alleen ons team kan ze zien.",
   "verify_continue": "Verificatie afmaken",
   "adm_doc_kind_id_front": "ID",
   "adm_doc_kind_id_selfie": "Selfie met ID",
-  "adm_doc_kind_code_selfie": "Selfie met code",
-  "adm_expected_code": "Verwachte code"
+  "adm_doc_kind_code_selfie": "Selfie met code"
 }

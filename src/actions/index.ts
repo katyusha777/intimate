@@ -441,12 +441,12 @@ export const server = {
       },
     }),
 
-    // One verification photo per call (the 3-step flow: id_front → id_selfie →
-    // code_selfie), saved the moment it's taken so leaving the flow never loses
-    // an upload. Client re-encodes to JPEG via canvas (EXIF/GPS stripped, hard
-    // rule 2) before it leaves the device; when the third kind lands, the data
-    // layer flips the account to pending review. Replaced submitId 2026-08-23
-    // (the selfie-with-code returns, plus a selfie-with-ID).
+    // One verification photo per call (the 2-step flow: id_front → id_selfie —
+    // the paper-code selfie was retired 2026-08-27), saved the moment it's
+    // taken so leaving the flow never loses an upload. Client re-encodes to
+    // JPEG via canvas (EXIF/GPS stripped, hard rule 2) before it leaves the
+    // device; when the last kind lands, the data layer flips the account to
+    // pending review.
     addVerificationDoc: defineAction({
       input: z.object({
         kind: z.enum(VERIFICATION_DOC_KINDS),

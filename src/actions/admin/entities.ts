@@ -9,10 +9,10 @@ import { reportsApi } from '@/app/api/reports';
 import { profilesApi } from '@/app/api/profiles';
 import type { Profile } from '@/app/models/profile';
 import { profileAge } from '@/app/models/profile';
-import { VERIFICATION_DOC_KINDS, type ProfileState, type VerificationDocKind, type VerificationState } from '@/lib/taxonomy';
+import { type ProfileState, type VerificationState } from '@/lib/taxonomy';
 import { and, eq, isNull } from 'drizzle-orm';
 import { accounts as accountsTable, profiles as profilesTable, verificationDocs } from '@/db/schema';
-import { adb } from './lib';
+import { adb, kindRank } from './lib';
 
 
 
@@ -144,7 +144,9 @@ export async function profileByIdAdmin(id: string): Promise<{
   admin: AdminProfile;
   account?: AdminAccountInfo;
   siblings: { id: string; slug: string; name: string; state: ProfileState }[];
-  vdocs: { id: string; kind: VerificationDocKind }[];
+  // kind: string, not VerificationDocKind — legacy kinds (retired code_selfie)
+  // still sit on old rows and must render in the drawer.
+  vdocs: { id: string; kind: string }[];
 } | null> {
   const profile = await profilesApi.byId(id);
   if (!profile) return null;
@@ -205,9 +207,7 @@ export async function profileByIdAdmin(id: string): Promise<{
     admin,
     account,
     siblings: siblingRows.filter((r) => r.id !== id),
-    vdocs: docRows.sort(
-      (a, b) => VERIFICATION_DOC_KINDS.indexOf(a.kind) - VERIFICATION_DOC_KINDS.indexOf(b.kind),
-    ),
+    vdocs: docRows.sort((a, b) => kindRank(a.kind) - kindRank(b.kind)),
   };
 }
 

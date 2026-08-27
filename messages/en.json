@@ -1102,15 +1102,12 @@
   "vp_why_id": "Passport, ID card or driving licence. Lay it flat and make sure all the text is easy to read.",
   "vp_title_selfie": "A photo of you holding your ID",
   "vp_why_selfie": "Hold the same ID next to your face. Your face and the ID must both be clearly visible.",
-  "vp_title_code": "A photo of you holding this code",
-  "vp_why_code": "Write these 4 letters big on a piece of paper, with a pen. Then take a photo of yourself holding the paper.",
-  "vp_step_of": "Photo {n} of 3",
+  "vp_step_of": "Photo {n} of 2",
   "vp_take": "Take the photo",
   "vp_retake": "Retake",
-  "vp_all_done": "All 3 photos are in. Only our team can see them.",
+  "vp_all_done": "Both photos are in. Only our team can see them.",
   "verify_continue": "Continue verification",
   "adm_doc_kind_id_front": "ID",
   "adm_doc_kind_id_selfie": "Selfie with ID",
-  "adm_doc_kind_code_selfie": "Selfie with code",
-  "adm_expected_code": "Expected code"
+  "adm_doc_kind_code_selfie": "Selfie with code"
 }

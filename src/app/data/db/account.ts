@@ -21,7 +21,7 @@ import {
 } from '@/app/models/account';
 import { ProfileSchema, birthDateForAge, priceFromRates, type Profile } from '@/app/models/profile';
 import { mediaUrl, toProfile } from '@/app/data/db/profiles';
-import { CITIES, POLICY_MIN_AGE, VERIFICATION_DOC_KINDS } from '@/lib/taxonomy';
+import { CITIES, POLICY_MIN_AGE, VERIFICATION_DOC_KINDS, type VerificationDocKind } from '@/lib/taxonomy';
 import { slugifyBase } from '@/lib/slug';
 import { evictMediaCache, isR2Key, mediaBucket as bucket } from '@/lib/media-keys';
 import { pushoverAdmins } from '@/lib/pushover';
@@ -365,7 +365,7 @@ export const accountApi: AccountApi = {
       const okIds = stale.filter((_, i) => deleted[i]!.status === 'fulfilled').map((s) => s.id);
       if (okIds.length) await d.delete(verificationDocs).where(inArray(verificationDocs.id, okIds));
     }
-    // All three kinds in → flip to pending review. The completeness decision
+    // All required kinds in → flip to pending review. The completeness decision
     // rides the WRITE itself (correlated subquery, executed at origin): a
     // separate re-read here would repeat the exact SELECT the setup page just
     // primed, and Hyperdrive serves cached SELECTs minutes stale after writes
@@ -382,7 +382,8 @@ export const accountApi: AccountApi = {
           sql`(select count(distinct ${verificationDocs.kind}) from ${verificationDocs}
                where ${verificationDocs.accountId} = ${session.accountId}
                  and ${verificationDocs.state} = 'pending'
-                 and ${verificationDocs.purgedAt} is null) = ${VERIFICATION_DOC_KINDS.length}`,
+                 and ${verificationDocs.purgedAt} is null
+                 and ${inArray(verificationDocs.kind, [...VERIFICATION_DOC_KINDS])}) = ${VERIFICATION_DOC_KINDS.length}`,
         ),
       )
       .returning({ id: accounts.id });
@@ -400,9 +401,12 @@ export const accountApi: AccountApi = {
           eq(verificationDocs.accountId, session.accountId),
           eq(verificationDocs.state, 'pending'),
           isNull(verificationDocs.purgedAt),
+          // Legacy kinds (retired paper-code selfie) must not surface as a
+          // resume point in today's flow.
+          inArray(verificationDocs.kind, [...VERIFICATION_DOC_KINDS]),
         ),
       );
-    return rows.map((r) => r.kind);
+    return rows.map((r) => r.kind as VerificationDocKind);
   },
 
   // Her gallery = the by-id core scoped to her own profile row. Admin edits the
