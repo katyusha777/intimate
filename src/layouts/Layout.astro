@@ -17,6 +17,7 @@ import Lightbox from '@/components/molecules/Lightbox.astro';
 import FavoritesController from '@/components/molecules/FavoritesController.astro';
 import CallDock from '@/components/organisms/call/CallDock.astro';
 import PushManager from '@/components/organisms/push/PushManager.astro';
+import PostHog from '@/components/posthog.astro';
 import '@fontsource/barlow/400.css';
 import '@fontsource/barlow/500.css';
 import '@fontsource/barlow/600.css';
@@ -177,6 +178,8 @@ const unread = session && chromeBare !== true ? await messagingApi.unreadCount(s
       window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
       plausible.init()
     </script>
+    <PostHog />
+
     <script is:inline>
       // No-flash theme (items.md #4): first visit follows the DEVICE
       // (prefers-color-scheme); an explicit pick on the toggle persists and
